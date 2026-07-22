@@ -1,0 +1,68 @@
+{% extends "superadmin_base.html" %}
+{% block title %}عقل المنصة - مجرة الزبائن{% endblock %}
+{% block page_title %}عقل المنصة{% endblock %}
+{% block breadcrumb_current %}مجرة الزبائن{% endblock %}
+
+{% block extra_style %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin_brain.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="brain-shell" id="brainShell">
+  <div class="brain-toolbar">
+    <div class="brain-toolbar-main">
+      <div class="brain-search">
+        <i class="fas fa-search"></i>
+        <input type="search" id="brainSearch" placeholder="بحث بالاسم أو الهاتف..." autocomplete="off">
+      </div>
+      <select id="brainOrbitFilter" class="brain-select" aria-label="تصفية المدار">
+        <option value="">كل المدارات</option>
+      </select>
+      <select id="brainTenantFilter" class="brain-select" aria-label="تصفية الشركة">
+        <option value="">كل الشركات</option>
+      </select>
+      <button type="button" class="brain-btn" id="brainRefresh" title="تحديث">
+        <i class="fas fa-sync-alt"></i>
+        تحديث
+      </button>
+    </div>
+    <div class="brain-legend" id="brainLegend" aria-label="مفتاح المدارات"></div>
+  </div>
+
+  <div class="brain-stage">
+    <div class="brain-canvas-wrap">
+      <canvas id="brainCanvas" aria-label="مجرة الزبائن ثلاثية الأبعاد"></canvas>
+      <div class="brain-hub" id="brainHub">
+        <div class="brain-hub-icon"><i class="fas fa-brain"></i></div>
+        <div class="brain-hub-title">عقل Finora</div>
+        <div class="brain-hub-stats" id="brainHubStats">جاري التحميل...</div>
+      </div>
+      <div class="brain-loading" id="brainLoading">
+        <div class="brain-spinner"></div>
+        <span>جاري بناء المجرة ثلاثية الأبعاد...</span>
+      </div>
+      <div class="brain-empty" id="brainEmpty" hidden>
+        <i class="fas fa-cube"></i>
+        <p>لا توجد كواكب مطابقة للفلاتر الحالية</p>
+      </div>
+    </div>
+
+    <aside class="brain-panel" id="brainPanel" hidden>
+      <div class="brain-panel-head">
+        <h3>تفاصيل الكوكب</h3>
+        <button type="button" class="brain-panel-close" id="brainPanelClose" aria-label="إغلاق">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="brain-panel-body" id="brainPanelBody"></div>
+    </aside>
+  </div>
+
+  <div class="brain-footer-note" id="brainFooterNote"></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="{{ url_for('static', filename='js/superadmin_brain.js') }}"></script>
+{% endblock %}

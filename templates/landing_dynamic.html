@@ -30,8 +30,12 @@
     {% if seo.twitter_image_url %}<meta name="twitter:image" content="{{ seo.twitter_image_url }}">{% endif %}
     <link rel="icon" href="{{ settings.favicon_url or platform_logo_url }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap">
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700;800&display=swap" rel="stylesheet">
+    {# Non-blocking icons — large CSS was a top render-blocking cost #}
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" media="print" onload="this.media='all'">
+    <noscript><link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"></noscript>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/landing_cms.css') }}">
     <style>
@@ -50,7 +54,7 @@
 <div class="landing-preview-bar">وضع المعاينة: هذه النسخة Draft ولا تظهر للزوار حتى تضغط نشر من لوحة الإدارة.</div>
 {% endif %}
 <div class="l-wrap">
-    <nav class="l-nav" id="lNav">
+    <nav class="l-nav" id="lNav" aria-label="التنقل الرئيسي">
         <a href="/" class="l-logo">
             <img src="{{ settings.logo_url or platform_logo_url }}" alt="{{ settings.site_name or platform_app_name }}" onerror="this.onerror=null;this.src='/static/finora-logo.png';">
             <div>
@@ -80,6 +84,7 @@
         <a href="{{ settings.trial_url or '/signup?plan=free&billing=monthly' }}">{{ nav.trial_label }}</a>
     </div>
 
+    <main id="main-content">
     {% if hero.is_visible is not sameas false %}
     <section class="l-hero cms-hero">
         <div class="l-hero-grid">
@@ -337,6 +342,8 @@
         </div>
     </section>
     {% endif %}
+
+    </main>
 
     {% set footer = sm.get('footer', {}) %}
     <footer class="cms-footer">

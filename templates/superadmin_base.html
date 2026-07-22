@@ -54,6 +54,10 @@
 
             <div class="sa-nav-section">
                 <div class="sa-nav-label">الشركات</div>
+                <a href="/superadmin/brain" class="nav-link {% if '/superadmin/brain' in request.path %}active{% endif %}">
+                    <i class="fas fa-brain"></i>
+                    عقل المنصة
+                </a>
                 <a href="/superadmin/tenants" class="nav-link {% if '/superadmin/tenants' in request.path and '/superadmin/tenants/create' not in request.path %}active{% endif %}">
                     <i class="fas fa-building"></i>
                     الشركات المسجلة

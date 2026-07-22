@@ -798,7 +798,9 @@
   {% set is_admin = session.get("role") == "admin" or (current_employee and current_employee.role == "admin") %}
   {% if (is_admin or (current_employee and can_see_messages)) and business_allows('messages') and plan_has("messages") %}
   {% if employee and employee.shipping_company_id %}
+  {% if business_allows('delivery_archive') %}
   <a href="/delivery/archive" class="pos-floating-archive-btn" title="أرشيف الكشوفات">📦</a>
+  {% endif %}
   {% endif %}
   <a href="/messages" class="pos-floating-chat-btn" title="المراسلة">
     <i class="fa fa-comments"></i>

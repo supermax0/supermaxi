@@ -27,10 +27,18 @@
     <div class="beauty-card"><b>{{ "{:,}".format(today_summary.profit or 0) }}</b><span>صافي الربح اليوم (بعد الصرفيات)</span></div>
   </div>
   <div class="beauty-actions">
+    {% if business_allows('beauty_appointments') %}
     <a class="beauty-btn" href="{{ url_for('beauty.appointments') }}">حجز موعد</a>
+    {% endif %}
+    {% if business_allows('beauty_services') %}
     <a class="beauty-btn" href="{{ url_for('beauty.services') }}">إدارة الخدمات</a>
+    {% endif %}
+    {% if business_allows('beauty_accounts') %}
     <a class="beauty-btn" href="{{ url_for('beauty.accounts') }}">حسابات المركز</a>
+    {% endif %}
+    {% if business_allows('beauty_alerts') %}
     <a class="beauty-btn" href="{{ url_for('beauty.alerts') }}">التنبيهات</a>
+    {% endif %}
   </div>
   <div class="beauty-card">
     <h3>مواعيد اليوم</h3>

@@ -19,7 +19,9 @@
       <p>{{ _('agents_list_title') }}</p>
     </div>
     <div class="admin-page-header__actions">
+      {% if business_allows('delivery_agent_portal') %}
       <a href="/delivery-agent/login/{% if session.get('tenant_slug') %}{{ session.get('tenant_slug') }}{% endif %}" target="_blank" rel="noopener" class="nav-crosslink nav-crosslink--portal"><i class="fas fa-truck"></i> بوابة المندوب</a>
+      {% endif %}
       <a href="/employees" class="nav-crosslink"><i class="fas fa-user-tie"></i> {{ _('employees') }}</a>
     </div>
   </div>
@@ -123,9 +125,11 @@
                 <a href="/agents/{{ data.agent.id }}/reports" class="action-btn action-btn--text" title="كشف حساب المندوب">
                   <i class="fas fa-file-invoice"></i><span>كشف</span>
                 </a>
+                {% if business_allows('delivery_agent_portal') %}
                 <a href="/delivery-agent/login/{% if session.get('tenant_slug') %}{{ session.get('tenant_slug') }}{% endif %}" target="_blank" rel="noopener" class="action-btn action-btn--text" title="بوابة المندوب">
                   <i class="fas fa-external-link-alt"></i><span>بوابة</span>
                 </a>
+                {% endif %}
                 {% if can_manage_agents %}
                 <button type="button" class="action-btn" title="بيانات الدخول"
                   onclick='setAgentCredentials({{ data.agent.id }}, {{ data.agent.name|tojson }}, {{ (data.agent.username or "")|tojson }})'>

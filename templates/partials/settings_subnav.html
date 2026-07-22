@@ -3,13 +3,25 @@
   <label class="settings-subnav-mobile-label" for="settingsSubnavMobile">قسم الإعدادات</label>
   <select id="settingsSubnavMobile" class="settings-subnav-mobile" aria-label="{{ _('settings_nav_menu') }}">
     <option value="/settings/" {% if settings_nav == 'overview' %}selected{% endif %}>{{ _('settings_nav_overview') }}</option>
+    {% if business_allows('settings_appearance') %}
     <option value="/settings/appearance" {% if settings_nav == 'appearance' %}selected{% endif %}>{{ _('settings_nav_appearance') }}</option>
+    {% endif %}
+    {% if business_allows('settings_system') %}
     <option value="/settings/system" {% if settings_nav == 'system' %}selected{% endif %}>{{ _('settings_nav_system') }}</option>
+    {% endif %}
+    {% if business_allows('permissions') %}
     <option value="/admin/permissions/roles" {% if settings_nav == 'permissions' %}selected{% endif %}>{{ _('settings_nav_permissions') }}</option>
+    {% endif %}
+    {% if business_allows('settings_invoice') %}
     <option value="/settings/invoice" {% if settings_nav == 'invoice' %}selected{% endif %}>{{ _('settings_card_invoice_title') }}</option>
+    {% endif %}
+    {% if business_allows('settings_branches') %}
     <option value="/settings/branches" {% if settings_nav == 'branches' %}selected{% endif %}>{{ _('settings_card_branches_title') }}</option>
+    {% endif %}
+    {% if business_allows('settings_storefront') %}
     <option value="/settings/storefront" {% if settings_nav == 'storefront' %}selected{% endif %}>{{ _('settings_nav_storefront') }}</option>
-    {% if is_admin %}
+    {% endif %}
+    {% if is_admin and business_allows('settings_database_repair') %}
     <option value="/settings/database-repair" {% if settings_nav == 'database' %}selected{% endif %}>{{ _('settings_card_db_repair_title') }}</option>
     {% endif %}
     {% if show_fixed_assets_settings %}
@@ -25,25 +37,37 @@
       <a href="/settings/" class="settings-subnav-item{% if settings_nav == 'overview' %} active{% endif %}">
         <i class="fas fa-home"></i> {{ _('settings_nav_overview') }}
       </a>
+      {% if business_allows('settings_appearance') %}
       <a href="/settings/appearance" class="settings-subnav-item{% if settings_nav == 'appearance' %} active{% endif %}">
         <i class="fas fa-palette"></i> {{ _('settings_nav_appearance') }}
       </a>
+      {% endif %}
+      {% if business_allows('settings_system') %}
       <a href="/settings/system" class="settings-subnav-item{% if settings_nav == 'system' %} active{% endif %}">
         <i class="fas fa-users-cog"></i> {{ _('settings_nav_system') }}
       </a>
+      {% endif %}
+      {% if business_allows('permissions') %}
       <a href="/admin/permissions/roles" class="settings-subnav-item{% if settings_nav == 'permissions' %} active{% endif %}">
         <i class="fas fa-shield-alt"></i> {{ _('settings_nav_permissions') }}
       </a>
+      {% endif %}
+      {% if business_allows('settings_invoice') %}
       <a href="/settings/invoice" class="settings-subnav-item{% if settings_nav == 'invoice' %} active{% endif %}">
         <i class="fas fa-file-invoice"></i> {{ _('settings_card_invoice_title') }}
       </a>
+      {% endif %}
+      {% if business_allows('settings_branches') %}
       <a href="/settings/branches" class="settings-subnav-item{% if settings_nav == 'branches' %} active{% endif %}">
         <i class="fas fa-code-branch"></i> {{ _('settings_card_branches_title') }}
       </a>
+      {% endif %}
+      {% if business_allows('settings_storefront') %}
       <a href="/settings/storefront" class="settings-subnav-item{% if settings_nav == 'storefront' %} active{% endif %}">
         <i class="fas fa-store"></i> {{ _('settings_nav_storefront') }}
       </a>
-      {% if is_admin %}
+      {% endif %}
+      {% if is_admin and business_allows('settings_database_repair') %}
       <a href="/settings/database-repair" class="settings-subnav-item is-desktop-only{% if settings_nav == 'database' %} active{% endif %}">
         <i class="fas fa-database"></i> {{ _('settings_card_db_repair_title') }}
       </a>
@@ -59,11 +83,11 @@
       </a>
       {% endif %}
     </nav>
-    {% if is_admin or show_fixed_assets_settings or show_rotating_savings_settings %}
+    {% if (is_admin and business_allows('settings_database_repair')) or show_fixed_assets_settings or show_rotating_savings_settings %}
     <details class="settings-subnav-more">
       <summary><i class="fas fa-ellipsis-h"></i> المزيد</summary>
       <div class="settings-subnav-more-menu">
-        {% if is_admin %}
+        {% if is_admin and business_allows('settings_database_repair') %}
         <a href="/settings/database-repair" class="{% if settings_nav == 'database' %}active{% endif %}">
           <i class="fas fa-database"></i> {{ _('settings_card_db_repair_title') }}
         </a>

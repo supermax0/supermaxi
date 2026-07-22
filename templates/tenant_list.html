@@ -337,6 +337,220 @@
         }
     }
 
+    .tenant-modal {
+        max-width: min(980px, calc(100vw - 32px));
+        height: min(820px, calc(100vh - 48px));
+        max-height: calc(100vh - 48px);
+        overflow: hidden;
+        background: #fff;
+        border: 1px solid rgba(148, 163, 184, 0.26);
+        box-shadow: 0 24px 70px rgba(15, 23, 42, 0.24);
+        display: flex;
+        flex-direction: column;
+    }
+
+    .tenant-modal .modal-header {
+        padding: 20px 24px;
+        background: linear-gradient(180deg, #f8fbff 0%, #fff 100%);
+    }
+
+    .tenant-modal .modal-body {
+        padding: 0;
+        flex: 1 1 auto;
+        min-height: 0;
+        overflow: hidden;
+    }
+
+    .tenant-modal-shell {
+        display: grid;
+        grid-template-columns: 220px minmax(0, 1fr);
+        height: 100%;
+        min-height: 0;
+    }
+
+    .tenant-modal-side {
+        padding: 18px;
+        background: #f6f8fb;
+        border-left: 1px solid #e2e8f0;
+        overflow-y: auto;
+    }
+
+    .tenant-modal-summary {
+        display: grid;
+        gap: 8px;
+        margin-bottom: 18px;
+        padding: 14px;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        background: #fff;
+    }
+
+    .tenant-modal-summary strong {
+        color: #0f172a;
+        font-size: 15px;
+    }
+
+    .tenant-modal-summary span {
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .tenant-tabs {
+        display: grid;
+        gap: 8px;
+    }
+
+    .tenant-tab-btn {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        border: 1px solid transparent;
+        background: transparent;
+        color: #64748b;
+        border-radius: 12px;
+        padding: 11px 12px;
+        font-weight: 900;
+        text-align: right;
+        cursor: pointer;
+        transition: 0.18s ease;
+    }
+
+    .tenant-tab-btn:hover,
+    .tenant-tab-btn.active {
+        background: #fff;
+        color: #2563eb;
+        border-color: #dbeafe;
+        box-shadow: 0 8px 18px rgba(37, 99, 235, 0.08);
+    }
+
+    .tenant-tab-panel {
+        display: none;
+        padding: 24px;
+        overflow-y: auto;
+        min-height: 0;
+        height: 100%;
+        overscroll-behavior: contain;
+    }
+
+    .tenant-tab-panel.active {
+        display: block;
+    }
+
+    .tenant-panel-title {
+        margin: 0 0 18px;
+        color: #0f172a;
+        font-size: 19px;
+        font-weight: 900;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .tenant-info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .tenant-field-card {
+        padding: 14px 16px;
+        border-radius: 14px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+    }
+
+    .tenant-field-card .detail-label {
+        display: block;
+        margin-bottom: 8px;
+        color: #64748b;
+    }
+
+    .tenant-field-card .detail-value {
+        color: #0f172a;
+        text-align: right;
+        word-break: break-word;
+    }
+
+    .tenant-section {
+        padding: 18px;
+        border-radius: 16px;
+        border: 1px solid #dbeafe;
+        background: #f8fbff;
+        margin-bottom: 16px;
+    }
+
+    .tenant-section--features {
+        background: #f0fdfa;
+        border-color: #99f6e4;
+        min-height: 0;
+    }
+
+    .feature-group-tabs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 14px;
+    }
+
+    .feature-group-tab {
+        border: 1px solid #cbd5e1;
+        background: #fff;
+        color: #475569;
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-size: 12px;
+        font-weight: 900;
+        cursor: pointer;
+    }
+
+    .feature-group-tab.active {
+        color: #0f766e;
+        border-color: #5eead4;
+        background: #ccfbf1;
+    }
+
+    .feature-switch {
+        background: #fff;
+        border-color: #dbeafe;
+        color: #0f172a;
+    }
+
+    .feature-switch.is-off {
+        opacity: 0.68;
+        background: #f8fafc;
+    }
+
+    .tenant-tab-panel[data-tenant-panel="features"] .feature-toggle-grid {
+        padding-bottom: 76px;
+    }
+
+    @media (max-width: 760px) {
+        .tenant-modal {
+            height: calc(100vh - 24px);
+            max-height: calc(100vh - 24px);
+        }
+
+        .tenant-modal-shell {
+            grid-template-columns: 1fr;
+            grid-template-rows: auto minmax(0, 1fr);
+        }
+
+        .tenant-modal-side {
+            border-left: none;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .tenant-tabs {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .tenant-info-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
     @keyframes fadeIn {
         from {
             opacity: 0;
@@ -446,120 +660,113 @@
     </table>
 </div>
 
-<!-- Simple Detail Modal -->
+<!-- Tenant Detail Modal -->
 <div id="tenantModal" class="modal-overlay">
-    <div class="premium-card premium-modal">
+    <div class="premium-card premium-modal tenant-modal">
         <div class="modal-header">
-            <div class="modal-title"><i class="fas fa-info-circle"></i> <span id="m-title">تفاصيل الشركة</span></div>
-            <button class="modal-close"><i class="fas fa-times"></i></button>
+            <div class="modal-title"><i class="fas fa-building-shield"></i> <span id="m-title">إدارة الشركة</span></div>
+            <button class="modal-close" aria-label="إغلاق"><i class="fas fa-times"></i></button>
         </div>
         <div class="modal-body">
-            <div id="m-content">
-                <div class="detail-row"><span class="detail-label">الاسم الكامل</span><span class="detail-value"
-                        id="m-name"></span></div>
-                <div class="detail-row"><span class="detail-label">المعرف الفريد</span><span class="detail-value"
-                        id="m-slug" style="color: var(--primary);"></span></div>
-                <div class="detail-row"><span class="detail-label">نوع النشاط</span><span class="detail-value"
-                        id="m-business-type"></span></div>
-                <div class="detail-row"><span class="detail-label">قاعدة البيانات</span><span class="detail-value"
-                        id="m-db"></span></div>
-                <div class="detail-row"><span class="detail-label">تاريخ التسجيل</span><span class="detail-value"
-                        id="m-created"></span></div>
-                <div class="detail-row"><span class="detail-label">انتهاء الاشتراك</span><span class="detail-value"
-                        id="m-end"></span></div>
-                <div class="detail-row"><span class="detail-label">حالة الحساب</span><span class="detail-value"
-                        id="m-status"></span></div>
-            </div>
-
-            <div class="action-group"
-                style="background: rgba(168, 85, 247, 0.05); border-color: rgba(168, 85, 247, 0.2);">
-                <div class="action-title" style="color: #c4b5fd;"><i class="fas fa-layer-group"></i> نوع نشاط الشركة</div>
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <label class="detail-label">اختيار نوع النشاط</label>
-                    <select id="m-business-type-select"
-                        style="background: var(--surface-color); border: 1px solid var(--border-color); color: #fff; padding: 10px; border-radius: 8px; font-weight: 600; cursor: pointer;">
-                        <option value="general">شركة عامة</option>
-                        <option value="beauty_center">مركز تجميل</option>
-                    </select>
-                    <button class="btn-update" id="m-save-business-type"
-                        style="background: rgba(168, 85, 247, 0.18); border-color: rgba(168, 85, 247, 0.35); color: #fff; margin-top: 5px;">
-                        <i class="fas fa-save"></i> حفظ نوع النشاط
-                    </button>
-                </div>
-            </div>
-
-            <div class="action-group"
-                style="background: rgba(59, 130, 246, 0.05); border-color: rgba(59, 130, 246, 0.2);">
-                <div class="action-title" style="color: #fff;"><i class="fas fa-crown"></i> إدارة الاشتراك</div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
-                    <div style="display: flex; flex-direction: column; gap: 6px;">
-                        <label class="detail-label">خطة الاشتراك</label>
-                        <select id="m-plan-select"
-                            style="background: var(--surface-color); border: 1px solid var(--border-color); color: #fff; padding: 10px; border-radius: 8px; font-weight: 600; cursor: pointer;">
-                            <option value="basic">الأساسية</option>
-                            <option value="pro">المتقدمة</option>
-                            <option value="enterprise">الشركات</option>
-                        </select>
+            <div class="tenant-modal-shell">
+                <aside class="tenant-modal-side">
+                    <div class="tenant-modal-summary">
+                        <strong id="m-name">—</strong>
+                        <span id="m-slug">—</span>
+                        <span id="m-status">—</span>
                     </div>
-                    <div style="display: flex; flex-direction: column; gap: 6px;">
-                        <label class="detail-label">تاريخ الانتهاء</label>
-                        <input type="date" id="m-end-input"
-                            style="background: var(--surface-color); border: 1px solid var(--border-color); color: #fff; padding: 10px; border-radius: 8px; font-weight: 600;">
+                    <div class="tenant-tabs" role="tablist">
+                        <button type="button" class="tenant-tab-btn active" data-tenant-tab="overview"><i class="fas fa-circle-info"></i> المعلومات</button>
+                        <button type="button" class="tenant-tab-btn" data-tenant-tab="subscription"><i class="fas fa-crown"></i> الاشتراك</button>
+                        <button type="button" class="tenant-tab-btn" data-tenant-tab="features"><i class="fas fa-toggle-on"></i> الصفحات والميزات</button>
+                        <button type="button" class="tenant-tab-btn" data-tenant-tab="tools"><i class="fas fa-screwdriver-wrench"></i> الأدوات</button>
                     </div>
-                </div>
-                <button class="btn-update" id="m-save-plan"
-                    style="background: var(--primary); border-color: var(--primary); color: #fff; margin-top: 5px;">
-                    <i class="fas fa-save"></i> حفظ تغييرات الاشتراك
-                </button>
-            </div>
+                </aside>
 
-            <div class="action-group"
-                style="background: rgba(20, 184, 166, 0.05); border-color: rgba(20, 184, 166, 0.22);">
-                <div class="action-title" style="color: #5eead4;"><i class="fas fa-toggle-on"></i> التحكم بظهور الصفحات والميزات</div>
-                <p style="margin:0 0 14px;color:var(--text-muted);font-size:12px;font-weight:700;line-height:1.7;">
-                    ألغِ التفعيل لإخفاء الصفحة أو الميزة من القائمة داخل نظام هذه الشركة فقط.
-                </p>
-                <div id="m-feature-grid" class="feature-toggle-grid"></div>
-                <button class="btn-update" id="m-save-features"
-                    style="background: rgba(20, 184, 166, 0.18); border-color: rgba(20, 184, 166, 0.35); color: #fff; margin-top: 14px;">
-                    <i class="fas fa-save"></i> حفظ ظهور الميزات
-                </button>
-            </div>
+                <section class="tenant-tab-panel active" data-tenant-panel="overview">
+                    <h3 class="tenant-panel-title"><i class="fas fa-circle-info"></i> معلومات الشركة</h3>
+                    <div class="tenant-info-grid">
+                        <div class="tenant-field-card"><span class="detail-label">نوع النشاط</span><span class="detail-value" id="m-business-type"></span></div>
+                        <div class="tenant-field-card"><span class="detail-label">قاعدة البيانات</span><span class="detail-value" id="m-db"></span></div>
+                        <div class="tenant-field-card"><span class="detail-label">تاريخ التسجيل</span><span class="detail-value" id="m-created"></span></div>
+                        <div class="tenant-field-card"><span class="detail-label">انتهاء الاشتراك</span><span class="detail-value" id="m-end"></span></div>
+                    </div>
 
-            <div class="action-group">
-                <div class="action-title"><i class="fas fa-tools"></i> أدوات الإدارة</div>
-                <div style="display: flex; flex-direction: column; gap: 12px;">
-                    <div style="display:flex;flex-direction:column;gap:6px;">
-                        <label class="detail-label">رابط تسجيل الدخول الخاص بالشركة</label>
-                        <div style="display:flex;align-items:center;gap:8px;">
-                            <input type="text" id="m-login-url" readonly
-                                style="flex:1;padding:10px 12px;border-radius:10px;border:1px solid var(--border-color);background:rgba(15,23,42,0.6);color:#e5e7eb;font-size:12px;direction:ltr;">
-                            <button type="button" class="btn-update" id="m-copy-login-url"
-                                style="padding:8px 12px;white-space:nowrap;">
-                                <i class="fas fa-copy"></i> نسخ الرابط
+                    <div class="tenant-section" style="margin-top:16px;">
+                        <div class="action-title"><i class="fas fa-layer-group"></i> نوع نشاط الشركة</div>
+                        <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:end;">
+                            <div style="display:flex;flex-direction:column;gap:6px;">
+                                <label class="detail-label">اختيار نوع النشاط</label>
+                                <select id="m-business-type-select" style="background:#fff;border:1px solid #cbd5e1;color:#0f172a;padding:12px;border-radius:12px;font-weight:800;cursor:pointer;">
+                                    <option value="general">شركة عامة</option>
+                                    <option value="beauty_center">مركز تجميل</option>
+                                </select>
+                            </div>
+                            <button class="btn-update" id="m-save-business-type" style="width:auto;min-width:160px;margin:0;background:#7c3aed;border-color:#7c3aed;">
+                                <i class="fas fa-save"></i> حفظ النوع
                             </button>
                         </div>
                     </div>
-                    <button class="btn-update" id="open-reset-pwd-modal">
-                        <i class="fas fa-key"></i> تغيير كلمة مرور المسؤول
-                    </button>
-                    <button class="btn-update" id="m-toggle-status">
-                        <i class="fas fa-power-off"></i> <span id="m-toggle-text">تعطيل الحساب مؤقتاً</span>
-                    </button>
-                    <button class="btn-update" id="m-reset-db"
-                        style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.2); color: #ef4444;">
-                        <i class="fas fa-database"></i> إعادة تعيين قاعدة البيانات
-                    </button>
-                    <button class="btn-update" id="m-delete-tenant"
-                        style="background: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.3); color: #ef4444; font-weight: 900;">
-                        <i class="fas fa-trash-alt"></i> حذف الشركة نهائياً من النظام
-                    </button>
-                </div>
+                </section>
+
+                <section class="tenant-tab-panel" data-tenant-panel="subscription">
+                    <h3 class="tenant-panel-title"><i class="fas fa-crown"></i> إدارة الاشتراك</h3>
+                    <div class="tenant-section">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+                            <div style="display:flex;flex-direction:column;gap:6px;">
+                                <label class="detail-label">خطة الاشتراك</label>
+                                <select id="m-plan-select" style="background:#fff;border:1px solid #cbd5e1;color:#0f172a;padding:12px;border-radius:12px;font-weight:800;cursor:pointer;">
+                                    <option value="basic">الأساسية</option>
+                                    <option value="pro">المتقدمة</option>
+                                    <option value="enterprise">الشركات</option>
+                                </select>
+                            </div>
+                            <div style="display:flex;flex-direction:column;gap:6px;">
+                                <label class="detail-label">تاريخ الانتهاء</label>
+                                <input type="date" id="m-end-input" style="background:#fff;border:1px solid #cbd5e1;color:#0f172a;padding:12px;border-radius:12px;font-weight:800;">
+                            </div>
+                        </div>
+                        <button class="btn-update" id="m-save-plan" style="background:var(--primary);border-color:var(--primary);">
+                            <i class="fas fa-save"></i> حفظ تغييرات الاشتراك
+                        </button>
+                    </div>
+                </section>
+
+                <section class="tenant-tab-panel" data-tenant-panel="features">
+                    <h3 class="tenant-panel-title"><i class="fas fa-toggle-on"></i> التحكم بظهور الصفحات والميزات</h3>
+                    <div class="tenant-section tenant-section--features">
+                        <p style="margin:0 0 14px;color:#64748b;font-size:13px;font-weight:800;line-height:1.7;">ألغِ التفعيل لإخفاء الصفحة أو الميزة من القائمة داخل نظام هذه الشركة فقط.</p>
+                        <div id="m-feature-group-tabs" class="feature-group-tabs"></div>
+                        <div id="m-feature-grid" class="feature-toggle-grid"></div>
+                        <div id="m-feature-save-status" style="display:none;margin-top:12px;padding:10px 12px;border-radius:12px;font-size:13px;font-weight:900;"></div>
+                        <button class="btn-update" id="m-save-features" style="background:#0f766e;border-color:#0f766e;margin-top:14px;">
+                            <i class="fas fa-save"></i> حفظ ظهور الميزات
+                        </button>
+                    </div>
+                </section>
+
+                <section class="tenant-tab-panel" data-tenant-panel="tools">
+                    <h3 class="tenant-panel-title"><i class="fas fa-screwdriver-wrench"></i> أدوات الإدارة</h3>
+                    <div class="tenant-section">
+                        <div style="display:flex;flex-direction:column;gap:6px;">
+                            <label class="detail-label">رابط تسجيل الدخول الخاص بالشركة</label>
+                            <div style="display:flex;align-items:center;gap:8px;">
+                                <input type="text" id="m-login-url" readonly style="flex:1;padding:12px;border-radius:12px;border:1px solid #cbd5e1;background:#fff;color:#0f172a;font-size:12px;direction:ltr;">
+                                <button type="button" class="btn-update" id="m-copy-login-url" style="width:auto;margin:0;padding:10px 14px;white-space:nowrap;color:#fff;background:#2563eb;border-color:#2563eb;"><i class="fas fa-copy"></i> نسخ</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tenant-section">
+                        <button class="btn-update" id="open-reset-pwd-modal"><i class="fas fa-key"></i> تغيير كلمة مرور المسؤول</button>
+                        <button class="btn-update" id="m-toggle-status" style="background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.2);color:#ef4444;"><i class="fas fa-power-off"></i> <span id="m-toggle-text">تعطيل الحساب مؤقتاً</span></button>
+                        <button class="btn-update" id="m-reset-db" style="background:rgba(239,68,68,0.1);border-color:rgba(239,68,68,0.2);color:#ef4444;"><i class="fas fa-database"></i> إعادة تعيين قاعدة البيانات</button>
+                        <button class="btn-update" id="m-delete-tenant" style="background:rgba(239,68,68,0.18);border-color:rgba(239,68,68,0.3);color:#ef4444;font-weight:900;"><i class="fas fa-trash-alt"></i> حذف الشركة نهائياً من النظام</button>
+                    </div>
+                </section>
             </div>
         </div>
     </div>
 </div>
-
 <!-- Registration Data Modal -->
 <div id="registrationModal" class="modal-overlay">
     <div class="premium-card premium-modal" style="max-width: 520px;">
@@ -649,41 +856,130 @@
         const regContent = document.getElementById('reg-modal-content');
         const regError = document.getElementById('reg-modal-error');
         const featureGrid = document.getElementById('m-feature-grid');
+        const featureGroupTabs = document.getElementById('m-feature-group-tabs');
         let currentFeatureLabels = [];
+        let currentFeatureGroups = [];
         let currentFeatureOverrides = {};
+        let currentBusinessType = 'general';
+        let activeFeatureGroup = 'all';
         const beautyAllowedFeatures = new Set([
-            'dashboard', 'executive_dashboard', 'beauty', 'beauty_accounts', 'inventory',
-            'inventory_audit', 'maintenance', 'customers', 'expenses', 'cash', 'accounts',
-            'employees', 'reports', 'settings', 'messages', 'activity'
+            'dashboard', 'executive_dashboard',
+            'beauty', 'beauty_appointments', 'beauty_services', 'beauty_sessions', 'beauty_alerts',
+            'beauty_accounts', 'beauty_clients',
+            'inventory', 'inventory_products', 'inventory_add_product', 'inventory_ledger', 'inventory_audit',
+            'inventory_reports', 'maintenance',
+            'customers', 'customer_blacklist', 'customer_provinces', 'customer_credit',
+            'expenses', 'cash', 'accounts', 'employees', 'employee_page_warnings', 'payroll', 'employee_roles',
+            'reports', 'reports_daily', 'reports_monitors', 'reports_financial', 'reports_sales', 'reports_profit',
+            'settings', 'settings_system', 'settings_invoice', 'settings_appearance',
+            'settings_branches', 'settings_storefront', 'settings_database_repair',
+            'messages', 'activity', 'storefront'
         ]);
 
         function defaultFeatureState(key, businessType) {
             return businessType === 'beauty_center' ? beautyAllowedFeatures.has(key) : true;
         }
 
-        function renderFeatureToggles(labels, overrides, businessType) {
-            currentFeatureLabels = Array.isArray(labels) ? labels : [];
-            currentFeatureOverrides = overrides || {};
+        function flattenFeatureGroups(groups, fallbackLabels) {
+            if (Array.isArray(groups) && groups.length) {
+                return groups.flatMap(group => Array.isArray(group.features) ? group.features : []);
+            }
+            return Array.isArray(fallbackLabels) ? fallbackLabels : [];
+        }
+
+        function getFeatureChecked(key) {
+            return Object.prototype.hasOwnProperty.call(currentFeatureOverrides, key)
+                ? Boolean(currentFeatureOverrides[key])
+                : defaultFeatureState(key, currentBusinessType);
+        }
+
+        function renderFeatureGroupTabs() {
+            featureGroupTabs.innerHTML = '';
+            const tabs = [{ key: 'all', label: 'الكل' }].concat(currentFeatureGroups);
+            tabs.forEach(group => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = `feature-group-tab ${group.key === activeFeatureGroup ? 'active' : ''}`;
+                btn.textContent = group.label || group.key;
+                btn.addEventListener('click', () => {
+                    activeFeatureGroup = group.key;
+                    renderFeatureGroupTabs();
+                    renderFeatureGrid();
+                });
+                featureGroupTabs.appendChild(btn);
+            });
+        }
+
+        function renderFeatureGrid() {
             featureGrid.innerHTML = '';
             if (!currentFeatureLabels.length) {
                 featureGrid.innerHTML = '<div style="color:var(--text-muted);font-weight:700;">لا توجد ميزات قابلة للتخصيص.</div>';
                 return;
             }
-            currentFeatureLabels.forEach(item => {
+            const visibleFeatures = activeFeatureGroup === 'all'
+                ? currentFeatureLabels
+                : (currentFeatureGroups.find(group => group.key === activeFeatureGroup)?.features || []);
+            visibleFeatures.forEach(item => {
                 const key = item.key;
-                const checked = Object.prototype.hasOwnProperty.call(currentFeatureOverrides, key)
-                    ? Boolean(currentFeatureOverrides[key])
-                    : defaultFeatureState(key, businessType);
+                const checked = getFeatureChecked(key);
                 const label = document.createElement('label');
-                label.className = 'feature-switch';
+                label.className = `feature-switch ${checked ? '' : 'is-off'}`;
                 label.innerHTML = `
                     <span>${item.label || key}</span>
                     <input type="checkbox" data-feature-key="${key}" ${checked ? 'checked' : ''}>
                 `;
+                const input = label.querySelector('input');
+                input.addEventListener('change', () => {
+                    currentFeatureOverrides[key] = input.checked;
+                    label.classList.toggle('is-off', !input.checked);
+                });
                 featureGrid.appendChild(label);
             });
         }
+
+        function renderFeatureToggles(groupsOrLabels, overrides, businessType, fallbackLabels) {
+            currentFeatureGroups = Array.isArray(groupsOrLabels) && groupsOrLabels.length && groupsOrLabels[0].features
+                ? groupsOrLabels
+                : [];
+            currentFeatureLabels = flattenFeatureGroups(currentFeatureGroups, fallbackLabels || groupsOrLabels);
+            currentFeatureOverrides = { ...(overrides || {}) };
+            currentBusinessType = businessType || 'general';
+            activeFeatureGroup = 'all';
+            renderFeatureGroupTabs();
+            renderFeatureGrid();
+        }
+
+        function collectAllFeatureStates() {
+            const features = {};
+            currentFeatureLabels.forEach(item => {
+                features[item.key] = getFeatureChecked(item.key);
+            });
+            return features;
+        }
+
+        function showFeatureSaveStatus(message, ok = true) {
+            const box = document.getElementById('m-feature-save-status');
+            if (!box) return;
+            box.textContent = message;
+            box.style.display = 'block';
+            box.style.color = ok ? '#047857' : '#b91c1c';
+            box.style.background = ok ? '#d1fae5' : '#fee2e2';
+            box.style.border = ok ? '1px solid #6ee7b7' : '1px solid #fecaca';
+        }
         const businessLabels = { general: 'شركة عامة', beauty_center: 'مركز تجميل' };
+
+        function setActiveTenantTab(tab) {
+            document.querySelectorAll('.tenant-tab-btn').forEach(item => {
+                item.classList.toggle('active', item.dataset.tenantTab === tab);
+            });
+            document.querySelectorAll('.tenant-tab-panel').forEach(panel => {
+                panel.classList.toggle('active', panel.dataset.tenantPanel === tab);
+            });
+        }
+
+        document.querySelectorAll('.tenant-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => setActiveTenantTab(btn.dataset.tenantTab));
+        });
 
         function fillRegistrationModal(reg, fallbackName) {
             document.getElementById('rm-company').textContent = reg.company_name || fallbackName || '—';
@@ -764,7 +1060,7 @@
                             // Plan info
                             document.getElementById('m-plan-select').value = data.plan_key || 'basic';
                             document.getElementById('m-end-input').value = data.subscription_end_date === '—' ? '' : data.subscription_end_date;
-                            renderFeatureToggles(data.feature_labels, data.feature_overrides, data.business_type || 'general');
+                            renderFeatureToggles(data.feature_groups || data.feature_labels, data.feature_overrides, data.business_type || 'general', data.feature_labels);
 
                             // Status
                             const isExpired = data.subscription_end_date !== '—' && new Date(data.subscription_end_date) < new Date().setHours(0, 0, 0, 0);
@@ -784,6 +1080,7 @@
                                 toggleBtn.style.color = '#10b981';
                             }
 
+                            setActiveTenantTab('overview');
                             modal.classList.add('active');
                         } else {
                             alert('خطأ في جلب البيانات: ' + data.error);
@@ -869,7 +1166,7 @@
 
         // Save Business Type
         document.getElementById('m-business-type-select').addEventListener('change', function () {
-            renderFeatureToggles(currentFeatureLabels, currentFeatureOverrides, this.value || 'general');
+            renderFeatureToggles(currentFeatureGroups.length ? currentFeatureGroups : currentFeatureLabels, currentFeatureOverrides, this.value || 'general', currentFeatureLabels);
         });
 
         document.getElementById('m-save-business-type').addEventListener('click', function () {
@@ -1009,15 +1306,11 @@
             const slug = document.getElementById('m-slug').textContent;
             if (!slug || slug === '—') return;
 
-            const features = {};
-            featureGrid.querySelectorAll('input[data-feature-key]').forEach(input => {
-                features[input.dataset.featureKey] = input.checked;
-            });
-
-            if (!confirm('هل تريد حفظ إعدادات ظهور الصفحات والميزات لهذه الشركة؟')) return;
+            const features = collectAllFeatureStates();
 
             this.disabled = true;
             this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري الحفظ...';
+            showFeatureSaveStatus('جاري حفظ إعدادات الظهور...', true);
 
             fetch(`/superadmin/tenants/update-features/${slug}`, {
                 method: 'POST',
@@ -1030,15 +1323,15 @@
                     this.innerHTML = '<i class="fas fa-save"></i> حفظ ظهور الميزات';
                     if (data.ok) {
                         currentFeatureOverrides = data.feature_overrides || features;
-                        alert(data.message || 'تم حفظ إعدادات ظهور الميزات بنجاح.');
+                        showFeatureSaveStatus(data.message || 'تم حفظ إعدادات ظهور الميزات بنجاح.', true);
                     } else {
-                        alert('حدث خطأ: ' + (data.error || 'غير معروف'));
+                        showFeatureSaveStatus('حدث خطأ: ' + (data.error || 'غير معروف'), false);
                     }
                 })
                 .catch(() => {
                     this.disabled = false;
                     this.innerHTML = '<i class="fas fa-save"></i> حفظ ظهور الميزات';
-                    alert('فشل الاتصال بالسيرفر');
+                    showFeatureSaveStatus('فشل الاتصال بالسيرفر', false);
                 });
         });
 
@@ -1082,3 +1375,4 @@
     });
 </script>
 {% endblock %}
+

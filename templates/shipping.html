@@ -742,11 +742,13 @@
                 <button type="button" class="ship-actions-trigger" data-compact-actions-trigger="1"
                   aria-haspopup="menu" aria-expanded="false" aria-label="{{ _('shipping_th_actions') }}" title="{{ _('shipping_th_actions') }}">&#8942;</button>
                 <div class="compact-actions-source" hidden>
+                  {% if business_allows('delivery_archive') %}
                   <a href="/delivery/archive?company_id={{ c.id }}" class="btn btn-success btn-sm"
                     style="text-decoration:none;">
                     <span>📋</span>
                     <span>{{ _('shipping_action_statement') }}</span>
                   </a>
+                  {% endif %}
                   <button class="btn btn-warning btn-sm" type="button" onclick="editCompanyFromRow(this)">
                     <span>✏️</span>
                     <span>تعديل</span>
@@ -808,7 +810,9 @@
         <div class="ship-m-note">{{ _('shipping_due_breakdown') }}: {{ "{:,.0f}".format(c.orders_due) }} + {{ "{:,.0f}".format(c.opening_balance) }}</div>
         {% endif %}
         <div class="ship-m-actions">
+          {% if business_allows('delivery_archive') %}
           <a href="/delivery/archive?company_id={{ c.id }}" class="ship-m-btn success">📋 {{ _('shipping_action_statement') }}</a>
+          {% endif %}
           <button type="button" class="ship-m-btn warn" onclick="editCompany({{ c.id }}, {{ c.name|tojson }}, {{ c.opening_balance or 0 }})">✏️ تعديل</button>
           {% if c.opening_balance and c.opening_balance > 0 %}
           <button type="button" class="ship-m-btn primary" onclick="collectOpeningBalance({{ c.id }}, {{ c.opening_balance }}, this)">💵 استلام</button>

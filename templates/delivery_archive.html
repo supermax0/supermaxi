@@ -345,7 +345,7 @@
       <p style="margin: 8px 0 0; color: var(--delivery-muted); font-size: 14px;">أرشيف الكشوفات والطلبات المكتملة</p>
     </div>
     <div style="display: flex; gap: 10px;">
-      {% if shipping_company %}
+      {% if shipping_company and business_allows('shipping_reports') %}
       <a href="/delivery/reports?company_id={{ shipping_company.id if shipping_company else '' }}" class="btn-premium">
         <span>📋</span> <span class="btn-text">الكشوفات</span>
       </a>

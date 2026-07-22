@@ -9,33 +9,51 @@
       <a class="ma-subnav-item{% if ma_path == '/mobile-app' %} active{% endif %}" href="{{ url_for('mobile_admin.dashboard') }}">
         <i class="fas fa-th-large"></i> لوحة التطبيق
       </a>
+      {% if business_allows('mobile_app_videos') %}
       <a class="ma-subnav-item{% if '/mobile-app/videos' in ma_path %} active{% endif %}" href="{{ url_for('mobile_admin.videos_page') }}">
         <i class="fas fa-video"></i> الفيديوهات
       </a>
+      {% endif %}
+      {% if business_allows('mobile_app_users') %}
       <a class="ma-subnav-item{% if '/mobile-app/users' in ma_path %} active{% endif %}" href="{{ url_for('mobile_admin.users_page') }}">
         <i class="fas fa-users"></i> المستخدمون
       </a>
+      {% endif %}
+      {% if business_allows('mobile_app_comments') %}
       <a class="ma-subnav-item{% if '/mobile-app/comments' in ma_path %} active{% endif %}" href="{{ url_for('mobile_admin.comments_page') }}">
         <i class="fas fa-comments"></i> التعليقات
       </a>
+      {% endif %}
+      {% if business_allows('mobile_app_rewards') %}
       <a class="ma-subnav-item{% if '/mobile-app/rewards' in ma_path %} active{% endif %}" href="{{ url_for('mobile_admin.rewards_page') }}">
         <i class="fas fa-gift"></i> المكافآت
       </a>
+      {% endif %}
+      {% if business_allows('mobile_app_coupons') %}
       <a class="ma-subnav-item{% if '/mobile-app/coupons' in ma_path %} active{% endif %}" href="{{ url_for('mobile_admin.coupons_page') }}">
         <i class="fas fa-ticket-alt"></i> الكوبونات
       </a>
+      {% endif %}
+      {% if business_allows('mobile_app_flags') %}
       <a class="ma-subnav-item{% if '/mobile-app/flags' in ma_path %} active{% endif %}" href="{{ url_for('mobile_admin.flags_page') }}">
         <i class="fas fa-flag"></i> أعلام الميزات
       </a>
+      {% endif %}
+      {% if business_allows('mobile_app_notifications') %}
       <a class="ma-subnav-item{% if '/mobile-app/notifications' in ma_path %} active{% endif %}" href="{{ url_for('mobile_admin.notifications_page') }}">
         <i class="fas fa-bell"></i> الإشعارات
       </a>
+      {% endif %}
+      {% if business_allows('mobile_app_design') %}
       <a class="ma-subnav-item{% if '/mobile-app/design' in ma_path %} active{% endif %}" href="{{ url_for('mobile_admin.design_page') }}">
         <i class="fas fa-palette"></i> تصميم التطبيق
       </a>
+      {% endif %}
+      {% if business_allows('mobile_app_analytics') %}
       <a class="ma-subnav-item{% if '/mobile-app/analytics' in ma_path %} active{% endif %}" href="{{ url_for('mobile_admin.analytics_page') }}">
         <i class="fas fa-chart-line"></i> التحليلات
       </a>
+      {% endif %}
     </nav>
   </div>
   {% with messages = get_flashed_messages(with_categories=true) %}

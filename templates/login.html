@@ -1,13 +1,12 @@
-{% extends "base.html" %}
-{% from "payment_flow/_macros.html" import pf_topbar %}
+{% extends "auth_base.html" %}
 {% block title %}تسجيل الدخول — Finora{% endblock %}
-{% block page_title %}{% endblock %}
+{% block robots %}noindex,follow{% endblock %}
 
-{% block content %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/payment-flow.css') }}">
+{% block head_extra %}
 <style>
   .login-page {
     min-height: 100vh;
+    padding: 28px 16px 40px;
     background:
       linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(247, 249, 252, 0.96)),
       linear-gradient(90deg, rgba(226, 232, 240, 0.38) 1px, transparent 1px),
@@ -320,22 +319,24 @@
     }
   }
 </style>
+{% endblock %}
 
-<div class="pf-page login-page">
+{% block body %}
+<main class="pf-page login-page">
   <div class="login-topbar">
-    <a href="/" class="login-back-link"><i class="fas fa-arrow-right"></i> العودة للرئيسية</a>
+    <a href="/" class="login-back-link"><i class="fas fa-arrow-right" aria-hidden="true"></i> العودة للرئيسية</a>
   </div>
 
   <div class="login-shell">
     <section class="login-brand-panel" aria-label="Finora">
       <div class="login-brand-main">
-        <img class="login-brand-mark" src="{{ platform_logo_url }}" alt="{{ platform_app_name }}" onerror="this.onerror=null;this.src='/static/finora-logo.png';">
+        <img class="login-brand-mark" src="{{ platform_logo_url }}" alt="{{ platform_app_name }}" width="58" height="58" onerror="this.onerror=null;this.src='/static/finora-logo.png';">
         <h2>{{ platform_app_name }} لإدارة شركتك من مكان واحد</h2>
         <p>تابع الطلبات، المخزون، نقطة البيع، والحسابات بحساب موحد وآمن لكل فريقك.</p>
         <div class="login-brand-list">
-          <div class="login-brand-item"><i class="fas fa-cash-register"></i><span>نقطة بيع ومخزون مباشر</span></div>
-          <div class="login-brand-item"><i class="fas fa-chart-line"></i><span>تقارير وربح يومي</span></div>
-          <div class="login-brand-item"><i class="fas fa-users-gear"></i><span>صلاحيات حسب دور المستخدم</span></div>
+          <div class="login-brand-item"><i class="fas fa-cash-register" aria-hidden="true"></i><span>نقطة بيع ومخزون مباشر</span></div>
+          <div class="login-brand-item"><i class="fas fa-chart-line" aria-hidden="true"></i><span>تقارير وربح يومي</span></div>
+          <div class="login-brand-item"><i class="fas fa-users-gear" aria-hidden="true"></i><span>صلاحيات حسب دور المستخدم</span></div>
         </div>
       </div>
       <div class="login-brand-footer" aria-hidden="true">
@@ -345,17 +346,17 @@
       </div>
     </section>
 
-    <main class="login-card">
+    <section class="login-card" aria-labelledby="loginHeading">
       <div class="login-header">
         <div class="login-icon" aria-hidden="true">
           <i class="fas fa-shield-alt"></i>
         </div>
-        <h1>مرحباً بعودتك</h1>
+        <h1 id="loginHeading">مرحباً بعودتك</h1>
         <p>سجّل دخولك لإدارة أعمالك بذكاء</p>
       </div>
 
       {% if error %}
-      <div class="pf-alert-error" role="alert"><i class="fas fa-exclamation-triangle"></i> {{ error }}</div>
+      <div class="pf-alert-error" role="alert"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i> {{ error }}</div>
       {% endif %}
 
       <form class="login-form" method="post" action="{{ url_for('index.login_tenant', tenant_slug=fixed_tenant_slug) if fixed_tenant_slug else '/login' }}" autocomplete="off" novalidate>
@@ -368,7 +369,7 @@
             <span class="login-hint">Company ID</span>
           </div>
           <div class="login-input-wrap">
-            <i class="fas fa-building"></i>
+            <i class="fas fa-building" aria-hidden="true"></i>
             <input class="login-input" type="text" id="tenant_slug" name="tenant_slug" placeholder="super" value="{{ request.args.get('tenant', '') }}" required inputmode="latin" autofocus autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true">
           </div>
           <div class="login-hint">بدون مسافات أو رموز، أحرف إنجليزية وأرقام فقط</div>
@@ -378,7 +379,7 @@
         <div class="login-field">
           <label for="username">اسم المستخدم</label>
           <div class="login-input-wrap">
-            <i class="fas fa-user"></i>
+            <i class="fas fa-user" aria-hidden="true"></i>
             <input class="login-input" type="text" id="username" name="username" placeholder="admin" required autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" {% if fixed_tenant_slug %}autofocus{% endif %}>
           </div>
         </div>
@@ -386,17 +387,17 @@
         <div class="login-field">
           <label for="password">كلمة المرور</label>
           <div class="login-input-wrap">
-            <i class="fas fa-lock"></i>
+            <i class="fas fa-lock" aria-hidden="true"></i>
             <input class="login-input" type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true">
             <button class="login-toggle-password" type="button" id="togglePassword" aria-label="إظهار كلمة المرور">
-              <i class="fas fa-eye"></i>
+              <i class="fas fa-eye" aria-hidden="true"></i>
             </button>
           </div>
         </div>
 
         <button type="submit" class="pf-btn pf-btn-primary pf-btn-block login-submit">
           <span>دخول للنظام</span>
-          <i class="fas fa-sign-in-alt"></i>
+          <i class="fas fa-sign-in-alt" aria-hidden="true"></i>
         </button>
       </form>
 
@@ -404,13 +405,15 @@
         <span>ليس لديك حساب؟</span>
         <a href="/signup">ابدأ تجربتك المجانية</a>
       </div>
-    </main>
+    </section>
   </div>
-</div>
+</main>
+{% endblock %}
+
+{% block scripts %}
 <script>
   (function () {
     const tenantInput = document.getElementById('tenant_slug');
-    const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
     const togglePassword = document.getElementById('togglePassword');
 
@@ -425,7 +428,9 @@
         const isPassword = passwordInput.type === 'password';
         passwordInput.type = isPassword ? 'text' : 'password';
         this.setAttribute('aria-label', isPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور');
-        this.innerHTML = isPassword ? '<i class="fas fa-eye-slash"></i>' : '<i class="fas fa-eye"></i>';
+        this.innerHTML = isPassword
+          ? '<i class="fas fa-eye-slash" aria-hidden="true"></i>'
+          : '<i class="fas fa-eye" aria-hidden="true"></i>';
         passwordInput.focus();
       });
     }

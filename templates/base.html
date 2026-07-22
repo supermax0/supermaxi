@@ -2202,16 +2202,24 @@ or request.path.startswith('/superadmin') %}
         {% endif %}
         {% if is_beauty_center and business_allows('beauty') %}
         <a href="/beauty" class="{% if request.path == '/beauty/' or request.path == '/beauty' %}active{% endif %}"><i class="fa fa-spa"></i> مركز التجميل</a>
+        {% if business_allows('beauty_appointments') %}
         <a href="/beauty/appointments" class="{% if request.path.startswith('/beauty/appointments') %}active{% endif %}"><i class="fa fa-calendar-check"></i> المواعيد</a>
+        {% endif %}
+        {% if business_allows('beauty_services') %}
         <a href="/beauty/services" class="{% if request.path.startswith('/beauty/services') %}active{% endif %}"><i class="fa fa-list-check"></i> الخدمات</a>
+        {% endif %}
+        {% if business_allows('beauty_sessions') %}
         <a href="/beauty/sessions" class="{% if request.path.startswith('/beauty/sessions') %}active{% endif %}"><i class="fa fa-notes-medical"></i> الجلسات</a>
+        {% endif %}
+        {% if business_allows('beauty_alerts') %}
         <a href="/beauty/alerts" class="{% if request.path.startswith('/beauty/alerts') %}active{% endif %}"><i class="fa fa-bell"></i> تنبيهات المركز</a>
+        {% endif %}
         {% endif %}
         {% set show_pos = is_admin or (current_employee and can_use_pos) %}
         {% if show_pos and business_allows('pos') %}
         <a href="/pos"><i class="fa fa-cash-register"></i> {{ _('dashboard_welcome_pos') }}</a>
         {% endif %}
-        {% if (is_admin or (current_employee and can_use_quick_sale)) and business_allows('pos') %}
+        {% if (is_admin or (current_employee and can_use_quick_sale)) and business_allows('pos') and business_allows('quick_sale') %}
         <a href="/quick-sale" class="{% if request.path.startswith('/quick-sale') %}active{% endif %}"><i class="fa fa-bolt"></i> بيع سريع</a>
         {% endif %}
         {% if (is_admin or (current_employee and can_manage_inventory)) and business_allows('inventory') %}
@@ -2226,14 +2234,18 @@ or request.path.startswith('/superadmin') %}
             </span>
           </button>
           <div class="menu-group-links">
+            {% if business_allows('inventory_products') %}
             <a href="/inventory"
               class="{% if request.path == '/inventory' or request.path == '/inventory/' %}active{% endif %}">
               <i class="fa fa-boxes-stacked"></i> {{ _('inventory_products_title') }}
             </a>
+            {% endif %}
+            {% if business_allows('inventory_ledger') %}
             <a href="/inventory/ledger"
               class="{% if request.path.startswith('/inventory/ledger') %}active{% endif %}">
               <i class="fa fa-list"></i> {{ _('inventory_movements_log') }}
             </a>
+            {% endif %}
             {% if business_allows('inventory_audit') %}
             <a href="/inventory/audit"
               class="{% if request.path.startswith('/inventory/audit') %}active{% endif %}">
@@ -2295,15 +2307,19 @@ or request.path.startswith('/superadmin') %}
               <i class="fa fa-ban"></i> {{ _('customers_nav_blacklist') }}
             </a>
             {% endif %}
+            {% if business_allows('customer_provinces') %}
             <a href="/customers/provinces"
               class="{% if request.path.startswith('/customers/provinces') %}active{% endif %}">
               <i class="fa fa-map-marker-alt"></i> {{ _('nav_provinces') }}
             </a>
+            {% endif %}
+            {% if business_allows('customer_credit') %}
             <a href="/customers/credit"
               class="{% if request.path.startswith('/customers/credit') %}active{% endif %}">
               <i class="fa fa-hand-holding-usd"></i> {{ _('customer_credit_nav') }}
             </a>
-            {% if is_beauty_center %}
+            {% endif %}
+            {% if is_beauty_center and business_allows('beauty_clients') %}
             <a href="/beauty/clients"
               class="{% if request.path.startswith('/beauty/clients') %}active{% endif %}">
               <i class="fa fa-address-book"></i> سجل العملاء
@@ -2316,10 +2332,12 @@ or request.path.startswith('/superadmin') %}
               class="{% if request.path.startswith('/agents') and not request.path.startswith('/agents/pending-execution') %}active{% endif %}">
               <i class="fa fa-motorcycle"></i> {{ _('delivery_agents') }}
             </a>
+            {% if business_allows('agents_pending_execution') %}
             <a href="/agents/pending-execution"
               class="{% if request.path.startswith('/agents/pending-execution') %}active{% endif %}">
               <i class="fa fa-clipboard-check"></i> تنفيذ كشوف المندوب
             </a>
+            {% endif %}
             {% else %}
             <a href="/upgrade" style="opacity:.55" title="{{ _('upgrade_plan') }}">
               <i class="fa fa-motorcycle"></i> {{ _('delivery_agents') }}
@@ -2332,14 +2350,18 @@ or request.path.startswith('/superadmin') %}
               class="{% if request.path.startswith('/employees') and not request.path.startswith('/employees/page-warnings') %}active{% endif %}">
               <i class="fa fa-user-tie"></i> {{ _('employees') }}
             </a>
+            {% if business_allows('employee_page_warnings') %}
             <a href="/employees/page-warnings"
               class="{% if request.path.startswith('/employees/page-warnings') %}active{% endif %}">
               <i class="fab fa-whatsapp"></i> تحذير البيجات
             </a>
+            {% endif %}
+            {% if business_allows('payroll') %}
             <a href="/payroll"
               class="{% if request.path.startswith('/payroll') %}active{% endif %}">
               <i class="fa fa-wallet"></i> الرواتب
             </a>
+            {% endif %}
             {% endif %}
             {% if show_contacts_pages %}
             <a href="/pages" class="{% if request.path.startswith('/pages') %}active{% endif %}">
@@ -2361,30 +2383,32 @@ or request.path.startswith('/superadmin') %}
             </span>
           </button>
           <div class="menu-group-links">
+            {% if business_allows('orders_all') %}
             <a href="/orders" class="{% if request.path == '/orders/' or request.path == '/orders' %}active{% endif %}">
               <i class="fa fa-list"></i> {{ _('orders_nav_all') }}
             </a>
-            {% if is_admin or (current_employee and current_employee.has_permission('view_orders_placed')) %}
+            {% endif %}
+            {% if (is_admin or (current_employee and current_employee.has_permission('view_orders_placed'))) and business_allows('orders_placed') %}
             <a href="/orders/ordered" class="{% if '/orders/ordered' in request.path %}active{% endif %}">
               <i class="fa fa-box-open"></i> {{ _('orders_status_ordered') }}
             </a>
             {% endif %}
-            {% if is_admin or (current_employee and current_employee.has_permission('view_orders_packed')) %}
+            {% if (is_admin or (current_employee and current_employee.has_permission('view_orders_packed'))) and business_allows('orders_packed') %}
             <a href="/orders/packed" class="{% if '/orders/packed' in request.path %}active{% endif %}">
               <i class="fa fa-box"></i> {{ _('orders_status_packed') }}
             </a>
             {% endif %}
-            {% if is_admin or (current_employee and current_employee.has_permission('view_orders_shipped')) %}
+            {% if (is_admin or (current_employee and current_employee.has_permission('view_orders_shipped'))) and business_allows('orders_shipping') %}
             <a href="/orders/shipping" class="{% if '/orders/shipping' in request.path %}active{% endif %}">
               <i class="fa fa-truck-moving"></i> {{ _('orders_status_shipping') }}
             </a>
             {% endif %}
-            {% if is_admin or (current_employee and current_employee.has_permission('view_orders_delivered')) %}
+            {% if (is_admin or (current_employee and current_employee.has_permission('view_orders_delivered'))) and business_allows('orders_delivered') %}
             <a href="/orders/delivered" class="{% if '/orders/delivered' in request.path %}active{% endif %}">
               <i class="fa fa-arrow-circle-up"></i> {{ _('orders_status_delivered') }}
             </a>
             {% endif %}
-            {% if is_admin or (current_employee and current_employee.has_permission('view_orders_returned')) %}
+            {% if (is_admin or (current_employee and current_employee.has_permission('view_orders_returned'))) and business_allows('orders_returned') %}
             <a href="/orders/cancelled" class="{% if '/orders/cancelled' in request.path %}active{% endif %}">
               <i class="fa fa-trash-alt"></i> {{ _('orders_nav_cancelled') }}
             </a>
@@ -2430,8 +2454,12 @@ or request.path.startswith('/superadmin') %}
         {% if (is_admin or (current_employee and can_see_reports)) and business_allows('reports') %}
         {% if plan_has("reports_adv") %}
         <a href="/reports"><i class="fa fa-chart-pie"></i> {{ _('reports') }}</a>
+        {% if business_allows('reports_daily') %}
         <a href="/reports/daily" class="{% if request.path.startswith('/reports/daily') %}active{% endif %}"><i class="fa fa-clipboard-check"></i> تقرير اليوم</a>
+        {% endif %}
+        {% if business_allows('reports_monitors') %}
         <a href="/reports/monitors" class="{% if request.path.startswith('/reports/monitors') %}active{% endif %}"><i class="fa fa-gauge-high"></i> مركز المراقبة</a>
+        {% endif %}
         {% else %}
         <a href="/upgrade" style="opacity:.55" title="{{ _('upgrade_plan') }}"><i class="fa fa-chart-pie"></i> {{
           _('reports') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
@@ -2440,12 +2468,16 @@ or request.path.startswith('/superadmin') %}
         {% set can_use_ai_assistant = is_admin or (current_employee and current_employee.has_permission('use_ai_assistant')) %}
         {% if can_use_ai_assistant and business_allows('ai_assistant') %}
         {% if plan_has("ai_assistant") %}
+        {% if business_allows('investments') %}
         <a href="/investments" class="{% if request.path.startswith('/investments') %}active{% endif %}">
           <i class="fa fa-lightbulb"></i> مستشار الاستثمار
         </a>
+        {% endif %}
+        {% if business_allows('assistant_chat') %}
         <a href="/assistant/chat" class="{% if request.path.startswith('/assistant') %}active{% endif %}">
           <i class="fa fa-robot"></i> المساعد الذكي
         </a>
+        {% endif %}
         {% else %}
         <a href="/upgrade" style="opacity:.55" title="{{ _('upgrade_plan') }}">
           <i class="fa fa-robot"></i> المساعد الذكي
@@ -2519,7 +2551,7 @@ or request.path.startswith('/superadmin') %}
       {% endif %}
 
       {% set _store_tslug = session.get('tenant_slug') or config.get('STOREFRONT_DEFAULT_TENANT_SLUG', '') %}
-      {% if _store_tslug %}
+      {% if _store_tslug and business_allows('storefront') %}
       <div class="sidebar-footer">
         <a href="{{ url_for('storefront.store_index', tenant_slug=_store_tslug) }}" target="_blank" rel="noopener"
           class="sidebar-store-link">

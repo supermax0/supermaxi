@@ -495,7 +495,9 @@
       📊 كشوفات المندوب
     </h3>
     <div class="reports-head-actions" style="display:flex;gap:8px;flex-wrap:wrap">
+      {% if business_allows('delivery_agent_portal') %}
       <a href="/delivery-agent/login" target="_blank" rel="noopener" class="btn btn-success">🚪 بوابة المندوب</a>
+      {% endif %}
       <a href="/agents" class="btn btn-primary">← العودة للمندوبين</a>
     </div>
   </div>
@@ -503,7 +505,9 @@
   {% if agent.username %}
   <p style="color:var(--reports-muted);font-size:14px;margin:0 0 16px;">
     حساب الدخول: <strong style="color:var(--reports-text);">{{ agent.username }}</strong>
+    {% if business_allows('delivery_agent_portal') %}
     — يمكن للمندوب الدخول من <a href="/delivery-agent/login" target="_blank" rel="noopener">بوابة المندوب</a>
+    {% endif %}
   </p>
   {% else %}
   <p style="color:var(--reports-warning, #f59e0b);font-size:14px;margin:0 0 16px;background:rgba(245,158,11,0.1);padding:10px 14px;border-radius:10px;">

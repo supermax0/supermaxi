@@ -1,5 +1,5 @@
 
-from flask import Flask, redirect, session, url_for, request, g, jsonify, render_template, flash
+from flask import Flask, redirect, session, url_for, request, g, jsonify, render_template, flash, send_from_directory, Response
 from flask_login import current_user
 print("=== FINORA APP STARTING - V1.1 (i18n check) ===")
 from extensions import db
@@ -1024,6 +1024,7 @@ _OPEN_ROUTES = [
     "/unsubscribe",
     "/privacy",
     "/terms",
+    "/data-deletion",
     "/contact",
     "/landing",
     "/payment",
@@ -1035,6 +1036,9 @@ _OPEN_ROUTES = [
     "/upgrade",
     "/superadmin",
     "/super-admin",
+    "/robots.txt",
+    "/sitemap.xml",
+    "/favicon.ico",
     "/api/superadmin/landing",  # API إدارة صفحة الهبوط محمي بجلسة Super Admin داخل blueprint
     "/api/super-admin/landing",  # alias مطابق للمواصفة
     "/messages/unread-count",  # واجهة للشارة — تُرجع JSON بدون إعادة توجيه
@@ -1669,6 +1673,85 @@ def _start_ai_agent_scheduler():
 
 
 _start_ai_agent_scheduler()
+
+@app.route("/favicon.ico")
+def favicon():
+    return send_from_directory(app.static_folder, "favicon.png", mimetype="image/png")
+
+
+@app.route("/robots.txt")
+def robots_txt():
+    """Public robots.txt — must be plain text (not redirected to /login)."""
+    body = "\n".join(
+        [
+            "User-agent: *",
+            "Allow: /",
+            "Allow: /pricing",
+            "Allow: /signup",
+            "Allow: /login",
+            "Allow: /landing",
+            "Allow: /privacy",
+            "Allow: /terms",
+            "Allow: /data-deletion",
+            "Allow: /supermax",
+            "Allow: /store",
+            "Allow: /shop",
+            "Disallow: /api/",
+            "Disallow: /superadmin",
+            "Disallow: /super-admin",
+            "Disallow: /employees",
+            "Disallow: /settings",
+            "Disallow: /messages",
+            "Disallow: /pos/",
+            "Disallow: /delivery-agent",
+            "Disallow: /webhook",
+            "",
+            "Sitemap: https://www.finora.company/sitemap.xml",
+            "",
+        ]
+    )
+    resp = Response(body, mimetype="text/plain; charset=utf-8")
+    resp.headers["Cache-Control"] = "public, max-age=3600"
+    return resp
+
+
+@app.route("/sitemap.xml")
+def sitemap_xml():
+    """Minimal public sitemap for marketing pages."""
+    from datetime import date
+
+    today = date.today().isoformat()
+    urls = [
+        ("https://www.finora.company/", "1.0", "daily"),
+        ("https://www.finora.company/pricing", "0.9", "weekly"),
+        ("https://www.finora.company/signup", "0.9", "weekly"),
+        ("https://www.finora.company/login", "0.6", "monthly"),
+        ("https://www.finora.company/privacy", "0.4", "yearly"),
+        ("https://www.finora.company/terms", "0.4", "yearly"),
+        ("https://www.finora.company/data-deletion", "0.3", "yearly"),
+        ("https://www.finora.company/landing", "0.7", "weekly"),
+        ("https://www.finora.company/supermax", "0.6", "monthly"),
+    ]
+    parts = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ]
+    for loc, priority, changefreq in urls:
+        parts.extend(
+            [
+                "  <url>",
+                f"    <loc>{loc}</loc>",
+                f"    <lastmod>{today}</lastmod>",
+                f"    <changefreq>{changefreq}</changefreq>",
+                f"    <priority>{priority}</priority>",
+                "  </url>",
+            ]
+        )
+    parts.append("</urlset>")
+    resp = Response("\n".join(parts) + "\n", mimetype="application/xml; charset=utf-8")
+    resp.headers["Cache-Control"] = "public, max-age=3600"
+    return resp
+
 
 # Backward-compatible alias for typoed social-ai route
 @app.route("/social-i")

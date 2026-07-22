@@ -19,6 +19,7 @@ from utils.tenant_registration import (
     save_tenant_registration,
 )
 from utils.tenant_feature_flags import (
+    TENANT_FEATURE_GROUPS,
     TENANT_FEATURE_LABELS,
     ensure_tenant_feature_overrides_column,
     feature_overrides_json,
@@ -419,6 +420,14 @@ def tenant_details(slug):
             "plan_key": plan_key,
             "plan_name": plan_name,
             "feature_overrides": feature_overrides,
+            "feature_groups": [
+                {
+                    "key": group["key"],
+                    "label": group["label"],
+                    "features": [{"key": key, "label": label} for key, label in group["features"]],
+                }
+                for group in TENANT_FEATURE_GROUPS
+            ],
             "feature_labels": [{"key": key, "label": label} for key, label in TENANT_FEATURE_LABELS.items()],
             "login_url": login_url,
             "registration": _registration_json(
@@ -1102,6 +1111,7 @@ PAGES_GUIDE = [
         "icon": "fa-user-shield",
         "links": [
             ("/superadmin/", "لوحة القيادة (Dashboard)", "admin_dashboard.html"),
+            ("/superadmin/brain", "عقل المنصة — مجرة الزبائن", "superadmin_brain.html"),
             ("/superadmin/requests", "طلبات ZainCash", "payment_requests.html"),
             ("/superadmin/tenants", "الشركات المسجلة", "tenant_list.html"),
             ("/superadmin/tenants/create", "إنشاء شركة جديدة", "superadmin_create_tenant.html"),
@@ -1420,7 +1430,7 @@ def tenant_update_features(slug):
         slug_clean = (slug or "").strip().lower()
         tenant_core = Tenant.query.filter(db.func.lower(Tenant.slug) == slug_clean).first()
         if not tenant_core:
-            return jsonify({"ok": False, "error": "Ø§Ù„Ø´Ø±ÙƒØ© ØºÙŠØ± Ù…ÙˆØ¬ÙˆØ¯Ø©"}), 404
+            return jsonify({"ok": False, "error": "الشركة غير موجودة"}), 404
 
         engine = get_tenant_engine(tenant_core.slug)
         ensure_tenant_feature_overrides_column(engine)
@@ -1429,24 +1439,23 @@ def tenant_update_features(slug):
         try:
             tenant_spec = tenant_session.query(TenantSpecific).first()
             if not tenant_spec:
-                return jsonify({"ok": False, "error": "Ù„Ù… ÙŠØªÙ… Ø§Ù„Ø¹Ø«ÙˆØ± Ø¹Ù„Ù‰ Ø³Ø¬Ù„ Ø§Ù„Ø´Ø±ÙƒØ© Ø¯Ø§Ø®Ù„ Ù‚Ø§Ø¹Ø¯ØªÙ‡Ø§"}), 404
+                return jsonify({"ok": False, "error": "لم يتم العثور على سجل الشركة داخل قاعدتها"}), 404
             tenant_spec.feature_overrides_json = feature_overrides_json(overrides)
             tenant_session.commit()
         except Exception as te:
             tenant_session.rollback()
-            return jsonify({"ok": False, "error": f"ÙØ´Ù„ ØªØ­Ø¯ÙŠØ« Ù‚Ø§Ø¹Ø¯Ø© Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø´Ø±ÙƒØ©: {str(te)}"}), 500
+            return jsonify({"ok": False, "error": f"فشل تحديث قاعدة بيانات الشركة: {str(te)}"}), 500
         finally:
             tenant_session.close()
 
         clear_tenant_engine(tenant_core.slug)
         return jsonify({
             "ok": True,
-            "message": "ØªÙ… Ø­ÙØ¸ Ø¥Ø¹Ø¯Ø§Ø¯Ø§Øª Ø¸Ù‡ÙˆØ± Ø§Ù„Ù…ÙŠØ²Ø§Øª Ø¨Ù†Ø¬Ø§Ø­",
+            "message": "تم حفظ إعدادات ظهور الميزات بنجاح",
             "feature_overrides": overrides,
         })
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
-
 
 @superadmin_bp.route("/tenants/update-plan/<slug>", methods=["POST"])
 def tenant_update_plan(slug):
@@ -1508,3 +1517,190 @@ def tenant_update_plan(slug):
         
     except Exception as e:
         return jsonify({"ok": False, "error": str(e)}), 500
+
+
+# ── عقل المنصة — مجرة الزبائن عبر كل الشركات ──────────────────────────────
+
+BRAIN_ORBITS = [
+    {"key": "blacklist", "label": "قائمة سوداء", "radius": 1},
+    {"key": "vip", "label": "VIP", "radius": 2},
+    {"key": "unpaid", "label": "متأخر الدفع", "radius": 3},
+    {"key": "active", "label": "نشط", "radius": 4},
+    {"key": "dormant", "label": "جديد / خامل", "radius": 5},
+]
+BRAIN_VIP_THRESHOLD = 500_000
+BRAIN_ACTIVE_DAYS = 90
+BRAIN_MAX_PLANETS = 5000
+
+
+def _brain_classify_orbit(is_blacklisted, sales_total, unpaid_total, last_invoice_at, now_utc):
+    if is_blacklisted:
+        return "blacklist"
+    if (sales_total or 0) >= BRAIN_VIP_THRESHOLD:
+        return "vip"
+    if (unpaid_total or 0) > 0:
+        return "unpaid"
+    if last_invoice_at:
+        cutoff = now_utc - timedelta(days=BRAIN_ACTIVE_DAYS)
+        last = last_invoice_at
+        if getattr(last, "tzinfo", None) is not None:
+            last = last.replace(tzinfo=None)
+        if last >= cutoff:
+            return "active"
+    return "dormant"
+
+
+def _brain_collect_tenant_planets(tenant, now_utc):
+    """Aggregate customers + invoice stats for one tenant DB. Raises on hard failure."""
+    from sqlalchemy import case, func, or_
+    from models.customer import Customer
+    from models.invoice import Invoice
+
+    try:
+        from utils.product_schema_guard import ensure_customer_blacklist_columns
+        ensure_customer_blacklist_columns()
+    except Exception:
+        pass
+
+    unpaid_expr = case(
+        (
+            or_(
+                Invoice.payment_status.is_(None),
+                Invoice.payment_status == "غير مسدد",
+            ),
+            func.coalesce(Invoice.total, 0) - func.coalesce(Invoice.paid_amount, 0),
+        ),
+        else_=0,
+    )
+
+    stats_rows = (
+        db.session.query(
+            Invoice.customer_id,
+            func.count(Invoice.id).label("invoice_count"),
+            func.coalesce(func.sum(Invoice.total), 0).label("sales_total"),
+            func.coalesce(func.sum(unpaid_expr), 0).label("unpaid_total"),
+            func.max(Invoice.created_at).label("last_invoice_at"),
+        )
+        .group_by(Invoice.customer_id)
+        .all()
+    )
+    stats_by_id = {
+        int(row.customer_id): {
+            "invoice_count": int(row.invoice_count or 0),
+            "sales_total": int(row.sales_total or 0),
+            "unpaid_total": max(0, int(row.unpaid_total or 0)),
+            "last_invoice_at": row.last_invoice_at,
+        }
+        for row in stats_rows
+        if row.customer_id is not None
+    }
+
+    customers = Customer.query.order_by(Customer.id.asc()).all()
+    planets = []
+    for c in customers:
+        st = stats_by_id.get(int(c.id), {
+            "invoice_count": 0,
+            "sales_total": 0,
+            "unpaid_total": 0,
+            "last_invoice_at": None,
+        })
+        is_bl = bool(getattr(c, "is_blacklisted", False))
+        orbit = _brain_classify_orbit(
+            is_bl,
+            st["sales_total"],
+            st["unpaid_total"],
+            st["last_invoice_at"],
+            now_utc,
+        )
+        planets.append({
+            "id": f"{tenant.slug}:{c.id}",
+            "name": c.name or "—",
+            "phone": c.phone or "",
+            "city": c.city or "",
+            "tenant_slug": tenant.slug,
+            "tenant_name": tenant.name,
+            "orbit": orbit,
+            "invoice_count": st["invoice_count"],
+            "sales_total": st["sales_total"],
+            "unpaid_total": st["unpaid_total"],
+            "is_blacklisted": is_bl,
+        })
+    return planets
+
+
+@superadmin_bp.route("/brain")
+def brain_page():
+    return render_template("superadmin_brain.html")
+
+
+@superadmin_bp.route("/brain/api")
+def brain_galaxy_api():
+    from flask import jsonify
+
+    g.tenant = None
+    try:
+        db.session.rollback()
+    except Exception:
+        pass
+
+    now_utc = datetime.utcnow()
+    tenants = Tenant.query.order_by(Tenant.name.asc()).all()
+    all_planets = []
+    errors = []
+    companies_ok = 0
+
+    old_tenant = getattr(g, "tenant", None)
+    try:
+        for tenant in tenants:
+            slug = (tenant.slug or "").strip()
+            if not slug:
+                continue
+            g.tenant = slug
+            try:
+                planets = _brain_collect_tenant_planets(tenant, now_utc)
+                all_planets.extend(planets)
+                companies_ok += 1
+            except Exception as exc:
+                try:
+                    db.session.rollback()
+                except Exception:
+                    pass
+                current_app.logger.exception("brain galaxy failed for %s", slug)
+                errors.append({"slug": slug, "error": str(exc)})
+            finally:
+                g.tenant = None
+                try:
+                    db.session.remove()
+                except Exception:
+                    pass
+    finally:
+        g.tenant = old_tenant
+
+    by_orbit = {o["key"]: 0 for o in BRAIN_ORBITS}
+    for p in all_planets:
+        key = p.get("orbit") or "dormant"
+        by_orbit[key] = by_orbit.get(key, 0) + 1
+
+    total_customers = len(all_planets)
+    all_planets.sort(key=lambda p: (p.get("sales_total") or 0), reverse=True)
+    truncated = False
+    if len(all_planets) > BRAIN_MAX_PLANETS:
+        all_planets = all_planets[:BRAIN_MAX_PLANETS]
+        truncated = True
+
+    return jsonify({
+        "ok": True,
+        "totals": {
+            "customers": total_customers,
+            "companies": companies_ok,
+            "companies_total": len(tenants),
+            "by_orbit": by_orbit,
+            "truncated": truncated,
+            "vip_threshold": BRAIN_VIP_THRESHOLD,
+            "active_days": BRAIN_ACTIVE_DAYS,
+        },
+        "orbits": BRAIN_ORBITS,
+        "planets": all_planets,
+        "errors": errors,
+    })
+

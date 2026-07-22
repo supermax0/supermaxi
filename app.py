@@ -1544,6 +1544,7 @@ def require_login():
         "/unsubscribe",
         "/privacy",
         "/terms",
+        "/data-deletion",
         "/contact",
         "/landing",
         "/supermax",
@@ -1558,6 +1559,9 @@ def require_login():
         "/upgrade",
         "/superadmin",
         "/super-admin",
+        "/robots.txt",
+        "/sitemap.xml",
+        "/favicon.ico",
         "/api/superadmin/landing",  # API إدارة صفحة الهبوط محمي بجلسة Super Admin داخل blueprint
         "/api/super-admin/landing",  # alias مطابق للمواصفة
         "/messages/unread-count",  # واجهة للشارة — تُرجع JSON بدون إعادة توجيه
@@ -1879,20 +1883,46 @@ def inject_business_context():
                 "dashboard",
                 "executive_dashboard",
                 "beauty",
+                "beauty_appointments",
+                "beauty_services",
+                "beauty_sessions",
+                "beauty_alerts",
                 "beauty_accounts",
                 "inventory",
+                "inventory_products",
+                "inventory_add_product",
                 "inventory_audit",
+                "inventory_ledger",
+                "inventory_reports",
                 "maintenance",
                 "customers",
+                "customer_blacklist",
+                "customer_provinces",
+                "customer_credit",
                 "beauty_clients",
                 "expenses",
                 "cash",
                 "accounts",
                 "employees",
+                "employee_page_warnings",
+                "payroll",
+                "employee_roles",
                 "reports",
+                "reports_daily",
+                "reports_monitors",
+                "reports_financial",
+                "reports_sales",
+                "reports_profit",
                 "settings",
+                "settings_system",
+                "settings_invoice",
+                "settings_appearance",
+                "settings_branches",
+                "settings_storefront",
+                "settings_database_repair",
                 "messages",
                 "activity",
+                "storefront",
             }
             return module in allowed_for_beauty
         return True
@@ -2568,6 +2598,83 @@ _start_watchdog_persist_scheduler()
 @app.route("/favicon.ico")
 def favicon():
     return send_from_directory(app.static_folder, "favicon.png", mimetype="image/png")
+
+
+@app.route("/robots.txt")
+def robots_txt():
+    """Public robots.txt — must be plain text (not redirected to /login)."""
+    from flask import Response
+
+    body = "\n".join(
+        [
+            "User-agent: *",
+            "Allow: /",
+            "Allow: /pricing",
+            "Allow: /signup",
+            "Allow: /login",
+            "Allow: /landing",
+            "Allow: /privacy",
+            "Allow: /terms",
+            "Allow: /data-deletion",
+            "Allow: /supermax",
+            "Allow: /store",
+            "Allow: /shop",
+            "Disallow: /api/",
+            "Disallow: /superadmin",
+            "Disallow: /super-admin",
+            "Disallow: /employees",
+            "Disallow: /settings",
+            "Disallow: /messages",
+            "Disallow: /pos/",
+            "Disallow: /delivery-agent",
+            "Disallow: /webhook",
+            "",
+            "Sitemap: https://www.finora.company/sitemap.xml",
+            "",
+        ]
+    )
+    resp = Response(body, mimetype="text/plain; charset=utf-8")
+    resp.headers["Cache-Control"] = "public, max-age=3600"
+    return resp
+
+
+@app.route("/sitemap.xml")
+def sitemap_xml():
+    """Minimal public sitemap for marketing pages."""
+    from flask import Response
+    from datetime import date
+
+    today = date.today().isoformat()
+    urls = [
+        ("https://www.finora.company/", "1.0", "daily"),
+        ("https://www.finora.company/pricing", "0.9", "weekly"),
+        ("https://www.finora.company/signup", "0.9", "weekly"),
+        ("https://www.finora.company/login", "0.6", "monthly"),
+        ("https://www.finora.company/privacy", "0.4", "yearly"),
+        ("https://www.finora.company/terms", "0.4", "yearly"),
+        ("https://www.finora.company/data-deletion", "0.3", "yearly"),
+        ("https://www.finora.company/landing", "0.7", "weekly"),
+        ("https://www.finora.company/supermax", "0.6", "monthly"),
+    ]
+    parts = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+    ]
+    for loc, priority, changefreq in urls:
+        parts.extend(
+            [
+                "  <url>",
+                f"    <loc>{loc}</loc>",
+                f"    <lastmod>{today}</lastmod>",
+                f"    <changefreq>{changefreq}</changefreq>",
+                f"    <priority>{priority}</priority>",
+                "  </url>",
+            ]
+        )
+    parts.append("</urlset>")
+    resp = Response("\n".join(parts) + "\n", mimetype="application/xml; charset=utf-8")
+    resp.headers["Cache-Control"] = "public, max-age=3600"
+    return resp
 
 
 # Backward-compatible alias for typoed social-ai route
