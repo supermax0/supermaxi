@@ -1950,3 +1950,195 @@ textarea.settings-input {
     width: min(780px, calc(100vw - 280px));
   }
 }
+
+/* أصوات الأحداث */
+.sound-settings-panel {
+  margin-top: 14px;
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.sound-settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.sound-settings-head--sub {
+  margin-top: 14px;
+}
+
+.sound-settings-title {
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--text-muted, #94a3b8);
+}
+
+.sound-settings-reset {
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-muted, #94a3b8);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sound-settings-reset:hover {
+  color: var(--text-main, #e2e8f0);
+  border-color: var(--border-light, rgba(255, 255, 255, 0.16));
+}
+
+.sound-event-row {
+  display: grid;
+  grid-template-columns: 88px 1fr;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.sound-event-row:last-child {
+  margin-bottom: 0;
+}
+
+.sound-event-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-main, #e2e8f0);
+}
+
+.sound-event-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+}
+
+.sound-event-select {
+  flex: 1;
+  min-width: 0;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-main, #e2e8f0);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 0 12px;
+}
+
+.sound-preview-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--primary, #3b82f6);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sound-preview-btn:hover {
+  background: rgba(59, 130, 246, 0.18);
+}
+
+.sound-preset-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding: 0 12px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-muted, #94a3b8);
+}
+
+.sound-preset-search-wrap input {
+  flex: 1;
+  border: 0;
+  background: transparent;
+  color: var(--text-main, #e2e8f0);
+  font-size: 13px;
+  outline: none;
+}
+
+.sound-presets-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 320px;
+  overflow: auto;
+  padding-inline-end: 4px;
+}
+
+.sound-preset-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-main, #e2e8f0);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: start;
+}
+
+.sound-preset-chip:hover {
+  border-color: var(--primary, #3b82f6);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.sound-preset-num {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--primary, #3b82f6);
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.sound-presets-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 20px;
+  color: var(--text-muted, #94a3b8);
+  font-size: 13px;
+}
+
+@media (min-width: 768px) {
+  .sound-presets-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1100px) {
+  .sound-presets-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    max-height: 360px;
+  }
+}
+
+:root[data-theme="light"] .sound-settings-panel,
+:root[data-theme="light"] .sound-event-select,
+:root[data-theme="light"] .sound-preset-chip,
+:root[data-theme="light"] .sound-preview-btn,
+:root[data-theme="light"] .sound-preset-search-wrap {
+  background: #fff;
+}

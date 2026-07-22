@@ -346,7 +346,7 @@
     </div>
     <div style="display: flex; gap: 10px;">
       {% if shipping_company and business_allows('shipping_reports') %}
-      <a href="/delivery/reports?company_id={{ shipping_company.id if shipping_company else '' }}" class="btn-premium">
+      <a href="/delivery/reports?company_id={{ shipping_company.id }}" class="btn-premium">
         <span>📋</span> <span class="btn-text">الكشوفات</span>
       </a>
       {% endif %}

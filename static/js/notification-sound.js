@@ -2,12 +2,49 @@
   "use strict";
 
   var STORAGE_KEY = "finora_notification_sound";
+  var LEGACY_SOUNDS_KEY = "sounds_enabled";
+  var MAP_KEY = "finora_sound_event_map";
   var audioCtx = null;
   var unlocked = false;
 
+  var EVENTS = ["payment", "return", "cancel", "order"];
+
+  var EVENT_LABELS = {
+    payment: "تسديد",
+    return: "إرجاع",
+    cancel: "إلغاء",
+    order: "طلب جديد",
+  };
+
+  var DEFAULT_MAP = {
+    payment: "s02",
+    return: "s03",
+    cancel: "s04",
+    order: "s01",
+  };
+
+  var PRESETS = window.FINORA_SOUND_PRESETS || {};
+
+  var ACTION_TYPES = {
+    payment: true,
+    paid: true,
+    settle: true,
+    return: true,
+    returned: true,
+    cancel: true,
+    cancelled: true,
+    canceled: true,
+    order: true,
+    buzz: true,
+  };
+
   function isEnabled() {
     try {
-      return localStorage.getItem(STORAGE_KEY) !== "off";
+      var v = localStorage.getItem(STORAGE_KEY);
+      if (v === "off") return false;
+      if (v === "on") return true;
+      var legacy = localStorage.getItem(LEGACY_SOUNDS_KEY);
+      return legacy === null ? true : legacy === "true";
     } catch (e) {
       return true;
     }
@@ -16,9 +53,56 @@
   function setEnabled(on) {
     try {
       localStorage.setItem(STORAGE_KEY, on ? "on" : "off");
+      localStorage.setItem(LEGACY_SOUNDS_KEY, on ? "true" : "false");
     } catch (e) {}
+    dispatchChange();
+  }
+
+  function getEventSoundMap() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(MAP_KEY) || "{}");
+      var legacy = {
+        chime: "s01", cash: "s02", slide: "s03", soft: "s04", bell: "s05",
+        ping: "s06", melody: "s07", drop: "s08", alert: "s09", tone: "s10",
+      };
+      var map = {};
+      EVENTS.forEach(function (ev) {
+        var preset = raw[ev] || DEFAULT_MAP[ev];
+        if (legacy[preset]) preset = legacy[preset];
+        map[ev] = PRESETS[preset] ? preset : DEFAULT_MAP[ev];
+      });
+      return map;
+    } catch (e) {
+      return Object.assign({}, DEFAULT_MAP);
+    }
+  }
+
+  function setEventSound(event, presetId) {
+    if (EVENTS.indexOf(event) < 0 || !PRESETS[presetId]) return false;
+    var map = getEventSoundMap();
+    map[event] = presetId;
+    try {
+      localStorage.setItem(MAP_KEY, JSON.stringify(map));
+    } catch (e) {
+      return false;
+    }
+    dispatchChange();
+    return true;
+  }
+
+  function resetEventSoundMap() {
+    try {
+      localStorage.removeItem(MAP_KEY);
+    } catch (e) {}
+    dispatchChange();
+  }
+
+  function dispatchChange() {
     document.dispatchEvent(new CustomEvent("finora:notification-sound-changed", {
-      detail: { enabled: !!on }
+      detail: {
+        enabled: isEnabled(),
+        map: getEventSoundMap(),
+      },
     }));
   }
 
@@ -32,122 +116,114 @@
     return audioCtx;
   }
 
-  function playTone(freq, duration, wave, volume, delay) {
+  function playChime(freq, duration, options) {
     var ctx = getContext();
     if (!ctx) return;
 
-    var start = ctx.currentTime + (delay || 0);
+    options = options || {};
+    var start = ctx.currentTime + (options.delay || 0);
+    var vol = Math.min(Math.max(options.volume || 0.22, 0.0001), 0.45);
+    var wave = options.wave || "sine";
+    var dur = duration || 0.18;
+
     var osc = ctx.createOscillator();
     var gain = ctx.createGain();
-    var vol = Math.min(Math.max(volume || 0.35, 0.0001), 0.72);
+    var filter = ctx.createBiquadFilter();
 
-    osc.type = wave || "square";
+    osc.type = wave;
     osc.frequency.setValueAtTime(freq, start);
+    if (options.slideTo) {
+      osc.frequency.exponentialRampToValueAtTime(
+        Math.max(options.slideTo, 40),
+        start + dur * 0.85
+      );
+    }
+
+    filter.type = "lowpass";
+    filter.frequency.setValueAtTime(options.filterFreq || 2400, start);
+    filter.Q.setValueAtTime(0.7, start);
 
     gain.gain.setValueAtTime(0.0001, start);
-    gain.gain.exponentialRampToValueAtTime(vol, start + 0.008);
-    gain.gain.setValueAtTime(vol, start + Math.max(duration - 0.04, 0.02));
-    gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+    gain.gain.exponentialRampToValueAtTime(vol, start + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, start + dur);
 
-    osc.connect(gain);
+    osc.connect(filter);
+    filter.connect(gain);
     gain.connect(ctx.destination);
     osc.start(start);
-    osc.stop(start + duration + 0.03);
+    osc.stop(start + dur + 0.05);
   }
 
-  function playBuzzPulse(freq, duration, volume, delay) {
-    playTone(freq, duration, "square", volume, delay);
-    playTone(freq * 2, duration * 0.85, "square", (volume || 0.4) * 0.45, delay);
+  function playPresetNotes(presetId) {
+    var preset = PRESETS[presetId];
+    if (!preset) return;
+    getContext();
+    if (!audioCtx) return;
+    preset.notes.forEach(function (n) {
+      playChime(n.freq, n.dur, n);
+    });
   }
 
-  function playStrongBuzz() {
-    playBuzzPulse(880, 0.14, 0.52, 0);
-    playBuzzPulse(880, 0.14, 0.52, 0.18);
-    playBuzzPulse(880, 0.14, 0.52, 0.36);
-    playBuzzPulse(660, 0.32, 0.48, 0.54);
+  function playPreset(presetId, options) {
+    options = options || {};
+    if (!options.force && (options.silent || !isEnabled())) return;
+    playPresetNotes(presetId);
   }
 
-  /** تسديد — رنين نقدي صاعد قوي */
-  function playPaymentSound() {
-    playTone(660, 0.1, "square", 0.48, 0);
-    playTone(880, 0.11, "square", 0.52, 0.1);
-    playTone(1174.66, 0.14, "square", 0.55, 0.2);
-    playBuzzPulse(1318.51, 0.28, 0.5, 0.34);
+  function playPresetForEvent(event, options) {
+    var map = getEventSoundMap();
+    var ev = normalizeActionType(event);
+    var presetId = map[ev] || DEFAULT_MAP[ev];
+    playPreset(presetId, options);
   }
 
-  /** إرجاع — buzz هابط تحذيري قوي */
-  function playReturnSound() {
-    playBuzzPulse(740, 0.14, 0.52, 0);
-    playBuzzPulse(554, 0.16, 0.5, 0.16);
-    playTone(415, 0.22, "sawtooth", 0.48, 0.34);
-    playBuzzPulse(370, 0.3, 0.46, 0.52);
-  }
-
-  /** إلغاء — buzz منخفض حاد */
-  function playCancelSoundFx() {
-    playTone(220, 0.16, "sawtooth", 0.55, 0);
-    playBuzzPulse(185, 0.18, 0.52, 0.14);
-    playTone(165, 0.22, "square", 0.5, 0.3);
-    playBuzzPulse(147, 0.34, 0.48, 0.48);
-  }
-
-  function inferSoundTypeFromMessage(message, fallback) {
+  function inferActionSoundFromMessage(message) {
     var msg = String(message || "");
-    if (/فشل|خطأ|❌|error/i.test(msg)) return fallback || "error";
     if (/تسديد|مسدد|تحصيل|settle|paid|payment/i.test(msg)) return "payment";
     if (/ترجيع|إرجاع|ارجاع|مرتجع|راجعة|return/i.test(msg)) return "return";
     if (/إلغاء|الغاء|ملغي|cancel/i.test(msg)) return "cancel";
-    return fallback || "info";
+    if (/طلب جديد|كشف المندوب|new order/i.test(msg)) return "order";
+    return null;
+  }
+
+  function normalizeActionType(type) {
+    var key = String(type || "").toLowerCase();
+    if (key === "paid" || key === "settle") return "payment";
+    if (key === "returned") return "return";
+    if (key === "cancelled" || key === "canceled") return "cancel";
+    if (key === "buzz") return "order";
+    return key;
+  }
+
+  function isActionSound(type) {
+    return !!ACTION_TYPES[normalizeActionType(type)];
+  }
+
+  function playOrderActionSound(type, options) {
+    options = options || {};
+    if (options.silent || !isEnabled()) return;
+    var event = normalizeActionType(type);
+    if (!isActionSound(event)) return;
+    playPresetForEvent(event, options);
   }
 
   function playNotificationSound(type, options) {
     options = options || {};
     if (options.silent || !isEnabled()) return;
 
-    getContext();
-    if (!audioCtx) return;
-
-    var soundType = options.soundType || type || "info";
-    if (options.inferFromMessage && options.message) {
-      soundType = inferSoundTypeFromMessage(options.message, soundType);
+    var soundType = options.soundType || type || "";
+    if (!soundType && options.message) {
+      soundType = inferActionSoundFromMessage(options.message) || "";
     }
+    soundType = normalizeActionType(soundType);
+    if (!isActionSound(soundType)) return;
+    playOrderActionSound(soundType, options);
+  }
 
-    switch (soundType) {
-      case "payment":
-      case "paid":
-      case "settle":
-        playPaymentSound();
-        break;
-      case "return":
-      case "returned":
-        playReturnSound();
-        break;
-      case "cancel":
-      case "cancelled":
-      case "canceled":
-        playCancelSoundFx();
-        break;
-      case "success":
-        playTone(523.25, 0.12, "square", 0.38, 0);
-        playTone(659.25, 0.16, "square", 0.42, 0.11);
-        playTone(783.99, 0.2, "square", 0.36, 0.24);
-        break;
-      case "error":
-        playTone(220, 0.2, "sawtooth", 0.4, 0);
-        playTone(185, 0.28, "sawtooth", 0.38, 0.16);
-        break;
-      case "warning":
-        playBuzzPulse(440, 0.14, 0.45, 0);
-        playBuzzPulse(440, 0.14, 0.45, 0.18);
-        break;
-      case "order":
-      case "buzz":
-        playStrongBuzz();
-        break;
-      default:
-        playStrongBuzz();
-        break;
-    }
+  function getSoundPresets() {
+    return Object.keys(PRESETS).sort().map(function (id) {
+      return { id: id, name: PRESETS[id].name };
+    });
   }
 
   function unlockAudio() {
@@ -161,7 +237,19 @@
   });
 
   window.playNotificationSound = playNotificationSound;
-  window.finoraInferNotificationSound = inferSoundTypeFromMessage;
+  window.playOrderActionSound = playOrderActionSound;
+  window.finoraInferNotificationSound = inferActionSoundFromMessage;
   window.finoraNotificationSoundEnabled = isEnabled;
   window.finoraSetNotificationSound = setEnabled;
+  window.finoraGetSoundPresets = getSoundPresets;
+  window.finoraGetSoundEventLabels = function () { return Object.assign({}, EVENT_LABELS); };
+  window.finoraGetEventSoundMap = getEventSoundMap;
+  window.finoraSetEventSound = setEventSound;
+  window.finoraResetEventSoundMap = resetEventSoundMap;
+  window.finoraPreviewSoundPreset = function (presetId) {
+    playPreset(presetId, { force: true });
+  };
+  window.finoraPreviewEventSound = function (event) {
+    playPresetForEvent(event, { force: true });
+  };
 })();

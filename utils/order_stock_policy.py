@@ -192,10 +192,28 @@ def deduct_order_stock(order: Invoice) -> bool:
     return True
 
 
-def restore_order_stock(order: Invoice, *, release_fulfillment: bool = False) -> bool:
+def restore_order_stock(
+    order: Invoice,
+    *,
+    release_fulfillment: bool = False,
+    return_branch_id: int | str | None = None,
+) -> bool:
     """Restore physical lines only when they are currently deducted."""
     if not stock_is_deducted(order):
         return False
+
+    selected_return_branch_id = None
+    if return_branch_id not in (None, "", 0, "0"):
+        try:
+            selected_return_branch_id = int(return_branch_id)
+        except (TypeError, ValueError) as exc:
+            raise OrderStockError("فرع إرجاع المخزون غير صالح", order_id=order.id) from exc
+
+        from models.branch import Branch
+
+        return_branch = Branch.query.filter_by(id=selected_return_branch_id, is_active=True).first()
+        if not return_branch:
+            raise OrderStockError("فرع إرجاع المخزون غير موجود أو غير نشط", order_id=order.id)
 
     now = datetime.utcnow()
     claimed = (
@@ -220,9 +238,9 @@ def restore_order_stock(order: Invoice, *, release_fulfillment: bool = False) ->
             continue
         from utils.inventory_lots import restore_order_item_lots
 
-        restore_order_item_lots(item)
+        restore_order_item_lots(item, return_branch_id=selected_return_branch_id)
         qty = int(item.quantity or 0)
-        branch_id = item.fulfillment_branch_id or getattr(order, "branch_id", None)
+        branch_id = selected_return_branch_id or item.fulfillment_branch_id or getattr(order, "branch_id", None)
         if branch_id:
             from utils.branch_stock_service import receive_stock
 
@@ -236,6 +254,9 @@ def restore_order_stock(order: Invoice, *, release_fulfillment: bool = False) ->
             restore_color_stock(product.id, color, qty)
         if release_fulfillment:
             item.fulfillment_branch_id = None
+
+    if selected_return_branch_id:
+        order.return_branch_id = selected_return_branch_id
 
     db.session.flush()
     return True

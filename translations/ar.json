@@ -486,6 +486,8 @@
     "customer_credit_field_note": "ملاحظة",
     "customer_credit_products_note_placeholder": "ملاحظة على البيع الآجل",
     "customer_credit_add_product_line": "إضافة منتج",
+    "customer_credit_product_search": "ابحث عن منتج...",
+    "customer_credit_product_empty": "لا توجد منتجات مطابقة",
     "customer_credit_field_installments": "عدد الأقساط",
     "customer_credit_field_first_due": "تاريخ أول استحقاق",
     "customer_credit_field_interval": "الفترة",

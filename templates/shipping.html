@@ -889,6 +889,7 @@
 
   <script src="/static/js/admin-actions-menu.js?v=20260720b"></script>
   <script src="/static/js/delivery-fee-pay-modal.js"></script>
+  <script src="/static/js/return-stock-modal.js"></script>
   <script>
     let currentCompany = null;
 
@@ -1281,7 +1282,7 @@
       });
     }
 
-    function submitShippingReturn(orderId, barcode, modal) {
+    function submitShippingReturn(orderId, barcode, returnBranchId, modal) {
       const code = String(barcode || '').trim();
       if (!code) {
         showToast("{{ _('orders_return_scan_required') }}", "warning");
@@ -1292,7 +1293,10 @@
       fetch("/shipping/return/" + orderId, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ barcode: code })
+        body: JSON.stringify({
+          barcode: code,
+          return_branch_id: Number(returnBranchId) || null
+        })
       })
         .then(r => r.json())
         .then(data => {
@@ -1314,50 +1318,12 @@
     }
 
     function returnOrder(id) {
-      const modal = document.createElement('div');
-      modal.className = 'modal';
-      modal.setAttribute('data-shipping-return-modal', '1');
-      modal.setAttribute('data-order-id', String(id));
-      modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999;';
-
-      modal.innerHTML =
-        '<div class="modal-box" style="max-width:500px;background:linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.98));padding:24px;border-radius:24px;border:2px solid rgba(245, 158, 11, 0.3);">' +
-        '<div style="text-align:center;">' +
-        '<div style="font-size:48px;margin-bottom:16px;">↩️</div>' +
-        '<h3 style="color:var(--shipping-text);margin:0 0 12px;font-size:20px;font-weight:700;">{{ _("orders_return_scan_title") }}</h3>' +
-        '<p style="color:var(--shipping-muted);margin:0 0 20px;font-size:14px;">{{ _("orders_return_scan_hint") }}</p>' +
-        '<input type="text" id="shippingReturnBarcodeInput" placeholder="{{ _("orders_return_scan_placeholder") }}" style="width:100%;padding:14px 16px;border-radius:14px;border:1px solid rgba(255,255,255,0.1);background:rgba(15,23,42,0.6);color:var(--shipping-text);font-size:16px;margin-bottom:20px;text-align:center;direction:ltr;" autocomplete="off" autofocus>' +
-        '<div style="display:flex;gap:12px;justify-content:center;">' +
-        '<button type="button" class="btn btn-success" id="confirmShippingReturnBtn" style="min-width:120px;">' +
-        '<span>✅</span><span>{{ _("orders_return_scan_confirm") }}</span>' +
-        '</button>' +
-        '<button type="button" class="btn btn-danger" id="closeShippingReturnBtn" style="min-width:120px;">' +
-        '<span>❌</span><span>{{ _("cancel") }}</span>' +
-        '</button>' +
-        '</div></div></div>';
-
-      document.body.appendChild(modal);
-      modal.addEventListener('click', function (e) {
-        if (e.target === modal) modal.remove();
-      });
-      modal.querySelector('#closeShippingReturnBtn').addEventListener('click', function () {
-        modal.remove();
-      });
-      modal.querySelector('#confirmShippingReturnBtn').addEventListener('click', function () {
-        const input = modal.querySelector('#shippingReturnBarcodeInput');
-        submitShippingReturn(id, input ? input.value : '', modal);
-      });
-      const input = modal.querySelector('#shippingReturnBarcodeInput');
-      input.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          submitShippingReturn(id, input.value, modal);
+      openReturnStockModal({
+        orderId: id,
+        onConfirm: function (returnOptions) {
+          submitShippingReturn(id, returnOptions.barcode, returnOptions.returnBranchId, null);
         }
       });
-      setTimeout(function () {
-        input.focus();
-        input.select();
-      }, 80);
     }
 
     function cancelOrder(id) {

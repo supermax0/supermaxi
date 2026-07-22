@@ -370,7 +370,7 @@
 <div class="report-actions no-print">
   <button class="btn btn-primary" onclick="window.print()">🖨️ طباعة</button>
   {% if current_role == "admin" %}
-    <a href="/delivery/reports?company_id={{ report.shipping_company_id }}" class="btn btn-success">← العودة للأرشيف</a>
+    <a href="{{ reports_back_url or '/shipping' }}" class="btn btn-success">← العودة للأرشيف</a>
   {% else %}
   <a href="/delivery/archive" class="btn btn-success">← العودة للأرشيف</a>
   {% endif %}
@@ -398,8 +398,10 @@
   </div>
 </div>
 
+<script src="/static/js/return-stock-modal.js"></script>
 <script>
 let currentReportId = null;
+const reportHasStockReturn = {{ 'true' if has_stock_return else 'false' }};
 
 function executeReport(reportId) {
   currentReportId = reportId;
@@ -438,12 +440,31 @@ function confirmExecuteReport() {
   
   const expenseAmount = document.getElementById('expenseAmountInput').value;
   const expenseAmountNum = parseFloat(expenseAmount) || 0;
+
+  if (reportHasStockReturn) {
+    const reportId = currentReportId;
+    document.getElementById('executeReportModal').style.display = 'none';
+    openReturnStockModal({
+      title: 'اختيار فرع مرتجعات الكشف',
+      requireBarcode: false,
+      onConfirm: function(returnOptions) {
+        submitReportExecution(reportId, expenseAmountNum, returnOptions.returnBranchId);
+      }
+    });
+    return;
+  }
+
+  submitReportExecution(currentReportId, expenseAmountNum, null);
+}
+
+function submitReportExecution(reportId, expenseAmountNum, returnBranchId) {
   
-  fetch('/delivery/execute-report/' + currentReportId, {
+  fetch('/delivery/execute-report/' + reportId, {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
     body: JSON.stringify({
-      expense_amount: expenseAmountNum
+      expense_amount: expenseAmountNum,
+      return_branch_id: returnBranchId || null
     })
   })
   .then(r => r.json())

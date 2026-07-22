@@ -14,6 +14,7 @@ from utils.shipping_report_execute import execute_shipping_report
 from utils.agent_report_helpers import (
     compute_report_delivered_amount,
     enrich_orders_data_display_fields,
+    extract_agent_id_from_report,
     row_collectible_amount,
 )
 
@@ -43,6 +44,54 @@ def remaining_amount(order: Invoice) -> int:
     remaining = total - effective_paid_amount(order)
     return remaining if remaining > 0 else 0
 
+
+_INVALID_COMPANY_ID_VALUES = frozenset({"", "none", "null", "undefined"})
+
+
+def _parse_shipping_company_id_param(raw_value):
+    if raw_value is None:
+        return None
+    text = str(raw_value).strip()
+    if not text or text.lower() in _INVALID_COMPANY_ID_VALUES:
+        return None
+    try:
+        parsed = int(text)
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
+
+
+def _resolve_shipping_company(employee, current_role):
+    """Resolve shipping company from ?company_id= (admin) or employee link."""
+    company_id_param = _parse_shipping_company_id_param(request.args.get("company_id"))
+
+    if company_id_param is not None and current_role == "admin":
+        shipping_company = ShippingCompany.query.get(company_id_param)
+        if not shipping_company:
+            return None, None, (jsonify({"error": "شركة النقل غير موجودة"}), 404)
+        return shipping_company, company_id_param, None
+
+    shipping_company_id = employee.shipping_company_id
+    if not shipping_company_id:
+        return None, None, None
+
+    shipping_company = ShippingCompany.query.get(shipping_company_id)
+    if not shipping_company:
+        return None, None, (jsonify({"error": "شركة النقل غير موجودة"}), 404)
+    return shipping_company, shipping_company_id, None
+
+
+def _reports_back_url_for_report(report, current_role):
+    if current_role != "admin":
+        return "/delivery/archive"
+    if report.shipping_company_id:
+        return f"/delivery/reports?company_id={report.shipping_company_id}"
+    agent_id = extract_agent_id_from_report(report.report_number)
+    if agent_id:
+        return f"/agents/{agent_id}/reports"
+    return "/shipping"
+
+
 # =====================================================
 # Delivery Archive Page (for delivery employees)
 # =====================================================
@@ -62,35 +111,21 @@ def archive():
         return jsonify({"error": "المستخدم غير موجود"}), 404
     
     # الحصول على شركة النقل - إما من المندوب أو من query parameter (للأدمن)
-    company_id_param = request.args.get("company_id")
-    
-    if company_id_param and current_role == "admin":
-        # إذا كان هناك company_id في URL وكان المستخدم أدمن، استخدمه
-        try:
-            shipping_company_id = int(company_id_param)
-            shipping_company = ShippingCompany.query.get(shipping_company_id)
-            if not shipping_company:
-                return jsonify({"error": "شركة النقل غير موجودة"}), 404
-        except (ValueError, TypeError):
-            return jsonify({"error": "رقم شركة النقل غير صحيح"}), 400
-    else:
-        # إذا لم يكن هناك company_id أو المستخدم ليس أدمن، استخدم شركة النقل الخاصة بالمندوب
-        shipping_company_id = employee.shipping_company_id
-        
-        # إذا لم يكن للمندوب شركة نقل مرتبطة، إرجاع رسالة
-        if not shipping_company_id:
-            return render_template("delivery_archive.html", 
-                                 orders=[],
-                                 pagination=None,
-                                 employee=employee,
-                                 shipping_company=None,
-                                 total_orders=0,
-                                 total_amount=0,
-                                 due_amount=0)
-        
-        shipping_company = ShippingCompany.query.get(shipping_company_id)
-        if not shipping_company:
-            return jsonify({"error": "شركة النقل غير موجودة"}), 404
+    shipping_company, shipping_company_id, error_response = _resolve_shipping_company(
+        employee, current_role
+    )
+    if error_response:
+        return error_response
+
+    if not shipping_company_id:
+        return render_template("delivery_archive.html",
+                             orders=[],
+                             pagination=None,
+                             employee=employee,
+                             shipping_company=None,
+                             total_orders=0,
+                             total_amount=0,
+                             due_amount=0)
     
     # جلب جميع الفواتير الخاصة بشركة النقل هذه
     orders_query = Invoice.query.filter_by(
@@ -320,6 +355,10 @@ def view_report(report_id):
     can_execute = False
     if is_admin and not report.is_executed and has_status_selections:
         can_execute = True
+    has_stock_return = any(
+        value in {"ملغي", "Canceled", "مؤجل", "Delayed"}
+        for value in status_selections.values()
+    )
 
     # بعد تحديد الحالات: المجموع = الباقي للواصل فقط (بدون مؤجل/ملغي)
     if has_status_selections:
@@ -339,8 +378,10 @@ def view_report(report_id):
         is_public_access=is_public_access,
         can_execute=can_execute,
         status_selections=status_selections,
+        has_stock_return=has_stock_return,
         display_total_amount=display_total_amount,
         display_total_label=display_total_label,
+        reports_back_url=_reports_back_url_for_report(report, current_role),
     )
 
 # =====================================================
@@ -361,27 +402,20 @@ def reports_archive():
         return jsonify({"error": "المستخدم غير موجود"}), 404
     
     # الحصول على شركة النقل - إما من المندوب أو من query parameter (للأدمن)
-    company_id_param = request.args.get("company_id")
-    
-    if company_id_param and current_role == "admin":
-        try:
-            shipping_company_id = int(company_id_param)
-            shipping_company = ShippingCompany.query.get(shipping_company_id)
-            if not shipping_company:
-                return jsonify({"error": "شركة النقل غير موجودة"}), 404
-        except (ValueError, TypeError):
-            return jsonify({"error": "رقم شركة النقل غير صحيح"}), 400
-    else:
-        shipping_company_id = employee.shipping_company_id
-        if not shipping_company_id:
-            return render_template("shipping_reports_archive.html",
-                                 reports=[],
-                                 employee=employee,
-                                 shipping_company=None,
-                                 current_role=current_role)
-        shipping_company = ShippingCompany.query.get(shipping_company_id)
-        if not shipping_company:
-            return jsonify({"error": "شركة النقل غير موجودة"}), 404
+    shipping_company, shipping_company_id, error_response = _resolve_shipping_company(
+        employee, current_role
+    )
+    if error_response:
+        return error_response
+
+    if not shipping_company_id:
+        if current_role == "admin":
+            return redirect(url_for("shipping.shipping_page"))
+        return render_template("shipping_reports_archive.html",
+                             reports=[],
+                             employee=employee,
+                             shipping_company=None,
+                             current_role=current_role)
     
     # جلب الكشوفات
     reports = ShippingReport.query.filter_by(
@@ -582,7 +616,11 @@ def execute_report(report_id):
     report = ShippingReport.query.get_or_404(report_id)
     data = request.get_json() or {}
     expense_amount = data.get("expense_amount", 0)
-    result = execute_shipping_report(report, expense_amount=expense_amount)
+    result = execute_shipping_report(
+        report,
+        expense_amount=expense_amount,
+        return_branch_id=data.get("return_branch_id"),
+    )
     if result.get("error"):
         status_code = 400 if "مسبقاً" in result["error"] or "لا توجد" in result["error"] else 500
         return jsonify({"error": result["error"]}), status_code

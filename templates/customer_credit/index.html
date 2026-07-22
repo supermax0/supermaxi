@@ -183,7 +183,7 @@
 
 <script>
   let currentDebtTab = 'opening';
-  let productCatalog = [];
+  var productSearchTimers = new WeakMap();
 
   function filterCreditRows() {
     var q = (document.getElementById('ccSearch').value || '').trim().toLowerCase();
@@ -198,7 +198,6 @@
     if (!document.getElementById('debtFirstDue').value) {
       document.getElementById('debtFirstDue').value = new Date().toISOString().slice(0, 10);
     }
-    loadProductCatalog();
     if (!document.getElementById('productLines').children.length) addProductLine();
   }
 
@@ -303,37 +302,130 @@
     }, 250);
   }
 
-  function loadProductCatalog() {
-    if (productCatalog.length) return Promise.resolve(productCatalog);
-    return fetch('/customers/credit/api/products')
+  function closeProductResults(exceptLine) {
+    document.querySelectorAll('#productLines .cc-product-results').forEach(function(box) {
+      if (exceptLine && exceptLine.contains(box)) return;
+      box.classList.remove('show');
+      box.innerHTML = '';
+    });
+  }
+
+  function escapeHtml(str) {
+    return String(str == null ? '' : str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function selectProductForLine(line, product) {
+    var idInput = line.querySelector('.pl-product');
+    var searchInput = line.querySelector('.pl-product-search');
+    var priceInput = line.querySelector('.pl-price');
+    var box = line.querySelector('.cc-product-results');
+    idInput.value = product.id;
+    searchInput.value = product.name;
+    searchInput.dataset.selectedName = product.name;
+    priceInput.value = product.sale_price || '';
+    box.classList.remove('show');
+    box.innerHTML = '';
+  }
+
+  function renderProductResults(line, rows) {
+    var box = line.querySelector('.cc-product-results');
+    box.innerHTML = '';
+    if (!rows.length) {
+      var empty = document.createElement('div');
+      empty.className = 'cc-product-item cc-product-item--empty';
+      empty.textContent = {{ _('customer_credit_product_empty')|tojson }};
+      box.appendChild(empty);
+      box.classList.add('show');
+      return;
+    }
+    rows.forEach(function(p) {
+      var div = document.createElement('div');
+      div.className = 'cc-product-item';
+      div.setAttribute('tabindex', '0');
+      div.innerHTML = escapeHtml(p.name) +
+        '<small>' + Number(p.sale_price || 0).toLocaleString('en-US') + ' د.ع · مخزون: ' + Number(p.quantity || 0) + '</small>';
+      div.onclick = function() { selectProductForLine(line, p); };
+      div.onkeydown = function(e) {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          selectProductForLine(line, p);
+        }
+      };
+      box.appendChild(div);
+    });
+    box.classList.add('show');
+  }
+
+  function searchProductsForLine(line, q) {
+    var url = '/customers/credit/api/products';
+    if (q) url += '?q=' + encodeURIComponent(q);
+    fetch(url)
       .then(function(r) { return r.json(); })
-      .then(function(rows) { productCatalog = rows; return rows; });
+      .then(function(rows) { renderProductResults(line, rows || []); })
+      .catch(function() {
+        renderProductResults(line, []);
+      });
+  }
+
+  function scheduleProductSearch(line) {
+    var searchInput = line.querySelector('.pl-product-search');
+    var idInput = line.querySelector('.pl-product');
+    var q = (searchInput.value || '').trim();
+    var selectedName = searchInput.dataset.selectedName || '';
+    var stillSelected = !!(idInput.value && selectedName && q === selectedName);
+    if (selectedName && !stillSelected) {
+      idInput.value = '';
+      delete searchInput.dataset.selectedName;
+    }
+    var prev = productSearchTimers.get(line);
+    if (prev) clearTimeout(prev);
+    var timer = setTimeout(function() {
+      searchProductsForLine(line, stillSelected ? '' : q);
+    }, 200);
+    productSearchTimers.set(line, timer);
   }
 
   function addProductLine() {
-    loadProductCatalog().then(function(catalog) {
-      var wrap = document.getElementById('productLines');
-      var line = document.createElement('div');
-      line.className = 'cc-product-line';
-      var opts = catalog.map(function(p) {
-        return '<option value="' + p.id + '" data-price="' + p.sale_price + '">' + p.name + ' (' + p.quantity + ')</option>';
-      }).join('');
-      line.innerHTML =
-        '<select class="pl-product">' + opts + '</select>' +
-        '<input type="number" class="pl-qty" min="1" value="1" placeholder="كمية">' +
-        '<input type="number" class="pl-price" min="0" placeholder="سعر">' +
-        '<button type="button" class="cc-btn cc-btn-ghost" style="padding:6px 8px;" onclick="this.closest(\'.cc-product-line\').remove()"><i class="fas fa-trash"></i></button>';
-      wrap.appendChild(line);
-      var sel = line.querySelector('.pl-product');
-      var priceInput = line.querySelector('.pl-price');
-      if (sel.options.length) {
-        priceInput.value = sel.options[sel.selectedIndex].getAttribute('data-price') || '';
+    var wrap = document.getElementById('productLines');
+    var line = document.createElement('div');
+    line.className = 'cc-product-line';
+    line.innerHTML =
+      '<div class="cc-product-pick">' +
+        '<input type="text" class="pl-product-search" placeholder="{{ _('customer_credit_product_search') }}" autocomplete="off">' +
+        '<input type="hidden" class="pl-product" value="">' +
+        '<div class="cc-product-results"></div>' +
+      '</div>' +
+      '<input type="number" class="pl-qty" min="1" value="1" placeholder="كمية">' +
+      '<input type="number" class="pl-price" min="0" placeholder="سعر">' +
+      '<button type="button" class="cc-btn cc-btn-ghost" style="padding:6px 8px;" onclick="this.closest(\'.cc-product-line\').remove()"><i class="fas fa-trash"></i></button>';
+    wrap.appendChild(line);
+
+    var searchInput = line.querySelector('.pl-product-search');
+    searchInput.addEventListener('input', function() {
+      scheduleProductSearch(line);
+    });
+    searchInput.addEventListener('focus', function() {
+      closeProductResults(line);
+      scheduleProductSearch(line);
+    });
+    searchInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        var first = line.querySelector('.cc-product-item:not(.cc-product-item--empty)');
+        if (first) first.click();
+      } else if (e.key === 'Escape') {
+        closeProductResults();
       }
-      sel.addEventListener('change', function() {
-        priceInput.value = sel.options[sel.selectedIndex].getAttribute('data-price') || '';
-      });
     });
   }
+
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.cc-product-pick')) closeProductResults();
+  });
 
   function submitDebtPlan() {
     var customerId = document.getElementById('debtCustomerId').value;

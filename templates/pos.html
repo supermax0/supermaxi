@@ -1891,10 +1891,13 @@
       t.classList.add("show")
       setTimeout(() => t.classList.remove("show"), 3000)
       if (!silent && typeof window.playNotificationSound === "function") {
-        const soundType = /خطأ|فشل|❌/i.test(String(m)) ? "error"
-          : /⚠|انتظر|يرجى|اختر/i.test(String(m)) ? "warning"
-          : /تم |✅|نجاح|حفظ|تنفيذ/i.test(String(m)) ? "success" : "info"
-        window.playNotificationSound(soundType, { soundType: soundType })
+        let soundType = null
+        if (typeof window.finoraInferNotificationSound === "function") {
+          soundType = window.finoraInferNotificationSound(m)
+        }
+        if (soundType) {
+          window.playNotificationSound(soundType, { soundType: soundType, message: m })
+        }
       }
     }
 
@@ -3096,7 +3099,8 @@
 
   </script>
 
-  <script src="{{ url_for('static', filename='js/notification-sound.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/notification-sound-presets.js') }}?v=20260722-sounds50"></script>
+  <script src="{{ url_for('static', filename='js/notification-sound.js') }}?v=20260722-sounds50"></script>
 
   {% set is_admin = session.get("role") == "admin" or (current_employee and current_employee.role == "admin") %}
   {% if (is_admin or (current_employee and can_see_messages)) and business_allows('messages') and plan_has("messages") %}

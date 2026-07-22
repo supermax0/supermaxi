@@ -104,6 +104,7 @@
             </div>
             <div class="l-hero-visual cms-hero-visual l-reveal">
                 <div class="cms-hero-panel" aria-label="معاينة Finora Cloud">
+                    <div class="cms-hero-float-badge"><i class="fas fa-circle-check"></i> متصل ومحدّث لحظياً</div>
                     <div class="cms-panel-top">
                         <span></span><span></span><span></span>
                         <strong>Finora Workspace</strong>
@@ -133,6 +134,16 @@
         </div>
     </section>
     {% endif %}
+
+    <div class="cms-trust-strip l-reveal">
+        <div class="cms-trust-inner">
+            <span class="cms-trust-label">لماذا تختار Finora</span>
+            <span class="cms-trust-pill"><i class="fas fa-shield-halved"></i> بيانات آمنة</span>
+            <span class="cms-trust-pill"><i class="fas fa-bolt"></i> تشغيل سريع</span>
+            <span class="cms-trust-pill"><i class="fas fa-headset"></i> دعم محلي</span>
+            <span class="cms-trust-pill"><i class="fas fa-store"></i> مناسب للمتاجر والشركات</span>
+        </div>
+    </div>
 
     {% set pain = sm.get('pain_points', {}) %}
     {% if pain.is_visible is not sameas false %}

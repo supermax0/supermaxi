@@ -6,6 +6,7 @@ from flask import g
 from modules.mobile_app.api.v1.routes import mobile_api_v1_bp
 from modules.mobile_app.schemas import api_ok
 from modules.mobile_app.services import design as design_service
+from modules.mobile_app.services.app_update import get_app_update_payload
 from modules.mobile_app.services.feature_flags import is_flag_enabled, list_feature_flags
 
 
@@ -42,6 +43,7 @@ def bootstrap():
                 "enabled": bool(design.get("maintenance_mode")),
                 "message": design.get("maintenance_message") or "",
             },
+            "app_update": get_app_update_payload(),
             "locale": {"default": "ar", "rtl": True},
             "push_notifications_enabled": is_flag_enabled(
                 "push_notifications_enabled", True

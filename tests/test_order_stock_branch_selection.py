@@ -32,6 +32,7 @@ def test_selected_branch_is_used_for_payment_stock_deduction():
         ensure_stock_for_transition,
         select_order_stock_branch,
     )
+    from utils.order_lifecycle import process_order_return
     from utils.shipping_branch_schedule import set_shipping_branch_schedule
 
     with app.app_context():
@@ -95,3 +96,21 @@ def test_selected_branch_is_used_for_payment_stock_deduction():
 
         with pytest.raises(OrderStockError, match="لا يمكن تغيير الفرع"):
             select_order_stock_branch(invoice, default_branch.id)
+
+        invoice.status = "تم التوصيل"
+        invoice.payment_status = "مسدد"
+        invoice.barcode = "RETURN-TO-BRANCH"
+        db.session.commit()
+
+        already_returned, _message = process_order_return(
+            invoice,
+            "RETURN-TO-BRANCH",
+            return_branch_id=default_branch.id,
+        )
+        db.session.commit()
+
+        assert already_returned is False
+        assert invoice.return_branch_id == default_branch.id
+        assert invoice.stock_is_deducted is False
+        assert get_branch_stock(selected_branch.id, product.id) == 1
+        assert get_branch_stock(default_branch.id, product.id) == 1

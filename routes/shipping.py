@@ -440,7 +440,11 @@ def return_order(order_id):
         return jsonify({"success": False, "error": "يجب مسح باركود الطلب لتأكيد المرتجع"}), 400
 
     try:
-        already_returned, message = process_order_return(order, scanned_barcode)
+        already_returned, message = process_order_return(
+            order,
+            scanned_barcode,
+            return_branch_id=data.get("return_branch_id"),
+        )
         if already_returned:
             return jsonify({"success": True, "message": message})
 

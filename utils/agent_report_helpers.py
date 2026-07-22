@@ -373,6 +373,14 @@ def get_agent_name_for_report(report) -> str:
 
 def serialize_pending_report(report) -> dict[str, Any]:
     progress = get_report_progress(report)
+    try:
+        selected_statuses = json.loads(report.order_status_selections or "{}")
+    except Exception:
+        selected_statuses = {}
+    has_stock_return = any(
+        status in {"ملغي", "Canceled", "مؤجل", "Delayed"}
+        for status in (selected_statuses.values() if isinstance(selected_statuses, dict) else [])
+    )
     status_label = "بانتظار المندوب"
     if report.is_executed:
         status_label = "منفّذ"
@@ -396,6 +404,7 @@ def serialize_pending_report(report) -> dict[str, Any]:
         "all_complete": progress["all_complete"],
         "created_at": report.created_at.strftime("%Y-%m-%d %H:%M") if report.created_at else "",
         "total_amount": int(report.total_amount or 0),
+        "has_stock_return": has_stock_return,
     }
 
 

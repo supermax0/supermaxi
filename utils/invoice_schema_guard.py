@@ -52,6 +52,8 @@ def ensure_invoice_schema() -> None:
             stmts.append(f"ALTER TABLE invoice ADD COLUMN stock_deducted_at {datetime_type}")
         if "stock_restored_at" not in invoice_columns:
             stmts.append(f"ALTER TABLE invoice ADD COLUMN stock_restored_at {datetime_type}")
+        if "return_branch_id" not in invoice_columns:
+            stmts.append("ALTER TABLE invoice ADD COLUMN return_branch_id INTEGER")
 
         if stmts:
             with engine.begin() as conn:

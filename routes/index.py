@@ -2197,7 +2197,11 @@ def index_execute():
             return jsonify({"success": False, "error": "يجب مسح باركود الطلب لتأكيد الراجع"}), 400
         prev_eff = _effective_paid_amount(invoice)
         try:
-            already_returned, message = process_order_return(invoice, scanned_barcode)
+            already_returned, message = process_order_return(
+                invoice,
+                scanned_barcode,
+                return_branch_id=data.get("return_branch_id"),
+            )
         except OrderLifecycleError as exc:
             return jsonify({"success": False, "error": exc.message}), exc.status_code
         if not already_returned:
@@ -2289,7 +2293,11 @@ def index_execute_bulk():
                     errors.append(f"طلب {order_id}: يجب مسح باركود الطلب لتأكيد الراجع")
                     continue
                 prev_eff = _effective_paid_amount(invoice)
-                already_returned, _message = process_order_return(invoice, scanned_barcode)
+                already_returned, _message = process_order_return(
+                    invoice,
+                    scanned_barcode,
+                    return_branch_id=order_data.get("return_branch_id"),
+                )
                 if not already_returned:
                     append_payment_ledger_delta(invoice.id, _effective_paid_amount(invoice) - prev_eff)
                     sync_delivery_expense_for_invoice(invoice)

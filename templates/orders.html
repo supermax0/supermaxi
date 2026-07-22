@@ -28,6 +28,7 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.4/styles/ag-theme-alpine.css">
 <script src="/static/js/barcode-scanner.js"></script>
 <script src="/static/js/delivery-fee-pay-modal.js"></script>
+<script src="/static/js/return-stock-modal.js"></script>
 
 <link rel="stylesheet" href="/static/css/global-improvements.css">
 <link rel="stylesheet" href="/static/css/orders-mobile.css?v=20260720m-bulk-mobile">
@@ -2985,8 +2986,11 @@
 
   // فحص إعدادات الصوت من localStorage (افتراضي: مفعل)
   function getSoundsEnabled() {
+    if (typeof window.finoraNotificationSoundEnabled === "function") {
+      return window.finoraNotificationSoundEnabled();
+    }
     const saved = localStorage.getItem('sounds_enabled');
-    return saved === null ? true : saved === 'true'; // افتراضي: مفعل
+    return saved === null ? true : saved === 'true';
   }
 
   // حفظ إعدادات الصوت في localStorage
@@ -2995,26 +2999,18 @@
   }
 
   function playActionSound(soundType) {
-    if (!getSoundsEnabled()) return;
+    if (typeof window.playOrderActionSound === "function") {
+      window.playOrderActionSound(soundType);
+      return;
+    }
     if (typeof window.playNotificationSound === "function") {
       window.playNotificationSound(soundType, { soundType: soundType });
     }
   }
 
-  // صوت التسديد
-  function playSuccessSound() {
-    playActionSound("payment");
-  }
-
-  // صوت الإرجاع
-  function playReturnSound() {
-    playActionSound("return");
-  }
-
-  // صوت الإلغاء
-  function playCancelSound() {
-    playActionSound("cancel");
-  }
+  function playSuccessSound() { playActionSound("payment"); }
+  function playReturnSound() { playActionSound("return"); }
+  function playCancelSound() { playActionSound("cancel"); }
 
   // ========================
   // Sound Management (إدارة الأصوات)
@@ -5656,14 +5652,19 @@
   });
 
   function isReturnBarcodeModalOpen() {
-    return !!document.querySelector('.modal[data-return-barcode-modal="1"]');
+    return !!document.querySelector('[data-return-stock-modal="1"]');
   }
 
-  function submitOrderReturn(orderId, modal) {
-    const input = document.getElementById('returnBarcodeInput');
-    const barcode = input ? String(input.value || '').trim() : '';
+  function submitOrderReturn(orderId, modal, returnOptions) {
+    const input = document.getElementById('rsmBarcode');
+    const barcode = String((returnOptions && returnOptions.barcode) || (input && input.value) || '').trim();
+    const returnBranchId = Number(returnOptions && returnOptions.returnBranchId) || 0;
     if (!barcode) {
       showToast({{ _('orders_return_scan_required')|tojson }}, "warning");
+      return;
+    }
+    if (!returnBranchId) {
+      showToast('اختر فرع إرجاع المخزون', "warning");
       return;
     }
 
@@ -5674,7 +5675,8 @@
       body: JSON.stringify({
         id: orderId,
         payment: RETURN_STATUS,
-        barcode: barcode
+        barcode: barcode,
+        return_branch_id: returnBranchId
       })
     })
       .then(function (r) { return r.json(); })
@@ -5709,60 +5711,22 @@
   }
 
   function handleReturnBarcodeScanFromGlobal(code) {
-    const modal = document.querySelector('.modal[data-return-barcode-modal="1"]');
+    const modal = document.querySelector('[data-return-stock-modal="1"]');
     if (!modal) return;
-    const input = document.getElementById('returnBarcodeInput');
+    const input = modal.querySelector('#rsmBarcode');
     if (input) input.value = code;
-    const orderId = parseInt(modal.getAttribute('data-order-id') || '0', 10);
-    if (orderId) submitOrderReturn(orderId, modal);
+    const branch = modal.querySelector('#rsmBranch');
+    if (branch) branch.focus();
   }
 
   function returnOrder(orderId) {
     collapseRowActions(orderId);
-    const modal = document.createElement('div');
-    modal.className = 'modal';
-    modal.setAttribute('data-return-barcode-modal', '1');
-    modal.setAttribute('data-order-id', String(orderId));
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:9999;';
-
-    modal.innerHTML =
-      '<div class="modal-box" style="max-width:500px;background:linear-gradient(145deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.98));padding:24px;border-radius:24px;border:2px solid rgba(245, 158, 11, 0.3);">' +
-      '<div style="text-align:center;">' +
-      '<div style="font-size:48px;margin-bottom:16px;">↩️</div>' +
-      '<h3 style="color:var(--orders-text);margin:0 0 12px;font-size:20px;font-weight:700;">{{ _("orders_return_scan_title") }}</h3>' +
-      '<p style="color:var(--orders-muted);margin:0 0 20px;font-size:14px;">{{ _("orders_return_scan_hint") }}</p>' +
-      '<input type="text" id="returnBarcodeInput" placeholder="{{ _("orders_return_scan_placeholder") }}" style="width:100%;padding:14px 16px;border-radius:14px;border:1px solid rgba(255,255,255,0.1);background:rgba(15,23,42,0.6);color:var(--orders-text);font-size:16px;margin-bottom:20px;text-align:center;direction:ltr;" autocomplete="off" autofocus>' +
-      '<div style="display:flex;gap:12px;justify-content:center;">' +
-      '<button type="button" class="btn btn-success" id="confirmReturnBarcodeBtn" style="min-width:120px;">' +
-      '<span>✅</span><span>{{ _("orders_return_scan_confirm") }}</span>' +
-      '</button>' +
-      '<button type="button" class="btn btn-danger" id="closeReturnBarcodeBtn" style="min-width:120px;">' +
-      '<span>❌</span><span>{{ _("cancel") }}</span>' +
-      '</button>' +
-      '</div></div></div>';
-
-    document.body.appendChild(modal);
-
-    modal.addEventListener('click', function (e) {
-      if (e.target === modal) modal.remove();
-    });
-    modal.querySelector('#closeReturnBarcodeBtn').addEventListener('click', function () {
-      modal.remove();
-    });
-    modal.querySelector('#confirmReturnBarcodeBtn').addEventListener('click', function () {
-      submitOrderReturn(orderId, modal);
-    });
-    const input = modal.querySelector('#returnBarcodeInput');
-    input.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        submitOrderReturn(orderId, modal);
+    openReturnStockModal({
+      orderId: orderId,
+      onConfirm: function (returnOptions) {
+        submitOrderReturn(orderId, null, returnOptions);
       }
     });
-    setTimeout(function () {
-      input.focus();
-      input.select();
-    }, 80);
   }
 
 

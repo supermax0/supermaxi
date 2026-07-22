@@ -159,7 +159,7 @@
             <td>
               <a href="/delivery/report/{{ r.id }}" class="btn btn-primary">👁️ عرض</a>
               {% if r.ready_for_execution %}
-              <button type="button" class="btn btn-success" onclick="executeAgentReport({{ r.id }})">✅ تنفيذ</button>
+              <button type="button" class="btn btn-success" onclick="executeAgentReport({{ r.id }}, {{ 'true' if r.has_stock_return else 'false' }})">✅ تنفيذ</button>
               {% else %}
               <button type="button" class="btn btn-success" disabled title="بانتظار اكتمال تطبيق المندوب">✅ تنفيذ</button>
               {% endif %}
@@ -176,13 +176,14 @@
   </div>
 </div>
 
+<script src="/static/js/return-stock-modal.js"></script>
 <script>
-function executeAgentReport(reportId) {
+function submitAgentReportExecution(reportId, returnBranchId) {
   if (!confirm('تنفيذ الكشف؟ سيتم تطبيق: الواصل → تم التوصيل / مسدد | الملغي → ملغي | المؤجل → تم الطلب')) return;
   fetch('/delivery/execute-report/' + reportId, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ expense_amount: 0 })
+    body: JSON.stringify({ expense_amount: 0, return_branch_id: returnBranchId || null })
   })
   .then(function(r) { return r.json(); })
   .then(function(data) {
@@ -194,6 +195,20 @@ function executeAgentReport(reportId) {
     }
   })
   .catch(function() { alert('حدث خطأ أثناء التنفيذ'); });
+}
+
+function executeAgentReport(reportId, hasStockReturn) {
+  if (!hasStockReturn) {
+    submitAgentReportExecution(reportId, null);
+    return;
+  }
+  openReturnStockModal({
+    title: 'اختيار فرع مرتجعات كشف المندوب',
+    requireBarcode: false,
+    onConfirm: function(returnOptions) {
+      submitAgentReportExecution(reportId, returnOptions.returnBranchId);
+    }
+  });
 }
 </script>
 {% endblock %}

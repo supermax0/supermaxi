@@ -47,17 +47,21 @@ def clear_order_barcodes(order) -> None:
         order.shipping_barcodes_json = None
 
 
-def restore_order_stock_once(order) -> bool:
+def restore_order_stock_once(order, return_branch_id: int | str | None = None) -> bool:
     """
     Restore line quantities to inventory once.
     Returns True if stock was restored, False if already returned/canceled.
     """
     from utils.order_stock_policy import restore_order_stock
 
-    return restore_order_stock(order)
+    return restore_order_stock(order, return_branch_id=return_branch_id)
 
 
-def process_order_return(order, scanned_barcode: Optional[str]) -> Tuple[bool, str]:
+def process_order_return(
+    order,
+    scanned_barcode: Optional[str],
+    return_branch_id: int | str | None = None,
+) -> Tuple[bool, str]:
     """
     Validate barcode, restore stock once, mark returned, clear barcodes.
     Returns (already_returned, message).
@@ -74,7 +78,14 @@ def process_order_return(order, scanned_barcode: Optional[str]) -> Tuple[bool, s
     if not verify_order_barcode(order, scanned_barcode):
         raise OrderLifecycleError("الباركود لا يطابق الطلب")
 
-    restore_order_stock_once(order)
+    try:
+        restore_order_stock_once(order, return_branch_id=return_branch_id)
+    except Exception as exc:
+        from utils.order_stock_policy import OrderStockError
+
+        if isinstance(exc, OrderStockError):
+            raise OrderLifecycleError(exc.message) from exc
+        raise
     order.status = RETURN_STATUS
     order.payment_status = RETURN_STATUS
     order.paid_amount = 0

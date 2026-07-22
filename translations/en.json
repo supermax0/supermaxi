@@ -483,6 +483,8 @@
     "customer_credit_field_note": "Note",
     "customer_credit_products_note_placeholder": "Credit sale note",
     "customer_credit_add_product_line": "Add product",
+    "customer_credit_product_search": "Search for a product...",
+    "customer_credit_product_empty": "No matching products",
     "customer_credit_field_installments": "Installments count",
     "customer_credit_field_first_due": "First due date",
     "customer_credit_field_interval": "Interval",

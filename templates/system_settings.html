@@ -22,21 +22,38 @@
   </div>
 </div>
 
-<div class="settings-section-card">
+<div class="settings-section-card settings-span-full" id="sound-settings">
   <div class="settings-section-header">
-    <h2><i class="fas fa-bell"></i> تفضيلات التنبيهات</h2>
-    <p>تشغيل نغمات صوتية عند إجراء العمليات الأساسية (تسديد / إلغاء).</p>
+    <h2><i class="fas fa-volume-high"></i> أصوات الأحداث</h2>
+    <p>اختر من بين 50 نغمة مختلفة لكل حدث: تسديد، إرجاع، إلغاء، وطلب جديد.</p>
   </div>
 
   <div class="settings-switch-row">
     <div class="settings-switch-label">
-      <strong>أصوات التنبيه التفاعلية</strong>
-      <span>يُحفظ محلياً في متصفحك.</span>
+      <strong>تفعيل أصوات الأحداث</strong>
+      <span>يُحفظ في متصفحك ويُطبّق على كل صفحات النظام.</span>
     </div>
     <label class="settings-toggle">
-      <input type="checkbox" id="soundsEnabled" checked onchange="toggleSounds(this.checked)">
+      <input type="checkbox" id="notificationSoundEnabled" checked>
       <span class="settings-toggle-slider"></span>
     </label>
+  </div>
+
+  <div class="sound-settings-panel">
+    <div class="sound-settings-head">
+      <span class="sound-settings-title">ربط الصوت بكل حدث</span>
+      <button type="button" class="sound-settings-reset" id="soundSettingsReset">إعادة ضبط</button>
+    </div>
+    <div id="soundEventsPanel"></div>
+
+    <div class="sound-settings-head sound-settings-head--sub">
+      <span class="sound-settings-title">مكتبة الأصوات — 50 نغمة</span>
+    </div>
+    <div class="sound-preset-search-wrap">
+      <i class="fas fa-search"></i>
+      <input type="search" id="soundPresetSearch" placeholder="ابحث عن صوت..." autocomplete="off">
+    </div>
+    <div class="sound-presets-grid" id="soundPresetsGrid"></div>
   </div>
 </div>
 
@@ -307,6 +324,9 @@
 {% endblock %}
 
 {% block settings_extra_script %}
+<script src="{{ url_for('static', filename='js/notification-sound-presets.js') }}?v=20260722-sounds50"></script>
+<script src="{{ url_for('static', filename='js/notification-sound.js') }}?v=20260722-sounds50"></script>
+<script src="{{ url_for('static', filename='js/notification-sound-settings.js') }}?v=20260722-sounds50"></script>
 <script>
 let currentEmployeeId = null;
 
@@ -552,18 +572,5 @@ document.addEventListener("keydown", function (e) {
     closePasswordModal();
   }
 });
-
-document.addEventListener("DOMContentLoaded", function () {
-  const soundsEnabled = localStorage.getItem("sounds_enabled");
-  const soundsCheckbox = document.getElementById("soundsEnabled");
-  if (soundsCheckbox) {
-    soundsCheckbox.checked = soundsEnabled === null ? true : soundsEnabled === "true";
-  }
-});
-
-function toggleSounds(enabled) {
-  localStorage.setItem("sounds_enabled", enabled ? "true" : "false");
-  showToast(enabled ? "تم تفعيل الأصوات" : "تم تعطيل الأصوات", enabled ? "success" : "info");
-}
 </script>
 {% endblock %}

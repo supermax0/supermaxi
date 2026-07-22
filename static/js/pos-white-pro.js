@@ -71,17 +71,13 @@
     if (options.silent || options.sound === false) return;
 
     if (typeof window.playNotificationSound === "function") {
-      var soundType = type;
-      if (!soundType) {
-        if (/خطأ|فشل|غير|لا يُسمح|لا توجد|يرجى|اختر|اسمح/i.test(String(msg))) {
-          soundType = /تم |نجاح|حفظ|تنفيذ|إضافة|تطبيق/i.test(String(msg)) ? "success" : "warning";
-        } else if (/تم |نجاح|حفظ|تنفيذ|إضافة|تطبيق/i.test(String(msg))) {
-          soundType = "success";
-        } else {
-          soundType = "info";
-        }
+      var soundType = options.soundType;
+      if (!soundType && typeof window.finoraInferNotificationSound === "function") {
+        soundType = window.finoraInferNotificationSound(msg);
       }
-      window.playNotificationSound(soundType, { soundType: soundType });
+      if (soundType) {
+        window.playNotificationSound(soundType, { soundType: soundType, message: msg });
+      }
     }
   }
 

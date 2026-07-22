@@ -133,11 +133,22 @@ def consume_lots_for_order_item(order_item, *, branch_id: int | None = None, var
     return total_cost
 
 
-def restore_order_item_lots(order_item) -> None:
+def restore_order_item_lots(order_item, *, return_branch_id: int | None = None) -> None:
     ensure_inventory_lot_schema()
     layers = OrderItemCostLayer.query.filter_by(order_item_id=getattr(order_item, "id", None)).all()
     for layer in layers:
-        if layer.inventory_lot:
+        lot = layer.inventory_lot
+        target_branch_id = int(return_branch_id) if return_branch_id else None
+        lot_branch_id = int(lot.branch_id) if lot and lot.branch_id else None
+        if lot and target_branch_id and target_branch_id != lot_branch_id:
+            _create_fallback_lot(
+                int(layer.product_id),
+                int(layer.quantity or 0),
+                target_branch_id,
+                getattr(lot, "variant_color", None) or getattr(order_item, "variant_color", None),
+                int(layer.unit_cost or 0),
+            )
+        elif lot:
             layer.inventory_lot.remaining_quantity = int(layer.inventory_lot.remaining_quantity or 0) + int(layer.quantity or 0)
         db.session.delete(layer)
 

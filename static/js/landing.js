@@ -56,12 +56,25 @@
 
   window.setBilling = setBilling;
 
-  // Nav scroll
+  // Nav scroll + active section highlight
   var nav = document.getElementById('lNav');
+  var navLinks = document.querySelectorAll('.l-nav-links a[href^="#"]');
   if (nav) {
     window.addEventListener('scroll', function () {
       nav.classList.toggle('scrolled', window.scrollY > 24);
-    });
+      if (!navLinks.length) return;
+      var current = '';
+      navLinks.forEach(function (link) {
+        var id = (link.getAttribute('href') || '').slice(1);
+        var section = id ? document.getElementById(id) : null;
+        if (section && window.scrollY >= section.offsetTop - 120) {
+          current = link.getAttribute('href');
+        }
+      });
+      navLinks.forEach(function (link) {
+        link.classList.toggle('is-active', link.getAttribute('href') === current);
+      });
+    }, { passive: true });
   }
 
   // Mobile menu

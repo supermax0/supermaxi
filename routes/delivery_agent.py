@@ -470,7 +470,11 @@ def execute_report(report_id):
 
     data = request.get_json() or {}
     expense_amount = data.get("expense_amount", 0)
-    result = execute_shipping_report(report, expense_amount=expense_amount)
+    result = execute_shipping_report(
+        report,
+        expense_amount=expense_amount,
+        return_branch_id=data.get("return_branch_id"),
+    )
     if result.get("error"):
         return jsonify({"error": result["error"]}), 400
     return jsonify(result)

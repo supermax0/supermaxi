@@ -1103,7 +1103,11 @@ def update_order():
                     400,
                 )
             try:
-                already_returned, msg = process_order_return(order, scanned_barcode)
+                already_returned, msg = process_order_return(
+                    order,
+                    scanned_barcode,
+                    return_branch_id=data.get("return_branch_id"),
+                )
             except OrderLifecycleError as exc:
                 return jsonify({"success": False, "error": exc.message}), exc.status_code
             if already_returned:
@@ -1325,7 +1329,11 @@ def payment():
                     return jsonify({"success": False, "error": "يجب مسح باركود الطلب لتأكيد الراجع"}), 400
 
                 try:
-                    already_returned, _msg = process_order_return(order, scanned_barcode)
+                    already_returned, _msg = process_order_return(
+                        order,
+                        scanned_barcode,
+                        return_branch_id=data.get("return_branch_id"),
+                    )
                 except OrderLifecycleError as exc:
                     return jsonify({"success": False, "error": exc.message}), exc.status_code
 
@@ -1701,6 +1709,7 @@ def details(order_id):
             "video": _order_video_payload(order),
             "branch_id": order.branch_id,
             "branch_name": branch_names.get(order.branch_id) if order.branch_id else None,
+            "return_branch_id": getattr(order, "return_branch_id", None),
             "sell_from_all_branches": sell_all,
             "can_edit_fulfillment": can_edit_fulfillment,
         },

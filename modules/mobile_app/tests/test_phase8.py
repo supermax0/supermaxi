@@ -83,6 +83,9 @@ def test_mobile_phase8_notifications_analytics_flags_design():
     assert "feature_flags" in boot
     assert "branding" in boot
     assert "maintenance" in boot
+    assert "app_update" in boot
+    assert boot["app_update"]["latest_version"]
+    assert boot["app_update"]["apk_url"]
 
     r = client.post(
         "/api/mobile/v1/devices/register",

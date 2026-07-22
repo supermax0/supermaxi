@@ -49,6 +49,15 @@ class Invoice(db.Model):
         nullable=True,
     )
 
+    # Destination branch selected when a delivered/shipped order is returned.
+    # Kept separate from ``branch_id`` so the original fulfillment branch
+    # remains available for inventory auditing.
+    return_branch_id = db.Column(
+        db.Integer,
+        db.ForeignKey("branch.id"),
+        nullable=True,
+    )
+
     # =====================
     # Invoice Status
     # =====================

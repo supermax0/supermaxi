@@ -17,7 +17,11 @@ from utils.shipping_settlement_service import ensure_paid_shipping_order_settled
 from utils.order_stock_policy import OrderStockError, ensure_stock_for_transition
 
 
-def execute_shipping_report(report, expense_amount: int = 0) -> dict:
+def execute_shipping_report(
+    report,
+    expense_amount: int = 0,
+    return_branch_id: int | str | None = None,
+) -> dict:
     if report.is_executed:
         return {"error": "تم تنفيذ هذا الكشف مسبقاً"}
 
@@ -107,7 +111,7 @@ def execute_shipping_report(report, expense_amount: int = 0) -> dict:
                 already_canceled = is_canceled(order.status, order.payment_status)
                 already_returned = is_returned(order.status, order.payment_status)
                 if not already_canceled and not already_returned:
-                    restore_order_stock_once(order)
+                    restore_order_stock_once(order, return_branch_id=return_branch_id)
                 order.status = "ملغي"
                 order.payment_status = "ملغي"
                 order.paid_amount = 0
@@ -118,7 +122,7 @@ def execute_shipping_report(report, expense_amount: int = 0) -> dict:
                 sync_delivery_expense_for_invoice(order)
             elif selected_status in ("مؤجل", "Delayed"):
                 prev_eff = _effective_paid_amount_inv(order)
-                restore_order_stock_once(order)
+                restore_order_stock_once(order, return_branch_id=return_branch_id)
                 order.status = "تم الطلب"
                 order.shipping_status = "تم الطلب"
                 order.payment_status = "غير مسدد"

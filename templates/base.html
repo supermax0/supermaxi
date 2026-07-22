@@ -846,6 +846,27 @@
       color: var(--success);
     }
 
+    .profile-sound-settings-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 8px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px dashed var(--border);
+      color: var(--primary);
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: background 0.18s ease, border-color 0.18s ease;
+    }
+
+    .profile-sound-settings-link:hover {
+      background: rgba(59, 130, 246, 0.08);
+      border-color: rgba(59, 130, 246, 0.35);
+    }
+
     .profile-footer {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -2743,6 +2764,9 @@ or request.path.startswith('/superadmin') %}
               <span id="notificationSoundLabel">صوت الإشعارات</span>
               <span class="toggle-status" id="notificationSoundStatus">—</span>
             </div>
+            <a href="/settings/system#sound-settings" class="profile-sound-settings-link" onclick="closeProfileModal()">
+              <i class="fas fa-sliders"></i> إعدادات الأصوات المتقدمة (50 نغمة)
+            </a>
           </div>
         </div>
       </div>
@@ -2767,7 +2791,8 @@ or request.path.startswith('/superadmin') %}
     <div class="loading-spinner"></div>
   </div>
 
-  <script src="{{ url_for('static', filename='js/notification-sound.js') }}?v=20260721-action-sounds"></script>
+  <script src="{{ url_for('static', filename='js/notification-sound-presets.js') }}?v=20260722-sounds50"></script>
+  <script src="{{ url_for('static', filename='js/notification-sound.js') }}?v=20260722-sounds50"></script>
   <script src="{{ url_for('static', filename='js/finora-notification-center.js') }}?v=20260721-notif-employee"></script>
 
   <script>
@@ -2946,12 +2971,14 @@ or request.path.startswith('/superadmin') %}
       if (!options.silent && options.sound !== false && typeof window.playNotificationSound === "function") {
         var soundType = options.soundType;
         if (!soundType && typeof window.finoraInferNotificationSound === "function") {
-          soundType = window.finoraInferNotificationSound(message, type);
+          soundType = window.finoraInferNotificationSound(message);
         }
-        window.playNotificationSound(soundType || type, {
-          soundType: soundType || type,
-          message: message
-        });
+        if (soundType) {
+          window.playNotificationSound(soundType, {
+            soundType: soundType,
+            message: message,
+          });
+        }
       }
 
       if (options.groupKey) {
@@ -3190,8 +3217,8 @@ or request.path.startswith('/superadmin') %}
         window.finoraSetNotificationSound(!enabled);
       }
       syncNotificationSoundToggle();
-      if (!enabled && typeof window.playNotificationSound === "function") {
-        window.playNotificationSound("success", { soundType: "success" });
+      if (!enabled && typeof window.finoraPreviewEventSound === "function") {
+        window.finoraPreviewEventSound("payment");
       }
     };
 

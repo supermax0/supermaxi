@@ -3357,6 +3357,7 @@
 <script src="{{ url_for('static', filename='js/ai_message_format.js') }}"></script>
 <script src="/static/js/barcode-scanner.js"></script>
 <script src="/static/js/delivery-fee-pay-modal.js"></script>
+<script src="/static/js/return-stock-modal.js"></script>
 <script>
   /* =======================
      Load Dashboard
@@ -4027,11 +4028,32 @@
       return;
     }
 
+    if (action === "returned") {
+      openReturnStockModal({
+        orderId: id,
+        barcode: barcode,
+        onConfirm: function (returnOptions) {
+          executeSearchOrder(id, action, barcode, returnOptions.returnBranchId);
+        }
+      });
+      return;
+    }
+
+    executeSearchOrder(id, action, barcode, null);
+  }
+
+  function executeSearchOrder(id, action, barcode, returnBranchId) {
     showLoading();
     fetch("/api/index/execute", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, action, barcode, delivery_fee: getRowDeliveryFee(id) })
+      body: JSON.stringify({
+        id,
+        action,
+        barcode,
+        delivery_fee: getRowDeliveryFee(id),
+        return_branch_id: returnBranchId || null
+      })
     })
       .then(r => r.json())
       .then(res => {
@@ -4123,19 +4145,13 @@
   /* =======================
      Bulk Execute
   ======================= */
-  function executeBulk() {
+  function executeBulk(returnBranchId) {
     const selected = Array.from(document.querySelectorAll(".row-checkbox:checked")).map(cb => parseInt(cb.dataset.id));
 
     if (selected.length === 0) {
       showToast("⚠️ الرجاء تحديد طلبات للتنفيذ", "warning");
       return;
     }
-
-    if (!confirm(`⚠️ هل أنت متأكد من تنفيذ ${selected.length} طلب؟`)) {
-      return;
-    }
-
-    showLoading();
 
     // الحصول على الإجراء المحدد لكل طلب
     const missingReturnBarcode = selected.filter(id => {
@@ -4150,6 +4166,24 @@
       return;
     }
 
+    const hasReturnedOrders = selected.some(id => getOrderStatus(id) === "returned");
+    if (hasReturnedOrders && !returnBranchId) {
+      openReturnStockModal({
+        title: "تحديد فرع المرتجعات المحددة",
+        requireBarcode: false,
+        onConfirm: function (returnOptions) {
+          executeBulk(returnOptions.returnBranchId);
+        }
+      });
+      return;
+    }
+
+    if (!confirm(`⚠️ هل أنت متأكد من تنفيذ ${selected.length} طلب؟`)) {
+      return;
+    }
+
+    showLoading();
+
     const orders = selected.map(id => {
       const row = document.getElementById("r" + id);
       return {
@@ -4157,6 +4191,7 @@
         action: getOrderStatus(id),
         barcode: (scannedBarcodeByOrder[id] || (row && row.dataset ? row.dataset.barcode : "") || "").trim(),
         delivery_fee: getRowDeliveryFee(id),
+        return_branch_id: getOrderStatus(id) === "returned" ? (Number(returnBranchId) || null) : null,
       };
     });
 
@@ -4586,8 +4621,11 @@
 
   // فحص إعدادات الصوت من localStorage (افتراضي: مفعل)
   function getSoundsEnabled() {
+    if (typeof window.finoraNotificationSoundEnabled === "function") {
+      return window.finoraNotificationSoundEnabled();
+    }
     const saved = localStorage.getItem('sounds_enabled');
-    return saved === null ? true : saved === 'true'; // افتراضي: مفعل
+    return saved === null ? true : saved === 'true';
   }
 
   // حفظ إعدادات الصوت في localStorage
@@ -4596,23 +4634,18 @@
   }
 
   function playActionSound(soundType) {
-    if (!getSoundsEnabled()) return;
+    if (typeof window.playOrderActionSound === "function") {
+      window.playOrderActionSound(soundType);
+      return;
+    }
     if (typeof window.playNotificationSound === "function") {
       window.playNotificationSound(soundType, { soundType: soundType });
     }
   }
 
-  function playSuccessSound() {
-    playActionSound("payment");
-  }
-
-  function playReturnSound() {
-    playActionSound("return");
-  }
-
-  function playCancelSound() {
-    playActionSound("cancel");
-  }
+  function playSuccessSound() { playActionSound("payment"); }
+  function playReturnSound() { playActionSound("return"); }
+  function playCancelSound() { playActionSound("cancel"); }
 
   // ========================
   // Initialize Dashboard (Load with default period: last 30 days)

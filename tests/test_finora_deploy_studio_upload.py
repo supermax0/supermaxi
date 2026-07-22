@@ -118,6 +118,9 @@ def test_publish_apk_uploads_only_the_selected_artifact(tmp_path: Path) -> None:
     artifacts.mkdir()
     apk = artifacts / "finora-social-debug.apk"
     apk.write_bytes(b"apk-only")
+    pubspec = tmp_path / "mobile" / "finora_social" / "pubspec.yaml"
+    pubspec.parent.mkdir(parents=True)
+    pubspec.write_text("name: finora_social\nversion: 1.2.1+4\n", encoding="utf-8")
 
     studio = object.__new__(FinoraDeployStudio)
     studio.local_path_var = _Var(str(tmp_path))
@@ -134,10 +137,17 @@ def test_publish_apk_uploads_only_the_selected_artifact(tmp_path: Path) -> None:
 
     studio._publish_apk_thread()
 
-    studio.upload_file_to_server.assert_called_once_with(
+    assert studio.upload_file_to_server.call_count == 2
+    studio.upload_file_to_server.assert_any_call(
         apk, "/tmp/finora-social.apk.uploading"
+    )
+    version_local = tmp_path / "artifacts" / "finora-social-version.json"
+    assert version_local.is_file()
+    studio.upload_file_to_server.assert_any_call(
+        version_local, "/tmp/finora-social-version.json.uploading"
     )
     install_script = studio.run_ssh_script.call_args.args[0]
     assert "/static/downloads/finora-social.apk" in install_script
+    assert "finora-social-version.json" in install_script
     assert "mobile/" not in install_script
     studio.set_busy.assert_called_once_with(False)
