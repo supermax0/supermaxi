@@ -2,6 +2,7 @@ import json
 import os
 import posixpath
 import shlex
+import shutil
 import subprocess
 import tarfile
 import threading
@@ -14,6 +15,40 @@ from pathlib import Path
 from datetime import datetime
 
 CONFIG_FILE = Path("finora_deploy_config.json")
+
+SSH_CONNECT_OPTIONS = [
+    "-o", "BatchMode=yes",
+    "-o", "ConnectTimeout=15",
+    "-o", "ConnectionAttempts=1",
+    "-o", "ServerAliveInterval=15",
+    "-o", "ServerAliveCountMax=4",
+]
+
+
+def _resolve_command(command_name: str) -> str:
+    """Return a runnable command path, including Windows' built-in OpenSSH path."""
+    found = shutil.which(command_name)
+    if found:
+        return found
+    if os.name == "nt" and command_name.lower() in {"ssh", "sftp"}:
+        exe_name = f"{command_name}.exe"
+        candidates = [
+            Path(os.environ.get("WINDIR", r"C:\Windows")) / "System32" / "OpenSSH" / exe_name,
+            Path(os.environ.get("WINDIR", r"C:\Windows")) / "Sysnative" / "OpenSSH" / exe_name,
+        ]
+        for candidate in candidates:
+            if candidate.exists():
+                return str(candidate)
+    return command_name
+
+
+def _format_file_size(size: int) -> str:
+    value = float(max(0, size))
+    for unit in ("B", "KB", "MB", "GB"):
+        if value < 1024 or unit == "GB":
+            return f"{value:.1f} {unit}"
+        value /= 1024
+    return f"{value:.1f} GB"
 
 # Windows may ignore subprocess encoding= and still use cp1252 — read bytes, decode as UTF-8.
 def _decode_output_chunk(chunk) -> str:
@@ -50,11 +85,22 @@ SAFE_PUSH_EXCLUDED_PARTS = {
     "env",
     "logs",
     "instance",
+    "tenants",
     "uploads",
     "outputs",
     "playwright-report",
     "test-results",
     ".pytest_cache",
+    ".dart_tool",
+    ".gradle",
+    ".idea",
+    "artifacts",
+    "backups",
+    "build",
+    "coverage",
+    "dist",
+    "downloads",
+    "mobile",
 }
 
 SAFE_PUSH_EXCLUDED_SUFFIXES = {
@@ -62,9 +108,28 @@ SAFE_PUSH_EXCLUDED_SUFFIXES = {
     ".sqlite",
     ".sqlite3",
     ".log",
+    ".err",
+    ".out",
     ".tmp",
     ".pyc",
+    ".apk",
+    ".aab",
+    ".ipa",
+    ".tgz",
+    ".zip",
 }
+
+SAFE_PUSH_EXCLUDED_NAME_ENDINGS = (
+    ".db-wal",
+    ".db-shm",
+    ".sqlite-wal",
+    ".sqlite-shm",
+    ".sqlite3-wal",
+    ".sqlite3-shm",
+)
+
+SMART_DEPLOY_MAX_BYTES = 50 * 1024 * 1024
+REMOTE_DEPLOY_MANIFEST = ".finora-smart-deploy-manifest.tsv"
 
 SAFE_PUSH_EXCLUDED_FILES = {
     ".env",
@@ -72,11 +137,22 @@ SAFE_PUSH_EXCLUDED_FILES = {
     "database.db",
     "debug-180817.log",
     "finora_deploy_config.json",
+    # Desktop-only deployment UI; never copy it into the Linux application.
+    "finora_deploy_studio.py",
     "nexus-execution.log",
     "nexus-workflows.json",
     "supermaxi",
     "t",
+    # Runtime learning memory is written by the live application. It must not
+    # be uploaded from a developer machine or treated as deployable source.
+    "learned_areas.json",
+    "learned_cities.json",
 }
+
+REMOTE_RUNTIME_MUTABLE_TRACKED_FILES = (
+    "ai/learned_areas.json",
+    "ai/learned_cities.json",
+)
 
 
 DEFAULT_CONFIG = {
@@ -88,6 +164,12 @@ DEFAULT_CONFIG = {
     "gunicorn_workers": 3,
     "logs_command": "journalctl -u nginx -n 100 --no-pager",
     "last_deployed_commit": "",
+    "adb_path": "adb",
+    "flutter_path": "",
+    "android_apk_path": "",
+    "android_app_target": "Social (finora_social)",
+    "social_api_base_url": "https://www.finora.company",
+    "social_tenant_slug": "super",
     # كلمة السر لا نحفظها في الملف لأسباب أمان، تبقى فارغة في كل تشغيل
 }
 
@@ -96,8 +178,8 @@ class FinoraDeployStudio(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("Finora Deploy Studio")
-        self.geometry("980x620")
-        self.minsize(900, 550)
+        self.geometry("1040x720")
+        self.minsize(960, 620)
 
         self.config_data = self.load_config()
 
@@ -154,13 +236,15 @@ class FinoraDeployStudio(tk.Tk):
         )
         self.current_config_label.pack(side=tk.RIGHT)
 
-        # Top frame: configuration only
+        # Top frame: server + android configuration
         top = ttk.Frame(self)
         top.pack(side=tk.TOP, fill=tk.X, padx=12, pady=(0, 6))
+        top.columnconfigure(0, weight=3)
+        top.columnconfigure(1, weight=2)
 
-        # Config frame
-        cfg = ttk.LabelFrame(top, text="Configuration")
-        cfg.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
+        # Server config
+        cfg = ttk.LabelFrame(top, text="Server Configuration")
+        cfg.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
 
         # Local project path
         self.local_path_var = tk.StringVar(value=self.config_data["local_project_path"])
@@ -215,66 +299,148 @@ class FinoraDeployStudio(tk.Tk):
 
         cfg.columnconfigure(1, weight=1)
 
-        # Buttons bar (horizontal)
-        btns = ttk.Frame(self)
-        btns.pack(side=tk.TOP, fill=tk.X, padx=12, pady=(0, 4))
+        # Android config (separate panel)
+        android_cfg = ttk.LabelFrame(top, text="Android / USB")
+        android_cfg.grid(row=0, column=1, sticky="nsew")
 
-        self.push_btn = ttk.Button(btns, text="Push to GitHub", width=18, command=self.on_push_clicked)
-        self.push_btn.pack(side=tk.LEFT, padx=4, pady=4)
-
-        self.deploy_btn = ttk.Button(btns, text="Smart Deploy", width=18, command=self.on_deploy_clicked)
-        self.deploy_btn.pack(side=tk.LEFT, padx=4, pady=4)
-
-        self.restart_btn = ttk.Button(btns, text="Restart Server", width=18, command=self.on_restart_clicked)
-        self.restart_btn.pack(side=tk.LEFT, padx=4, pady=4)
-
-        self.logs_btn = ttk.Button(btns, text="View Server Logs", width=18, command=self.on_view_logs_clicked)
-        self.logs_btn.pack(side=tk.LEFT, padx=4, pady=4)
-
-        self.build_btn = ttk.Button(btns, text="Build Frontends", width=18, command=self.on_build_frontend_clicked)
-        self.build_btn.pack(side=tk.LEFT, padx=4, pady=4)
-
-        self.build_social_ai_btn = ttk.Button(
-            btns,
-            text="Build Social AI",
-            width=18,
-            command=self.on_build_social_ai_clicked,
+        self.adb_path_var = tk.StringVar(value=(self.config_data.get("adb_path") or "adb"))
+        ttk.Label(android_cfg, text="ADB path:").grid(row=0, column=0, sticky="w", padx=6, pady=4)
+        ttk.Entry(android_cfg, textvariable=self.adb_path_var, justify="center").grid(
+            row=0, column=1, columnspan=2, sticky="we", padx=(0, 6), pady=4
         )
-        self.build_social_ai_btn.pack(side=tk.LEFT, padx=4, pady=4)
 
-        self.fix_all_btn = ttk.Button(btns, text="Fix All", width=18, command=self.on_fix_all_clicked)
-        self.fix_all_btn.pack(side=tk.LEFT, padx=4, pady=4)
-
-        # Quick maintenance / schedulers
-        self.fix_nginx_btn = ttk.Button(
-            btns,
-            text="Fix Nginx / Proxy",
-            width=18,
-            command=self.on_fix_nginx_proxy_clicked,
+        self.flutter_path_var = tk.StringVar(value=(self.config_data.get("flutter_path") or ""))
+        ttk.Label(android_cfg, text="Flutter path:").grid(row=1, column=0, sticky="w", padx=6, pady=4)
+        ttk.Entry(android_cfg, textvariable=self.flutter_path_var, justify="center").grid(
+            row=1, column=1, columnspan=2, sticky="we", padx=(0, 6), pady=4
         )
-        self.fix_nginx_btn.pack(side=tk.LEFT, padx=4, pady=4)
 
-        self.run_migrations_btn = ttk.Button(
-            btns,
-            text="Add DB Columns",
-            width=18,
-            command=self.on_run_db_create_all_clicked,
+        self.android_app_var = tk.StringVar(
+            value=(self.config_data.get("android_app_target") or "Social (finora_social)")
         )
-        self.run_migrations_btn.pack(side=tk.LEFT, padx=4, pady=4)
-
-        self.telegram_inbox_db_btn = ttk.Button(
-            btns,
-            text="Inbox DB (TG+WA)",
-            width=18,
-            command=self.on_ensure_telegram_inbox_table_clicked,
+        ttk.Label(android_cfg, text="App target:").grid(row=2, column=0, sticky="w", padx=6, pady=4)
+        app_combo = ttk.Combobox(
+            android_cfg,
+            textvariable=self.android_app_var,
+            values=[
+                "Social (finora_social)",
+                "Delivery Agent",
+                "POS (finora_pos)",
+                "Custom path",
+            ],
+            state="readonly",
+            justify="center",
         )
-        self.telegram_inbox_db_btn.pack(side=tk.LEFT, padx=4, pady=4)
+        app_combo.grid(row=2, column=1, sticky="we", padx=(0, 6), pady=4)
 
-        # Self Healing Monitor control
+        self.android_apk_var = tk.StringVar(value=(self.config_data.get("android_apk_path") or ""))
+        ttk.Label(android_cfg, text="APK path:").grid(row=3, column=0, sticky="w", padx=6, pady=4)
+        ttk.Entry(android_cfg, textvariable=self.android_apk_var, justify="center").grid(
+            row=3, column=1, sticky="we", padx=(0, 4), pady=4
+        )
+        ttk.Button(android_cfg, text="Browse…", command=self.browse_apk_path).grid(
+            row=3, column=2, sticky="e", padx=(0, 6), pady=4
+        )
+        ttk.Label(
+            android_cfg,
+            text="الافتراضي: finora_social — Install APK يبني تلقائياً إذا لم يوجد APK",
+            font=("Segoe UI", 8),
+        ).grid(row=4, column=0, columnspan=3, sticky="w", padx=6, pady=(0, 2))
+
+        self.social_api_url_var = tk.StringVar(
+            value=(
+                self.config_data.get("social_api_base_url")
+                or os.environ.get("FINORA_SOCIAL_API_BASE_URL")
+                or "https://www.finora.company"
+            )
+        )
+        ttk.Label(android_cfg, text="Social API URL:").grid(
+            row=5, column=0, sticky="w", padx=6, pady=4
+        )
+        ttk.Entry(android_cfg, textvariable=self.social_api_url_var, justify="center").grid(
+            row=5, column=1, columnspan=2, sticky="we", padx=(0, 6), pady=4
+        )
+
+        self.social_tenant_var = tk.StringVar(
+            value=(
+                self.config_data.get("social_tenant_slug")
+                or os.environ.get("FINORA_SOCIAL_TENANT_SLUG")
+                or "super"
+            )
+        )
+        ttk.Label(android_cfg, text="Tenant slug:").grid(
+            row=6, column=0, sticky="w", padx=6, pady=4
+        )
+        ttk.Entry(android_cfg, textvariable=self.social_tenant_var, justify="center").grid(
+            row=6, column=1, columnspan=2, sticky="we", padx=(0, 6), pady=4
+        )
+
+        android_cfg.columnconfigure(1, weight=1)
+
+        # Action buttons — grouped rows
+        actions = ttk.Frame(self)
+        actions.pack(side=tk.TOP, fill=tk.X, padx=12, pady=(0, 4))
+
+        def _btn_row(parent: ttk.Frame, title: str) -> ttk.Frame:
+            frame = ttk.LabelFrame(parent, text=title)
+            frame.pack(side=tk.TOP, fill=tk.X, pady=(0, 4))
+            inner = ttk.Frame(frame)
+            inner.pack(fill=tk.X, padx=4, pady=4)
+            return inner
+
+        deploy_row = _btn_row(actions, "Deploy")
+        self.push_btn = ttk.Button(deploy_row, text="Push to GitHub", command=self.on_push_clicked)
+        self.push_btn.pack(side=tk.LEFT, padx=3, pady=2)
+        self.deploy_btn = ttk.Button(deploy_row, text="Smart Deploy", command=self.on_deploy_clicked)
+        self.deploy_btn.pack(side=tk.LEFT, padx=3, pady=2)
+        self.publish_apk_btn = ttk.Button(
+            deploy_row, text="Publish APK", command=self.on_publish_apk_clicked
+        )
+        self.publish_apk_btn.pack(side=tk.LEFT, padx=3, pady=2)
+        self.restart_btn = ttk.Button(deploy_row, text="Restart Server", command=self.on_restart_clicked)
+        self.restart_btn.pack(side=tk.LEFT, padx=3, pady=2)
+        self.logs_btn = ttk.Button(deploy_row, text="View Server Logs", command=self.on_view_logs_clicked)
+        self.logs_btn.pack(side=tk.LEFT, padx=3, pady=2)
         self.start_monitor_btn = ttk.Button(
-            btns, text="Start Monitor", width=18, command=self.on_start_monitor_clicked
+            deploy_row, text="Start Monitor", command=self.on_start_monitor_clicked
         )
-        self.start_monitor_btn.pack(side=tk.LEFT, padx=4, pady=4)
+        self.start_monitor_btn.pack(side=tk.LEFT, padx=3, pady=2)
+
+        build_row = _btn_row(actions, "Build")
+        self.build_btn = ttk.Button(build_row, text="Build Frontends", command=self.on_build_frontend_clicked)
+        self.build_btn.pack(side=tk.LEFT, padx=3, pady=2)
+        self.build_social_ai_btn = ttk.Button(
+            build_row, text="Build Social AI", command=self.on_build_social_ai_clicked
+        )
+        self.build_social_ai_btn.pack(side=tk.LEFT, padx=3, pady=2)
+        self.build_apk_btn = ttk.Button(build_row, text="Build APK", command=self.on_build_apk_clicked)
+        self.build_apk_btn.pack(side=tk.LEFT, padx=3, pady=2)
+
+        maint_row = _btn_row(actions, "Maintenance")
+        self.fix_all_btn = ttk.Button(maint_row, text="Fix All", command=self.on_fix_all_clicked)
+        self.fix_all_btn.pack(side=tk.LEFT, padx=3, pady=2)
+        self.fix_nginx_btn = ttk.Button(
+            maint_row, text="Fix Nginx / Proxy", command=self.on_fix_nginx_proxy_clicked
+        )
+        self.fix_nginx_btn.pack(side=tk.LEFT, padx=3, pady=2)
+        self.run_migrations_btn = ttk.Button(
+            maint_row, text="Add DB Columns", command=self.on_run_db_create_all_clicked
+        )
+        self.run_migrations_btn.pack(side=tk.LEFT, padx=3, pady=2)
+        self.telegram_inbox_db_btn = ttk.Button(
+            maint_row, text="Inbox DB (TG+WA)", command=self.on_ensure_telegram_inbox_table_clicked
+        )
+        self.telegram_inbox_db_btn.pack(side=tk.LEFT, padx=3, pady=2)
+
+        android_row = _btn_row(actions, "Android USB")
+        self.install_usb_btn = ttk.Button(
+            android_row, text="Install APK", command=self.on_install_usb_clicked
+        )
+        self.install_usb_btn.pack(side=tk.LEFT, padx=3, pady=2)
+        self.launch_app_btn = ttk.Button(
+            android_row, text="Open App on Phone", command=self.on_launch_app_clicked
+        )
+        self.launch_app_btn.pack(side=tk.LEFT, padx=3, pady=2)
 
         # Progress + status + small indicators
         status_frame = ttk.Frame(self)
@@ -414,6 +580,27 @@ class FinoraDeployStudio(tk.Tk):
                 "nginx_service": self.nginx_service_var.get().strip(),
                 "gunicorn_bind": self.gunicorn_bind_var.get().strip(),
                 "gunicorn_workers": int(self.gunicorn_workers_var.get() or "3"),
+                "adb_path": (getattr(self, "adb_path_var", tk.StringVar(value="adb")).get().strip() or "adb"),
+                "flutter_path": (
+                    getattr(self, "flutter_path_var", tk.StringVar(value="")).get().strip()
+                ),
+                "android_apk_path": (getattr(self, "android_apk_var", tk.StringVar(value="")).get().strip()),
+                "android_app_target": (
+                    getattr(self, "android_app_var", tk.StringVar(value="Social (finora_social)")).get().strip()
+                    or "Social (finora_social)"
+                ),
+                "social_api_base_url": (
+                    getattr(
+                        self,
+                        "social_api_url_var",
+                        tk.StringVar(value="https://www.finora.company"),
+                    ).get().strip()
+                    or "https://www.finora.company"
+                ),
+                "social_tenant_slug": (
+                    getattr(self, "social_tenant_var", tk.StringVar(value="super")).get().strip()
+                    or "super"
+                ),
             }
         )
         try:
@@ -428,6 +615,22 @@ class FinoraDeployStudio(tk.Tk):
         path = filedialog.askdirectory(initialdir=self.local_path_var.get() or str(Path.cwd()))
         if path:
             self.local_path_var.set(path)
+
+    def browse_apk_path(self) -> None:
+        local_path = Path(self.local_path_var.get().strip() or ".")
+        initial = str(local_path if local_path.exists() else Path.cwd())
+        chosen = filedialog.askopenfilename(
+            title="Select APK file",
+            initialdir=initial,
+            filetypes=[("Android APK", "*.apk"), ("All files", "*.*")],
+        )
+        if chosen:
+            # Store relative path when possible (more portable)
+            try:
+                rel = str(Path(chosen).resolve().relative_to(local_path.resolve()))
+                self.android_apk_var.set(rel)
+            except Exception:
+                self.android_apk_var.set(chosen)
 
     def append_log(self, text: str) -> None:
         self.log_text.configure(state="normal")
@@ -549,10 +752,18 @@ class FinoraDeployStudio(tk.Tk):
         widgets = [
             self.push_btn,
             self.deploy_btn,
+            self.publish_apk_btn,
             self.restart_btn,
             self.logs_btn,
             self.build_btn,
+            self.build_social_ai_btn,
+            self.build_apk_btn,
             self.fix_all_btn,
+            self.fix_nginx_btn,
+            self.run_migrations_btn,
+            self.telegram_inbox_db_btn,
+            self.install_usb_btn,
+            self.launch_app_btn,
             self.start_monitor_btn,
         ]
         if busy:
@@ -778,6 +989,8 @@ class FinoraDeployStudio(tk.Tk):
             return False
         if path.name in SAFE_PUSH_EXCLUDED_FILES:
             return False
+        if path.name.lower().endswith(SAFE_PUSH_EXCLUDED_NAME_ENDINGS):
+            return False
         if path.suffix.lower() in SAFE_PUSH_EXCLUDED_SUFFIXES:
             return False
         parts = set(path.parts)
@@ -910,24 +1123,115 @@ class FinoraDeployStudio(tk.Tk):
         password = self.server_password_var.get()
 
         if not password:
-            full_cmd = ["scp", "-q", str(local_file), f"{server}:{remote_file}"]
-            self.append_log(f"$ scp {local_file.name} {server}:{remote_file}\n")
+            total_bytes = local_file.stat().st_size
+            batch_path: Path | None = None
+            ssh_cmd = _resolve_command("ssh")
+            sftp_cmd = _resolve_command("sftp")
+            self.append_log(
+                f"[INFO] Upload size: {_format_file_size(total_bytes)}. "
+                "Using resumable SFTP with SSH-key authentication.\n"
+            )
             try:
-                proc = subprocess.Popen(
-                    full_cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    bufsize=0,
+                batch = tempfile.NamedTemporaryFile(
+                    mode="w",
+                    prefix="finora-sftp-",
+                    suffix=".txt",
+                    delete=False,
+                    encoding="utf-8",
+                    newline="\n",
                 )
-                assert proc.stdout is not None
-                _stream_pipe_lines(proc.stdout, self.append_log)
-                proc.wait()
-                if proc.returncode != 0:
-                    self.append_log(f"[ERROR] scp failed with code {proc.returncode}\n")
-                return proc.returncode
+                batch_path = Path(batch.name)
+                local_sftp_path = str(local_file).replace("\\", "/").replace('"', '\\"')
+                remote_sftp_path = remote_file.replace('"', '\\"')
+                with batch:
+                    batch.write(f'put "{local_sftp_path}" "{remote_sftp_path}"\n')
+
+                started = time.monotonic()
+                max_attempts = 8
+                for attempt in range(1, max_attempts + 1):
+                    resume_args: list[str] = []
+                    upload_mode = "starting"
+                    if attempt > 1:
+                        try:
+                            remote_check = subprocess.run(
+                                [
+                                    ssh_cmd,
+                                    *SSH_CONNECT_OPTIONS,
+                                    server,
+                                    f"test -f {shlex.quote(remote_file)}",
+                                ],
+                                stdin=subprocess.DEVNULL,
+                                stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL,
+                                timeout=25,
+                                check=False,
+                            )
+                        except (OSError, subprocess.SubprocessError):
+                            remote_check = None
+                        if remote_check is not None and remote_check.returncode == 0:
+                            resume_args = ["-a"]
+                            upload_mode = "resuming"
+
+                    full_cmd = [
+                        sftp_cmd,
+                        *resume_args,
+                        "-q",
+                        "-b",
+                        str(batch_path),
+                        *SSH_CONNECT_OPTIONS,
+                        server,
+                    ]
+                    self.append_log(
+                        f"$ sftp {upload_mode} upload (attempt {attempt}/{max_attempts})\n"
+                    )
+                    proc = subprocess.Popen(
+                        full_cmd,
+                        stdin=subprocess.DEVNULL,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.STDOUT,
+                        bufsize=0,
+                    )
+                    assert proc.stdout is not None
+                    attempt_started = time.monotonic()
+                    last_notice = attempt_started
+                    while proc.poll() is None:
+                        now = time.monotonic()
+                        if now - last_notice >= 15:
+                            elapsed = int(now - started)
+                            self.append_log(
+                                f"[INFO] Resumable upload active: {_format_file_size(total_bytes)} "
+                                f"archive, {elapsed}s total elapsed.\n"
+                            )
+                            last_notice = now
+                        time.sleep(1)
+                    _stream_pipe_lines(proc.stdout, self.append_log)
+                    if proc.returncode == 0:
+                        elapsed = max(1, int(time.monotonic() - started))
+                        self.append_log(
+                            f"[INFO] Upload completed: {_format_file_size(total_bytes)} in {elapsed}s.\n"
+                        )
+                        return 0
+
+                    if attempt < max_attempts:
+                        self.append_log(
+                            f"[WARN] SFTP connection ended with code {proc.returncode}; "
+                            "retrying in 3s and resuming the remote partial file.\n"
+                        )
+                        time.sleep(3)
+                        continue
+
+                    self.append_log(
+                        f"[ERROR] Resumable SFTP failed after {max_attempts} attempts "
+                        f"(last code {proc.returncode}). Verify the network connection.\n"
+                    )
+                    return proc.returncode or 1
             except FileNotFoundError:
-                self.append_log("[ERROR] scp command not found. Make sure OpenSSH is installed and in PATH.\n")
-                return 1
+                self.append_log(
+                    "[WARN] sftp command not found. Falling back to Paramiko SFTP.\n"
+                )
+            finally:
+                if batch_path:
+                    batch_path.unlink(missing_ok=True)
 
         try:
             import paramiko  # type: ignore[import]
@@ -947,13 +1251,27 @@ class FinoraDeployStudio(tk.Tk):
             client.connect(
                 hostname=host,
                 username=username,
-                password=password,
-                look_for_keys=False,
-                allow_agent=False,
+                password=password or None,
+                look_for_keys=not bool(password),
+                allow_agent=not bool(password),
             )
             sftp = client.open_sftp()
             try:
-                sftp.put(str(local_file), remote_file)
+                total_bytes = local_file.stat().st_size
+                last_percent = -10
+
+                def report_progress(transferred: int, total: int) -> None:
+                    nonlocal last_percent
+                    percent = int((transferred * 100) / max(1, total))
+                    if percent >= last_percent + 10 or percent == 100:
+                        last_percent = percent
+                        self.append_log(
+                            f"[INFO] Upload progress: {percent}% "
+                            f"({_format_file_size(transferred)} / {_format_file_size(total)})\n"
+                        )
+
+                self.append_log(f"[INFO] Upload size: {_format_file_size(total_bytes)}.\n")
+                sftp.put(str(local_file), remote_file, callback=report_progress)
             finally:
                 sftp.close()
             return 0
@@ -975,11 +1293,13 @@ class FinoraDeployStudio(tk.Tk):
 
         # إذا ماكو باسورد: نستخدم ssh العادي (يتطلب مفاتيح أو جلسة بدون تفاعل)
         if not password:
-            full_cmd = ["ssh", "-o", "BatchMode=yes", server, script]
+            ssh_cmd = _resolve_command("ssh")
+            full_cmd = [ssh_cmd, *SSH_CONNECT_OPTIONS, server, script]
             self.append_log(f"$ ssh {server} '{script}'\n")
             try:
                 proc = subprocess.Popen(
                     full_cmd,
+                    stdin=subprocess.DEVNULL,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
                     bufsize=0,
@@ -995,8 +1315,7 @@ class FinoraDeployStudio(tk.Tk):
                 self.append_log(f"[ERROR] SSH output decode failed: {exc}\n")
                 return 1
             except FileNotFoundError:
-                self.append_log("[ERROR] ssh command not found. Make sure OpenSSH is installed and in PATH.\n")
-                return 1
+                self.append_log("[WARN] ssh command not found. Falling back to Paramiko SSH.\n")
 
         # في حالة وجود باسورد: نستخدم paramiko (يتطلب pip install paramiko)
         try:
@@ -1020,9 +1339,9 @@ class FinoraDeployStudio(tk.Tk):
             client.connect(
                 hostname=host,
                 username=user,
-                password=password,
-                look_for_keys=False,
-                allow_agent=False,
+                password=password or None,
+                look_for_keys=not bool(password),
+                allow_agent=not bool(password),
             )
             stdin, stdout, stderr = client.exec_command(script)
             while True:
@@ -1109,6 +1428,808 @@ class FinoraDeployStudio(tk.Tk):
         finally:
             self.set_busy(False)
 
+    # ---------- Android USB install ----------
+
+    def on_install_usb_clicked(self) -> None:
+        self.save_config()
+        thread = threading.Thread(target=self._install_usb_thread, daemon=True)
+        self.set_busy(True)
+        thread.start()
+
+    def _get_adb_path(self) -> str:
+        # Prefer current UI value if present (user may edit without saving yet)
+        if hasattr(self, "adb_path_var"):
+            return (self.adb_path_var.get() or "adb").strip() or "adb"
+        return (self.config_data.get("adb_path") or "adb").strip() or "adb"
+
+    def _choose_usb_device(self, serials: list[str]) -> str | None:
+        if not serials:
+            return None
+        if len(serials) == 1:
+            return serials[0]
+
+        selected: dict[str, str | None] = {"value": None}
+        win = tk.Toplevel(self)
+        win.title("Select USB device")
+        win.geometry("420x260")
+        win.configure(bg="#0f172a")
+        win.transient(self)
+        win.grab_set()
+
+        ttk.Label(win, text="Multiple devices detected. Choose one:").pack(
+            side=tk.TOP, anchor="w", padx=12, pady=(12, 6)
+        )
+        lb = tk.Listbox(win, bg="#020617", fg="#e5e7eb", selectmode=tk.SINGLE, height=8)
+        lb.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=12, pady=(0, 8))
+        for s in serials:
+            lb.insert(tk.END, s)
+        lb.selection_set(0)
+
+        btn_row = ttk.Frame(win)
+        btn_row.pack(side=tk.BOTTOM, fill=tk.X, padx=12, pady=12)
+
+        def _ok() -> None:
+            idx = lb.curselection()
+            if not idx:
+                return
+            selected["value"] = lb.get(idx[0])
+            win.destroy()
+
+        def _cancel() -> None:
+            selected["value"] = None
+            win.destroy()
+
+        ttk.Button(btn_row, text="Cancel", command=_cancel, width=10).pack(side=tk.RIGHT, padx=(6, 0))
+        ttk.Button(btn_row, text="OK", command=_ok, width=10).pack(side=tk.RIGHT)
+        win.bind("<Return>", lambda _e: _ok())
+        win.bind("<Escape>", lambda _e: _cancel())
+
+        self.wait_window(win)
+        return selected["value"]
+
+    def _android_project_roots(self, local_path: Path) -> dict[str, Path]:
+        return {
+            "Social (finora_social)": local_path / "mobile" / "finora_social",
+            "POS (finora_pos)": local_path / "mobile" / "finora_pos_android",
+            "Delivery Agent": local_path / "mobile" / "finora_delivery_agent_android",
+        }
+
+    def _normalize_android_app_target(self, target: str) -> str:
+        legacy = {
+            "Auto (latest)": "Social (finora_social)",
+            "Social": "Social (finora_social)",
+        }
+        return legacy.get(target.strip(), target.strip())
+
+    def _effective_android_app(self, local_path: Path) -> str:
+        raw = ""
+        if hasattr(self, "android_app_var"):
+            raw = (self.android_app_var.get() or "").strip()
+        if not raw:
+            raw = (self.config_data.get("android_app_target") or "Social (finora_social)").strip()
+        target = self._normalize_android_app_target(raw)
+        if target == "Custom path":
+            return target
+        roots = self._android_project_roots(local_path)
+        if target in roots:
+            return target
+        return "Social (finora_social)"
+
+    def _is_flutter_app(self, app_target: str) -> bool:
+        return app_target == "Social (finora_social)"
+
+    def _list_apk_candidates(self, root: Path) -> list[Path]:
+        skip_parts = {"intermediates", ".gradle", ".pub-cache"}
+        candidates: list[Path] = []
+        if not root.exists():
+            return candidates
+        for apk in root.rglob("*.apk"):
+            parts = {s.lower() for s in apk.parts}
+            if parts & skip_parts:
+                continue
+            if apk.is_file():
+                candidates.append(apk)
+        candidates.sort(key=lambda p: p.stat().st_mtime, reverse=True)
+        return candidates
+
+    def _preferred_apk_browse_dir(self, local_path: Path, app_target: str) -> Path:
+        project_roots = self._android_project_roots(local_path)
+        root = project_roots.get(app_target)
+        if not root:
+            return local_path
+        if self._is_flutter_app(app_target):
+            flutter_out = root / "build" / "app" / "outputs" / "flutter-apk"
+            if flutter_out.exists():
+                return flutter_out
+        android_out = root / "app" / "build" / "outputs" / "apk" / "debug"
+        if android_out.exists():
+            return android_out
+        return root
+
+    def _set_apk_var_from_path(self, apk: Path, local_path: Path) -> None:
+        try:
+            rel = str(apk.resolve().relative_to(local_path.resolve()))
+            self.android_apk_var.set(rel)
+        except Exception:
+            self.android_apk_var.set(str(apk))
+
+    def _find_latest_apk(self, local_path: Path) -> Path | None:
+        configured = (self.android_apk_var.get() if hasattr(self, "android_apk_var") else "").strip()
+        if not configured:
+            configured = (self.config_data.get("android_apk_path") or "").strip()
+        if configured:
+            p = Path(configured)
+            if not p.is_absolute():
+                p = (local_path / p).resolve()
+            if p.is_file() and p.suffix.lower() == ".apk":
+                return p
+
+        app_target = self._effective_android_app(local_path)
+        if app_target == "Custom path":
+            return None
+
+        project_roots = self._android_project_roots(local_path)
+        root = project_roots.get(app_target)
+        if not root:
+            return None
+
+        if app_target == "Social (finora_social)":
+            artifact_apk = local_path / "artifacts" / "finora-social-debug.apk"
+            if artifact_apk.is_file():
+                return artifact_apk
+
+        candidates = self._list_apk_candidates(root)
+        return candidates[0] if candidates else None
+
+    def _package_for_apk(self, apk: Path) -> str | None:
+        path_lower = str(apk).lower().replace("\\", "/")
+        if "finora_pos" in path_lower:
+            return "iq.finora.pos"
+        if "delivery_agent" in path_lower or "deliveryagent" in path_lower:
+            return "iq.finora.deliveryagent"
+        if "finora_social" in path_lower:
+            return "iq.finora.finora_social"
+        return None
+
+    def _launch_app_on_device(self, adb_path: str, serial: str, package: str, cwd: Path) -> int:
+        cmd = [
+            adb_path,
+            "-s",
+            serial,
+            "shell",
+            "monkey",
+            "-p",
+            package,
+            "-c",
+            "android.intent.category.LAUNCHER",
+            "1",
+        ]
+        self.append_log(f"$ {' '.join(cmd)}\n")
+        proc = subprocess.run(
+            cmd,
+            cwd=str(cwd),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=False,
+        )
+        out = _decode_output_chunk(proc.stdout)
+        if out:
+            self.append_log(out if out.endswith("\n") else out + "\n")
+        return proc.returncode
+
+    def _resolve_usb_device(self, adb_path: str, cwd: Path) -> str | None:
+        devices = self._adb_list_devices(adb_path=adb_path, cwd=cwd)
+        if not devices:
+            self.append_log(
+                "[ERROR] No USB device found. Enable USB debugging and accept RSA prompt, then retry.\n"
+            )
+            return None
+        return self._choose_usb_device(devices)
+
+    def _adb_list_devices(self, adb_path: str, cwd: Path) -> list[str]:
+        try:
+            proc = subprocess.run(
+                [adb_path, "devices"],
+                cwd=str(cwd),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                check=False,
+            )
+        except FileNotFoundError:
+            self.append_log(f"[ERROR] adb not found: {adb_path}. Install Android platform-tools or add adb to PATH.\n")
+            return []
+
+        out = _decode_output_chunk(proc.stdout)
+        if out:
+            self.append_log(out if out.endswith("\n") else out + "\n")
+
+        serials: list[str] = []
+        for line in (out or "").splitlines():
+            line = line.strip()
+            if not line or line.lower().startswith("list of devices"):
+                continue
+            # serial \t state
+            parts = line.split()
+            if len(parts) >= 2 and parts[1].strip().lower() == "device":
+                serials.append(parts[0].strip())
+        return serials
+
+    def on_launch_app_clicked(self) -> None:
+        self.save_config()
+        thread = threading.Thread(target=self._launch_app_thread, daemon=True)
+        self.set_busy(True)
+        thread.start()
+
+    def _launch_app_thread(self) -> None:
+        start = time.perf_counter()
+        try:
+            local_path = Path(self.local_path_var.get().strip() or ".")
+            if not local_path.exists():
+                self.append_log(f"[ERROR] Local path does not exist: {local_path}\n")
+                return
+
+            adb_path = self._get_adb_path()
+            self.set_status("Launching app on device…")
+            serial = self._resolve_usb_device(adb_path, local_path)
+            if not serial:
+                self.set_status("Launch failed (no devices).")
+                return
+
+            app_target = self._effective_android_app(local_path)
+            self.append_log(f"[INFO] App target: {app_target}\n")
+
+            apk = self._find_latest_apk(local_path)
+            package = self._package_for_apk(apk) if apk else None
+            if not package:
+                self.append_log("[ERROR] Could not detect package name. Choose a known APK or install first.\n")
+                self.set_status("Launch failed (unknown package).")
+                return
+
+            self.append_log(f"[INFO] Opening {package} on {serial}…\n")
+            rc = self._launch_app_on_device(adb_path, serial, package, local_path)
+            if rc != 0:
+                self.append_log(f"[ERROR] Launch failed with code {rc}\n")
+                self.set_status("Launch failed (see log).")
+                return
+
+            self.append_log("[INFO] App launched on device.\n")
+            self.set_status("App opened on phone.")
+        finally:
+            duration = time.perf_counter() - start
+            self.last_duration_var.set(f"Duration: {duration:.2f}s")
+            self.set_busy(False)
+
+    def _resolve_flutter_cmd(self) -> str | None:
+        configured = ""
+        if hasattr(self, "flutter_path_var"):
+            configured = (self.flutter_path_var.get() or "").strip()
+        if not configured:
+            configured = (self.config_data.get("flutter_path") or "").strip()
+        if configured and Path(configured).is_file():
+            return configured
+
+        for candidate in (
+            shutil.which("flutter"),
+            shutil.which("flutter.bat"),
+            r"C:\flutter\bin\flutter.bat",
+            os.path.expandvars(r"%LOCALAPPDATA%\flutter\bin\flutter.bat"),
+        ):
+            if candidate and Path(candidate).is_file():
+                return candidate
+        return None
+
+    def _is_ascii_path(self, path: Path) -> bool:
+        return all(ord(ch) < 128 for ch in str(path))
+
+    def _resolve_social_build_settings(self, local_path: Path) -> tuple[str, str]:
+        """Resolve Social API URL + tenant from UI, env, .env, then defaults."""
+        env_file_vals: dict[str, str] = {}
+        env_path = local_path / ".env"
+        if env_path.is_file():
+            try:
+                for raw in env_path.read_text(encoding="utf-8").splitlines():
+                    line = raw.strip()
+                    if not line or line.startswith("#") or "=" not in line:
+                        continue
+                    key, value = line.split("=", 1)
+                    env_file_vals[key.strip()] = value.strip().strip("'\"")
+            except OSError:
+                pass
+
+        api = (
+            getattr(self, "social_api_url_var", tk.StringVar(value="")).get().strip()
+            or (self.config_data.get("social_api_base_url") or "").strip()
+            or (os.environ.get("FINORA_SOCIAL_API_BASE_URL") or "").strip()
+            or (env_file_vals.get("FINORA_SOCIAL_API_BASE_URL") or "").strip()
+            or "https://www.finora.company"
+        )
+        tenant = (
+            getattr(self, "social_tenant_var", tk.StringVar(value="")).get().strip()
+            or (self.config_data.get("social_tenant_slug") or "").strip()
+            or (os.environ.get("FINORA_SOCIAL_TENANT_SLUG") or "").strip()
+            or (env_file_vals.get("FINORA_SOCIAL_TENANT_SLUG") or "").strip()
+            or "super"
+        )
+        # Normalize common mistakes like missing scheme.
+        if api and "://" not in api:
+            api = "https://" + api
+        return api.rstrip("/"), tenant
+
+    def _prepare_flutter_build_cwd(self, project_dir: Path) -> Path:
+        if self._is_ascii_path(project_dir):
+            return project_dir
+
+        build_root = Path(tempfile.gettempdir()) / "finora_social_build"
+        self.append_log(f"[INFO] Non-ASCII path detected — copying project to: {build_root}\n")
+        if build_root.exists():
+            shutil.rmtree(build_root, ignore_errors=True)
+        build_root.mkdir(parents=True, exist_ok=True)
+        proc = subprocess.run(
+            [
+                "robocopy",
+                str(project_dir),
+                str(build_root),
+                "/E",
+                "/XD",
+                "build",
+                ".dart_tool",
+                ".gradle",
+                "android\\.gradle",
+                "android\\app\\build",
+                "/NFL",
+                "/NDL",
+                "/NJH",
+                "/NJS",
+                "/nc",
+                "/ns",
+                "/np",
+            ],
+            check=False,
+        )
+        if proc.returncode >= 8:
+            raise RuntimeError(f"robocopy failed (code {proc.returncode})")
+        return build_root
+
+    def _run_logged_command(self, cmd: list[str], cwd: Path) -> int:
+        self.append_log(f"$ {' '.join(cmd)}\n")
+        try:
+            proc = subprocess.Popen(
+                cmd,
+                cwd=str(cwd),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                bufsize=0,
+                shell=False,
+            )
+        except FileNotFoundError:
+            self.append_log(f"[ERROR] Command not found: {cmd[0]}\n")
+            return 127
+
+        assert proc.stdout is not None
+        _stream_pipe_lines(proc.stdout, self.append_log)
+        proc.wait()
+        return proc.returncode
+
+    def _copy_built_apk_to_artifacts(self, apk: Path, local_path: Path, app_target: str) -> Path:
+        artifacts_dir = local_path / "artifacts"
+        artifacts_dir.mkdir(parents=True, exist_ok=True)
+        if app_target == "Social (finora_social)":
+            dest = artifacts_dir / "finora-social-release.apk"
+        elif app_target == "Delivery Agent":
+            dest = artifacts_dir / "finora-delivery-agent-debug.apk"
+        else:
+            dest = artifacts_dir / f"{apk.stem}.apk"
+        shutil.copy2(apk, dest)
+        return dest
+
+    def _build_apk_internal(self, local_path: Path, app_target: str) -> Path | None:
+        project_roots = self._android_project_roots(local_path)
+        project_dir = project_roots.get(app_target)
+        if not project_dir or not project_dir.exists():
+            self.append_log(f"[ERROR] Android project not found for: {app_target}\n")
+            return None
+
+        if self._is_flutter_app(app_target):
+            flutter_cmd = self._resolve_flutter_cmd()
+            if not flutter_cmd:
+                self.append_log(
+                    "[ERROR] Flutter not found. Install Flutter SDK or set Flutter path to flutter.bat\n"
+                    "Example: C:\\flutter\\bin\\flutter.bat\n"
+                )
+                return None
+
+            pubspec = project_dir / "pubspec.yaml"
+            if not pubspec.is_file():
+                self.append_log(f"[ERROR] Flutter project not found: {project_dir}\n")
+                return None
+
+            try:
+                build_cwd = self._prepare_flutter_build_cwd(project_dir)
+            except Exception as exc:
+                self.append_log(f"[ERROR] Failed to prepare Flutter build folder: {exc}\n")
+                return None
+
+            free_bytes = shutil.disk_usage(build_cwd).free
+            if free_bytes < 5 * 1024 * 1024 * 1024:
+                self.append_log(
+                    "[ERROR] Flutter release build requires at least 5 GB free disk space. "
+                    f"Available: {free_bytes / (1024 ** 3):.2f} GB.\n"
+                )
+                return None
+
+            self.append_log(f"[INFO] Building Flutter APK for {app_target} in {build_cwd}\n")
+            build_command = [flutter_cmd, "build", "apk", "--debug"]
+            if app_target == "Social (finora_social)":
+                api_base_url, tenant_slug = self._resolve_social_build_settings(local_path)
+                key_properties = project_dir / "android" / "key.properties"
+                if not api_base_url.lower().startswith("https://"):
+                    self.append_log(
+                        "[ERROR] Social API URL must be HTTPS "
+                        f"(got: {api_base_url or '(empty)'}).\n"
+                        "[INFO] Set it in Android panel → Social API URL, "
+                        "or FINORA_SOCIAL_API_BASE_URL, then restart Deploy Studio.\n"
+                    )
+                    return None
+                if not tenant_slug:
+                    self.append_log("[ERROR] Social tenant slug is required.\n")
+                    return None
+                self.append_log(
+                    f"[INFO] Social build API={api_base_url} tenant={tenant_slug}\n"
+                )
+                if key_properties.is_file():
+                    build_command = [
+                        flutter_cmd,
+                        "build",
+                        "apk",
+                        "--release",
+                        # Include 32-bit + 64-bit for Galaxy A13 (armeabi-v7a) and modern phones.
+                        "--target-platform=android-arm,android-arm64",
+                        f"--dart-define=API_BASE_URL={api_base_url}",
+                        f"--dart-define=TENANT_SLUG={tenant_slug}",
+                    ]
+                else:
+                    self.append_log(
+                        "[WARN] key.properties missing — building Social DEBUG APK "
+                        "(in-app updates still work for devices on this build lineage).\n"
+                    )
+                    build_command = [
+                        flutter_cmd,
+                        "build",
+                        "apk",
+                        "--debug",
+                        "--target-platform=android-arm,android-arm64",
+                        f"--dart-define=API_BASE_URL={api_base_url}",
+                        f"--dart-define=TENANT_SLUG={tenant_slug}",
+                    ]
+
+            for step_cmd in ([flutter_cmd, "pub", "get"], build_command):
+                rc = self._run_logged_command(step_cmd, build_cwd)
+                if rc != 0:
+                    self.append_log(f"[ERROR] Flutter command failed with code {rc}\n")
+                    return None
+
+            apks = self._list_apk_candidates(build_cwd)
+            if not apks:
+                self.append_log("[ERROR] Flutter build finished but APK output was not found.\n")
+                return None
+
+            apk = self._copy_built_apk_to_artifacts(apks[0], local_path, app_target)
+            self.after(0, lambda p=apk, lp=local_path: self._set_apk_var_from_path(p, lp))
+            return apk
+
+        if app_target == "Delivery Agent" and (project_dir / "build_apk.ps1").is_file():
+            cmd = [
+                "powershell",
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                str(project_dir / "build_apk.ps1"),
+                "-Variant",
+                "debug",
+            ]
+            build_cwd = project_dir
+        else:
+            gradlew = project_dir / "gradlew.bat"
+            if not gradlew.is_file():
+                self.append_log(f"[ERROR] gradlew.bat not found in {project_dir}\n")
+                return None
+            cmd = [str(gradlew), "--no-daemon", "assembleDebug"]
+            build_cwd = project_dir
+
+        self.append_log(f"[INFO] Building APK for {app_target} in {build_cwd}\n")
+        rc = self._run_logged_command(cmd, build_cwd)
+        if rc != 0:
+            self.append_log(f"[ERROR] APK build failed with code {rc}\n")
+            return None
+
+        apks = self._list_apk_candidates(project_dir)
+        if not apks:
+            self.append_log("[ERROR] Build finished but APK output was not found.\n")
+            return None
+
+        apk = apks[0]
+        self.after(0, lambda p=apk, lp=local_path: self._set_apk_var_from_path(p, lp))
+        return apk
+
+    def on_build_apk_clicked(self) -> None:
+        self.save_config()
+        thread = threading.Thread(target=self._build_apk_thread, daemon=True)
+        self.set_busy(True)
+        thread.start()
+
+    def on_publish_apk_clicked(self) -> None:
+        """Publish only the selected APK without packaging the source tree."""
+        self.save_config()
+        thread = threading.Thread(target=self._publish_apk_thread, daemon=True)
+        self.set_busy(True)
+        thread.start()
+
+    @staticmethod
+    def _published_apk_name(app_target: str) -> str:
+        if app_target == "Social (finora_social)":
+            return "finora-social.apk"
+        if app_target == "Delivery Agent":
+            return "finora-delivery-agent.apk"
+        if app_target == "POS (finora_pos)":
+            return "finora-pos.apk"
+        return "finora-app.apk"
+
+    @staticmethod
+    def _parse_flutter_pubspec_version(pubspec: Path) -> tuple[str, int]:
+        """Return (versionName, versionCode) from a Flutter pubspec.yaml."""
+        try:
+            text = pubspec.read_text(encoding="utf-8")
+        except OSError:
+            return "0.0.0", 0
+        for line in text.splitlines():
+            stripped = line.strip()
+            if not stripped.startswith("version:"):
+                continue
+            raw = stripped.split(":", 1)[1].strip().strip("'\"")
+            if "+" in raw:
+                name, build = raw.split("+", 1)
+                try:
+                    return name.strip() or "0.0.0", int(build.strip() or "0")
+                except ValueError:
+                    return name.strip() or "0.0.0", 0
+            return raw or "0.0.0", 0
+        return "0.0.0", 0
+
+    def _social_version_payload(self, local_path: Path, apk_name: str) -> dict:
+        pubspec = local_path / "mobile" / "finora_social" / "pubspec.yaml"
+        version_name, version_code = self._parse_flutter_pubspec_version(pubspec)
+        return {
+            "latest_version": version_name,
+            "latest_build": version_code,
+            "min_version": os.environ.get("APP_SOCIAL_APK_MIN_VERSION", "1.0.0").strip()
+            or "1.0.0",
+            "min_build": int(
+                (os.environ.get("APP_SOCIAL_APK_MIN_BUILD") or "1").strip() or "1"
+            ),
+            "apk_url": f"/static/downloads/{apk_name}",
+            "force": (os.environ.get("APP_SOCIAL_APK_FORCE") or "").strip().lower()
+            in {"1", "true", "yes", "on"},
+            "message": (
+                os.environ.get("APP_SOCIAL_APK_UPDATE_MESSAGE")
+                or "يتوفر تحديث جديد لتطبيق Finora. حدّث الآن لتحسين الأداء والحماية."
+            ).strip(),
+        }
+
+    def _publish_apk_thread(self) -> None:
+        start = time.perf_counter()
+        try:
+            local_path = Path(self.local_path_var.get().strip() or ".")
+            if not local_path.exists():
+                self.append_log(f"[ERROR] Local path does not exist: {local_path}\n")
+                self.set_status("APK publish failed (local path missing).")
+                return
+
+            server_path = self.server_path_var.get().strip()
+            if not server_path:
+                self.append_log("[ERROR] Server project path is empty.\n")
+                self.set_status("APK publish failed (server path missing).")
+                return
+
+            app_target = self._effective_android_app(local_path)
+            apk = self._find_latest_apk(local_path)
+            if apk is None:
+                self.append_log(
+                    "[ERROR] No APK found. Build it first or choose it in APK path.\n"
+                )
+                self.set_status("APK publish failed (APK missing).")
+                return
+
+            remote_name = self._published_apk_name(app_target)
+            remote_tmp = f"/tmp/{remote_name}.uploading"
+            remote_dir = posixpath.join(server_path, "static", "downloads")
+            remote_file = posixpath.join(remote_dir, remote_name)
+            size = apk.stat().st_size
+            self.append_log(
+                f"[INFO] Publishing APK only: {apk.name} ({_format_file_size(size)}).\n"
+            )
+            self.append_log("[INFO] Source files and build folders are not included.\n")
+            self.set_status("Publishing APK only…")
+
+            if self.upload_file_to_server(apk, remote_tmp) != 0:
+                self.set_status("APK publish failed while uploading.")
+                return
+
+            version_tmp = ""
+            version_file = ""
+            version_install = ""
+            if app_target == "Social (finora_social)":
+                version_payload = self._social_version_payload(local_path, remote_name)
+                version_local = local_path / "artifacts" / "finora-social-version.json"
+                version_local.parent.mkdir(parents=True, exist_ok=True)
+                version_local.write_text(
+                    json.dumps(version_payload, ensure_ascii=False, indent=2) + "\n",
+                    encoding="utf-8",
+                )
+                version_tmp = "/tmp/finora-social-version.json.uploading"
+                version_file = posixpath.join(remote_dir, "finora-social-version.json")
+                if self.upload_file_to_server(version_local, version_tmp) != 0:
+                    self.set_status("APK publish failed while uploading version metadata.")
+                    return
+                version_install = f"""
+install -m 0644 {shlex.quote(version_tmp)} {shlex.quote(version_file)}
+rm -f {shlex.quote(version_tmp)}
+echo "[OK] Version metadata published: {version_file}"
+"""
+                self.append_log(
+                    "[INFO] Social version metadata: "
+                    f"{version_payload['latest_version']}+{version_payload['latest_build']}\n"
+                )
+
+            install_script = f"""
+set -e
+install -d -m 0755 {shlex.quote(remote_dir)}
+install -m 0644 {shlex.quote(remote_tmp)} {shlex.quote(remote_file)}
+rm -f {shlex.quote(remote_tmp)}
+echo "[OK] APK published: {remote_file}"
+{version_install}
+"""
+            if self.run_ssh_script(install_script) != 0:
+                self.append_log("[ERROR] APK uploaded but could not be installed on server.\n")
+                self.set_status("APK publish failed while installing.")
+                return
+
+            self.append_log(f"[INFO] APK publish completed: {remote_file}\n")
+            self.set_status("APK published successfully.")
+        except Exception as exc:
+            self.append_log(f"[ERROR] APK publish crashed: {exc}\n")
+            self.set_status("APK publish failed (see log).")
+        finally:
+            duration = time.perf_counter() - start
+            self.last_duration_var.set(f"Duration: {duration:.2f}s")
+            self.set_busy(False)
+
+    def _build_apk_thread(self) -> None:
+        start = time.perf_counter()
+        try:
+            local_path = Path(self.local_path_var.get().strip() or ".")
+            if not local_path.exists():
+                self.append_log(f"[ERROR] Local path does not exist: {local_path}\n")
+                return
+
+            app_target = self._effective_android_app(local_path)
+            self.set_status(f"Building APK ({app_target})…")
+            apk = self._build_apk_internal(local_path, app_target)
+            if apk:
+                self.append_log(f"[INFO] APK ready: {apk}\n")
+                self.set_status("APK build completed.")
+            else:
+                self.set_status("Build APK failed (see log).")
+        except Exception as exc:
+            self.append_log(f"[ERROR] Build APK crashed: {exc}\n")
+            self.set_status("Build APK failed (see log).")
+        finally:
+            duration = time.perf_counter() - start
+            self.last_duration_var.set(f"Duration: {duration:.2f}s")
+            self.set_busy(False)
+
+    def _install_usb_thread(self) -> None:
+        start = time.perf_counter()
+        try:
+            local_path = Path(self.local_path_var.get().strip() or ".")
+            if not local_path.exists():
+                self.append_log(f"[ERROR] Local path does not exist: {local_path}\n")
+                return
+
+            adb_path = self._get_adb_path()
+            self.set_status("USB install: detecting devices…")
+            self.append_log("[INFO] Detecting Android devices via adb…\n")
+
+            serial = self._resolve_usb_device(adb_path, local_path)
+            if not serial:
+                self.set_status("USB install failed (no devices).")
+                return
+
+            app_target = self._effective_android_app(local_path)
+            self.append_log(f"[INFO] App target: {app_target}\n")
+
+            apk = self._find_latest_apk(local_path)
+            if apk is None:
+                self.append_log(
+                    f"[WARN] No APK found for {app_target}. Building automatically before install…\n"
+                )
+                self.set_status("Building APK before install…")
+                apk = self._build_apk_internal(local_path, app_target)
+                if apk is None:
+                    self.append_log("[ERROR] Auto-build failed. Set Flutter path or build manually.\n")
+                    initial_dir = self._preferred_apk_browse_dir(local_path, app_target)
+                    chosen = filedialog.askopenfilename(
+                        title="Select APK to install",
+                        initialdir=str(initial_dir),
+                        filetypes=[("Android APK", "*.apk"), ("All files", "*.*")],
+                    )
+                    if not chosen:
+                        self.append_log("[INFO] APK selection cancelled.\n")
+                        self.set_status("USB install cancelled.")
+                        return
+                    apk = Path(chosen)
+
+            self.after(0, lambda p=apk, lp=local_path: self._set_apk_var_from_path(p, lp))
+            self.append_log(f"[INFO] Using device: {serial}\n")
+            self.append_log(f"[INFO] Installing APK: {apk}\n")
+            self.set_status("USB install: installing APK…")
+
+            cmd = [adb_path, "-s", serial, "install", "-r", str(apk)]
+            self.append_log(f"$ {' '.join(cmd)}\n")
+            try:
+                proc = subprocess.Popen(
+                    cmd,
+                    cwd=str(local_path),
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    bufsize=0,
+                    shell=False,
+                )
+            except FileNotFoundError:
+                self.append_log(f"[ERROR] adb not found: {adb_path}\n")
+                self.set_status("USB install failed (adb missing).")
+                return
+
+            assert proc.stdout is not None
+            _stream_pipe_lines(proc.stdout, self.append_log)
+            proc.wait()
+            rc = proc.returncode
+            self.last_command_var.set(f"Last: adb install -r {apk.name}")
+            self.last_exit_code_var.set(f"Exit: {rc}")
+            if rc != 0:
+                self.append_log(f"[ERROR] APK install failed with code {rc}\n")
+                self.set_status("USB install failed (see log).")
+                return
+
+            self.append_log("[INFO] APK installed successfully.\n")
+            package = self._package_for_apk(apk)
+            if package:
+                self.append_log(f"[INFO] Launching {package} on device…\n")
+                launch_rc = self._launch_app_on_device(adb_path, serial, package, local_path)
+                if launch_rc == 0:
+                    self.append_log("[INFO] App opened on phone.\n")
+                else:
+                    self.append_log(
+                        "[WARN] Install OK but auto-launch failed. Tap the app icon on your phone.\n"
+                    )
+            else:
+                self.append_log("[WARN] Install OK. Open the app manually from your phone.\n")
+
+            self.set_status("USB install completed — check your phone.")
+            self.after(
+                0,
+                lambda name=apk.name: messagebox.showinfo(
+                    "تم التثبيت",
+                    f"تم تثبيت التطبيق بنجاح:\n{name}\n\n"
+                    "تحقق من شاشة هاتفك — يجب أن يفتح التطبيق تلقائياً.\n"
+                    "إذا لم يفتح، ابحث عن أيقونة التطبيق في قائمة التطبيقات.",
+                ),
+            )
+        finally:
+            duration = time.perf_counter() - start
+            self.last_duration_var.set(f"Duration: {duration:.2f}s")
+            self.set_busy(False)
+
     def on_deploy_clicked(self) -> None:
         self.save_config()
         thread = threading.Thread(target=self._deploy_thread, daemon=True)
@@ -1132,16 +2253,6 @@ class FinoraDeployStudio(tk.Tk):
                 self.set_status("Deploy failed (server path empty).")
                 return
 
-            nginx_service = self.nginx_service_var.get().strip() or "nginx"
-            # خدمة التطبيق في هذا السكربت اسمها finora كما في المواصفة
-            service_name = "finora"
-
-            # استخراج المنفذ من bind (مثال 127.0.0.1:8000)
-            bind = self.gunicorn_bind_var.get().strip() or "127.0.0.1:8000"
-            port = "8000"
-            if ":" in bind:
-                port = bind.split(":")[-1] or "8000"
-
             current_commit = self.current_git_commit(local_path)
             last_deployed_commit = (self.config_data.get("last_deployed_commit") or "").strip()
             if last_deployed_commit and current_commit:
@@ -1162,11 +2273,92 @@ class FinoraDeployStudio(tk.Tk):
                 self.set_status("Nothing changed to deploy.")
                 return
 
+            safe_server_path = shlex.quote(server_path)
+            self.set_status("Smart Deploy: checking remote safety…")
+            # Check only files this deployment will replace. If a target has
+            # unknown live edits, back it up on the server before overwriting.
+            manifest_file = shlex.quote(REMOTE_DEPLOY_MANIFEST)
+            deploy_array = " ".join(shlex.quote(path) for path in changed_paths)
+            preflight_script = f"""
+cd {safe_server_path} || exit 41
+DEPLOY_FILES=({deploy_array})
+INVALID_DIRTY=0
+BACKUP_ROOT=".finora-remote-backups/$(date +%Y%m%d-%H%M%S)"
+for DIRTY_PATH in "${{DEPLOY_FILES[@]}}"; do
+  STATUS_LINE="$(git -c core.quotepath=false status --porcelain -uno -- "$DIRTY_PATH")"
+  [ -z "$STATUS_LINE" ] && continue
+  EXPECTED_HASH=""
+  if [ -f {manifest_file} ]; then
+    EXPECTED_HASH="$(awk -F '\t' -v p="$DIRTY_PATH" '$2 == p {{ print $1; exit }}' {manifest_file})"
+  fi
+  if [ -f "$DIRTY_PATH" ]; then
+    ACTUAL_HASH="$(sha256sum -- "$DIRTY_PATH" | cut -d' ' -f1)"
+  else
+    ACTUAL_HASH=""
+  fi
+  if [ -z "$EXPECTED_HASH" ] || [ "$ACTUAL_HASH" != "$EXPECTED_HASH" ]; then
+    INVALID_DIRTY=1
+    if [ -e "$DIRTY_PATH" ]; then
+      BACKUP_PATH="$BACKUP_ROOT/$DIRTY_PATH"
+      mkdir -p "$(dirname "$BACKUP_PATH")"
+      cp -a -- "$DIRTY_PATH" "$BACKUP_PATH"
+      echo "[BACKUP] Remote change saved before overwrite: $DIRTY_PATH -> $BACKUP_PATH"
+    else
+      echo "[WARN] Target changed remotely but no file exists to back up: $DIRTY_PATH"
+    fi
+  fi
+done
+if [ "$INVALID_DIRTY" -ne 0 ]; then
+  echo "[OK] Unknown remote target edits were backed up under $BACKUP_ROOT; deploy can continue."
+else
+  echo "[OK] ${{#DEPLOY_FILES[@]}} deployment targets are safe; unrelated remote edits are preserved."
+fi
+"""
+            rc_preflight = self.run_ssh_script(preflight_script)
+            if rc_preflight != 0:
+                self.append_log(
+                    "[ERROR] Remote safety preflight failed; no files were uploaded.\n"
+                )
+                if rc_preflight == 127:
+                    self.set_status("Deploy blocked (local SSH command missing).")
+                else:
+                    self.set_status("Deploy blocked (remote safety check failed).")
+                return
+
+            nginx_service = self.nginx_service_var.get().strip() or "nginx"
+            # خدمة التطبيق في هذا السكربت اسمها finora كما في المواصفة
+            service_name = "finora"
+
+            # استخراج المنفذ من bind (مثال 127.0.0.1:8000)
+            bind = self.gunicorn_bind_var.get().strip() or "127.0.0.1:8000"
+            port = "8000"
+            if ":" in bind:
+                port = bind.split(":")[-1] or "8000"
+
             self.append_log(f"[INFO] Smart Deploy will upload {len(changed_paths)} changed file(s):\n")
             for p in changed_paths[:80]:
                 self.append_log(f"  + {p}\n")
             if len(changed_paths) > 80:
                 self.append_log(f"  ... and {len(changed_paths) - 80} more\n")
+
+            deploy_sizes = [
+                ((local_path / Path(path)).stat().st_size, path)
+                for path in changed_paths
+            ]
+            total_deploy_bytes = sum(size for size, _ in deploy_sizes)
+            self.append_log(
+                f"[INFO] Code payload before compression: {_format_file_size(total_deploy_bytes)}.\n"
+            )
+            if total_deploy_bytes > SMART_DEPLOY_MAX_BYTES:
+                self.append_log(
+                    "[BLOCKED] Smart Deploy payload is unexpectedly large. "
+                    "APK/build/artifact files must use their dedicated action.\n"
+                )
+                self.append_log("[INFO] Largest selected files:\n")
+                for size, path in sorted(deploy_sizes, reverse=True)[:15]:
+                    self.append_log(f"  - {_format_file_size(size):>9}  {path}\n")
+                self.set_status("Deploy blocked (payload is too large).")
+                return
 
             archive_path = self.make_changed_files_archive(local_path, changed_paths)
             remote_archive = posixpath.join("/tmp", archive_path.name)
@@ -1205,7 +2397,6 @@ class FinoraDeployStudio(tk.Tk):
                 for p in changed_paths
             )
 
-            safe_server_path = shlex.quote(server_path)
             safe_archive = shlex.quote(remote_archive)
             pip_step = (
                 "if [ -f requirements.txt ]; then pip install -r requirements.txt; fi"
@@ -1243,6 +2434,26 @@ echo "[1] Extracting changed files only..."
 tar -xzf "$ARCHIVE" -C "$PROJECT_DIR"
 rm -f "$ARCHIVE"
 
+echo "[1b] Recording deployed tracked-file fingerprints..."
+MANIFEST={manifest_file}
+MANIFEST_TMP="$MANIFEST.tmp"
+DEPLOY_FILES=({deploy_array})
+if [ -f "$MANIFEST" ]; then
+    cp -f "$MANIFEST" "$MANIFEST_TMP"
+else
+    : > "$MANIFEST_TMP"
+fi
+for DEPLOY_PATH in "${{DEPLOY_FILES[@]}}"; do
+    FILTERED="$MANIFEST_TMP.filtered"
+    awk -F '\t' -v p="$DEPLOY_PATH" '$2 != p' "$MANIFEST_TMP" > "$FILTERED"
+    mv -f "$FILTERED" "$MANIFEST_TMP"
+    if [ -f "$DEPLOY_PATH" ]; then
+        FILE_HASH="$(sha256sum -- "$DEPLOY_PATH" | cut -d' ' -f1)"
+        printf '%s\t%s\n' "$FILE_HASH" "$DEPLOY_PATH" >> "$MANIFEST_TMP"
+    fi
+done
+mv -f "$MANIFEST_TMP" "$MANIFEST"
+
 echo ""
 echo "[2] Activating virtual environment..."
 if [ -d "venv" ]; then
@@ -1267,25 +2478,15 @@ echo "[5] Frontend builds if relevant..."
 
 echo ""
 echo "[6] Restarting application safely..."
-sudo pkill -9 gunicorn 2>/dev/null || true
-sudo fuser -k "$PORT"/tcp 2>/dev/null || true
-sleep 2
+echo "Using service manager; no process-wide kill commands will be run."
 # تأكد أن المنفذ حر قبل إعادة التشغيل
-if command -v lsof >/dev/null 2>&1; then
-  PIDS=$(lsof -t -i :"$PORT" 2>/dev/null)
-  if [ -n "$PIDS" ]; then
-    echo "[7b] Force killing remaining process(es) on port $PORT: $PIDS"
-    echo "$PIDS" | xargs -r sudo kill -9 2>/dev/null || true
-    sleep 1
-  fi
-fi
-
 echo ""
 systemctl restart "$SERVICE_NAME"
 
 echo ""
-echo "[7] Restarting nginx..."
-systemctl restart "$NGINX_SERVICE"
+echo "[7] Validating and reloading nginx..."
+nginx -t
+systemctl reload "$NGINX_SERVICE"
 
 echo ""
 echo "[8] Checking service status..."
@@ -1293,13 +2494,35 @@ systemctl status "$SERVICE_NAME" --no-pager
 
 echo ""
 echo "[9] Checking open ports..."
-lsof -i :"$PORT"
+ss -ltnp 2>/dev/null | grep -E "[:.]$PORT[[:space:]]" || true
 
 echo ""
-# التحقق من أن الخدمة تستمع على المنفذ (تفادي رسالة نجاح كاذبة)
-LISTEN_CHECK=$(lsof -i :"$PORT" 2>/dev/null | grep -c LISTEN || true)
-if [ "$LISTEN_CHECK" -lt 1 ]; then
-  echo "[WARN] No process is listening on port $PORT. Gunicorn may have failed to start (e.g. Address already in use or app crash)."
+# Give Gunicorn workers time to import the application, then validate both the
+# systemd state and the TCP listening socket. `lsof -i` does not consistently
+# print the word LISTEN across server versions, which caused false failures.
+READY=0
+for ATTEMPT in $(seq 1 45); do
+  SERVICE_OK=0
+  PORT_OK=0
+  systemctl is-active --quiet "$SERVICE_NAME" && SERVICE_OK=1
+  if command -v ss >/dev/null 2>&1; then
+    ss -ltnH 2>/dev/null | awk '{{print $4}}' | grep -Eq "[:.]$PORT$" && PORT_OK=1
+  elif command -v lsof >/dev/null 2>&1; then
+    lsof -nP -iTCP:"$PORT" -sTCP:LISTEN 2>/dev/null | grep -q . && PORT_OK=1
+  fi
+  if [ "$SERVICE_OK" -eq 1 ] && [ "$PORT_OK" -eq 1 ]; then
+    READY=1
+    echo "[OK] $SERVICE_NAME is active and listening on port $PORT."
+    break
+  fi
+  if [ "$ATTEMPT" -eq 1 ]; then
+    echo "Waiting for Gunicorn workers to become ready..."
+  fi
+  sleep 2
+done
+
+if [ "$READY" -ne 1 ]; then
+  echo "[WARN] Service did not become ready on port $PORT within 90 seconds."
   echo ""
   echo "[10] Last 30 lines of service log (to see gunicorn error):"
   journalctl -u "$SERVICE_NAME" -n 30 --no-pager 2>/dev/null || true
@@ -1843,7 +3066,7 @@ class ServerMonitorThread(threading.Thread):
 
         # Passwordless: use system ssh (keys / agent)
         if not self.password:
-            full_cmd = ["ssh", "-o", "BatchMode=yes", self.server, script]
+            full_cmd = [_resolve_command("ssh"), *SSH_CONNECT_OPTIONS, self.server, script]
             try:
                 proc = subprocess.Popen(
                     full_cmd,
@@ -1859,7 +3082,7 @@ class ServerMonitorThread(threading.Thread):
                 proc.wait()
                 return proc.returncode, "\n".join(collected)
             except FileNotFoundError:
-                return 1, "ssh command not found on local machine."
+                output_lines.append("ssh command not found on local machine; falling back to Paramiko.")
 
         # With password: use paramiko (preferred for non-interactive monitoring)
         try:
@@ -1878,9 +3101,9 @@ class ServerMonitorThread(threading.Thread):
             client.connect(
                 hostname=host,
                 username=username,
-                password=self.password,
-                look_for_keys=False,
-                allow_agent=False,
+                password=self.password or None,
+                look_for_keys=not bool(self.password),
+                allow_agent=not bool(self.password),
                 timeout=15,
             )
             stdin, stdout, stderr = client.exec_command(script)

@@ -2,6 +2,7 @@
 <resources>
     <string name="app_name">بوابة المندوب</string>
     <string name="error_loading">تعذّر تحميل بوابة المندوب. تحقق من الاتصال بالإنترنت ثم أعد المحاولة.</string>
+    <string name="error_open_external">تعذّر فتح تطبيق الاتصال على الجهاز</string>
     <string name="retry">إعادة المحاولة</string>
     <string name="setup_title">ربط التطبيق بشركتك</string>
     <string name="setup_desc">أدخل عنوان الخادم ومعرف شركتك كما في إعدادات النظام، أو افتح رابط شركتك من صفحة الإعدادات.</string>

@@ -72,6 +72,20 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(
+                view: WebView?,
+                request: WebResourceRequest?
+            ): Boolean {
+                val uri = request?.url ?: return false
+                return handleExternalUri(uri)
+            }
+
+            @Deprecated("Deprecated in Java")
+            override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+                if (url.isNullOrBlank()) return false
+                return handleExternalUri(Uri.parse(url))
+            }
+
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 errorPanel.visibility = View.GONE
                 webView.visibility = View.VISIBLE
@@ -87,6 +101,11 @@ class MainActivity : AppCompatActivity() {
                 request: WebResourceRequest?,
                 error: WebResourceError?
             ) {
+                val scheme = request?.url?.scheme?.lowercase()
+                // tel/mailto/sms are not web pages — do not show portal load error
+                if (scheme != null && scheme !in setOf("http", "https")) {
+                    return
+                }
                 if (request?.isForMainFrame == true) {
                     showError()
                 }
@@ -175,6 +194,26 @@ class MainActivity : AppCompatActivity() {
         errorPanel.visibility = View.GONE
         webView.visibility = View.VISIBLE
         webView.loadUrl(url)
+    }
+
+    private fun handleExternalUri(uri: Uri): Boolean {
+        val scheme = uri.scheme?.lowercase() ?: return false
+        when (scheme) {
+            "http", "https" -> return false
+            "tel", "mailto", "sms", "smsto", "geo" -> {
+                try {
+                    startActivity(Intent(Intent.ACTION_VIEW, uri))
+                } catch (_: Exception) {
+                    Toast.makeText(this, R.string.error_open_external, Toast.LENGTH_SHORT).show()
+                }
+                return true
+            }
+            else -> {
+                // Keep portal navigation inside the WebView for unknown app schemes
+                // unless they are clearly external actions.
+                return false
+            }
+        }
     }
 
     private fun showError() {

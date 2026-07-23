@@ -5,5 +5,12 @@
   "nginx_service": "nginx",
   "gunicorn_bind": "127.0.0.1:8000",
   "gunicorn_workers": 3,
-  "logs_command": "journalctl -u nginx -n 100 --no-pager"
+  "logs_command": "journalctl -u nginx -n 100 --no-pager",
+  "last_deployed_commit": "8b6a31bd40536657653aa443044a1a86c5d099d7",
+  "adb_path": "adb",
+  "flutter_path": "C:\\flutter\\bin\\flutter.bat",
+  "android_apk_path": "artifacts\\finora-social-release.apk",
+  "android_app_target": "Social (finora_social)",
+  "social_api_base_url": "https://www.finora.company",
+  "social_tenant_slug": "super"
 }

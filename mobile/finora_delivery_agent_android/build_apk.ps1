@@ -27,14 +27,14 @@ $buildRoot = $projectRoot
 
 if (-not (Test-AsciiOnlyPath $projectRoot)) {
     $buildRoot = Join-Path $env:TEMP "finora_delivery_agent_build"
-    Write-Host "المسار يحتوي أحرف غير لاتينية — نسخ المشروع مؤقتاً إلى: $buildRoot"
+    Write-Host "Non-ASCII path — copying project to: $buildRoot"
     if (Test-Path $buildRoot) {
         Remove-Item $buildRoot -Recurse -Force
     }
     New-Item -ItemType Directory -Force -Path $buildRoot | Out-Null
     robocopy $projectRoot $buildRoot /E /XD .gradle build app\build /NFL /NDL /NJH /NJS /nc /ns /np | Out-Null
     if ($LASTEXITCODE -ge 8) {
-        throw "فشل النسخ (robocopy code $LASTEXITCODE)"
+        throw "robocopy failed (code $LASTEXITCODE)"
     }
 }
 
@@ -51,7 +51,7 @@ if (-not $env:JAVA_HOME) {
     }
 }
 if (-not $env:JAVA_HOME -or -not (Test-Path (Join-Path $env:JAVA_HOME "bin\java.exe"))) {
-    throw "لم يُعثر على JAVA_HOME. عيّنه يدوياً إلى مجلد JBR داخل Android Studio."
+    throw "JAVA_HOME not found. Set it to the JBR folder inside Android Studio."
 }
 
 if (-not $env:ANDROID_HOME) {
@@ -63,10 +63,10 @@ $gradleTask = if ($Variant -eq "release") { "assembleRelease" } else { "assemble
 
 Push-Location $buildRoot
 try {
-    Write-Host "جاري البناء ($gradleTask)..."
+    Write-Host "Building ($gradleTask)..."
     & .\gradlew.bat --no-daemon $gradleTask
     if ($LASTEXITCODE -ne 0) {
-        throw "فشل Gradle (exit $LASTEXITCODE)"
+        throw "Gradle failed (exit $LASTEXITCODE)"
     }
 }
 finally {
@@ -76,11 +76,11 @@ finally {
 $apkName = if ($Variant -eq "release") { "app-release-unsigned.apk" } else { "app-debug.apk" }
 $apk = Join-Path $buildRoot "app\build\outputs\apk\$Variant\$apkName"
 if (-not (Test-Path $apk)) {
-    throw "لم يُوجد الملف: $apk"
+    throw "APK not found: $apk"
 }
 
 $downloadsDir = Join-Path $repoRoot "static\downloads"
 New-Item -ItemType Directory -Force -Path $downloadsDir | Out-Null
 $dest = Join-Path $downloadsDir "finora-delivery-agent.apk"
 Copy-Item -Force $apk $dest
-Write-Host "`nتم نسخ APK إلى: $dest"
+Write-Host "`nAPK copied to: $dest"

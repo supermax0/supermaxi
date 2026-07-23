@@ -147,13 +147,14 @@ def settings():
     """صفحة الإعدادات الرئيسية"""
     from models.invoice import Invoice
 
+    ensure_invoice_schema()
     invoice_settings = InvoiceSettings.get_settings()
     first_order = Invoice.query.order_by(Invoice.id.desc()).first()
     social_app_version = os.environ.get("APP_SOCIAL_APK_VERSION", "1.2.0").strip() or "1.2.0"
     social_app_build = os.environ.get("APP_SOCIAL_APK_BUILD", "3").strip() or "3"
     social_app_url = os.environ.get(
         "APP_SOCIAL_APK_URL",
-        "/static/downloads/Finora-Social-REDESIGN-v1.2.0.apk",
+        "/static/downloads/finora-social.apk",
     ).strip()
     social_app_cache_tag = f"{social_app_version}-{social_app_build}"
     social_app_url += ("&" if "?" in social_app_url else "?") + f"v={social_app_cache_tag}"

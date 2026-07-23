@@ -47,6 +47,13 @@ def _absolute_apk_url(raw: str) -> str:
     if not url.startswith("/"):
         url = "/" + url
     if has_request_context():
+        # Prefer public HTTPS host when behind nginx/proxy.
+        proto = (request.headers.get("X-Forwarded-Proto") or request.scheme or "https").split(",")[0].strip()
+        host = (request.headers.get("X-Forwarded-Host") or request.host or "").split(",")[0].strip()
+        if host:
+            if proto not in {"http", "https"}:
+                proto = "https"
+            return f"{proto}://{host}{url}"
         return request.url_root.rstrip("/") + url
     return url
 
