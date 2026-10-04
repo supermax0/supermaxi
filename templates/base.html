@@ -110,9 +110,9 @@
       overflow-x: hidden;
     }
 
-    /* Smooth scrolling */
+    /* Native scroll — smooth on html makes wheel/trackpad feel laggy */
     html {
-      scroll-behavior: smooth;
+      scroll-behavior: auto;
       -webkit-text-size-adjust: 100%;
       text-size-adjust: 100%;
       touch-action: manipulation;
@@ -473,9 +473,7 @@
    TOPBAR ENHANCEMENTS
 ====================================================== */
     .topbar {
-      background: var(--card);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      background: var(--bg);
       border-bottom: 1px solid var(--border-light);
       padding: 16px 28px;
       display: flex;
@@ -2178,7 +2176,7 @@
     }
 
   </style>
-  <link rel="stylesheet" href="/static/css/design-refresh.css">
+  <link rel="stylesheet" href="/static/css/design-refresh.css?v=20261004-scroll">
   <link rel="stylesheet" href="/static/css/help-system.css">
   <link rel="stylesheet" href="/static/css/saas-admin.css">
 </head>

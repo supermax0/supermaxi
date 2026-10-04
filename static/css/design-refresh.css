@@ -148,7 +148,6 @@ body {
   background: rgba(255, 255, 255, 0.92) !important;
   border-bottom: 1px solid var(--border) !important;
   box-shadow: 0 6px 20px rgba(16, 24, 40, 0.05) !important;
-  backdrop-filter: blur(12px);
 }
 
 .toggle,
