@@ -1,302 +1,435 @@
 {% extends "base.html" %}
 {% block title %}{{ _('employees') }}{% endblock %}
-{% block page_title %}👥 {{ _('employees_page_title') }}{% endblock %}
+{% block page_title %}{{ _('employees_page_title') }}{% endblock %}
 
 {% block content %}
+{% from "partials/fd_icons.html" import icon %}
+<script src="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.4/dist/ag-grid-community.min.noStyle.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.4/styles/ag-grid.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.4/styles/ag-theme-quartz.css">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/team-admin.css') }}?v=20260702g">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/employees-admin.css') }}?v=20260706a">
-
-<div class="team-admin-page employees-page">
-
-<div class="toast-container" id="toastContainer"></div>
-
-<div class="loading-overlay" id="loadingOverlay">
-  <div class="loading-spinner"></div>
-</div>
+<link rel="stylesheet" href="/static/css/finora-ui.css?v=20261018e">
 
 {% set total_employees = employees|length %}
 {% set active_employees = employees|selectattr("is_active")|list|length %}
 {% set total_orders = stats.values()|sum(attribute="orders") or 0 %}
 {% set total_sales = stats.values()|sum(attribute="sales") or 0 %}
 
-<div class="admin-page-header">
-  <div class="admin-page-header__meta"></div>
-  <div class="admin-page-header__actions">
-    <a href="/employees/page-warnings" class="nav-crosslink"><i class="fab fa-whatsapp"></i> تحذير البيجات</a>
-    <a href="/agents" class="nav-crosslink"><i class="fas fa-truck"></i> {{ _('delivery_agents') }}</a>
-  </div>
-</div>
+<div class="fd" id="fdPage">
 
-<div class="stats-grid">
-  <div class="stat-card primary">
-    <div class="stat-icon">👥</div>
-    <div class="stat-label">{{ _('employees_stat_total') }}</div>
-    <div class="stat-value">{{ total_employees }}</div>
-  </div>
-  <div class="stat-card success">
-    <div class="stat-icon">✅</div>
-    <div class="stat-label">{{ _('employees_stat_active') }}</div>
-    <div class="stat-value">{{ active_employees }}</div>
-  </div>
-  <div class="stat-card warning">
-    <div class="stat-icon">📦</div>
-    <div class="stat-label">{{ _('employees_stat_orders') }}</div>
-    <div class="stat-value">{{ total_orders }}</div>
-  </div>
-  <div class="stat-card success">
-    <div class="stat-icon">💰</div>
-    <div class="stat-label">{{ _('employees_stat_sales') }}</div>
-    <div class="stat-value">{{ "{:,.0f}".format(total_sales) }} {{ _('employees_currency_iqd') }}</div>
-  </div>
-</div>
-
-<div class="collapsible-group collapsed" id="groupAddEmployee">
-  <div class="group-header" onclick="toggleSection('groupAddEmployee')">
-    <h3><span class="section-icon primary">➕</span>{{ _('employees_add_title') }}</h3>
-    <button type="button" class="toggle-btn" tabindex="-1"><i class="fas fa-chevron-up"></i></button>
-  </div>
-  <div class="group-content">
-    <form method="post" id="employeeForm" class="emp-form-grid" onsubmit="handleEmployeeSubmit(event)">
-      <div class="emp-form-fields">
-        <div class="emp-field">
-          <label class="emp-field-label" for="emp_name">{{ _('employees_placeholder_name') }}<span data-help="employees.name"></span></label>
-          <input name="name" id="emp_name" placeholder="{{ _('employees_placeholder_name') }}" required>
-        </div>
-        <div class="emp-field">
-          <label class="emp-field-label" for="emp_username">{{ _('employees_placeholder_username') }}<span data-help="employees.username"></span></label>
-          <input name="username" id="emp_username" placeholder="{{ _('employees_placeholder_username') }}" required>
-        </div>
-        <div class="emp-field">
-          <label class="emp-field-label" for="emp_password">{{ _('employees_placeholder_password') }}</label>
-          <input name="password" type="password" id="emp_password" placeholder="{{ _('employees_placeholder_password') }}" required>
-        </div>
-        <div class="emp-field">
-          <label class="emp-field-label" for="emp_phone">رقم الهاتف (واتساب)</label>
-          <input name="phone" id="emp_phone" type="tel" placeholder="07xxxxxxxxx" inputmode="tel">
-        </div>
-        <div class="emp-field">
-          <label class="emp-field-label" for="emp_role">{{ _('employees_col_role') }}<span data-help="employees.role"></span></label>
-          <select name="role" id="emp_role">
-            <option value="cashier">{{ _('employees_role_cashier') }}</option>
-            <option value="admin">{{ _('employees_role_admin') }}</option>
-          </select>
-        </div>
+  <header class="fd-header no-print">
+    <div class="fd-header-main">
+      <span class="fd-header-icon" style="color: var(--fd-purple);">{{ icon('users', 26) }}</span>
+      <div class="fd-header-text">
+        <h1 class="fd-title">{{ _('employees_page_title') }}</h1>
+        <p class="fd-subtitle">حسابات الموظفين والمندوبين، الصلاحيات والرواتب والعمولات</p>
       </div>
-      <div class="emp-form-row-secondary">
-        <div class="emp-field emp-field--salary">
-          <label class="emp-field-label" for="emp_salary">{{ _('employees_placeholder_salary') }}</label>
-          <input name="salary" type="number" id="emp_salary" placeholder="0" min="0">
-        </div>
-        <div class="emp-field emp-field--commission">
-          <label class="emp-field-label" for="emp_commission">{{ _('employees_edit_commission_label') if _('employees_edit_commission_label') != 'employees_edit_commission_label' else 'مبلغ العمولة (لكل طلب)' }}</label>
-          <div class="fixed-commission-row">
-            <input name="commission" type="number" id="emp_commission" value="{{ fixed_commission_amount }}" min="0" step="1" placeholder="0">
-            <span class="fixed-commission-currency">{{ _('employees_currency_iqd') }}</span>
-          </div>
-          <small>{{ _('employees_edit_commission_hint') if _('employees_edit_commission_hint') != 'employees_edit_commission_hint' else 'مبلغ العمولة لكل طلب واصل ومسدد' }}</small>
-        </div>
-      </div>
-      <div class="emp-form-row-secondary">
-        <div class="emp-field">
-          <label class="emp-field-label" for="emp_pay_type">نوع الراتب</label>
-          <select name="pay_type" id="emp_pay_type">
-            <option value="none">بدون جدولة</option>
-            <option value="monthly">راتب شهري ثابت</option>
-            <option value="weekly">راتب أسبوعي ثابت</option>
-            <option value="commission">عمولة فقط</option>
-            <option value="monthly_commission">شهري + عمولة</option>
-            <option value="weekly_commission">أسبوعي + عمولة</option>
-          </select>
-        </div>
-        <div class="emp-field">
-          <label class="emp-field-label" for="emp_pay_day_of_month">يوم الصرف الشهري</label>
-          <input name="pay_day_of_month" type="number" id="emp_pay_day_of_month" min="1" max="28" value="25">
-        </div>
-        <div class="emp-field">
-          <label class="emp-field-label" for="emp_pay_weekday">يوم الصرف الأسبوعي</label>
-          <select name="pay_weekday" id="emp_pay_weekday">
-            {% for label in weekday_labels %}
-            <option value="{{ loop.index0 }}" {% if loop.index0 == 4 %}selected{% endif %}>{{ label }}</option>
-            {% endfor %}
-          </select>
-        </div>
-      </div>
-      <p class="emp-payroll-hint"><a href="/payroll">انتقل إلى نظام الرواتب</a> لصرف المستحقات والعمولات من الخزينة.</p>
-      <button type="submit" id="employeeSubmitBtn" class="btn-submit-primary">
-        <span>💾</span><span>{{ _('employees_save_button') }}</span>
-      </button>
-    </form>
-  </div>
-</div>
-
-{% if agents_without_login %}
-<div class="team-alert">⚠️ {{ agents_without_login|length }} مندوب بدون حساب دخول — <a href="/agents">إدارة المندوبين</a></div>
-{% endif %}
-
-<div class="collapsible-group collapsed" id="groupAddAgent">
-  <div class="group-header" onclick="toggleSection('groupAddAgent')">
-    <h3><span class="section-icon success">🚚</span>{{ _('employees_add_agent_title') }}</h3>
-    <button type="button" class="toggle-btn" tabindex="-1"><i class="fas fa-chevron-up"></i></button>
-  </div>
-  <div class="group-content">
-    <form id="agentAccountForm" class="emp-form-grid" onsubmit="addAgentAccount(event)">
-      <div class="emp-form-fields emp-form-fields--3">
-        <div class="emp-field">
-          <select name="agent_id" id="agent_id" required>
-            <option value="">{{ _('employees_select_agent') }}</option>
-            {% for agent in delivery_agents %}
-            <option value="{{ agent.id }}">{{ agent.name }}</option>
-            {% endfor %}
-          </select>
-        </div>
-        <div class="emp-field">
-          <input type="text" id="agent_username" placeholder="{{ _('employees_placeholder_username') }}" required>
-        </div>
-        <div class="emp-field">
-          <input type="password" id="agent_password" placeholder="{{ _('employees_placeholder_password') }}" required>
-        </div>
-      </div>
-      <button type="submit" class="btn-submit-primary">
-        <span>💾</span><span>{{ _('employees_save_account') }}</span>
-      </button>
-    </form>
-  </div>
-</div>
-
-<div class="collapsible-group collapsed" id="groupCommissionStatement">
-  <div class="group-header" onclick="toggleSection('groupCommissionStatement')">
-    <h3><span class="section-icon success">📋</span>{{ _('employees_commission_statement_title') }}</h3>
-    <button type="button" class="toggle-btn" tabindex="-1"><i class="fas fa-chevron-up"></i></button>
-  </div>
-  <div class="group-content">
-    <div class="commission-statement-toolbar">
-      <div class="emp-field">
-        <label class="emp-field-label" for="commissionStmtMonth">{{ _('employees_commission_statement_month') }}</label>
-        <input type="month" id="commissionStmtMonth">
-      </div>
-      <button type="button" class="btn-fixed-commission" onclick="loadCommissionStatement()">{{ _('employees_commission_statement_load') }}</button>
-      <button type="button" class="btn-fixed-commission btn-commission-print" onclick="printCommissionStatement()">
-        <i class="fas fa-print"></i> طباعة الكشف
-      </button>
-    </div>
-    <div class="commission-statement-summary" id="commissionStatementSummary"></div>
-    <div class="commission-statement-table-wrap">
-      <table class="commission-statement-table" id="commissionStatementTable">
-        <thead>
-          <tr>
-            <th>{{ _('employees_commission_statement_col_name') }}</th>
-            <th>{{ _('employees_commission_statement_col_orders') }}</th>
-            <th>{{ _('employees_commission_statement_col_amount') }}</th>
-            <th>{{ _('employees_commission_statement_col_action') }}</th>
-          </tr>
-        </thead>
-        <tbody id="commissionStatementBody">
-          <tr class="commission-statement-empty">
-            <td colspan="4">{{ _('employees_commission_statement_empty') }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-<section id="commissionStatementPrint" class="commission-statement-print" aria-hidden="true">
-  <header class="csp-header">
-    <div>
-      <h1>كشف عمولات الموظفين</h1>
-      <p>Finora System</p>
-    </div>
-    <div class="csp-meta">
-      <p><strong>الفترة:</strong> <span id="cspPeriod">—</span></p>
-      <p><strong>تاريخ الطباعة:</strong> <span id="cspPrintedAt">—</span></p>
     </div>
   </header>
-  <p class="csp-note">العمولة محسوبة لكل طلب واصل ومسدد — وليست نسبة من المبيعات. المدير غير مشمول.</p>
-  <p class="csp-summary" id="cspSummary"></p>
-  <table class="csp-table">
-    <thead>
-      <tr>
-        <th class="csp-col-index">#</th>
-        <th class="csp-col-name">اسم الموظف</th>
-        <th class="csp-col-orders">عدد الطلبات</th>
-        <th class="csp-col-rate">مبلغ لكل طلب</th>
-        <th class="csp-col-amount">المبلغ المستحق</th>
-      </tr>
-    </thead>
-    <tbody id="cspBody"></tbody>
-    <tfoot id="cspFoot"></tfoot>
-  </table>
-</section>
 
-<div class="collapsible-group" id="groupEmpFilters">
-  <div class="group-header" onclick="toggleSection('groupEmpFilters')">
-    <h3><span class="section-icon warning">🔍</span>{{ _('employees_search_title') }}</h3>
-    <button type="button" class="toggle-btn" tabindex="-1"><i class="fas fa-chevron-up"></i></button>
+  <nav class="fd-subnav no-print" aria-label="الفريق">
+    <a class="fd-subnav-link active" href="/employees/">الموظفون</a>
+    <a class="fd-subnav-link" href="/payroll">الرواتب</a>
+    <a class="fd-subnav-link" href="/agents">{{ _('delivery_agents') }}</a>
+    <a class="fd-subnav-link" href="/employees/page-warnings">تحذير البيجات</a>
+  </nav>
+
+  <div class="fd-kpis no-print">
+    <button type="button" class="fd-kpi fd-kpi--purple active" data-emp-quick="">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('employees_stat_total') }}</span>
+        <span><span class="fd-kpi-value">{{ "{:,}".format(total_employees) }}</span><span class="fd-kpi-unit">موظف</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('users', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--green" data-emp-quick="active">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('employees_stat_active') }}</span>
+        <span><span class="fd-kpi-value">{{ "{:,}".format(active_employees) }}</span><span class="fd-kpi-unit">موظف</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('check-circle', 28) }}</span>
+    </button>
+    <div class="fd-kpi fd-kpi--amber">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('employees_stat_orders') }}</span>
+        <span><span class="fd-kpi-value">{{ "{:,}".format(total_orders) }}</span><span class="fd-kpi-unit">طلب</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('cart', 28) }}</span>
+    </div>
+    <div class="fd-kpi fd-kpi--red">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('employees_stat_sales') }}</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money">{{ "{:,.0f}".format(total_sales) }}</span><span class="fd-kpi-unit">د.ع</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('trend', 28) }}</span>
+    </div>
   </div>
-  <div class="group-content">
-    <div class="search-filters">
-      <input type="text" id="searchInput" placeholder="{{ _('employees_search_placeholder') }}" onkeyup="updateSearch()">
-      <select id="filterRole" onchange="updateRoleFilter()">
-        <option value="">{{ _('employees_filter_all_roles') }}</option>
-        <option value="cashier">{{ _('employees_role_cashier') }}</option>
-        <option value="admin">{{ _('employees_role_admin') }}</option>
-        <option value="delivery">{{ _('employees_role_delivery') }}</option>
+
+  {% if agents_without_login %}
+  <div class="fd-stock-line no-print" style="display:flex;align-items:center;gap:8px;">
+    {{ icon('alert', 18) }}
+    <span>{{ agents_without_login|length }} مندوب بدون حساب دخول —</span>
+    <button type="button" class="fd-link-btn" onclick="openAgentDrawer()">إنشاء حساب</button>
+  </div>
+  {% endif %}
+
+  <div class="fd-toolbar no-print">
+    <div class="fd-chips" id="empRoleChips" role="tablist" aria-label="الدور">
+      <button type="button" class="fd-chip active" data-emp-role="">الكل<span class="fd-chip-count" data-count=""></span></button>
+      <button type="button" class="fd-chip" data-emp-role="cashier">{{ _('employees_role_cashier') }}<span class="fd-chip-count" data-count="cashier"></span></button>
+      <button type="button" class="fd-chip" data-emp-role="admin">{{ _('employees_role_admin') }}<span class="fd-chip-count" data-count="admin"></span></button>
+      <button type="button" class="fd-chip" data-emp-role="delivery">{{ _('employees_role_delivery') }}<span class="fd-chip-count" data-count="delivery"></span></button>
+    </div>
+
+    <div class="fd-pop-wrap fd-tool--filter">
+      <button type="button" class="fd-btn" data-fd-pop="empFiltersPop" aria-expanded="false" aria-controls="empFiltersPop">
+        {{ icon('filter', 18) }}
+        <span class="fd-btn-label">تصفية</span>
+        <span class="fd-count-badge" id="empFilterCount" hidden></span>
+        <span class="fd-chevron">{{ icon('chevron', 16) }}</span>
+      </button>
+      <div class="fd-pop fd-pop--start fd-filter-pop" id="empFiltersPop" role="dialog" aria-label="تصفية" hidden>
+        <div class="fd-form-grid">
+          <label class="fd-field"><span>{{ _('employees_col_status') }}</span>
+            <select id="filterStatus">
+              <option value="">{{ _('employees_filter_all_statuses') }}</option>
+              <option value="active">{{ _('employees_status_active') }}</option>
+              <option value="inactive">{{ _('employees_status_inactive') }}</option>
+            </select>
+          </label>
+          <label class="fd-field"><span>نوع الراتب</span>
+            <select id="filterPayType">
+              <option value="">الكل</option>
+              <option value="none">بدون جدولة</option>
+              <option value="monthly">شهري ثابت</option>
+              <option value="weekly">أسبوعي ثابت</option>
+              <option value="commission">عمولة فقط</option>
+              <option value="monthly_commission">شهري + عمولة</option>
+              <option value="weekly_commission">أسبوعي + عمولة</option>
+            </select>
+          </label>
+          <label class="fd-field fd-field--wide"><span>المستحق</span>
+            <select id="filterDue">
+              <option value="">الكل</option>
+              <option value="due">عليه مستحقات</option>
+            </select>
+          </label>
+        </div>
+        <div class="fd-pop-foot fd-pop-foot--split">
+          <button type="button" class="fd-link-btn" onclick="clearEmployeeFilters()">مسح التصفية</button>
+          <button type="button" class="fd-btn fd-btn--accent fd-btn--apply" data-fd-pop-close>تطبيق</button>
+        </div>
+      </div>
+    </div>
+
+    <label class="fd-search fd-tool--search">
+      {{ icon('search', 18) }}
+      <input type="search" id="searchInput" autocomplete="off" placeholder="{{ _('employees_search_placeholder') }}">
+    </label>
+
+    <div class="fd-tools-row">
+      <button type="button" class="fd-btn fd-btn--primary" onclick="openAddEmployeeDrawer()">
+        {{ icon('users', 18) }}
+        <span class="fd-btn-label">{{ _('employees_add_title') }}</span>
+      </button>
+      <div class="fd-pop-wrap">
+        <button type="button" class="fd-btn fd-btn--icon" data-fd-pop="empMorePop" aria-expanded="false" aria-controls="empMorePop" title="المزيد" aria-label="المزيد">{{ icon('dots', 20) }}</button>
+        <div class="fd-pop fd-pop--end fd-menu" id="empMorePop" role="menu" hidden>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="openCommissionDrawer()">{{ icon('sheet') }}<span>{{ _('employees_commission_statement_title') }}</span></button>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="openAgentDrawer()">{{ icon('truck') }}<span>{{ _('employees_add_agent_title') }}</span></button>
+          <div class="fd-menu-sep" role="separator"></div>
+          <a class="fd-menu-item" role="menuitem" href="/payroll">{{ icon('wallet') }}<span>نظام الرواتب</span></a>
+          <a class="fd-menu-item" role="menuitem" href="/employees/page-warnings">{{ icon('alert') }}<span>تحذير البيجات</span></a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="fd-table-card">
+    <div class="fd-grid-wrap" id="empGridWrap">
+      <div id="empGrid" class="fd-grid ag-theme-quartz" style="height: 600px; width: 100%;"></div>
+    </div>
+  </section>
+
+  <footer class="fd-footer no-print">
+    <div class="fd-footer-info">
+      <select id="empPageSize" aria-label="عدد الموظفين في الصفحة">
+        <option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
       </select>
-      <select id="filterStatus" onchange="updateStatusFilter()">
-        <option value="">{{ _('employees_filter_all_statuses') }}</option>
-        <option value="active">{{ _('employees_status_active') }}</option>
-        <option value="inactive">{{ _('employees_status_inactive') }}</option>
-      </select>
+      <span class="fd-range" id="empRange"></span>
+      <span class="fd-totals" id="empTotals"></span>
+    </div>
+    <nav class="fd-pager" id="empPager" aria-label="الصفحات"></nav>
+  </footer>
+
+  <!-- Detail panel -->
+  <aside class="fd-detail" id="empDetail" aria-label="تفاصيل الموظف" hidden>
+    <div class="fd-detail-head">
+      <div class="fd-detail-titles">
+        <h3 class="fd-detail-title" id="empDetailTitle"></h3>
+        <p class="fd-detail-sub" id="empDetailSub"></p>
+      </div>
+      <button type="button" class="fd-btn fd-btn--soft fd-btn--sm" id="empDetailEdit">{{ icon('pencil', 16) }}<span>تعديل</span></button>
+      <button type="button" class="fd-close-btn" onclick="closeEmployeeDetail()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+    </div>
+    <div class="fd-detail-body" id="empDetailBody"></div>
+  </aside>
+
+  <!-- Drawer: new employee -->
+  <div class="fd-drawer" id="empAddDrawer" hidden>
+    <form class="fd-drawer-panel" method="post" id="employeeForm" onsubmit="handleEmployeeSubmit(event)" role="dialog" aria-modal="true" aria-labelledby="empAddTitle">
+      <div class="fd-drawer-head">
+        <span class="fd-drawer-icon">{{ icon('users', 24) }}</span>
+        <div class="fd-drawer-titles">
+          <h2 class="fd-drawer-title" id="empAddTitle">{{ _('employees_add_title') }}</h2>
+          <p class="fd-drawer-hint">Esc للإغلاق</p>
+        </div>
+        <button type="button" class="fd-close-btn" data-fd-drawer-close aria-label="إغلاق">{{ icon('x', 20) }}</button>
+      </div>
+      <div class="fd-drawer-body">
+        <section class="fd-section">
+          <div class="fd-section-head"><span class="fd-section-title">{{ icon('users', 18) }}الحساب</span></div>
+          <label class="fd-field"><span>{{ _('employees_placeholder_name') }} <b class="fd-req">*</b><span data-help="employees.name"></span></span>
+            <input name="name" id="emp_name" required autocomplete="off">
+          </label>
+          <div class="fd-grid-2">
+            <label class="fd-field"><span>{{ _('employees_placeholder_username') }} <b class="fd-req">*</b><span data-help="employees.username"></span></span>
+              <input name="username" id="emp_username" required autocomplete="off" dir="ltr">
+            </label>
+            <label class="fd-field"><span>{{ _('employees_placeholder_password') }} <b class="fd-req">*</b></span>
+              <input name="password" type="password" id="emp_password" required autocomplete="new-password">
+            </label>
+          </div>
+          <div class="fd-grid-2">
+            <label class="fd-field"><span>رقم الهاتف (واتساب)</span>
+              <input name="phone" id="emp_phone" type="tel" placeholder="07xxxxxxxxx" inputmode="tel" dir="ltr">
+            </label>
+            <label class="fd-field"><span>{{ _('employees_col_role') }}<span data-help="employees.role"></span></span>
+              <select name="role" id="emp_role">
+                <option value="cashier">{{ _('employees_role_cashier') }}</option>
+                <option value="admin">{{ _('employees_role_admin') }}</option>
+              </select>
+            </label>
+          </div>
+        </section>
+        <section class="fd-section">
+          <div class="fd-section-head"><span class="fd-section-title">{{ icon('wallet', 18) }}الراتب والعمولة</span></div>
+          <div class="fd-grid-2">
+            <label class="fd-field"><span>{{ _('employees_placeholder_salary') }}</span>
+              <input name="salary" type="number" id="emp_salary" placeholder="0" min="0" inputmode="numeric">
+            </label>
+            <label class="fd-field"><span>عمولة لكل طلب (د.ع)</span>
+              <input name="commission" type="number" id="emp_commission" value="{{ fixed_commission_amount }}" min="0" step="1" inputmode="numeric">
+            </label>
+          </div>
+          <label class="fd-field"><span>نوع الراتب</span>
+            <select name="pay_type" id="emp_pay_type">
+              <option value="none">بدون جدولة</option>
+              <option value="monthly">راتب شهري ثابت</option>
+              <option value="weekly">راتب أسبوعي ثابت</option>
+              <option value="commission">عمولة فقط</option>
+              <option value="monthly_commission">شهري + عمولة</option>
+              <option value="weekly_commission">أسبوعي + عمولة</option>
+            </select>
+          </label>
+          <div class="fd-grid-2">
+            <label class="fd-field"><span>يوم الصرف الشهري</span>
+              <input name="pay_day_of_month" type="number" id="emp_pay_day_of_month" min="1" max="28" value="25">
+            </label>
+            <label class="fd-field"><span>يوم الصرف الأسبوعي</span>
+              <select name="pay_weekday" id="emp_pay_weekday">
+                {% for label in weekday_labels %}<option value="{{ loop.index0 }}" {% if loop.index0 == 4 %}selected{% endif %}>{{ label }}</option>{% endfor %}
+              </select>
+            </label>
+          </div>
+          <p class="fd-muted" style="margin:0;font-size:13px;">العمولة لكل طلب واصل ومسدد. <a href="/payroll" style="color:var(--fd-purple);font-weight:700">نظام الرواتب</a> لصرف المستحقات من الخزينة.</p>
+        </section>
+      </div>
+      <div class="fd-drawer-foot">
+        <button type="submit" id="employeeSubmitBtn" class="fd-btn fd-btn--primary">{{ icon('check-circle', 18) }}<span>{{ _('employees_save_button') }}</span></button>
+        <button type="button" class="fd-btn" data-fd-drawer-close>إلغاء</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Drawer: edit employee / agent (saved by employees-admin.js) -->
+  <div class="fd-drawer" id="editEmployeeModal" hidden>
+    <form class="fd-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="editEmployeeModalTitle" onsubmit="event.preventDefault(); saveEditEmployee();">
+      <input type="hidden" id="editEmpId">
+      <input type="hidden" id="editEmpIsDelivery" value="0">
+      <div class="fd-drawer-head">
+        <span class="fd-drawer-icon">{{ icon('pencil', 22) }}</span>
+        <div class="fd-drawer-titles">
+          <h2 class="fd-drawer-title" id="editEmployeeModalTitle">تعديل موظف</h2>
+          <p class="fd-drawer-hint">Esc للإغلاق</p>
+        </div>
+        <button type="button" class="fd-close-btn" data-fd-drawer-close aria-label="إغلاق">{{ icon('x', 20) }}</button>
+      </div>
+      <div class="fd-drawer-body">
+        <section class="fd-section">
+          <label class="fd-field"><span>الاسم</span><input id="editEmpName" type="text" autocomplete="off"></label>
+          <label class="fd-field" id="editEmpPhoneField"><span>رقم الهاتف (واتساب)</span><input id="editEmpPhone" type="tel" placeholder="07xxxxxxxxx" inputmode="tel" dir="ltr"></label>
+          <label class="fd-field"><span>كلمة مرور جديدة (اختياري)</span><input id="editEmpPassword" type="password" autocomplete="new-password"></label>
+        </section>
+        <section class="fd-section">
+          <div class="fd-section-head"><span class="fd-section-title">{{ icon('wallet', 18) }}الراتب والعمولة</span></div>
+          <div class="fd-grid-2">
+            <label class="fd-field"><span>الراتب</span><input id="editEmpSalary" type="number" min="0"></label>
+            <label class="fd-field" id="editEmpCommissionField"><span>{{ _('employees_edit_commission_label') }}</span><input id="editEmpCommission" type="number" min="0" step="1" placeholder="0"></label>
+          </div>
+          <label class="fd-field"><span>نوع الراتب</span>
+            <select id="editEmpPayType">
+              <option value="none">بدون جدولة</option>
+              <option value="monthly">راتب شهري ثابت</option>
+              <option value="weekly">راتب أسبوعي ثابت</option>
+              <option value="commission">عمولة فقط</option>
+              <option value="monthly_commission">شهري + عمولة</option>
+              <option value="weekly_commission">أسبوعي + عمولة</option>
+            </select>
+          </label>
+          <div class="fd-grid-2">
+            <label class="fd-field"><span>يوم الصرف الشهري</span><input id="editEmpPayDay" type="number" min="1" max="28" value="25"></label>
+            <label class="fd-field"><span>يوم الصرف الأسبوعي</span>
+              <select id="editEmpPayWeekday">
+                {% for label in weekday_labels %}<option value="{{ loop.index0 }}">{{ label }}</option>{% endfor %}
+              </select>
+            </label>
+          </div>
+        </section>
+      </div>
+      <div class="fd-drawer-foot">
+        <button type="submit" class="fd-btn fd-btn--primary">{{ icon('check-circle', 18) }}<span>حفظ</span></button>
+        <button type="button" class="fd-btn" data-fd-drawer-close>إلغاء</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Drawer: delivery agent login -->
+  <div class="fd-drawer" id="agentDrawer" hidden>
+    <form class="fd-drawer-panel" id="agentAccountForm" onsubmit="addAgentAccount(event)" role="dialog" aria-modal="true" aria-labelledby="agentDrawerTitle">
+      <div class="fd-drawer-head">
+        <span class="fd-drawer-icon">{{ icon('truck', 24) }}</span>
+        <div class="fd-drawer-titles">
+          <h2 class="fd-drawer-title" id="agentDrawerTitle">{{ _('employees_add_agent_title') }}</h2>
+          <p class="fd-drawer-hint">حساب دخول لصفحة المندوب</p>
+        </div>
+        <button type="button" class="fd-close-btn" data-fd-drawer-close aria-label="إغلاق">{{ icon('x', 20) }}</button>
+      </div>
+      <div class="fd-drawer-body">
+        <section class="fd-section">
+          <label class="fd-field"><span>المندوب <b class="fd-req">*</b></span>
+            <select name="agent_id" id="agent_id" required>
+              <option value="">{{ _('employees_select_agent') }}</option>
+              {% for agent in delivery_agents %}<option value="{{ agent.id }}">{{ agent.name }}{% if agent.username %} ({{ agent.username }}){% endif %}</option>{% endfor %}
+            </select>
+          </label>
+          <label class="fd-field"><span>{{ _('employees_placeholder_username') }} <b class="fd-req">*</b></span>
+            <input type="text" id="agent_username" required autocomplete="off" dir="ltr">
+          </label>
+          <label class="fd-field"><span>{{ _('employees_placeholder_password') }} <b class="fd-req">*</b></span>
+            <input type="password" id="agent_password" required autocomplete="new-password">
+          </label>
+        </section>
+      </div>
+      <div class="fd-drawer-foot">
+        <button type="submit" class="fd-btn fd-btn--primary">{{ icon('check-circle', 18) }}<span>{{ _('employees_save_account') }}</span></button>
+        <button type="button" class="fd-btn" data-fd-drawer-close>إلغاء</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Drawer: monthly commission statement -->
+  <div class="fd-drawer" id="commissionDrawer" hidden>
+    <div class="fd-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="commissionDrawerTitle">
+      <div class="fd-drawer-head">
+        <span class="fd-drawer-icon">{{ icon('sheet', 24) }}</span>
+        <div class="fd-drawer-titles">
+          <h2 class="fd-drawer-title" id="commissionDrawerTitle">{{ _('employees_commission_statement_title') }}</h2>
+          <p class="fd-drawer-hint">العمولة لكل طلب واصل ومسدد — المدير غير مشمول</p>
+        </div>
+        <button type="button" class="fd-close-btn" data-fd-drawer-close aria-label="إغلاق">{{ icon('x', 20) }}</button>
+      </div>
+      <div class="fd-drawer-body">
+        <section class="fd-section">
+          <div class="fd-grid-2" style="align-items:end;">
+            <label class="fd-field"><span>{{ _('employees_commission_statement_month') }}</span><input type="month" id="commissionStmtMonth"></label>
+            <div style="display:flex;gap:8px;">
+              <button type="button" class="fd-btn fd-btn--accent" onclick="loadCommissionStatement()">{{ _('employees_commission_statement_load') }}</button>
+              <button type="button" class="fd-btn" onclick="printCommissionStatement()">{{ icon('print', 18) }}<span>طباعة</span></button>
+            </div>
+          </div>
+          <p class="fd-muted" id="commissionStatementSummary" style="margin:0;font-weight:700;"></p>
+          <table class="fd-lines emp-commission-table">
+            <thead>
+              <tr>
+                <th>{{ _('employees_commission_statement_col_name') }}</th>
+                <th>{{ _('employees_commission_statement_col_orders') }}</th>
+                <th>{{ _('employees_commission_statement_col_amount') }}</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="commissionStatementBody">
+              <tr><td colspan="4" class="fd-muted">{{ _('employees_commission_statement_empty') }}</td></tr>
+            </tbody>
+          </table>
+        </section>
+      </div>
     </div>
   </div>
 </div>
 
-<div class="team-table-card">
-  <div class="table-container">
-    <div id="employeesTable" class="ag-theme-finora" style="height: 100%; width: 100%;"></div>
-  </div>
+<!-- Shared modals (pages, orders), toasts, loading and the printable statement keep their own styles -->
+<div class="team-admin-page employees-page emp-modal-root">
+  <div class="toast-container" id="toastContainer"></div>
+  <div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div></div>
+  <section id="commissionStatementPrint" class="commission-statement-print" aria-hidden="true">
+    <header class="csp-header">
+      <div>
+        <h1>كشف عمولات الموظفين</h1>
+        <p>Finora System</p>
+      </div>
+      <div class="csp-meta">
+        <p><strong>الفترة:</strong> <span id="cspPeriod">—</span></p>
+        <p><strong>تاريخ الطباعة:</strong> <span id="cspPrintedAt">—</span></p>
+      </div>
+    </header>
+    <p class="csp-note">العمولة محسوبة لكل طلب واصل ومسدد — وليست نسبة من المبيعات. المدير غير مشمول.</p>
+    <p class="csp-summary" id="cspSummary"></p>
+    <table class="csp-table">
+      <thead>
+        <tr>
+          <th class="csp-col-index">#</th>
+          <th class="csp-col-name">اسم الموظف</th>
+          <th class="csp-col-orders">عدد الطلبات</th>
+          <th class="csp-col-rate">مبلغ لكل طلب</th>
+          <th class="csp-col-amount">المبلغ المستحق</th>
+        </tr>
+      </thead>
+      <tbody id="cspBody"></tbody>
+      <tfoot id="cspFoot"></tfoot>
+    </table>
+  </section>
 </div>
 
-<div id="editEmployeeModal" class="team-modal-overlay">
-  <div class="team-modal-box">
-    <h3 id="editEmployeeModalTitle">تعديل موظف</h3>
-    <input type="hidden" id="editEmpId">
-    <input type="hidden" id="editEmpIsDelivery" value="0">
-    <div class="team-modal-field"><label>الاسم</label><input id="editEmpName" type="text"></div>
-    <div class="team-modal-field" id="editEmpPhoneField"><label>رقم الهاتف (واتساب)</label><input id="editEmpPhone" type="tel" placeholder="07xxxxxxxxx" inputmode="tel"></div>
-    <div class="team-modal-field"><label>الراتب</label><input id="editEmpSalary" type="number" min="0"></div>
-    <div class="team-modal-field" id="editEmpCommissionField"><label>{{ _('employees_edit_commission_label') }}</label><input id="editEmpCommission" type="number" min="0" step="1" placeholder="0"><small>{{ _('employees_edit_commission_hint') }}</small></div>
-    <div class="team-modal-field"><label>نوع الراتب</label>
-      <select id="editEmpPayType">
-        <option value="none">بدون جدولة</option>
-        <option value="monthly">راتب شهري ثابت</option>
-        <option value="weekly">راتب أسبوعي ثابت</option>
-        <option value="commission">عمولة فقط</option>
-        <option value="monthly_commission">شهري + عمولة</option>
-        <option value="weekly_commission">أسبوعي + عمولة</option>
-      </select>
-    </div>
-    <div class="team-modal-field"><label>يوم الصرف الشهري</label><input id="editEmpPayDay" type="number" min="1" max="28" value="25"></div>
-    <div class="team-modal-field"><label>يوم الصرف الأسبوعي</label>
-      <select id="editEmpPayWeekday">
-        {% for label in weekday_labels %}
-        <option value="{{ loop.index0 }}">{{ label }}</option>
-        {% endfor %}
-      </select>
-    </div>
-    <div class="team-modal-field"><label>كلمة مرور جديدة (اختياري)</label><input id="editEmpPassword" type="password"></div>
-    <div class="team-modal-actions">
-      <button type="button" class="btn btn-light" onclick="closeEditEmployeeModal()">إلغاء</button>
-      <button type="button" class="btn btn-primary" onclick="saveEditEmployee()">حفظ</button>
-    </div>
-  </div>
-</div>
+<style>
+  .emp-modal-root { display: contents; }
+  #fdPage .emp-commission-table .btn-settle-commission {
+    min-height: 34px;
+    padding: 0 12px !important;
+    border: 1px solid var(--fd-purple) !important;
+    border-radius: 10px !important;
+    background: var(--fd-purple-soft) !important;
+    color: var(--fd-purple) !important;
+    font-size: 13px !important;
+    font-weight: 800 !important;
+    cursor: pointer;
+  }
+  #fdPage .emp-commission-table td[colspan] { text-align: center; padding: 18px 8px; }
+</style>
 
 <script type="application/json" id="employeesData">{{ employees_grid_rows|tojson }}</script>
-
-<script type="application/json" id="pagesData">
-{{ pages|tojson if pages else '[]' }}
-</script>
+<script type="application/json" id="pagesData">{{ pages|tojson if pages else '[]' }}</script>
 
 {% set emp_i18n = {
   "employees_role_cashier": _("employees_role_cashier"),
@@ -368,8 +501,296 @@
     if (_d) window.EMP_I18N = JSON.parse(_d.textContent);
   } catch (e) { console.warn(e); }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
-<script src="{{ url_for('static', filename='js/employees-admin.js') }}?v=20260706a"></script>
+<script src="{{ url_for('static', filename='js/employees-admin.js') }}?v=20261018a"></script>
+<script src="/static/js/finora-ui.js?v=20261018c"></script>
+<script>
+  const F = window.FinoraUI;
+  const byId = id => document.getElementById(id);
+  const EMP_PAY_TYPES = {
+    none: "بدون جدولة", monthly: "شهري ثابت", weekly: "أسبوعي ثابت", commission: "عمولة فقط",
+    monthly_commission: "شهري + عمولة", weekly_commission: "أسبوعي + عمولة"
+  };
+  const EMP_WEEKDAYS = {{ weekday_labels|tojson }};
+  let empRole = "";
+  let empQuick = "";
+  let empDetailId = null;
 
-</div>
+  const empCleanName = row => String(row.name || "").replace(/^🚚\s*/, "");
+  const empHasCommission = row => !row.is_delivery && row.role !== "admin";
+
+  function empRolePill(row) {
+    const tone = row.role === "delivery" ? "sky" : row.role === "admin" ? "purple" : "blue";
+    const label = (row.role_labels && row.role_labels.length ? row.role_labels.join("، ") : row.role_name) || row.role;
+    return '<span class="fd-pill fd-pill--' + tone + '">' + F.esc(label) + "</span>";
+  }
+
+  function empStatusPill(row) {
+    return row.status === "active"
+      ? '<span class="fd-pill fd-pill--green">' + F.esc(__t("employees_status_active") || "نشط") + "</span>"
+      : '<span class="fd-pill fd-pill--gray">' + F.esc(__t("employees_status_inactive") || "معطل") + "</span>";
+  }
+
+  function empName(row) {
+    return '<div class="fd-cust"><span class="fd-cust-name">' + (row.is_delivery ? "🚚 " : "") + F.esc(empCleanName(row)) + "</span>" +
+      '<span class="fd-cust-phone" dir="ltr" style="text-align:end">@' + F.esc(row.username || "") + "</span></div>";
+  }
+
+  function empMore(row) {
+    return '<button type="button" class="fd-more-btn" data-fd-row-menu="' + F.esc(row.grid_id) + '" aria-haspopup="menu" aria-label="إجراءات" title="إجراءات"></button>';
+  }
+
+  function empCard(row) {
+    return '<div class="fd-card">' +
+      '<div class="fd-card-line">' + empName(row) + empStatusPill(row) + "</div>" +
+      '<div class="fd-card-meta">' + empRolePill(row) + ' <span class="fd-muted">' + F.num(row.orders) + " طلب</span></div>" +
+      '<div class="fd-card-line fd-card-foot"><span class="fd-card-amount">' + F.money(row.sales) + "</span>" +
+      '<span class="fd-card-actions">' + (empHasCommission(row) && row.total_due ? '<span class="fd-qty--low" style="font-weight:800">مستحق ' + F.num(row.total_due) + "</span>" : "") + empMore(row) + "</span></div>" +
+    "</div>";
+  }
+
+  function empPasses(row) {
+    if (empRole && row.role !== empRole) return false;
+    if (empQuick === "active" && row.status !== "active") return false;
+    const status = byId("filterStatus").value;
+    if (status && row.status !== status) return false;
+    const pay = byId("filterPayType").value;
+    if (pay && (row.pay_type || "none") !== pay) return false;
+    if (byId("filterDue").value === "due" && !(row.total_due > 0)) return false;
+    return true;
+  }
+
+  function syncEmployeeUi() {
+    const counts = { "": 0, cashier: 0, admin: 0, delivery: 0 };
+    let due = 0;
+    gridApi.forEachNode(node => {
+      counts[""] += 1;
+      if (counts[node.data.role] !== undefined) counts[node.data.role] += 1;
+    });
+    gridApi.forEachNodeAfterFilter(node => { if (empHasCommission(node.data)) due += node.data.total_due || 0; });
+    document.querySelectorAll("#empRoleChips [data-count]").forEach(el => {
+      el.textContent = F.num(counts[el.getAttribute("data-count")] || 0);
+    });
+    document.querySelectorAll("#empRoleChips .fd-chip").forEach(chip => {
+      chip.classList.toggle("active", (chip.getAttribute("data-emp-role") || "") === empRole);
+    });
+    document.querySelectorAll("#fdPage [data-emp-quick]").forEach(card => {
+      card.classList.toggle("active", card.getAttribute("data-emp-quick") === empQuick);
+    });
+    const active = ["filterStatus", "filterPayType", "filterDue"].filter(id => byId(id).value).length;
+    const badge = byId("empFilterCount");
+    badge.hidden = active === 0;
+    badge.textContent = String(active);
+    byId("empTotals").innerHTML = due ? "المستحق <b>" + F.num(due) + " د.ع</b>" : "";
+  }
+
+  function refreshEmployeeFilters() {
+    if (!gridApi) return;
+    gridApi.onFilterChanged();
+  }
+
+  function clearEmployeeFilters() {
+    ["filterStatus", "filterPayType", "filterDue"].forEach(id => { byId(id).value = ""; });
+    refreshEmployeeFilters();
+  }
+
+  const empPage = F.gridPage({
+    gridEl: byId("empGrid"),
+    wrapEl: byId("empGridWrap"),
+    pagerEl: byId("empPager"),
+    rangeEl: byId("empRange"),
+    sizeEl: byId("empPageSize"),
+    sizeKey: "employees_page_size",
+    unit: "موظف",
+    cardCol: "card",
+    alwaysHidden: ["phone"],
+    rowHeight: 68,
+    cardRowHeight: 120,
+    tiers: [
+      { mode: "full", minWidth: 1120, hidden: [] },
+      { mode: "medium", minWidth: 960, hidden: ["pages_count", "salary"] },
+      { mode: "compact", minWidth: 820, hidden: ["pages_count", "salary", "commission", "sales"] }
+    ]
+  });
+
+  function initEmployeesGrid() {
+    let rows = [];
+    try { rows = JSON.parse(byId("employeesData").textContent); } catch (e) { rows = []; }
+    const html = render => params => (params.data ? render(params.data, params.value) : "");
+    const moneyOrDash = (row, v) => (empHasCommission(row) ? F.money(v) : '<span class="fd-muted">—</span>');
+    const columnDefs = [
+      { colId: "name", field: "name", headerName: __t("employees_col_name") || "الاسم", minWidth: 190, flex: 1.6, cellRenderer: html(row => empName(row)),
+        getQuickFilterText: p => empCleanName(p.data) + " " + (p.data.username || "") + " " + (p.data.phone || "") },
+      { colId: "role", field: "role_name", headerName: __t("employees_col_role") || "الدور", minWidth: 120, flex: 0.9, cellRenderer: html(row => empRolePill(row)) },
+      { colId: "status", field: "status", headerName: __t("employees_col_status") || "الحالة", minWidth: 96, flex: 0.6, cellRenderer: html(row => empStatusPill(row)) },
+      { colId: "pages_count", field: "pages_count", headerName: "البيجات", minWidth: 96, flex: 0.6,
+        cellRenderer: html((row, v) => row.is_delivery ? '<span class="fd-muted">—</span>'
+          : '<button type="button" class="fd-btn fd-btn--sm" data-emp-pages="' + row.id + '">' + F.num(v) + " بيج</button>") },
+      { colId: "orders", field: "orders", headerName: __t("employees_col_orders") || "الطلبات", minWidth: 84, flex: 0.5, cellRenderer: html((row, v) => "<b>" + F.num(v) + "</b>") },
+      { colId: "sales", field: "sales", headerName: __t("employees_col_sales") || "المبيعات", minWidth: 120, flex: 0.9, cellClass: "fd-cell-amount", cellRenderer: html((row, v) => F.money(v)) },
+      { colId: "salary", field: "salary", headerName: __t("employees_col_salary") || "الراتب", minWidth: 110, flex: 0.8, cellClass: "fd-cell-muted", cellRenderer: html((row, v) => F.money(v)) },
+      { colId: "commission", field: "commission", headerName: __t("employees_col_commission") || "العمولة", minWidth: 110, flex: 0.8, cellRenderer: html(moneyOrDash) },
+      { colId: "total_due", field: "total_due", headerName: __t("employees_col_total_due") || "المستحق", minWidth: 116, flex: 0.8,
+        cellRenderer: html((row, v) => empHasCommission(row) ? '<b class="' + (v > 0 ? "fd-qty--low" : "fd-muted") + '">' + F.money(v) + "</b>" : '<span class="fd-muted">—</span>') },
+      { colId: "phone", field: "phone", headerName: "الهاتف", hide: true },
+      { colId: "card", headerName: "الموظفون", flex: 1, minWidth: 220, hide: true, cellClass: "fd-card-cell", sortable: false, cellRenderer: html(row => empCard(row)), getQuickFilterText: () => "" },
+      { colId: "actions", headerName: "", width: 68, minWidth: 68, maxWidth: 68, sortable: false, resizable: false, cellClass: "fd-actions-cell", cellRenderer: html(row => empMore(row)), getQuickFilterText: () => "" }
+    ];
+    const gridOptions = empPage.gridOptions({
+      columnDefs,
+      rowData: rows,
+      getRowId: p => String(p.data.grid_id || p.data.id),
+      defaultColDef: { sortable: true, resizable: true, suppressHeaderMenuButton: true, minWidth: 60 },
+      overlayNoRowsTemplate: '<div style="padding:40px;color:#6b7280;font-weight:700">لا يوجد موظفون</div>',
+      isExternalFilterPresent: () => true,
+      doesExternalFilterPass: node => empPasses(node.data),
+      onFilterChanged: () => { syncEmployeeUi(); empPage.renderPager(); },
+      onCellClicked: params => {
+        if (!params.data || params.column.getColId() === "actions") return;
+        if (params.event && params.event.target.closest("button, a")) return;
+        openEmployeeDetail(params.data.grid_id);
+      }
+    });
+    gridApi = agGrid.createGrid(byId("empGrid"), gridOptions);
+    empPage.attach(gridApi);
+    syncEmployeeUi();
+  }
+
+  // ---- Detail panel ----
+  const findEmp = gridId => { const n = gridApi && gridApi.getRowNode(String(gridId)); return n ? n.data : null; };
+  const kv = (key, value) => `<div class="fd-kv-row"><span class="fd-kv-key">${key}</span><span class="fd-kv-val">${value}</span></div>`;
+
+  function openEmployeeDetail(gridId) {
+    const e = findEmp(gridId);
+    if (!e) return;
+    empDetailId = e.grid_id;
+    byId("empDetailTitle").textContent = (e.is_delivery ? "🚚 " : "") + empCleanName(e);
+    byId("empDetailSub").textContent = "@" + (e.username || "");
+    const pay = EMP_PAY_TYPES[e.pay_type || "none"] || e.pay_type;
+    const payWhen = /monthly/.test(e.pay_type || "") ? " · يوم " + e.pay_day_of_month
+      : /weekly/.test(e.pay_type || "") ? " · " + (EMP_WEEKDAYS[e.pay_weekday] || "") : "";
+    const wa = F.blank(e.phone) ? "" : "https://wa.me/" + String(e.phone).replace(/\D/g, "").replace(/^0/, "964");
+    byId("empDetailBody").innerHTML = `
+      <div class="fd-detail-status">${empRolePill(e)} ${empStatusPill(e)}</div>
+      <div class="fd-kv">
+        ${kv("الهاتف", F.blank(e.phone) ? "—" : `<span dir="ltr">${F.esc(e.phone)}</span>`)}
+        ${e.is_delivery ? "" : kv("البيجات", F.num(e.pages_count))}
+        ${kv("الطلبات", F.num(e.orders))}
+        ${kv("المبيعات", F.money(e.sales))}
+        ${kv("الراتب", F.money(e.salary))}
+        ${kv("نوع الراتب", F.esc(pay + payWhen))}
+        ${empHasCommission(e) ? kv("عمولة الطلب", F.money(e.commission_rate)) : ""}
+        ${empHasCommission(e) ? kv("العمولة الحالية", F.money(e.commission)) : ""}
+        ${empHasCommission(e) ? kv("المستحق", `<b class="${e.total_due > 0 ? "fd-qty--low" : ""}">${F.money(e.total_due)}</b>`) : ""}
+      </div>
+      <div class="fd-detail-actions">
+        ${e.is_delivery
+          ? '<a class="fd-btn fd-btn--sm" href="/delivery-agent/login" target="_blank" rel="noopener">' + F.esc(__t("employees_action_agent_page") || "صفحة المندوب") + "</a>"
+          : `<button type="button" class="fd-btn fd-btn--sm" data-emp-pages="${e.id}">${F.esc(__t("employees_action_pages") || "البيجات")}</button>
+             <button type="button" class="fd-btn fd-btn--sm" data-emp-act="view" data-emp-id="${F.esc(e.grid_id)}">${F.esc(__t("employees_action_view") || "الطلبات")}</button>
+             <a class="fd-btn fd-btn--sm" href="/admin/permissions/employee/${encodeURIComponent(e.id)}/roles">${F.esc(__t("employees_action_roles") || "الصلاحيات")}</a>`}
+        ${wa ? `<a class="fd-btn fd-btn--sm" href="${wa}" target="_blank" rel="noopener">واتساب</a>` : ""}
+      </div>`;
+    F.show(byId("empDetail"));
+  }
+
+  function closeEmployeeDetail() {
+    empDetailId = null;
+    F.hide(byId("empDetail"));
+  }
+
+  // ---- Drawers ----
+  function showDrawer(id, focusId) {
+    closeEmployeeDetail();
+    F.closePop();
+    F.show(byId(id));
+    if (focusId) setTimeout(() => { const el = byId(focusId); if (el) el.focus(); }, 40);
+  }
+
+  function openAddEmployeeDrawer() { showDrawer("empAddDrawer", "emp_name"); }
+  function openAgentDrawer() { showDrawer("agentDrawer", "agent_id"); }
+  function openCommissionDrawer() {
+    showDrawer("commissionDrawer");
+    loadCommissionStatement();
+  }
+
+  // employees-admin.js fills and saves the edit form; it only needs to be shown as a drawer here
+  const empOpenEditForm = window.openEditEmployeeModal;
+  window.openEditEmployeeModal = function (gridId) {
+    empOpenEditForm(gridId);
+    showDrawer("editEmployeeModal", "editEmpName");
+  };
+  const empCloseEditForm = window.closeEditEmployeeModal;
+  window.closeEditEmployeeModal = function () {
+    empCloseEditForm();
+    F.hide(byId("editEmployeeModal"));
+  };
+
+  function openEmployeeMenu(trigger) {
+    const e = findEmp(trigger.getAttribute("data-fd-row-menu"));
+    if (!e) return;
+    let items;
+    if (e.is_delivery) {
+      items = [
+        { act: "detail", label: "عرض الملخص" },
+        { act: "edit", label: "تعديل الراتب" },
+        { href: "/delivery-agent/login", label: __t("employees_action_agent_page") || "صفحة المندوب", target: "_blank" }
+      ];
+    } else {
+      items = [
+        { act: "detail", label: "عرض الملخص" },
+        { act: "edit", label: "تعديل" },
+        { act: "pages", label: __t("employees_action_pages") || "البيجات" },
+        { act: "view", label: __t("employees_action_view") || "الطلبات" },
+        { href: "/admin/permissions/employee/" + encodeURIComponent(e.id) + "/roles", label: __t("employees_action_roles") || "الصلاحيات" },
+        { act: "toggle", label: e.status === "active" ? (__t("employees_action_disable") || "تعطيل") : (__t("employees_action_enable") || "تفعيل") },
+        "sep",
+        { act: "delete", label: __t("employees_action_delete") || "حذف", danger: true }
+      ];
+    }
+    F.rowMenu(trigger, items, act => runEmployeeAction(act, e));
+  }
+
+  function runEmployeeAction(act, e) {
+    if (act === "detail") openEmployeeDetail(e.grid_id);
+    if (act === "edit") openEditEmployeeModal(e.grid_id);
+    if (act === "pages") openPagesModal(e.id, empCleanName(e));
+    if (act === "view") viewEmployeeOrders(e.id, empCleanName(e));
+    if (act === "toggle") toggleEmployeeStatus(e.id, empCleanName(e), e.status === "active");
+    if (act === "delete") deleteEmployee(e.id, empCleanName(e));
+  }
+
+  document.addEventListener("click", event => {
+    const t = event.target;
+    if (!t.closest) return;
+    const menu = t.closest("[data-fd-row-menu]");
+    if (menu) { openEmployeeMenu(menu); return; }
+    if (t.closest("[data-fd-drawer-close]")) {
+      const drawer = t.closest(".fd-drawer");
+      if (drawer) F.hide(drawer);
+      return;
+    }
+    const drawerBg = t.classList && t.classList.contains("fd-drawer") ? t : null;
+    if (drawerBg) { F.hide(drawerBg); return; }
+    const pages = t.closest("[data-emp-pages]");
+    if (pages) {
+      const e = gridApi && gridApi.getRowNode("emp-" + pages.getAttribute("data-emp-pages"));
+      openPagesModal(Number(pages.getAttribute("data-emp-pages")), e ? empCleanName(e.data) : "");
+      return;
+    }
+    const act = t.closest("[data-emp-act]");
+    if (act) { const e = findEmp(act.getAttribute("data-emp-id")); if (e) runEmployeeAction(act.getAttribute("data-emp-act"), e); return; }
+    if (t.closest("#empDetailEdit") && empDetailId) { openEditEmployeeModal(empDetailId); return; }
+    const chip = t.closest("[data-emp-role]");
+    if (chip) { empRole = chip.getAttribute("data-emp-role") || ""; refreshEmployeeFilters(); return; }
+    const kpi = t.closest("[data-emp-quick]");
+    if (kpi) { empQuick = kpi.getAttribute("data-emp-quick") || ""; refreshEmployeeFilters(); }
+  });
+
+  document.addEventListener("DOMContentLoaded", () => {
+    if (typeof agGrid === "undefined") return;
+    initEmployeesGrid();
+    byId("searchInput").addEventListener("input", e => gridApi && gridApi.setGridOption("quickFilterText", e.target.value));
+    ["filterStatus", "filterPayType", "filterDue"].forEach(id => byId(id).addEventListener("change", refreshEmployeeFilters));
+  });
+</script>
 {% endblock %}
