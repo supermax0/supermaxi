@@ -1,0 +1,538 @@
+/* ======================================================
+   ORDERS PAGE — DESKTOP APP LAYOUT
+   Ribbon toolbar + status tabs + dense data grid + status bar,
+   modelled on classic desktop accounting software.
+   Applies only on wide screens; mobile/tablet keep orders-mobile.css.
+====================================================== */
+
+/* Status tabs and status bar are desktop-only */
+.orders-desk-tabs,
+.orders-statusbar {
+  display: none;
+}
+
+@media (min-width: 1025px) {
+
+  /* ---------- Palette ----------
+     The app shell (design-refresh.css) is white in both themes,
+     so the desktop palette stays light to match it. */
+  .orders-desk {
+    --desk-bg: #eef1f5;
+    --desk-panel: #ffffff;
+    --desk-ribbon: linear-gradient(180deg, #fdfdfe 0%, #f1f4f8 100%);
+    --desk-border: #c8d0da;
+    --desk-border-soft: #e1e6ec;
+    --desk-text: #1f2937;
+    --desk-muted: #5b6573;
+    --desk-accent: #1d6fd8;
+    --desk-accent-soft: #dbe9fb;
+    --desk-btn: linear-gradient(180deg, #ffffff 0%, #e8ecf1 100%);
+    --desk-btn-hover: linear-gradient(180deg, #f4f8fd 0%, #dce8f7 100%);
+    --desk-btn-border: #b5c0cd;
+    --desk-input: #ffffff;
+    --desk-grid-header: linear-gradient(180deg, #f8f9fb 0%, #e7ebf0 100%);
+    --desk-grid-odd: #f6f8fa;
+    --desk-grid-hover: #e8f1fd;
+    --desk-grid-selected: #cfe2fb;
+    --desk-grid-line: #e0e5eb;
+    --desk-total-bg: #fff8e1;
+    --desk-statusbar: linear-gradient(180deg, #f3f5f8 0%, #e4e8ee 100%);
+
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    color: var(--desk-text);
+    font-family: "Tajawal", Tahoma, Arial, sans-serif;
+  }
+
+  /* ---------- Status tabs (tab control) ---------- */
+  #ordersDesk .orders-desk-tabs {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    padding: 0 6px;
+    margin-bottom: -1px;
+    position: relative;
+    z-index: 1;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  #ordersDesk .orders-desk-tab {
+    flex: 0 0 auto;
+    padding: 7px 16px 6px;
+    border: 1px solid var(--desk-border);
+    border-bottom-color: transparent;
+    border-radius: 5px 5px 0 0;
+    background: var(--desk-bg);
+    color: var(--desk-muted);
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    transition: background 0.12s ease, color 0.12s ease;
+  }
+
+  #ordersDesk .orders-desk-tab:hover {
+    background: var(--desk-panel);
+    color: var(--desk-text);
+  }
+
+  #ordersDesk .orders-desk-tab.active {
+    background: #fdfdfe;
+    color: var(--desk-accent);
+    border-bottom-color: #fdfdfe;
+    font-weight: 800;
+    box-shadow: inset 0 2px 0 var(--desk-accent);
+  }
+
+  /* ---------- Ribbon toolbar ---------- */
+  #ordersDesk .orders-toolbar {
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 0 !important;
+    margin: 0 !important;
+    padding: 6px 4px 0 !important;
+    border: 1px solid var(--desk-border) !important;
+    border-radius: 0 4px 0 0 !important;
+    background: var(--desk-ribbon) !important;
+    box-shadow: none !important;
+  }
+
+  #ordersDesk .orders-toolbar-block,
+  #ordersDesk .orders-toolbar-block--collapsible {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    justify-content: space-between;
+    gap: 4px !important;
+    padding: 2px 10px 0 !important;
+    border: 0 !important;
+    border-inline-start: 1px solid var(--desk-border-soft) !important;
+  }
+
+  #ordersDesk .orders-toolbar-block:first-of-type {
+    border-inline-start: 0 !important;
+  }
+
+  /* Filters absorb the spare ribbon width; bulk and reports keep their size */
+  #ordersDesk .orders-toolbar-block--collapsible {
+    flex: 1 1 420px;
+    min-width: 0;
+  }
+
+  #ordersDesk #bulkActionsSection,
+  #ordersDesk #reportsSection {
+    flex: 0 0 auto;
+  }
+
+  /* Filters stay visible on desktop: the ribbon has no collapsed state */
+  #ordersDesk .orders-toolbar-toggle {
+    display: contents !important;
+    cursor: default;
+  }
+
+  #ordersDesk .orders-toolbar-toggle-icon {
+    display: none !important;
+  }
+
+  #ordersDesk .orders-toolbar-block--collapsible.collapsed .orders-toolbar-panel,
+  #ordersDesk .orders-toolbar-panel {
+    display: flex !important;
+    order: 1;
+  }
+
+  /* Group caption sits under the group, as in a ribbon */
+  #ordersDesk .orders-toolbar-kicker {
+    order: 2;
+    min-width: 0 !important;
+    width: auto !important;
+    margin: 0 -10px;
+    padding: 3px 6px 4px;
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    color: var(--desk-muted) !important;
+    text-align: center;
+    border-top: 1px solid var(--desk-border-soft);
+    letter-spacing: 0;
+  }
+
+  #ordersDesk .filters-grid {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 4px 6px !important;
+    align-items: center;
+  }
+
+  #ordersDesk .filters-grid .finora-help {
+    margin-inline-start: -2px;
+  }
+
+  #ordersDesk .orders-scan-badge {
+    padding: 3px 8px;
+    font-size: 11.5px;
+    border-radius: 3px;
+  }
+
+  #ordersDesk .bulk-actions {
+    display: flex !important;
+    flex-direction: column !important;
+    flex-wrap: nowrap !important;
+    align-items: stretch !important;
+    gap: 4px !important;
+  }
+
+  #ordersDesk .action-group {
+    display: flex !important;
+    width: auto !important;
+    gap: 4px !important;
+  }
+
+  #ordersDesk .report-section {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 4px !important;
+  }
+
+  /* ---------- Desktop form controls ---------- */
+  #ordersDesk .filters-grid select,
+  #ordersDesk .date-filter,
+  #ordersDesk .bulk-actions select,
+  #ordersDesk .report-section select,
+  #ordersDesk .action-group select {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    flex: 0 0 auto !important;
+    height: 27px !important;
+    min-height: 27px !important;
+    padding: 0 8px !important;
+    border: 1px solid var(--desk-btn-border) !important;
+    border-radius: 3px !important;
+    background-color: var(--desk-input) !important;
+    color: var(--desk-text) !important;
+    font-size: 12.5px !important;
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05) !important;
+  }
+
+  #ordersDesk .filters-grid select,
+  #ordersDesk .filters-grid .date-filter {
+    width: auto !important;
+    min-width: 132px !important;
+    max-width: 190px !important;
+    flex: 1 1 150px !important;
+  }
+
+  #ordersDesk .action-group select {
+    width: 150px !important;
+    flex: 1 1 150px !important;
+  }
+
+  #ordersDesk .filters-grid select:focus,
+  #ordersDesk .date-filter:focus,
+  #ordersDesk .bulk-actions select:focus,
+  #ordersDesk .report-section select:focus,
+  #ordersDesk .orders-table-search input:focus {
+    outline: none !important;
+    border-color: var(--desk-accent) !important;
+    box-shadow: 0 0 0 1px var(--desk-accent) !important;
+  }
+
+  /* Classic raised buttons */
+  #ordersDesk .orders-toolbar .btn,
+  #ordersDesk .orders-table-toolbar .btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center;
+    gap: 5px !important;
+    height: 27px !important;
+    min-height: 27px !important;
+    padding: 0 10px !important;
+    border: 1px solid var(--desk-btn-border) !important;
+    border-radius: 3px !important;
+    background: var(--desk-btn) !important;
+    color: var(--desk-text) !important;
+    font-size: 12.5px !important;
+    font-weight: 600 !important;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04) !important;
+    transform: none !important;
+    white-space: nowrap;
+  }
+
+  #ordersDesk .orders-toolbar .btn:hover,
+  #ordersDesk .orders-table-toolbar .btn:hover {
+    background: var(--desk-btn-hover) !important;
+    border-color: var(--desk-accent) !important;
+    transform: none !important;
+  }
+
+  #ordersDesk .orders-toolbar .btn:active,
+  #ordersDesk .orders-table-toolbar .btn:active {
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  /* Primary "apply" buttons keep the accent so the default action reads */
+  #ordersDesk .action-group .btn-primary {
+    min-width: 64px;
+    border-color: var(--desk-accent) !important;
+    background: linear-gradient(180deg, #3c8af0 0%, #1d6fd8 100%) !important;
+    color: #ffffff !important;
+  }
+
+  #ordersDesk .action-group .btn-primary:hover {
+    background: linear-gradient(180deg, #4a95f5 0%, #1a63c4 100%) !important;
+  }
+
+  #ordersDesk .btn span:first-child {
+    font-size: 13px;
+    line-height: 1;
+  }
+
+  /* ---------- Orders panel ---------- */
+  #ordersDesk .orders-card {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 1px solid var(--desk-border) !important;
+    border-top: 0 !important;
+    border-radius: 0 0 4px 4px !important;
+    background: var(--desk-panel) !important;
+    backdrop-filter: none !important;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06) !important;
+    overflow: hidden;
+  }
+
+  /* Command bar above the grid */
+  #ordersDesk .orders-table-toolbar {
+    flex-direction: row !important;
+    align-items: center !important;
+    flex-wrap: wrap;
+    gap: 8px !important;
+    margin: 0 !important;
+    padding: 5px 8px !important;
+    border-bottom: 1px solid var(--desk-border) !important;
+    background: var(--desk-ribbon) !important;
+  }
+
+  #ordersDesk .orders-table-search {
+    flex: 0 0 220px;
+    width: 220px !important;
+  }
+
+  #ordersDesk .orders-table-search input {
+    height: 27px !important;
+    min-height: 27px !important;
+    padding: 0 10px !important;
+    border: 1px solid var(--desk-btn-border) !important;
+    border-radius: 3px !important;
+    background: var(--desk-input) !important;
+    color: var(--desk-text) !important;
+    font-size: 12.5px !important;
+    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05) !important;
+  }
+
+  #ordersDesk .orders-table-actions-row {
+    display: flex !important;
+    flex: 1 1 auto;
+    align-items: center !important;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+    flex: 1 1 0 !important;
+    min-width: 0;
+    width: auto !important;
+    gap: 6px !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+  }
+
+  #ordersDesk .selected-actions-grid,
+  #ordersDesk .orders-section-actions {
+    gap: 4px !important;
+    flex-wrap: wrap;
+  }
+
+  #ordersDesk .orders-section-actions {
+    margin-inline-start: auto;
+    padding-inline-start: 8px;
+    border-inline-start: 1px solid var(--desk-border-soft);
+  }
+
+  #ordersDesk .selected-count {
+    padding: 2px 8px !important;
+    border-radius: 3px !important;
+    background: var(--desk-accent-soft) !important;
+    color: var(--desk-accent) !important;
+    font-size: 12px !important;
+  }
+
+  #ordersDesk .selected-count:empty {
+    display: none;
+  }
+
+  /* ---------- Data grid ---------- */
+  #ordersDesk .table-container {
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: var(--desk-panel) !important;
+    overflow: visible !important;
+  }
+
+  #ordersDesk #ordersTable {
+    --ag-background-color: var(--desk-panel);
+    --ag-foreground-color: var(--desk-text);
+    --ag-border-color: var(--desk-border);
+    --ag-row-border-color: var(--desk-grid-line);
+    --ag-header-background-color: transparent;
+    --ag-header-foreground-color: var(--desk-text);
+    --ag-header-column-separator-display: block;
+    --ag-header-column-separator-color: var(--desk-border);
+    --ag-header-column-separator-height: 100%;
+    --ag-header-column-resize-handle-color: var(--desk-border);
+    --ag-cell-horizontal-border: solid var(--desk-grid-line);
+    --ag-cell-horizontal-padding: 8px;
+    --ag-odd-row-background-color: var(--desk-grid-odd);
+    --ag-row-hover-color: var(--desk-grid-hover);
+    --ag-selected-row-background-color: var(--desk-grid-selected);
+    --ag-range-selection-border-color: var(--desk-accent);
+    --ag-checkbox-checked-color: var(--desk-accent);
+    --ag-wrapper-border-radius: 0;
+    --ag-border-radius: 2px;
+    --ag-font-size: 13px;
+    --ag-font-family: "Tajawal", Tahoma, Arial, sans-serif;
+  }
+
+  #ordersDesk #ordersTable .ag-root-wrapper {
+    border: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  #ordersDesk #ordersTable .ag-header {
+    background: var(--desk-grid-header) !important;
+    border-bottom: 1px solid var(--desk-border) !important;
+  }
+
+  :root #ordersDesk #ordersTable .ag-header-cell,
+  :root #ordersDesk #ordersTable .ag-header-group-cell {
+    background: transparent !important;
+    color: var(--desk-text) !important;
+    font-size: 12.5px;
+  }
+
+  #ordersDesk #ordersTable .ag-header-cell-label {
+    font-weight: 700;
+  }
+
+  /* Rows: zebra striping + vertical cell lines */
+  :root #ordersDesk #ordersTable .ag-row .ag-cell {
+    color: var(--desk-text) !important;
+    border-inline-end: 1px solid var(--desk-grid-line) !important;
+    line-height: 32px;
+    font-variant-numeric: tabular-nums;
+  }
+
+  :root #ordersDesk #ordersTable .ag-row-even .ag-cell {
+    background-color: var(--desk-panel) !important;
+  }
+
+  :root #ordersDesk #ordersTable .ag-row-odd .ag-cell {
+    background-color: var(--desk-grid-odd) !important;
+  }
+
+  :root #ordersDesk #ordersTable .ag-row:hover .ag-cell {
+    background-color: var(--desk-grid-hover) !important;
+  }
+
+  :root #ordersDesk #ordersTable .ag-row-selected .ag-cell {
+    background-color: var(--desk-grid-selected) !important;
+    color: var(--desk-text) !important;
+  }
+
+  #ordersDesk #ordersTable .ag-row-selected {
+    box-shadow: inset 3px 0 0 var(--desk-accent);
+  }
+
+  #ordersDesk #ordersTable .ag-cell-focus:not(.ag-cell-range-selected) {
+    border: 1px dotted var(--desk-accent) !important;
+  }
+
+  /* Status badge: compact pill that fits a 34px row */
+  #ordersDesk #ordersTable .status-badge {
+    padding: 2px 9px !important;
+    border-radius: 3px !important;
+    font-size: 12px !important;
+    line-height: 18px;
+  }
+
+  /* Totals row pinned at the bottom of the grid */
+  :root #ordersDesk #ordersTable .ag-row-pinned,
+  :root #ordersDesk #ordersTable .ag-row-pinned .ag-cell {
+    background: var(--desk-total-bg) !important;
+    font-weight: 800;
+  }
+
+  #ordersDesk #ordersTable .ag-floating-bottom {
+    border-top: 2px solid var(--desk-border) !important;
+  }
+
+  /* Pager styled as part of the window frame */
+  #ordersDesk #ordersTable .ag-paging-panel {
+    height: 34px;
+    border-top: 1px solid var(--desk-border) !important;
+    background: var(--desk-ribbon) !important;
+    color: var(--desk-muted);
+    font-size: 12px;
+  }
+
+  /* ---------- Status bar ---------- */
+  #ordersDesk .orders-statusbar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    min-height: 26px;
+    padding: 0 4px;
+    border-top: 1px solid var(--desk-border);
+    background: var(--desk-statusbar);
+    color: var(--desk-muted);
+    font-size: 12px;
+    white-space: nowrap;
+    overflow-x: auto;
+  }
+
+  #ordersDesk .orders-statusbar-item {
+    padding: 3px 10px;
+    border-inline-end: 1px solid var(--desk-border);
+  }
+
+  #ordersDesk .orders-statusbar-item b {
+    color: var(--desk-text);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+
+  #ordersDesk .orders-statusbar-spacer {
+    flex: 1 1 auto;
+  }
+
+  #ordersDesk .orders-statusbar-hint {
+    border-inline-end: 0;
+    opacity: 0.85;
+  }
+
+  @media (max-width: 1360px) {
+    #ordersDesk .orders-statusbar-hint {
+      display: none;
+    }
+  }
+}
+
+@media print {
+  .orders-desk-tabs,
+  .orders-statusbar {
+    display: none !important;
+  }
+}

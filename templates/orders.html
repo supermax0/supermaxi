@@ -44,6 +44,30 @@
   <div class="loading-spinner"></div>
 </div>
 
+<div class="orders-desk" id="ordersDesk">
+
+<!-- ==================== Status Tabs (desktop) ==================== -->
+<nav class="orders-desk-tabs no-print" aria-label="{{ _('orders') }}">
+  {% if business_allows('orders_all') %}
+  <a href="/orders/" class="orders-desk-tab {% if page_type == 'all' %}active{% endif %}">{{ _('orders_nav_all') }}</a>
+  {% endif %}
+  {% if (is_admin or (current_employee and current_employee.has_permission('view_orders_placed'))) and business_allows('orders_placed') %}
+  <a href="/orders/ordered" class="orders-desk-tab {% if page_type == 'ordered' %}active{% endif %}">{{ _('orders_status_ordered') }}</a>
+  {% endif %}
+  {% if (is_admin or (current_employee and current_employee.has_permission('view_orders_packed'))) and business_allows('orders_packed') %}
+  <a href="/orders/packed" class="orders-desk-tab {% if page_type == 'packed' %}active{% endif %}">{{ _('orders_status_packed') }}</a>
+  {% endif %}
+  {% if (is_admin or (current_employee and current_employee.has_permission('view_orders_shipped'))) and business_allows('orders_shipping') %}
+  <a href="/orders/shipping" class="orders-desk-tab {% if page_type == 'shipping' %}active{% endif %}">{{ _('orders_status_shipping') }}</a>
+  {% endif %}
+  {% if (is_admin or (current_employee and current_employee.has_permission('view_orders_delivered'))) and business_allows('orders_delivered') %}
+  <a href="/orders/delivered" class="orders-desk-tab {% if page_type == 'delivered' %}active{% endif %}">{{ _('orders_status_delivered') }}</a>
+  {% endif %}
+  {% if (is_admin or (current_employee and current_employee.has_permission('view_orders_returned'))) and business_allows('orders_returned') %}
+  <a href="/orders/cancelled" class="orders-desk-tab {% if page_type in ('cancelled', 'returned') %}active{% endif %}">{{ _('orders_nav_cancelled') }}</a>
+  {% endif %}
+</nav>
+
 <!-- ==================== Compact Orders Toolbar ==================== -->
 <div class="orders-toolbar no-print" id="ordersToolbar">
   <div class="orders-toolbar-block orders-toolbar-block--collapsible collapsed" id="filtersSection">
@@ -218,7 +242,21 @@
     <div id="ordersTable" class="ag-theme-quartz" style="height: 600px; width: 100%;"></div>
   </div>
 
+  <!-- ==================== Status Bar (desktop) ==================== -->
+  <div class="orders-statusbar no-print" id="ordersStatusBar" aria-live="polite">
+    <span class="orders-statusbar-item">الطلبات: <b id="sbCount">0</b></span>
+    <span class="orders-statusbar-item">المحدد: <b id="sbSelected">0</b></span>
+    <span class="orders-statusbar-item">مجموع المحدد: <b id="sbSelectedTotal">0</b></span>
+    <span class="orders-statusbar-item">المجموع: <b id="sbTotal">0</b></span>
+    <span class="orders-statusbar-item">المدفوع: <b id="sbPaid">0</b></span>
+    <span class="orders-statusbar-item">المستحق: <b id="sbRemaining">0</b></span>
+    <span class="orders-statusbar-spacer"></span>
+    <span class="orders-statusbar-item orders-statusbar-hint">Ctrl+F بحث · نقرتان لفتح الطلب</span>
+  </div>
+
 </div>
+
+</div><!-- /.orders-desk -->
 
 <!-- ==================== Modal إظهار/إخفاء الأعمدة (Premium) ==================== -->
 <div id="ordersColumnVisibilityModal" class="vis-modal"
@@ -2967,6 +3005,7 @@
     }
   }
 </style>
+<link rel="stylesheet" href="/static/css/orders-desktop.css?v=20261018a">
 
 <!-- ==================== JavaScript ==================== -->
 <script>
@@ -3294,6 +3333,45 @@
     if (countElement) {
       countElement.textContent = selected.length > 0 ? `(${selected.length} محدد)` : '';
     }
+    updateStatusBarSelection();
+  }
+
+  // ============= Desktop Status Bar =============
+  function formatStatusBarAmount(value) {
+    return (Math.round(value) || 0).toLocaleString() + " د.ع";
+  }
+
+  function setStatusBarText(id, text) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = text;
+  }
+
+  function updateStatusBarSelection() {
+    if (!gridApi) return;
+    const rows = gridApi.getSelectedRows();
+    let selectedTotal = 0;
+    rows.forEach(row => { selectedTotal += parseFloat(row.total) || 0; });
+    setStatusBarText("sbSelected", rows.length.toLocaleString());
+    setStatusBarText("sbSelectedTotal", formatStatusBarAmount(selectedTotal));
+  }
+
+  function isOrdersDesktopLayout() {
+    return window.matchMedia("(min-width: 1025px)").matches;
+  }
+
+  // Desktop: let the grid fill the window down to the status bar
+  function fitOrdersGridHeight() {
+    const gridEl = document.getElementById("ordersTable");
+    if (!gridEl) return;
+    if (!isOrdersDesktopLayout()) {
+      gridEl.style.height = "600px";
+      return;
+    }
+    const statusBar = document.getElementById("ordersStatusBar");
+    const barHeight = statusBar ? statusBar.offsetHeight : 0;
+    const top = gridEl.getBoundingClientRect().top + window.scrollY;
+    const available = window.innerHeight - top - barHeight - 24;
+    gridEl.style.height = Math.max(420, available) + "px";
   }
 
   function updateToggleAllState() {
@@ -3412,6 +3490,8 @@
     let totalCount = 0;
     let totalAmount = 0;
     let totalQty = 0;
+    let totalPaid = 0;
+    let totalRemaining = 0;
 
     gridApi.forEachNodeAfterFilter(node => {
       const order = node.data;
@@ -3419,7 +3499,14 @@
       const total = parseFloat(order.total) || 0;
       totalAmount += total;
       totalQty += parseFloat(order.quantity) || 0;
+      totalPaid += parseFloat(order.paid_amount) || 0;
+      totalRemaining += parseFloat(order.remaining) || 0;
     });
+
+    setStatusBarText("sbCount", totalCount.toLocaleString());
+    setStatusBarText("sbTotal", formatStatusBarAmount(totalAmount));
+    setStatusBarText("sbPaid", formatStatusBarAmount(totalPaid));
+    setStatusBarText("sbRemaining", formatStatusBarAmount(totalRemaining));
 
     const tableStats = document.getElementById("tableStats");
     if (tableStats) {
@@ -5824,7 +5911,15 @@
     };
 
     const dataCols = [
-      { headerName: "#", field: "order_id", width: 90, sort: 'desc', filter: 'agNumberColumnFilter' },
+      {
+        headerName: "#",
+        field: "order_id",
+        width: 90,
+        sort: 'desc',
+        filter: 'agNumberColumnFilter',
+        // Footer row puts a label here; keep it from rendering as "Invalid Number"
+        valueFormatter: params => (params.value === null || params.value === undefined) ? "" : String(params.value)
+      },
       { headerName: "التاريخ", field: "date", width: 160 },
       { headerName: "الباركود", field: "barcode", width: 140 },
       { headerName: "الاسم", field: "customer_name", width: 150 },
@@ -5891,11 +5986,24 @@
         if (stockShortageOrderIds.has(orderRowId(params.data))) return 'order-row-stock-shortage';
         return undefined;
       },
-      rowHeight: window.matchMedia("(max-width: 768px)").matches ? 52 : 46,
+      rowHeight: window.matchMedia("(max-width: 768px)").matches ? 52 : (isOrdersDesktopLayout() ? 34 : 46),
+      headerHeight: isOrdersDesktopLayout() ? 34 : undefined,
       pagination: true,
 
       paginationPageSize: 20,
       paginationPageSizeSelector: [10, 20, 50, 100],
+      localeText: {
+        page: "صفحة",
+        of: "من",
+        to: "إلى",
+        more: "المزيد",
+        pageSizeSelectorLabel: "عدد الصفوف:",
+        firstPage: "الصفحة الأولى",
+        previousPage: "السابقة",
+        nextPage: "التالية",
+        lastPage: "الصفحة الأخيرة",
+        noRowsToShow: "لا توجد طلبات"
+      },
       rowSelection: 'multiple',
       isRowSelectable: (node) => !node.rowPinned,
       enableRtl: true,
@@ -5965,8 +6073,23 @@
     };
 
     const eGridDiv = document.querySelector('#ordersTable');
-    if (eGridDiv) agGrid.createGrid(eGridDiv, gridOptions);
+    if (eGridDiv) {
+      fitOrdersGridHeight();
+      agGrid.createGrid(eGridDiv, gridOptions);
+      window.addEventListener("resize", fitOrdersGridHeight);
+    }
   }
+
+  // Desktop shortcut: Ctrl+F / F3 jumps to the orders search box
+  document.addEventListener("keydown", (event) => {
+    const isFind = (event.key === "F3") || ((event.ctrlKey || event.metaKey) && (event.key === "f" || event.key === "F"));
+    if (!isFind || !isOrdersDesktopLayout()) return;
+    const input = document.getElementById("searchInput");
+    if (!input) return;
+    event.preventDefault();
+    input.focus();
+    input.select();
+  });
 
 
   var ORDERS_COLUMN_VISIBILITY_KEY = "orders_table_visible_columns";
