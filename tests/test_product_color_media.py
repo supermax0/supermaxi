@@ -180,4 +180,5 @@ def test_store_cards_and_cart_use_selected_color_photo(media, monkeypatch):
         html = current_app.jinja_env.get_template("storefront/product_detail.html").render(
             product=card, related_products=[], store_design=design, shop_tenant_slug="test", cart_count=0,
             store_account=None, favorite_ids=[], favorite_count=0, store_sale_products=[card], help_fields_json="{}", current_year=2026)
+        (Path(__file__).resolve().parent / "_artifacts").mkdir(parents=True, exist_ok=True)
         (Path(__file__).resolve().parent / "_artifacts" / "color-photo-store-preview.html").write_text(html, encoding="utf-8")

@@ -249,6 +249,7 @@ def test_size_store_template_emits_axes_prices_and_available_stock(inventory, mo
         html = current_app.jinja_env.get_template("storefront/product_detail.html").render(
             product=card, related_products=[], store_design=design, shop_tenant_slug="test", cart_count=0,
             store_account=None, favorite_ids=[], favorite_count=0, store_sale_products=[card], help_fields_json="{}", current_year=2026)
+        (Path(__file__).parent / "_artifacts").mkdir(parents=True, exist_ok=True)
         (Path(__file__).parent / "_artifacts" / "product-options-store-preview.html").write_text(html, encoding="utf-8")
         card.update(name="قميص FINORA — اللون والمقاس", option_axes=["المقاس", "اللون"], colors=[
             {"name": "المقاس: M / اللون: أسود", "attributes": {"المقاس": "M", "اللون": "أسود"}, "qty": 2, "available_qty": 2, "sale_price": 180, "image_url": picture("#292633"), "active": True},
@@ -285,6 +286,7 @@ def test_web_edit_preserves_options_and_uses_same_atomic_image_save(inventory, m
         # Render the real editor for a browser check, without account data.
         html = current_app.jinja_env.get_template("inventory/_product_options_editor.html").render(
             edit_product=None, edit_current_stock=0, product_option_rows=[], m={})
+        (Path(__file__).parent / "_artifacts").mkdir(parents=True, exist_ok=True)
         (Path(__file__).parent / "_artifacts" / "product-options-web-editor-preview.html").write_text(
             '<!doctype html><html lang="ar" dir="rtl"><meta charset="utf-8"><body><form action="/inventory/save" method="post" enctype="multipart/form-data">'
             '<label>اسم المنتج<input name="name" value="عطر" required></label><input name="opening_stock" type="number" value="6">'

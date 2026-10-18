@@ -34,6 +34,10 @@ class RotatingSavingsAccountingTests(unittest.TestCase):
         import models  # noqa: F401
         import models.delivery_agent  # noqa: F401
         import models.system_settings  # noqa: F401
+        # The finance bridge registers loans with HR foreign keys. Register
+        # that graph before create_all, as the real application does.
+        import modules.hr.models  # noqa: F401
+        import modules.finance.models  # noqa: F401
         from models.account_transaction import AccountTransaction
         from utils.treasury_helpers import get_default_cash_account
         from utils.treasury_schema_guard import ensure_treasury_schema

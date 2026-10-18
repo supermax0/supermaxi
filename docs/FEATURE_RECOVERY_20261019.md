@@ -54,3 +54,17 @@ instead of the server's UTC calendar. Seeded movements stay inside their actual
 report window, and the late-opening test uses a completed business day. The
 previously failing loan/report cases and all 18 daily-closing cases also passed
 against the real clock during Baghdad's midnight boundary.
+
+Final automated coverage: **3010 unique cases: 2999 passed, 11 skipped, zero
+unresolved failures**, combined from the completed isolated segments and focused
+reruns. Database/live-integration prerequisites account for the skips. Python
+browser-only suites were excluded from this count; separate Chrome smoke checks
+covered seven main pages and mobile orders. Fourteen authenticated production
+GETs and the public storefront returned HTTP 200, including verification of the
+live Baghdad report date. All 3342 deployed source fingerprints matched.
+
+Preview-writing tests create their generated-output directories on a fresh
+checkout. The rotating-savings standalone fixture registers the HR/finance
+foreign-key graph before creating its database. Temporary SQLite files stay in
+the validation sandbox. The threaded search cache was rechecked with the real
+monotonic clock. These changes preserve every functional assertion.
