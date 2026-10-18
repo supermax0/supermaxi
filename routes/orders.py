@@ -42,7 +42,7 @@ from models.invoice_template import InvoiceTemplate, TenantTemplateSettings
 from models.delivery_agent import DeliveryAgent
 from models.message import Message
 from datetime import datetime, date
-from sqlalchemy import func
+from sqlalchemy import case, func
 from io import BytesIO
 import pandas as pd
 import json
@@ -112,6 +112,46 @@ def _orders_grid_rows(q, limit=_ORDERS_GRID_LIMIT):
     return q.limit(int(limit)).all()
 
 
+def _orders_tab_counts():
+    """عدد الطلبات لكل تبويب حالة — بنفس شروط صفحات الحالات (بدون فلاتر الرابط)."""
+    try:
+        today = date.today()
+        due_now = or_(
+            Invoice.scheduled_date.is_(None),
+            func.date(Invoice.scheduled_date) <= today,
+        )
+        all_cond = Invoice.id.isnot(None)
+        employee = get_current_employee()
+        if employee and employee.role != "admin":
+            allowed_statuses = allowed_order_statuses_for(employee)
+            all_cond = Invoice.status.in_(allowed_statuses) if allowed_statuses else Invoice.id == -1
+        conds = {
+            "all": all_cond,
+            "ordered": Invoice.status == "تم الطلب",
+            "packed": Invoice.status == "معباة",
+            "shipping": Invoice.status == "جاري الشحن",
+            "delivered": or_(Invoice.status == "تم التوصيل", Invoice.payment_status == "مسدد"),
+            "returned": or_(
+                invoice_returned_condition(Invoice),
+                Invoice.status == "ملغي",
+                Invoice.payment_status == "ملغي",
+            ),
+        }
+        row = (
+            db.session.query(
+                *[func.coalesce(func.sum(case((cond, 1), else_=0)), 0).label(key) for key, cond in conds.items()]
+            )
+            .select_from(Invoice)
+            .join(Customer, Invoice.customer_id == Customer.id)
+            .filter(due_now)
+            .one()
+        )
+        return {key: int(getattr(row, key) or 0) for key in conds}
+    except Exception:
+        db.session.rollback()
+        return {}
+
+
 def _orders_page_lookups():
     cities = [c[0] for c in db.session.query(Customer.city).distinct().all() if c[0]]
     return {
@@ -119,6 +159,7 @@ def _orders_page_lookups():
         "shippings": ShippingCompany.query.all(),
         "delivery_agents": DeliveryAgent.query.all(),
         "cities": cities,
+        "tab_counts": _orders_tab_counts(),
     }
 
 
