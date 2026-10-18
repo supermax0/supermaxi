@@ -3,206 +3,574 @@
 {% block page_title %}{{ _('customer_credit_page_title') }}{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/customer-credit.css') }}">
+{% from "partials/fd_icons.html" import icon %}
+<link rel="stylesheet" href="/static/css/finora-ui.css?v=20261018e">
 <script src="{{ url_for('static', filename='js/digits-enforcer.js') }}"></script>
+<style>
+  #fdPage .cc-name { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  #fdPage .cc-name .fd-pill { padding: 3px 10px; font-size: 12px; }
+  #fdPage .cc-progress { display: inline-flex; align-items: center; gap: 8px; min-width: 120px; }
+  #fdPage .cc-progress-bar { flex: 1 1 auto; min-width: 60px; height: 6px; border-radius: 999px; background: var(--fd-soft); overflow: hidden; }
+  #fdPage .cc-progress-bar span { display: block; height: 100%; border-radius: inherit; background: var(--fd-green); }
+  #fdPage .cc-progress b { min-width: 38px; font-size: 12.5px; font-variant-numeric: tabular-nums; }
+  #fdPage .cc-next { display: flex; flex-direction: column; gap: 2px; line-height: 1.3; }
+  #fdPage .cc-next small { color: var(--fd-muted); font-size: 12.5px; }
+  #fdPage .cc-next.is-late b { color: #dc2626; }
 
-<div class="cc-page">
-  <div class="cc-header">
-    <div class="cc-header__text">
-      <p class="cc-page-subtitle">{{ _('customer_credit_subtitle') }}</p>
+  /* debt drawer */
+  #fdPage .cc-tabs { box-shadow: none; }
+  #fdPage .cc-tabs .cc-tab { border: 0 !important; background: transparent; font-family: inherit !important; cursor: pointer; width: auto !important; min-width: 0 !important; }
+  #fdPage .cc-customer-pick { display: flex; gap: 8px; align-items: stretch; }
+  #fdPage .cc-customer-pick input { flex: 1 1 auto; min-width: 0; }
+  #fdPage .cc-customer-pick .fd-btn { flex: 0 0 auto; min-height: 50px !important; }
+  #fdPage .cc-customer-results,
+  #fdPage .cc-product-results {
+    display: none; max-height: 220px; overflow-y: auto;
+    border: 1px solid var(--fd-border); border-radius: 14px; background: var(--fd-surface);
+    box-shadow: var(--fd-shadow);
+  }
+  #fdPage .cc-customer-results { margin-top: -6px; }
+  #fdPage .cc-customer-results.show,
+  #fdPage .cc-product-results.show { display: block; }
+  #fdPage .cc-customer-item,
+  #fdPage .cc-product-item { padding: 11px 14px; border-bottom: 1px solid var(--fd-border); font-size: 14px; font-weight: 600; cursor: pointer; }
+  #fdPage .cc-customer-item:last-child,
+  #fdPage .cc-product-item:last-child { border-bottom: 0; }
+  #fdPage .cc-customer-item:hover,
+  #fdPage .cc-product-item:hover,
+  #fdPage .cc-product-item:focus { background: var(--fd-purple-soft); outline: none; }
+  #fdPage .cc-customer-item--add { display: flex; align-items: center; gap: 8px; color: var(--fd-purple); font-weight: 800; }
+  #fdPage .cc-product-item small { display: block; margin-top: 2px; color: var(--fd-muted); font-size: 12.5px; font-weight: 500; }
+  #fdPage .cc-product-item--empty { cursor: default; color: var(--fd-muted); }
+  #fdPage .cc-product-item--empty:hover { background: transparent; }
+  #fdPage .cc-selected { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 700; color: var(--fd-green); }
+  #fdPage .cc-selected:empty { display: none; }
+  #fdPage .cc-new-customer { display: flex; flex-direction: column; gap: 14px; padding: 16px; border: 1px dashed var(--fd-border-strong); border-radius: 14px; background: var(--fd-soft); }
+  #fdPage .cc-new-customer__actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  #fdPage .cc-product-lines { display: flex; flex-direction: column; gap: 10px; }
+  #fdPage .cc-product-lines:empty { display: none; }
+  #fdPage .cc-product-line { display: grid; grid-template-columns: minmax(0, 1fr) 90px 120px 50px; gap: 8px; align-items: start; }
+  #fdPage .cc-product-pick { position: relative; min-width: 0; }
+  #fdPage .cc-product-results { position: absolute; z-index: 30; inset-inline: 0; top: calc(100% + 4px); }
+  #fdPage .cc-line-del { width: 50px !important; min-width: 50px !important; height: 50px !important; padding: 0 !important; justify-content: center; }
+  @media (max-width: 560px) {
+    #fdPage .cc-customer-pick { flex-direction: column; }
+    #fdPage .cc-product-line { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 50px; }
+    #fdPage .cc-product-line .cc-product-pick { grid-column: 1 / -1; }
+  }
+</style>
+
+<div class="fd credit-page" id="fdPage">
+
+  <header class="fd-header no-print">
+    <div class="fd-header-main">
+      <span class="fd-header-icon" style="color: var(--fd-purple);">{{ icon('users', 26) }}</span>
+      <div class="fd-header-text">
+        <h1 class="fd-title">إدارة الزبائن</h1>
+        <p class="fd-subtitle">بيانات الزبائن وطلباتهم ومحافظاتهم</p>
+      </div>
     </div>
-    <button type="button" class="cc-btn cc-btn-primary cc-header__action" onclick="openAddDebtModal()">
-      <i class="fas fa-plus"></i> {{ _('customer_credit_add_debt') }}
+  </header>
+
+  <nav class="fd-subnav no-print" aria-label="الزبائن">
+    <a class="fd-subnav-link" href="/customers/">الزبائن</a>
+    <a class="fd-subnav-link" href="/customers/blacklist">{{ _('customers_nav_blacklist') }}</a>
+    <a class="fd-subnav-link" href="/customers/provinces">المحافظات</a>
+    <a class="fd-subnav-link active" href="/customers/credit">بيع آجل / أقساط</a>
+  </nav>
+
+  <div class="fd-kpis no-print">
+    <button type="button" class="fd-kpi fd-kpi--purple active" data-cc-state="">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('customer_credit_stat_total_debt') }}</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money">{{ "{:,}".format(stats.total_debt) }}</span><span class="fd-kpi-unit">{{ _('reports_currency_iqd') }}</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('receipt', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--green" data-cc-state="paid">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('customer_credit_stat_paid') }}</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money">{{ "{:,}".format(stats.total_paid) }}</span><span class="fd-kpi-unit">{{ _('reports_currency_iqd') }}</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('check-circle', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--red" data-cc-state="due">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('customer_credit_stat_remaining') }}</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money">{{ "{:,}".format(stats.remaining) }}</span><span class="fd-kpi-unit">{{ _('reports_currency_iqd') }}</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('wallet', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--amber" data-cc-state="overdue">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('customer_credit_stat_overdue') }}</span>
+        <span><span class="fd-kpi-value">{{ "{:,}".format(stats.overdue_count) }}</span><span class="fd-kpi-unit">قسط</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('alert', 28) }}</span>
     </button>
   </div>
 
-  <div class="cc-stats">
-    <div class="cc-stat">
-      <div class="cc-stat-label">{{ _('customer_credit_stat_total_debt') }}</div>
-      <div class="cc-stat-value">{{ "{:,}".format(stats.total_debt) }} {{ _('reports_currency_iqd') }}</div>
+  <div class="fd-toolbar no-print">
+    <div class="fd-chips" id="ccChips" role="tablist" aria-label="حالة الدين">
+      <button type="button" class="fd-chip active" data-cc-state="">الكل<span class="fd-chip-count" data-count=""></span></button>
+      <button type="button" class="fd-chip" data-cc-state="due">عليهم متبقي<span class="fd-chip-count" data-count="due"></span></button>
+      <button type="button" class="fd-chip" data-cc-state="overdue">متأخرون<span class="fd-chip-count" data-count="overdue"></span></button>
+      <button type="button" class="fd-chip" data-cc-state="week">مستحق خلال 7 أيام<span class="fd-chip-count" data-count="week"></span></button>
+      <button type="button" class="fd-chip" data-cc-state="paid">مسددون<span class="fd-chip-count" data-count="paid"></span></button>
     </div>
-    <div class="cc-stat">
-      <div class="cc-stat-label">{{ _('customer_credit_stat_paid') }}</div>
-      <div class="cc-stat-value success">{{ "{:,}".format(stats.total_paid) }} {{ _('reports_currency_iqd') }}</div>
-    </div>
-    <div class="cc-stat">
-      <div class="cc-stat-label">{{ _('customer_credit_stat_remaining') }}</div>
-      <div class="cc-stat-value danger">{{ "{:,}".format(stats.remaining) }} {{ _('reports_currency_iqd') }}</div>
-    </div>
-    <div class="cc-stat">
-      <div class="cc-stat-label">{{ _('customer_credit_stat_overdue') }}</div>
-      <div class="cc-stat-value warning">{{ stats.overdue_count }}</div>
+
+    <label class="fd-search fd-tool--search">
+      {{ icon('search', 18) }}
+      <input type="search" id="ccSearch" autocomplete="off" placeholder="{{ _('customer_credit_search') }}">
+    </label>
+
+    <div class="fd-tools-row">
+      <button type="button" class="fd-btn fd-btn--primary" onclick="openAddDebtModal()">
+        {{ icon('package-plus', 18) }}
+        <span class="fd-btn-label">{{ _('customer_credit_add_debt') }}</span>
+      </button>
+      <div class="fd-pop-wrap">
+        <button type="button" class="fd-btn fd-btn--icon" data-fd-pop="ccMorePop" aria-expanded="false" aria-controls="ccMorePop" title="المزيد" aria-label="المزيد">{{ icon('dots', 20) }}</button>
+        <div class="fd-pop fd-pop--end fd-menu" id="ccMorePop" role="menu" hidden>
+          <a class="fd-menu-item" role="menuitem" href="/customers/">{{ icon('users') }}<span>{{ _('customers') }}</span></a>
+          <div class="fd-menu-sep" role="separator"></div>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="exportCreditCsv()">{{ icon('download') }}<span>تصدير CSV</span></button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div class="cc-panel">
-    <div class="cc-toolbar">
-      <h3 class="cc-toolbar-title">{{ _('customer_credit_list_title') }}</h3>
-      <input type="search" id="ccSearch" class="cc-search-input" placeholder="{{ _('customer_credit_search') }}" oninput="filterCreditRows()">
+  <section class="fd-table-card">
+    <div class="fd-table-scroll">
+      <table class="fd-table" id="ccTable">
+        <thead>
+          <tr>
+            <th>{{ _('customer_credit_th_customer') }}</th>
+            <th>{{ _('customer_credit_th_phone') }}</th>
+            <th class="fd-col-opt">المحافظة</th>
+            <th>{{ _('customer_credit_th_debt') }}</th>
+            <th class="fd-col-opt2">{{ _('customer_credit_th_paid') }}</th>
+            <th>{{ _('customer_credit_th_remaining') }}</th>
+            <th class="fd-col-opt">{{ _('customer_credit_payment_progress') }}</th>
+            <th>{{ _('customer_credit_th_next_due') }}</th>
+            <th class="fd-col-actions"></th>
+          </tr>
+        </thead>
+        <tbody id="ccBody">
+          <tr><td colspan="9" class="fd-empty">جاري التحميل...</td></tr>
+        </tbody>
+      </table>
     </div>
+  </section>
 
-    {% if rows %}
-    <div class="cc-cards" id="ccCards">
-      {% for row in rows %}
-      <article class="cc-mcard cc-mcard--customer cc-row" data-search="{{ row.customer.name }} {{ row.customer.phone }}">
-        <div class="cc-mcard__head">
-          <div>
-            <div class="cc-mcard__title">{{ row.customer.name }}</div>
-            <div class="cc-mcard__sub">{{ row.customer.phone }}</div>
-          </div>
-          {% if row.summary.overdue_count %}
-          <span class="cc-badge cc-badge-overdue">{{ row.summary.overdue_count }} {{ _('customer_credit_th_overdue') }}</span>
-          {% endif %}
-        </div>
-        <div class="cc-mcard__grid">
-          <div><span>{{ _('customer_credit_th_debt') }}</span><strong>{{ "{:,}".format(row.summary.total_debt) }}</strong></div>
-          <div><span>{{ _('customer_credit_th_remaining') }}</span><strong class="text-danger">{{ "{:,}".format(row.summary.remaining) }}</strong></div>
-          <div><span>{{ _('customer_credit_th_paid') }}</span><strong class="text-success">{{ "{:,}".format(row.summary.total_paid) }}</strong></div>
-          <div><span>{{ _('customer_credit_th_next_due') }}</span><strong>{% if row.next_due_amount %}{{ row.next_due_date }}<br><small>{{ "{:,}".format(row.next_due_amount) }}</small>{% else %}—{% endif %}</strong></div>
-        </div>
-        <a href="{{ url_for('customer_credit.detail', customer_id=row.customer.id) }}" class="cc-btn cc-btn-primary cc-mcard__action">
-          <i class="fas fa-file-invoice"></i> {{ _('customer_credit_action_statement') }}
-        </a>
-      </article>
-      {% endfor %}
-    </div>
-    {% else %}
-    <div class="cc-empty">
-      <div style="font-size:2.5rem;margin-bottom:12px;">📋</div>
-      <h3>{{ _('customer_credit_empty_title') }}</h3>
-      <p>{{ _('customer_credit_empty_subtitle') }}</p>
-    </div>
-    {% endif %}
-  </div>
-</div>
-
-<div id="addDebtModal" class="cc-modal-overlay" onclick="if(event.target===this) closeAddDebtModal()">
-  <div class="cc-modal">
-    <div class="cc-modal-head">
-      <h3 style="margin:0;font-weight:800;">{{ _('customer_credit_add_debt') }}</h3>
-      <button type="button" class="cc-btn cc-btn-ghost" onclick="closeAddDebtModal()"><i class="fas fa-xmark"></i></button>
-    </div>
-
-    <div class="cc-tabs">
-      <button type="button" class="cc-tab active" data-tab="opening" onclick="switchDebtTab('opening')">{{ _('customer_credit_tab_opening') }}</button>
-      <button type="button" class="cc-tab" data-tab="products" onclick="switchDebtTab('products')">{{ _('customer_credit_tab_products') }}</button>
-      <button type="button" class="cc-tab" data-tab="manual" onclick="switchDebtTab('manual')">{{ _('customer_credit_tab_manual') }}</button>
-    </div>
-
-    <div class="cc-field">
-      <label>{{ _('customer_credit_field_customer') }}</label>
-      <div class="cc-customer-pick">
-        <input type="text" id="debtCustomerSearch" placeholder="{{ _('customer_credit_customer_search') }}" autocomplete="off" oninput="searchCustomersForDebt()">
-        <button type="button" class="cc-btn cc-btn-ghost cc-customer-add-btn" onclick="toggleNewCustomerForm()" title="{{ _('customer_credit_add_customer') }}">
-          <i class="fas fa-user-plus"></i> {{ _('customer_credit_add_customer') }}
-        </button>
-      </div>
-      <input type="hidden" id="debtCustomerId">
-      <div id="debtCustomerResults" class="cc-customer-results"></div>
-      <div id="debtCustomerSelected" style="margin-top:8px;font-size:0.85rem;color:var(--text-muted);"></div>
-
-      <div id="newCustomerForm" class="cc-new-customer" style="display:none;">
-        <div class="cc-grid-2">
-          <div class="cc-field" style="margin:0;">
-            <label>{{ _('customer_credit_new_name') }}</label>
-            <input type="text" id="newCustomerName" placeholder="{{ _('customer_credit_new_name') }}" autocomplete="name">
-          </div>
-          <div class="cc-field" style="margin:0;">
-            <label>{{ _('customer_credit_new_phone') }}</label>
-            <input type="tel" id="newCustomerPhone" placeholder="07xxxxxxxxx" autocomplete="tel" inputmode="numeric" pattern="[0-9]*" data-digits-en>
-          </div>
-        </div>
-        <div class="cc-field" style="margin-top:10px;margin-bottom:0;">
-          <label>{{ _('customer_credit_new_city') }}</label>
-          <input type="text" id="newCustomerCity" placeholder="{{ _('customer_credit_new_city_placeholder') }}">
-        </div>
-        <div class="cc-new-customer__actions">
-          <button type="button" class="cc-btn cc-btn-primary" onclick="createCustomerForDebt()">
-            <i class="fas fa-check"></i> {{ _('customer_credit_save_customer') }}
-          </button>
-          <button type="button" class="cc-btn cc-btn-ghost" onclick="toggleNewCustomerForm(false)">{{ _('cancel') }}</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="tab-opening" class="debt-tab-panel">
-      <div class="cc-field">
-        <label>{{ _('customer_credit_field_amount') }}</label>
-        <input type="number" id="openingAmount" min="0" step="1" placeholder="0">
-      </div>
-      <div class="cc-field">
-        <label>{{ _('customer_credit_field_description') }}</label>
-        <input type="text" id="openingDescription" placeholder="{{ _('customer_credit_opening_desc_placeholder') }}">
-      </div>
-    </div>
-
-    <div id="tab-manual" class="debt-tab-panel" style="display:none;">
-      <div class="cc-field">
-        <label>{{ _('customer_credit_field_amount') }}</label>
-        <input type="number" id="manualAmount" min="0" step="1" placeholder="0">
-      </div>
-      <div class="cc-field">
-        <label>{{ _('customer_credit_field_description') }}</label>
-        <input type="text" id="manualDescription" placeholder="{{ _('customer_credit_manual_desc_placeholder') }}">
-      </div>
-    </div>
-
-    <div id="tab-products" class="debt-tab-panel" style="display:none;">
-      <div class="cc-product-lines" id="productLines"></div>
-      <button type="button" class="cc-btn cc-btn-ghost" onclick="addProductLine()"><i class="fas fa-plus"></i> {{ _('customer_credit_add_product_line') }}</button>
-      <div class="cc-field" style="margin-top:12px;">
-        <label>{{ _('customer_credit_field_note') }}</label>
-        <input type="text" id="productsNote" placeholder="{{ _('customer_credit_products_note_placeholder') }}">
-      </div>
-    </div>
-
-    <div class="cc-grid-2" style="margin-top:12px;">
-      <div class="cc-field">
-        <label>{{ _('customer_credit_field_installments') }}</label>
-        <input type="number" id="debtInstallments" min="1" step="1" value="1">
-      </div>
-      <div class="cc-field">
-        <label>{{ _('customer_credit_field_first_due') }}</label>
-        <input type="date" id="debtFirstDue">
-      </div>
-    </div>
-    <div class="cc-field">
-      <label>{{ _('customer_credit_field_interval') }}</label>
-      <select id="debtInterval">
-        <option value="monthly">{{ _('customer_credit_interval_monthly') }}</option>
-        <option value="weekly">{{ _('customer_credit_interval_weekly') }}</option>
+  <footer class="fd-footer no-print">
+    <div class="fd-footer-info">
+      <select id="ccPageSize" aria-label="عدد الزبائن في الصفحة">
+        <option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
       </select>
+      <span class="fd-range" id="ccRange"></span>
+      <span class="fd-totals" id="ccTotals"></span>
     </div>
+    <nav class="fd-pager" id="ccPager" aria-label="الصفحات"></nav>
+  </footer>
 
-    <div class="cc-modal-footer">
-      <button type="button" class="cc-btn cc-btn-ghost" onclick="closeAddDebtModal()">{{ _('cancel') }}</button>
-      <button type="button" class="cc-btn cc-btn-primary" onclick="submitDebtPlan()">{{ _('customer_credit_save_plan') }}</button>
+  <!-- Detail panel -->
+  <aside class="fd-detail" id="ccDetail" aria-label="ملخص دين الزبون" hidden>
+    <div class="fd-detail-head">
+      <div class="fd-detail-titles">
+        <h3 class="fd-detail-title" id="ccDetailTitle"></h3>
+        <p class="fd-detail-sub" id="ccDetailSub"></p>
+      </div>
+      <button type="button" class="fd-close-btn" onclick="closeCreditDetail()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
     </div>
+    <div class="fd-detail-body" id="ccDetailBody"></div>
+  </aside>
+
+  <!-- Drawer: pay -->
+  <div class="fd-drawer" id="payDrawer" hidden>
+    <form class="fd-drawer-panel" id="payForm" method="POST" action="" role="dialog" aria-modal="true" aria-labelledby="payDrawerTitle" onsubmit="return validatePayForm(event)">
+      <div class="fd-drawer-head">
+        <span class="fd-drawer-icon">{{ icon('wallet', 24) }}</span>
+        <div class="fd-drawer-titles">
+          <h2 class="fd-drawer-title" id="payDrawerTitle">{{ _('customer_credit_pay_submit') }}</h2>
+          <p class="fd-drawer-hint" id="payDrawerHint"></p>
+        </div>
+        <button type="button" class="fd-close-btn" onclick="closePayDrawer()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+      </div>
+      <div class="fd-drawer-body">
+        <div class="fd-form-error" id="payError" role="alert" hidden></div>
+        <div class="fd-stock-line"><span>{{ _('customer_credit_stat_remaining') }}</span><b id="payRemaining"></b></div>
+        <section class="fd-section">
+          <div class="fd-section-head"><span class="fd-section-title">{{ icon('wallet', 18) }}بيانات التسديد</span></div>
+          <label class="fd-field"><span>{{ _('customer_credit_pay_amount') }} <b class="fd-req">*</b></span>
+            <span class="fd-money"><input type="number" name="amount" id="payAmount" min="1" step="1" placeholder="0" inputmode="numeric" required></span>
+          </label>
+          <label class="fd-field"><span>{{ _('customer_credit_pay_note') }}</span>
+            <input type="text" name="note" id="payNote" placeholder="{{ _('customer_credit_pay_note_placeholder') }}">
+          </label>
+          <p class="fd-muted" style="margin:0;font-size:13px;">يُوزَّع المبلغ على الأقساط الأقدم أولاً.</p>
+        </section>
+      </div>
+      <div class="fd-drawer-foot">
+        <button type="submit" class="fd-btn fd-btn--primary" id="paySave">{{ icon('check-circle', 18) }}<span>{{ _('customer_credit_pay_submit') }}</span></button>
+        <button type="button" class="fd-btn" onclick="closePayDrawer()">{{ _('cancel') }}</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Drawer: add debt (keeps the ids the add-debt script uses) -->
+  <div class="fd-drawer" id="addDebtModal" hidden>
+    <form class="fd-drawer-panel" id="debtForm" role="dialog" aria-modal="true" aria-labelledby="debtDrawerTitle" novalidate>
+      <div class="fd-drawer-head">
+        <span class="fd-drawer-icon">{{ icon('receipt', 24) }}</span>
+        <div class="fd-drawer-titles">
+          <h2 class="fd-drawer-title" id="debtDrawerTitle">{{ _('customer_credit_add_debt') }}</h2>
+          <p class="fd-drawer-hint">Ctrl+S للحفظ · Esc للإغلاق</p>
+        </div>
+        <button type="button" class="fd-close-btn" onclick="closeAddDebtModal()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+      </div>
+      <div class="fd-drawer-body">
+        <div class="fd-tabs cc-tabs" role="tablist" aria-label="نوع الدين">
+          <button type="button" class="fd-tab cc-tab active" data-tab="opening" onclick="switchDebtTab('opening')">{{ _('customer_credit_tab_opening') }}</button>
+          <button type="button" class="fd-tab cc-tab" data-tab="products" onclick="switchDebtTab('products')">{{ _('customer_credit_tab_products') }}</button>
+          <button type="button" class="fd-tab cc-tab" data-tab="manual" onclick="switchDebtTab('manual')">{{ _('customer_credit_tab_manual') }}</button>
+        </div>
+
+        <section class="fd-section">
+          <div class="fd-section-head"><span class="fd-section-title">{{ icon('users', 18) }}{{ _('customer_credit_field_customer') }} <b class="fd-req">*</b></span></div>
+          <div class="cc-customer-pick">
+            <input type="text" id="debtCustomerSearch" placeholder="{{ _('customer_credit_customer_search') }}" autocomplete="off" oninput="searchCustomersForDebt()">
+            <button type="button" class="fd-btn fd-btn--soft" onclick="toggleNewCustomerForm()" title="{{ _('customer_credit_add_customer') }}">
+              {{ icon('users', 18) }}<span>{{ _('customer_credit_add_customer') }}</span>
+            </button>
+          </div>
+          <input type="hidden" id="debtCustomerId">
+          <div id="debtCustomerResults" class="cc-customer-results"></div>
+          <div id="debtCustomerSelected" class="cc-selected"></div>
+
+          <div id="newCustomerForm" class="cc-new-customer" style="display:none;">
+            <div class="fd-grid-2">
+              <label class="fd-field"><span>{{ _('customer_credit_new_name') }}</span>
+                <input type="text" id="newCustomerName" placeholder="{{ _('customer_credit_new_name') }}" autocomplete="name">
+              </label>
+              <label class="fd-field"><span>{{ _('customer_credit_new_phone') }}</span>
+                <input type="tel" id="newCustomerPhone" placeholder="07xxxxxxxxx" autocomplete="tel" inputmode="numeric" pattern="[0-9]*" data-digits-en dir="ltr">
+              </label>
+            </div>
+            <label class="fd-field"><span>{{ _('customer_credit_new_city') }}</span>
+              <input type="text" id="newCustomerCity" placeholder="{{ _('customer_credit_new_city_placeholder') }}">
+            </label>
+            <div class="cc-new-customer__actions">
+              <button type="button" class="fd-btn fd-btn--primary fd-btn--sm" onclick="createCustomerForDebt()">
+                {{ icon('check-circle', 16) }}<span>{{ _('customer_credit_save_customer') }}</span>
+              </button>
+              <button type="button" class="fd-btn fd-btn--sm" onclick="toggleNewCustomerForm(false)">{{ _('cancel') }}</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="fd-section debt-tab-panel" id="tab-opening">
+          <div class="fd-section-head"><span class="fd-section-title">{{ icon('wallet', 18) }}{{ _('customer_credit_tab_opening') }}</span></div>
+          <label class="fd-field"><span>{{ _('customer_credit_field_amount') }}</span>
+            <span class="fd-money"><input type="number" id="openingAmount" min="0" step="1" placeholder="0" inputmode="numeric"></span>
+          </label>
+          <label class="fd-field"><span>{{ _('customer_credit_field_description') }}</span>
+            <input type="text" id="openingDescription" placeholder="{{ _('customer_credit_opening_desc_placeholder') }}">
+          </label>
+        </section>
+
+        <section class="fd-section debt-tab-panel" id="tab-manual" style="display:none;">
+          <div class="fd-section-head"><span class="fd-section-title">{{ icon('pencil', 18) }}{{ _('customer_credit_tab_manual') }}</span></div>
+          <label class="fd-field"><span>{{ _('customer_credit_field_amount') }}</span>
+            <span class="fd-money"><input type="number" id="manualAmount" min="0" step="1" placeholder="0" inputmode="numeric"></span>
+          </label>
+          <label class="fd-field"><span>{{ _('customer_credit_field_description') }}</span>
+            <input type="text" id="manualDescription" placeholder="{{ _('customer_credit_manual_desc_placeholder') }}">
+          </label>
+        </section>
+
+        <section class="fd-section debt-tab-panel" id="tab-products" style="display:none;">
+          <div class="fd-section-head">
+            <span class="fd-section-title">{{ icon('cart', 18) }}{{ _('customer_credit_tab_products') }}</span>
+            <button type="button" class="fd-btn fd-btn--soft fd-btn--sm" onclick="addProductLine()">{{ icon('package-plus', 16) }}<span>{{ _('customer_credit_add_product_line') }}</span></button>
+          </div>
+          <div class="cc-product-lines" id="productLines"></div>
+          <div class="fd-stock-line" id="productsTotalLine"><span>الإجمالي</span><b id="productsTotal">0 د.ع</b></div>
+          <label class="fd-field"><span>{{ _('customer_credit_field_note') }}</span>
+            <input type="text" id="productsNote" placeholder="{{ _('customer_credit_products_note_placeholder') }}">
+          </label>
+        </section>
+
+        <section class="fd-section">
+          <div class="fd-section-head"><span class="fd-section-title">{{ icon('calendar', 18) }}جدول الأقساط</span></div>
+          <div class="fd-grid-2">
+            <label class="fd-field"><span>{{ _('customer_credit_field_installments') }}</span>
+              <input type="number" id="debtInstallments" min="1" step="1" value="1" inputmode="numeric">
+            </label>
+            <label class="fd-field"><span>{{ _('customer_credit_field_first_due') }}</span>
+              <input type="date" id="debtFirstDue">
+            </label>
+          </div>
+          <label class="fd-field"><span>{{ _('customer_credit_field_interval') }}</span>
+            <select id="debtInterval">
+              <option value="monthly">{{ _('customer_credit_interval_monthly') }}</option>
+              <option value="weekly">{{ _('customer_credit_interval_weekly') }}</option>
+            </select>
+          </label>
+          <p class="fd-muted" style="margin:0;font-size:13px;" id="debtScheduleHint"></p>
+        </section>
+      </div>
+      <div class="fd-drawer-foot">
+        <button type="submit" class="fd-btn fd-btn--primary" id="debtSave">{{ icon('check-circle', 18) }}<span>{{ _('customer_credit_save_plan') }}</span></button>
+        <button type="button" class="fd-btn" onclick="closeAddDebtModal()">{{ _('cancel') }}</button>
+      </div>
+    </form>
   </div>
 </div>
 
-<script>
-  let currentDebtTab = 'opening';
-  var productSearchTimers = new WeakMap();
+<script type="application/json" id="creditData">[
+  {% for row in rows %}{% set c = row.customer %}{% set s = row.summary %}
+  {"id": {{ c.id }}, "name": {{ (c.name or '')|tojson }}, "phone": {{ (c.phone or '')|tojson }}, "city": {{ (c.city or '')|tojson }},
+   "total_debt": {{ s.total_debt or 0 }}, "total_paid": {{ s.total_paid or 0 }}, "remaining": {{ s.remaining or 0 }},
+   "overdue_count": {{ s.overdue_count or 0 }}, "active_plans": {{ s.active_plans or 0 }},
+   "next_due_date": {{ (row.next_due_date if row.next_due_amount else '')|tojson }}, "next_due_amount": {{ row.next_due_amount or 0 }}}{% if not loop.last %},{% endif %}
+  {% endfor %}
+]</script>
 
-  function filterCreditRows() {
-    var q = (document.getElementById('ccSearch').value || '').trim().toLowerCase();
-    document.querySelectorAll('.cc-row').forEach(function(row) {
-      var hay = (row.getAttribute('data-search') || '').toLowerCase();
-      row.style.display = !q || hay.indexOf(q) !== -1 ? '' : 'none';
+<script src="/static/js/finora-ui.js?v=20261018c"></script>
+<script>
+  const F = window.FinoraUI;
+  const byId = id => document.getElementById(id);
+  const CC_PAGE_SIZES = [10, 25, 50, 100];
+  const CC_PAGE_SIZE_KEY = "customer_credit_page_size";
+  let creditData = [];
+  let ccState = "";
+  let ccPage = 0;
+  let ccDetailId = null;
+
+  function todayIso() {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+
+  function weekIso() {
+    const d = new Date(Date.now() + 7 * 86400000);
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  }
+
+  function ccPageSize() {
+    try {
+      const saved = parseInt(localStorage.getItem(CC_PAGE_SIZE_KEY), 10);
+      if (CC_PAGE_SIZES.includes(saved)) return saved;
+    } catch (e) { /* storage unavailable */ }
+    return 25;
+  }
+
+  function ccMatches(r, state) {
+    if (state === "due") return r.remaining > 0;
+    if (state === "overdue") return r.overdue_count > 0;
+    if (state === "week") return r.remaining > 0 && !!r.next_due_date && r.next_due_date >= todayIso() && r.next_due_date <= weekIso();
+    if (state === "paid") return r.remaining <= 0;
+    return true;
+  }
+
+  function filteredCredit() {
+    const q = byId("ccSearch").value.trim().toLowerCase();
+    return creditData.filter(r => ccMatches(r, ccState) && (!q || (r.name + " " + r.phone + " " + r.city).toLowerCase().includes(q)));
+  }
+
+  function paidPct(r) {
+    return r.total_debt > 0 ? Math.min(100, Math.floor(r.total_paid * 100 / r.total_debt)) : 0;
+  }
+
+  function ccProgress(r) {
+    const pct = paidPct(r);
+    return `<span class="cc-progress"><span class="cc-progress-bar"><span style="width:${pct}%"></span></span><b>${pct}%</b></span>`;
+  }
+
+  function ccNext(r) {
+    if (!r.next_due_amount) return '<span class="fd-muted">—</span>';
+    const late = r.next_due_date && r.next_due_date < todayIso();
+    return `<span class="cc-next${late ? " is-late" : ""}"><b dir="ltr">${F.esc(r.next_due_date)}</b><small>${F.money(r.next_due_amount)}</small></span>`;
+  }
+
+  function syncCreditUi() {
+    const counts = { "": creditData.length, due: 0, overdue: 0, week: 0, paid: 0 };
+    creditData.forEach(r => ["due", "overdue", "week", "paid"].forEach(k => { if (ccMatches(r, k)) counts[k]++; }));
+    document.querySelectorAll("#ccChips [data-count]").forEach(el => { el.textContent = F.num(counts[el.getAttribute("data-count")] || 0); });
+    document.querySelectorAll("#fdPage [data-cc-state]").forEach(el => {
+      el.classList.toggle("active", (el.getAttribute("data-cc-state") || "") === ccState);
     });
   }
 
-  function openAddDebtModal() {
-    document.getElementById('addDebtModal').style.display = 'block';
-    if (!document.getElementById('debtFirstDue').value) {
-      document.getElementById('debtFirstDue').value = new Date().toISOString().slice(0, 10);
+  function renderCredit() {
+    F.closeRowMenu();
+    syncCreditUi();
+    const rows = filteredCredit();
+    const size = ccPageSize();
+    const pages = Math.max(1, Math.ceil(rows.length / size));
+    ccPage = Math.min(ccPage, pages - 1);
+    const pageRows = rows.slice(ccPage * size, (ccPage + 1) * size);
+    let remaining = 0;
+    rows.forEach(r => { remaining += r.remaining || 0; });
+    byId("ccTotals").innerHTML = rows.length ? "المتبقي <b>" + F.num(remaining) + " د.ع</b>" : "";
+    const from = rows.length ? ccPage * size + 1 : 0;
+    byId("ccRange").innerHTML = "عرض " + F.num(from) + "–" + F.num(Math.min(rows.length, (ccPage + 1) * size)) + " من <b>" + F.num(rows.length) + "</b> زبون";
+    byId("ccPager").innerHTML = F.pagerHtml(ccPage, pages, "data-cc-page");
+
+    const tbody = byId("ccBody");
+    if (!pageRows.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="fd-empty">' + (creditData.length
+        ? "لا يوجد زبائن مطابقون."
+        : "<b>{{ _('customer_credit_empty_title') }}</b><br><span class=\"fd-muted\">{{ _('customer_credit_empty_subtitle') }}</span>") + "</td></tr>";
+      return;
     }
-    if (!document.getElementById('productLines').children.length) addProductLine();
+    const open = byId("ccDetail").hidden ? null : ccDetailId;
+    tbody.innerHTML = pageRows.map(r => `
+      <tr data-cc-row="${r.id}" class="${r.id === open ? "is-open" : ""}" style="cursor:pointer">
+        <td class="fd-td-title" data-label="{{ _('customer_credit_th_customer') }}"><span class="cc-name"><b>${F.esc(r.name)}</b>${r.overdue_count ? `<span class="fd-pill fd-pill--red">${F.num(r.overdue_count)} {{ _('customer_credit_th_overdue') }}</span>` : ""}</span></td>
+        <td data-label="{{ _('customer_credit_th_phone') }}" class="${F.blank(r.phone) ? "fd-td-blank" : ""}"><span dir="ltr">${F.esc(r.phone)}</span></td>
+        <td data-label="المحافظة" class="fd-col-opt${F.blank(r.city) ? " fd-td-blank" : ""}">${F.dash(r.city)}</td>
+        <td data-label="{{ _('customer_credit_th_debt') }}" class="fd-cell-amount">${F.money(r.total_debt)}</td>
+        <td data-label="{{ _('customer_credit_th_paid') }}" class="fd-col-opt2 fd-cell-muted">${F.money(r.total_paid)}</td>
+        <td data-label="{{ _('customer_credit_th_remaining') }}"><b class="${r.remaining > 0 ? "fd-qty--out" : "fd-qty--ok"}">${F.money(r.remaining)}</b></td>
+        <td data-label="{{ _('customer_credit_payment_progress') }}" class="fd-col-opt">${ccProgress(r)}</td>
+        <td data-label="{{ _('customer_credit_th_next_due') }}" class="${r.next_due_amount ? "" : "fd-td-blank"}">${ccNext(r)}</td>
+        <td class="fd-col-actions">
+          <button type="button" class="fd-more-btn" data-fd-row-menu="${r.id}" aria-haspopup="menu" aria-label="{{ _('customer_credit_th_actions') }}" title="{{ _('customer_credit_th_actions') }}"></button>
+        </td>
+      </tr>`).join("");
+  }
+
+  // ---- Detail panel ----
+  function findCredit(id) {
+    return creditData.find(r => r.id === Number(id));
+  }
+
+  function ccKv(key, value) {
+    return `<div class="fd-kv-row"><span class="fd-kv-key">${key}</span><span class="fd-kv-val">${value}</span></div>`;
+  }
+
+  function openCreditDetail(id) {
+    const r = findCredit(id);
+    if (!r) return;
+    ccDetailId = r.id;
+    const pill = r.remaining <= 0 ? ["green", "مسدد"] : (r.overdue_count ? ["red", "متأخر"] : ["amber", "عليه متبقي"]);
+    byId("ccDetailTitle").textContent = r.name;
+    byId("ccDetailSub").textContent = [r.phone, r.city].filter(v => !F.blank(v)).join(" · ");
+    byId("ccDetailBody").innerHTML = `
+      <div class="fd-detail-status"><span class="fd-pill fd-pill--${pill[0]}">${pill[1]}</span>${r.overdue_count ? `<span class="fd-pill fd-pill--red">${F.num(r.overdue_count)} {{ _('customer_credit_stat_overdue') }}</span>` : ""}</div>
+      <div class="fd-stock-line"><span>{{ _('customer_credit_payment_progress') }}</span>${ccProgress(r)}</div>
+      <div class="fd-kv">
+        ${ccKv("{{ _('customer_credit_stat_total_debt') }}", `<b>${F.money(r.total_debt)}</b>`)}
+        ${ccKv("{{ _('customer_credit_stat_paid') }}", `<span class="fd-qty--ok">${F.money(r.total_paid)}</span>`)}
+        ${ccKv("{{ _('customer_credit_stat_remaining') }}", `<b class="${r.remaining > 0 ? "fd-qty--out" : "fd-qty--ok"}">${F.money(r.remaining)}</b>`)}
+        ${ccKv("بنود مفتوحة", F.num(r.active_plans))}
+        ${ccKv("{{ _('customer_credit_th_next_due') }}", r.next_due_amount ? `<span dir="ltr">${F.esc(r.next_due_date)}</span> · ${F.money(r.next_due_amount)}` : "—")}
+      </div>
+      <div class="fd-detail-actions">
+        <a class="fd-btn fd-btn--primary fd-btn--sm" href="/customers/credit/${r.id}">{{ _('customer_credit_statement') }}</a>
+        ${r.remaining > 0 ? `<button type="button" class="fd-btn fd-btn--sm" data-cc-act="pay">{{ _('customer_credit_pay_submit') }}</button>` : ""}
+        <button type="button" class="fd-btn fd-btn--sm" data-cc-act="debt">{{ _('customer_credit_add_debt') }}</button>
+        ${F.blank(r.phone) ? "" : `<a class="fd-btn fd-btn--sm" href="tel:${F.esc(r.phone)}">اتصال</a>`}
+      </div>`;
+    F.show(byId("ccDetail"));
+    document.querySelectorAll("#ccBody tr[data-cc-row]").forEach(tr => {
+      tr.classList.toggle("is-open", Number(tr.getAttribute("data-cc-row")) === r.id);
+    });
+  }
+
+  function closeCreditDetail() {
+    ccDetailId = null;
+    F.hide(byId("ccDetail"));
+    document.querySelectorAll("#ccBody tr.is-open").forEach(tr => tr.classList.remove("is-open"));
+  }
+
+  // ---- Pay drawer (posts the normal form; the server redirects to the statement) ----
+  let payMax = 0;
+  function openPayDrawer(id) {
+    const r = findCredit(id);
+    if (!r) return;
+    closeCreditDetail();
+    payMax = r.remaining;
+    byId("payForm").action = "/customers/credit/pay/" + r.id;
+    byId("payForm").reset();
+    byId("payError").hidden = true;
+    byId("payAmount").max = String(r.remaining);
+    byId("payDrawerTitle").textContent = "{{ _('customer_credit_pay_submit') }} — " + r.name;
+    byId("payDrawerHint").textContent = r.phone || "";
+    byId("payRemaining").innerHTML = F.money(r.remaining);
+    F.show(byId("payDrawer"));
+    setTimeout(() => byId("payAmount").focus(), 40);
+  }
+
+  function closePayDrawer() { F.hide(byId("payDrawer")); }
+
+  function validatePayForm(e) {
+    var val = parseInt(byId('payAmount').value || '0', 10);
+    if (val <= 0 || val > payMax) {
+      e.preventDefault();
+      byId("payError").textContent = {{ _('customer_credit_err_pay_amount')|tojson }};
+      byId("payError").hidden = false;
+      return false;
+    }
+    byId("paySave").disabled = true;
+    return true;
+  }
+
+  function openCreditMenu(trigger) {
+    const id = Number(trigger.getAttribute("data-fd-row-menu"));
+    const r = findCredit(id);
+    if (!r) return;
+    const items = [
+      { act: "view", label: "عرض الملخص" },
+      { href: "/customers/credit/" + id, label: {{ _('customer_credit_statement')|tojson }} },
+    ];
+    if (r.remaining > 0) items.push({ act: "pay", label: "تسديد دفعة" });
+    items.push({ act: "debt", label: {{ _('customer_credit_add_debt')|tojson }} });
+    if (!F.blank(r.phone)) items.push("sep", { href: "tel:" + r.phone, label: "اتصال" });
+    F.rowMenu(trigger, items, act => {
+      if (act === "view") openCreditDetail(id);
+      if (act === "pay") openPayDrawer(id);
+      if (act === "debt") openAddDebtModal(r);
+    });
+  }
+
+  function exportCreditCsv() {
+    const cell = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+    const lines = [["الزبون", "الهاتف", "المحافظة", "الدين", "المسدد", "المتبقي", "أقساط متأخرة", "أقرب قسط", "مبلغ أقرب قسط"].map(cell).join(",")];
+    filteredCredit().forEach(r => {
+      lines.push([r.name, r.phone, r.city, r.total_debt, r.total_paid, r.remaining, r.overdue_count, r.next_due_date, r.next_due_amount].map(cell).join(","));
+    });
+    const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "customer_credit.csv";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  // ================= Add debt (same requests as before) =================
+  let currentDebtTab = 'opening';
+  var productSearchTimers = new WeakMap();
+
+  function ccToast(msg, type) { F.toast(msg, type); }
+
+  function openAddDebtModal(customer) {
+    closeCreditDetail();
+    F.closePop();
+    F.show(byId('addDebtModal'));
+    if (!byId('debtFirstDue').value) {
+      byId('debtFirstDue').value = todayIso();
+    }
+    if (!byId('productLines').children.length) addProductLine();
+    if (customer && customer.id) selectCustomerForDebt(customer);
+    updateDebtHints();
+    setTimeout(() => (byId('debtCustomerId').value ? byId('openingAmount') : byId('debtCustomerSearch')).focus(), 40);
   }
 
   function closeAddDebtModal() {
-    document.getElementById('addDebtModal').style.display = 'none';
+    F.hide(byId('addDebtModal'));
   }
 
   function switchDebtTab(tab) {
@@ -211,47 +579,40 @@
       t.classList.toggle('active', t.getAttribute('data-tab') === tab);
     });
     document.querySelectorAll('.debt-tab-panel').forEach(function(p) { p.style.display = 'none'; });
-    document.getElementById('tab-' + tab).style.display = 'block';
+    byId('tab-' + tab).style.display = '';
+    updateDebtHints();
   }
 
   var searchTimer;
 
   function selectCustomerForDebt(c) {
-    document.getElementById('debtCustomerId').value = c.id;
-    document.getElementById('debtCustomerSelected').textContent = '✓ ' + c.name + ' (' + c.phone + ')';
-    document.getElementById('debtCustomerSearch').value = c.name;
-    document.getElementById('debtCustomerResults').classList.remove('show');
+    byId('debtCustomerId').value = c.id;
+    byId('debtCustomerSelected').textContent = '✓ ' + c.name + (c.phone ? ' (' + c.phone + ')' : '');
+    byId('debtCustomerSearch').value = c.name;
+    byId('debtCustomerResults').classList.remove('show');
     toggleNewCustomerForm(false);
   }
 
   function toggleNewCustomerForm(forceShow) {
-    var form = document.getElementById('newCustomerForm');
+    var form = byId('newCustomerForm');
     var show = forceShow === true || (forceShow !== false && form.style.display === 'none');
-    form.style.display = show ? 'block' : 'none';
+    form.style.display = show ? '' : 'none';
     if (show) {
-      var q = (document.getElementById('debtCustomerSearch').value || '').trim();
-      if (q && !document.getElementById('newCustomerName').value) {
-        if (/^\d/.test(q)) document.getElementById('newCustomerPhone').value = q;
-        else document.getElementById('newCustomerName').value = q;
+      var q = (byId('debtCustomerSearch').value || '').trim();
+      if (q && !byId('newCustomerName').value) {
+        if (/^\d/.test(q)) byId('newCustomerPhone').value = q;
+        else byId('newCustomerName').value = q;
       }
-      document.getElementById('newCustomerName').focus();
+      byId('newCustomerName').focus();
     }
   }
 
   function createCustomerForDebt() {
-    var name = (document.getElementById('newCustomerName').value || '').trim();
-    var phone = (document.getElementById('newCustomerPhone').value || '').trim();
-    var city = (document.getElementById('newCustomerCity').value || '').trim();
-    if (!name) {
-      if (typeof showToast === 'function') showToast('{{ _('customer_credit_err_new_name')|tojson }}', 'warning');
-      else alert('{{ _('customer_credit_err_new_name') }}');
-      return;
-    }
-    if (!phone) {
-      if (typeof showToast === 'function') showToast('{{ _('customer_credit_err_new_phone')|tojson }}', 'warning');
-      else alert('{{ _('customer_credit_err_new_phone') }}');
-      return;
-    }
+    var name = (byId('newCustomerName').value || '').trim();
+    var phone = (byId('newCustomerPhone').value || '').trim();
+    var city = (byId('newCustomerCity').value || '').trim();
+    if (!name) { ccToast({{ _('customer_credit_err_new_name')|tojson }}, 'warning'); return; }
+    if (!phone) { ccToast({{ _('customer_credit_err_new_phone')|tojson }}, 'warning'); return; }
     fetch('/customers/credit/api/customers', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -260,26 +621,25 @@
     .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
     .then(function(res) {
       if (!res.data || !res.data.success) {
-        if (typeof showToast === 'function') showToast((res.data && res.data.error) || '{{ _('customer_credit_err_generic') }}', 'error');
-        else alert((res.data && res.data.error) || '{{ _('customer_credit_err_generic') }}');
+        ccToast((res.data && res.data.error) || {{ _('customer_credit_err_generic')|tojson }}, 'error');
         return;
       }
       selectCustomerForDebt(res.data);
-      var msg = res.data.existing
-        ? '{{ _('customer_credit_toast_customer_exists') }}'
-        : '{{ _('customer_credit_toast_customer_created') }}';
-      if (typeof showToast === 'function') showToast(msg, 'success');
+      ccToast(res.data.existing ? {{ _('customer_credit_toast_customer_exists')|tojson }} : {{ _('customer_credit_toast_customer_created')|tojson }}, 'success');
     })
-    .catch(function() {
-      if (typeof showToast === 'function') showToast('{{ _('customer_credit_err_generic')|tojson }}', 'error');
-    });
+    .catch(function() { ccToast({{ _('customer_credit_err_generic')|tojson }}, 'error'); });
   }
 
   function searchCustomersForDebt() {
     clearTimeout(searchTimer);
+    var picked = byId('debtCustomerSelected');
+    if (byId('debtCustomerId').value && picked.textContent.indexOf(byId('debtCustomerSearch').value.trim()) === -1) {
+      byId('debtCustomerId').value = '';
+      picked.textContent = '';
+    }
     searchTimer = setTimeout(function() {
-      var q = document.getElementById('debtCustomerSearch').value.trim();
-      var box = document.getElementById('debtCustomerResults');
+      var q = byId('debtCustomerSearch').value.trim();
+      var box = byId('debtCustomerResults');
       if (q.length < 1) { box.classList.remove('show'); box.innerHTML = ''; return; }
       fetch('/customers/credit/api/customers?q=' + encodeURIComponent(q))
         .then(function(r) { return r.json(); })
@@ -288,13 +648,13 @@
           rows.forEach(function(c) {
             var div = document.createElement('div');
             div.className = 'cc-customer-item';
-            div.textContent = c.name + ' — ' + c.phone;
+            div.textContent = c.name + ' — ' + c.phone + (c.city ? ' · ' + c.city : '');
             div.onclick = function() { selectCustomerForDebt(c); };
             box.appendChild(div);
           });
           var addRow = document.createElement('div');
           addRow.className = 'cc-customer-item cc-customer-item--add';
-          addRow.innerHTML = '<i class="fas fa-user-plus"></i> {{ _('customer_credit_add_customer') }}';
+          addRow.textContent = '+ ' + {{ _('customer_credit_add_customer')|tojson }};
           addRow.onclick = function() { toggleNewCustomerForm(true); box.classList.remove('show'); };
           box.appendChild(addRow);
           box.classList.add('show');
@@ -310,14 +670,6 @@
     });
   }
 
-  function escapeHtml(str) {
-    return String(str == null ? '' : str)
-      .replace(/&/g, '&amp;')
-      .replace(/</g, '&lt;')
-      .replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;');
-  }
-
   function selectProductForLine(line, product) {
     var idInput = line.querySelector('.pl-product');
     var searchInput = line.querySelector('.pl-product-search');
@@ -329,6 +681,7 @@
     priceInput.value = product.sale_price || '';
     box.classList.remove('show');
     box.innerHTML = '';
+    updateDebtHints();
   }
 
   function renderProductResults(line, rows) {
@@ -346,7 +699,7 @@
       var div = document.createElement('div');
       div.className = 'cc-product-item';
       div.setAttribute('tabindex', '0');
-      div.innerHTML = escapeHtml(p.name) +
+      div.innerHTML = F.esc(p.name) +
         '<small>' + Number(p.sale_price || 0).toLocaleString('en-US') + ' د.ع · مخزون: ' + Number(p.quantity || 0) + '</small>';
       div.onclick = function() { selectProductForLine(line, p); };
       div.onkeydown = function(e) {
@@ -366,9 +719,7 @@
     fetch(url)
       .then(function(r) { return r.json(); })
       .then(function(rows) { renderProductResults(line, rows || []); })
-      .catch(function() {
-        renderProductResults(line, []);
-      });
+      .catch(function() { renderProductResults(line, []); });
   }
 
   function scheduleProductSearch(line) {
@@ -390,7 +741,7 @@
   }
 
   function addProductLine() {
-    var wrap = document.getElementById('productLines');
+    var wrap = byId('productLines');
     var line = document.createElement('div');
     line.className = 'cc-product-line';
     line.innerHTML =
@@ -399,15 +750,17 @@
         '<input type="hidden" class="pl-product" value="">' +
         '<div class="cc-product-results"></div>' +
       '</div>' +
-      '<input type="number" class="pl-qty" min="1" value="1" placeholder="كمية">' +
-      '<input type="number" class="pl-price" min="0" placeholder="سعر">' +
-      '<button type="button" class="cc-btn cc-btn-ghost" style="padding:6px 8px;" onclick="this.closest(\'.cc-product-line\').remove()"><i class="fas fa-trash"></i></button>';
+      '<input type="number" class="pl-qty" min="1" value="1" placeholder="كمية" inputmode="numeric" aria-label="الكمية">' +
+      '<input type="number" class="pl-price" min="0" placeholder="سعر" inputmode="numeric" aria-label="السعر">' +
+      '<button type="button" class="fd-btn fd-btn--icon cc-line-del" aria-label="حذف" title="حذف">' +
+        '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>' +
+      '</button>';
     wrap.appendChild(line);
+    line.querySelector('.cc-line-del').addEventListener('click', function() { line.remove(); updateDebtHints(); });
+    line.querySelectorAll('.pl-qty, .pl-price').forEach(function(el) { el.addEventListener('input', updateDebtHints); });
 
     var searchInput = line.querySelector('.pl-product-search');
-    searchInput.addEventListener('input', function() {
-      scheduleProductSearch(line);
-    });
+    searchInput.addEventListener('input', function() { scheduleProductSearch(line); });
     searchInput.addEventListener('focus', function() {
       closeProductResults(line);
       scheduleProductSearch(line);
@@ -418,37 +771,58 @@
         var first = line.querySelector('.cc-product-item:not(.cc-product-item--empty)');
         if (first) first.click();
       } else if (e.key === 'Escape') {
+        e.stopPropagation();
         closeProductResults();
       }
     });
   }
 
   document.addEventListener('click', function(e) {
-    if (!e.target.closest('.cc-product-pick')) closeProductResults();
+    if (!e.target.closest || !e.target.closest('.cc-product-pick')) closeProductResults();
+    if (!e.target.closest || !e.target.closest('.cc-customer-pick, #debtCustomerResults')) byId('debtCustomerResults').classList.remove('show');
   });
 
+  function debtAmountNow() {
+    if (currentDebtTab === 'opening') return parseInt(byId('openingAmount').value || '0', 10) || 0;
+    if (currentDebtTab === 'manual') return parseInt(byId('manualAmount').value || '0', 10) || 0;
+    var total = 0;
+    document.querySelectorAll('#productLines .cc-product-line').forEach(function(line) {
+      if (!line.querySelector('.pl-product').value) return;
+      total += (parseInt(line.querySelector('.pl-qty').value || '1', 10) || 0) * (parseInt(line.querySelector('.pl-price').value || '0', 10) || 0);
+    });
+    return total;
+  }
+
+  function updateDebtHints() {
+    var amount = debtAmountNow();
+    byId('productsTotal').innerHTML = F.money(amount);
+    var n = Math.max(1, parseInt(byId('debtInstallments').value || '1', 10) || 1);
+    var per = amount > 0 ? Math.ceil(amount / n) : 0;
+    byId('debtScheduleHint').innerHTML = amount > 0
+      ? F.num(n) + ' قسط ' + (byId('debtInterval').value === 'weekly' ? 'أسبوعي' : 'شهري') + ' · نحو ' + F.money(per) + ' للقسط'
+      : '';
+  }
+
+  let debtSaving = false;
   function submitDebtPlan() {
-    var customerId = document.getElementById('debtCustomerId').value;
-    if (!customerId) {
-      if (typeof showToast === 'function') showToast('{{ _('customer_credit_err_customer')|tojson }}', 'warning');
-      else alert('{{ _('customer_credit_err_customer') }}');
-      return;
-    }
+    if (debtSaving) return;
+    var customerId = byId('debtCustomerId').value;
+    if (!customerId) { ccToast({{ _('customer_credit_err_customer')|tojson }}, 'warning'); byId('debtCustomerSearch').focus(); return; }
     var payload = {
       customer_id: parseInt(customerId, 10),
       entry_type: currentDebtTab,
-      installments_count: parseInt(document.getElementById('debtInstallments').value || '1', 10),
-      first_due_date: document.getElementById('debtFirstDue').value,
-      interval: document.getElementById('debtInterval').value
+      installments_count: parseInt(byId('debtInstallments').value || '1', 10),
+      first_due_date: byId('debtFirstDue').value,
+      interval: byId('debtInterval').value
     };
     if (currentDebtTab === 'opening') {
-      payload.amount = document.getElementById('openingAmount').value;
-      payload.description = document.getElementById('openingDescription').value;
+      payload.amount = byId('openingAmount').value;
+      payload.description = byId('openingDescription').value;
     } else if (currentDebtTab === 'manual') {
-      payload.amount = document.getElementById('manualAmount').value;
-      payload.description = document.getElementById('manualDescription').value;
+      payload.amount = byId('manualAmount').value;
+      payload.description = byId('manualDescription').value;
     } else {
-      payload.note = document.getElementById('productsNote').value;
+      payload.note = byId('productsNote').value;
       payload.items = [];
       document.querySelectorAll('#productLines .cc-product-line').forEach(function(line) {
         var pid = line.querySelector('.pl-product').value;
@@ -456,11 +830,10 @@
         var price = line.querySelector('.pl-price').value;
         if (pid) payload.items.push({ product_id: parseInt(pid, 10), qty: parseInt(qty || 1, 10), price: parseInt(price || 0, 10) });
       });
-      if (!payload.items.length) {
-        if (typeof showToast === 'function') showToast('{{ _('customer_credit_err_products')|tojson }}', 'warning');
-        return;
-      }
+      if (!payload.items.length) { ccToast({{ _('customer_credit_err_products')|tojson }}, 'warning'); return; }
     }
+    debtSaving = true;
+    byId('debtSave').disabled = true;
     fetch('/customers/credit/plans', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -469,16 +842,70 @@
     .then(function(r) { return r.json(); })
     .then(function(data) {
       if (data.success) {
-        if (typeof showToast === 'function') showToast('{{ _('customer_credit_toast_saved')|tojson }}', 'success');
+        ccToast({{ _('customer_credit_toast_saved')|tojson }}, 'success');
         window.location.href = data.redirect || '/customers/credit';
       } else {
-        if (typeof showToast === 'function') showToast(data.error || 'خطأ', 'error');
-        else alert(data.error || 'خطأ');
+        ccToast(data.error || 'خطأ', 'error');
       }
     })
-    .catch(function() {
-      if (typeof showToast === 'function') showToast('{{ _('customer_credit_err_generic')|tojson }}', 'error');
-    });
+    .catch(function() { ccToast({{ _('customer_credit_err_generic')|tojson }}, 'error'); })
+    .finally(function() { debtSaving = false; byId('debtSave').disabled = false; });
   }
+
+  document.addEventListener("click", event => {
+    const t = event.target;
+    if (!t.closest) return;
+    const menu = t.closest("[data-fd-row-menu]");
+    if (menu) { openCreditMenu(menu); return; }
+    const act = t.closest("[data-cc-act]");
+    if (act && ccDetailId) {
+      const r = findCredit(ccDetailId);
+      if (act.getAttribute("data-cc-act") === "pay") openPayDrawer(r.id);
+      else openAddDebtModal(r);
+      return;
+    }
+    const page = t.closest("[data-cc-page]");
+    if (page && !page.disabled) {
+      const v = page.getAttribute("data-cc-page");
+      ccPage = v === "prev" ? ccPage - 1 : v === "next" ? ccPage + 1 : parseInt(v, 10) || 0;
+      renderCredit();
+      return;
+    }
+    const chip = t.closest("[data-cc-state]");
+    if (chip) { ccState = chip.getAttribute("data-cc-state") || ""; ccPage = 0; renderCredit(); return; }
+    const row = t.closest("tr[data-cc-row]");
+    if (row && !t.closest("a, button")) openCreditDetail(row.getAttribute("data-cc-row"));
+  });
+
+  document.addEventListener("DOMContentLoaded", () => {
+    try { creditData = JSON.parse(byId("creditData").textContent); } catch (e) { creditData = []; }
+    const size = byId("ccPageSize");
+    size.value = String(ccPageSize());
+    size.addEventListener("change", () => {
+      try { localStorage.setItem(CC_PAGE_SIZE_KEY, size.value); } catch (e) { /* storage unavailable */ }
+      ccPage = 0;
+      renderCredit();
+    });
+    byId("ccSearch").addEventListener("input", () => { ccPage = 0; renderCredit(); });
+    byId("debtForm").addEventListener("submit", e => { e.preventDefault(); submitDebtPlan(); });
+    ["openingAmount", "manualAmount", "debtInstallments", "debtInterval"].forEach(id => byId(id).addEventListener("input", updateDebtHints));
+    byId("debtInterval").addEventListener("change", updateDebtHints);
+    ["addDebtModal", "payDrawer"].forEach(id => byId(id).addEventListener("click", e => { if (e.target === byId(id)) F.hide(byId(id)); }));
+    document.addEventListener("keydown", e => {
+      if (!byId("addDebtModal").hidden && (e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
+        e.preventDefault();
+        submitDebtPlan();
+      }
+    });
+    renderCredit();
+
+    // ?add=<customer id>&name=&phone= (from a customer's statement) opens the drawer for that customer
+    const params = new URLSearchParams(location.search);
+    const addId = parseInt(params.get("add") || "", 10);
+    if (addId) {
+      const known = findCredit(addId);
+      openAddDebtModal(known || { id: addId, name: params.get("name") || ("#" + addId), phone: params.get("phone") || "" });
+    }
+  });
 </script>
 {% endblock %}

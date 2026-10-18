@@ -1,398 +1,518 @@
 {% extends "base.html" %}
 {% block title %}{{ _('provinces_page_title') }}{% endblock %}
-{% block page_title %}🗺️ {{ _('provinces_page_title') }}{% endblock %}
+{% block page_title %}{{ _('provinces_page_title') }}{% endblock %}
 
 {% block content %}
+{% from "partials/fd_icons.html" import icon %}
+<link rel="stylesheet" href="/static/css/finora-ui.css?v=20261018e">
 <style>
-  .prov-page { max-width: 1200px; margin: 0 auto; padding: 20px; }
-  .prov-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
-  .prov-back {
-    display: inline-flex; align-items: center; gap: 6px;
-    color: var(--primary); text-decoration: none; font-weight: 700; font-size: 14px;
-  }
-  .prov-note {
-    color: var(--text-muted); font-size: 0.88rem; line-height: 1.65;
-    padding: 12px 14px; border-radius: 12px;
-    background: rgba(59, 130, 246, 0.06); border: 1px solid rgba(59, 130, 246, 0.12);
-    margin-bottom: 14px;
-  }
-  .prov-note strong { color: var(--text); }
-  .prov-summary {
-    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px; margin-bottom: 14px;
-  }
-  .prov-summary-card {
-    border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px;
-    background: var(--card);
-  }
-  .prov-summary-card .label { color: var(--text-muted); font-size: 12px; margin-bottom: 6px; font-weight: 600; }
-  .prov-summary-card .value { font-size: 1.15rem; font-weight: 800; color: #10b981; line-height: 1.3; }
-  .prov-add {
-    display: flex; gap: 8px; margin-bottom: 16px;
-    padding: 10px; border-radius: 14px;
-    border: 1px solid var(--border); background: var(--card);
-  }
-  .prov-add input {
-    flex: 1; min-width: 0; padding: 11px 14px; border-radius: 10px;
-    border: 1px solid var(--border); background: var(--bg, #fff); color: var(--text);
-    font-size: 15px;
-  }
-  .prov-btn {
-    border: none; border-radius: 10px; padding: 10px 16px; cursor: pointer; font-weight: 700;
-    font-size: 14px; white-space: nowrap;
-  }
-  .prov-btn-primary { background: var(--primary); color: #fff; }
-  .prov-btn-danger { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
-  .prov-btn-muted { background: var(--card-alt, #f8fafc); color: var(--text); border: 1px solid var(--border); }
-
-  /* Desktop table */
-  .prov-desktop { display: block; }
-  .prov-mobile { display: none; }
-  .prov-table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: 14px; }
-  .prov-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  .prov-table th, .prov-table td { padding: 12px 14px; text-align: right; border-bottom: 1px solid var(--border); vertical-align: middle; }
-  .prov-table th { background: var(--card-alt); font-weight: 700; font-size: 13px; }
-  .prov-table tbody tr:hover { background: rgba(59, 130, 246, 0.04); }
-  .prov-table tfoot td { background: var(--card-alt); font-weight: 700; border-bottom: none; border-top: 2px solid var(--border); }
-  .prov-amount { font-weight: 700; color: #10b981; }
-  .prov-returns { font-weight: 700; color: #ef4444; }
-  .prov-badge {
-    display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 999px;
-    font-size: 11px; font-weight: 700;
-    background: rgba(16, 185, 129, 0.12); color: #059669; border: 1px solid rgba(16, 185, 129, 0.25);
-  }
-
-  /* Mobile cards */
-  .prov-m-list { display: flex; flex-direction: column; gap: 12px; }
-  .prov-m-card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
-    overflow: hidden; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
-  }
-  .prov-m-card.is-primary { border-color: rgba(16, 185, 129, 0.35); }
-  .prov-m-head {
-    display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    padding: 14px 16px 10px; border-bottom: 1px solid var(--border);
-  }
-  .prov-m-name { font-size: 1.1rem; font-weight: 800; color: var(--text); }
-  .prov-m-stats {
-    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 1px; background: var(--border);
-  }
-  .prov-m-stat {
-    background: var(--card); padding: 12px 10px; text-align: center;
-  }
-  .prov-m-stat .lbl {
-    display: block; font-size: 10px; color: var(--text-muted); font-weight: 600;
-    margin-bottom: 4px; line-height: 1.3;
-  }
-  .prov-m-stat .val { display: block; font-size: 15px; font-weight: 800; color: var(--text); }
-  .prov-m-stat .val.is-money { font-size: 12px; color: #10b981; line-height: 1.35; }
-  .prov-m-stat .val.is-returns { color: #ef4444; }
-  .prov-m-stat.wide { grid-column: span 3; }
-  .prov-m-foot {
-    display: flex; align-items: center; justify-content: space-between; gap: 8px;
-    padding: 10px 14px; background: var(--card-alt, #f8fafc);
-    font-size: 12px; color: var(--text-muted); font-weight: 600;
-  }
-  .prov-m-actions {
-    display: flex; gap: 8px; padding: 10px 12px 12px;
-    border-top: 1px solid var(--border);
-  }
-  .prov-m-actions .prov-btn { flex: 1; padding: 11px 8px; font-size: 13px; text-align: center; }
-  .prov-m-total {
-    background: var(--card-alt); border: 1px dashed var(--border); border-radius: 16px;
-    padding: 14px 16px;
-  }
-  .prov-m-total .title { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
-  .prov-m-total .row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; margin-top: 6px; }
-  .prov-m-total .row span:last-child { font-weight: 800; color: #10b981; }
-
-  .prov-toast {
-    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
-    padding: 12px 20px; border-radius: 12px; font-weight: 600; z-index: 9999; display: none;
-    max-width: calc(100vw - 32px); text-align: center;
-  }
-  .prov-toast.ok { background: rgba(16, 185, 129, 0.95); color: #fff; }
-  .prov-toast.err { background: rgba(239, 68, 68, 0.95); color: #fff; }
-
-  @media (max-width: 768px) {
-    .prov-page { padding: 10px 12px 20px; }
-    .prov-desktop { display: none !important; }
-    .prov-mobile { display: block !important; }
-    .prov-summary { grid-template-columns: 1fr 1fr; gap: 8px; }
-    .prov-summary-card { padding: 12px; }
-    .prov-summary-card .value { font-size: 0.95rem; }
-    .prov-add { flex-direction: column; padding: 12px; gap: 10px; }
-    .prov-add .prov-btn { width: 100%; padding: 13px; }
-    .prov-toast { left: 12px; right: 12px; transform: none; }
-  }
-
-  @media (max-width: 380px) {
-    .prov-m-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .prov-m-stat.wide { grid-column: span 2; }
-  }
+  #fdPage .prov-hint { margin: 0 0 4px; font-size: 13.5px; line-height: 1.7; color: var(--fd-muted); }
+  #fdPage .prov-hint strong { color: var(--fd-text); }
+  #fdPage .prov-name { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  #fdPage .prov-name .fd-pill { padding: 3px 10px; font-size: 12px; }
+  #fdPage .prov-profit { color: var(--fd-green); font-weight: 700; }
+  #fdPage .prov-share { display: inline-flex; align-items: center; gap: 8px; min-width: 110px; }
+  #fdPage .prov-share-bar { flex: 1 1 auto; height: 6px; border-radius: 999px; background: var(--fd-soft); overflow: hidden; min-width: 50px; }
+  #fdPage .prov-share-bar span { display: block; height: 100%; border-radius: inherit; background: var(--fd-purple); }
+  #fdPage .prov-share b { font-size: 12.5px; font-variant-numeric: tabular-nums; min-width: 36px; }
 </style>
 
-<div class="prov-page">
-  <div class="prov-top">
-    <a class="prov-back" href="/customers">← {{ _('customers') }}</a>
+<div class="fd provinces-page" id="fdPage">
+
+  <header class="fd-header no-print">
+    <div class="fd-header-main">
+      <span class="fd-header-icon" style="color: var(--fd-purple);">{{ icon('users', 26) }}</span>
+      <div class="fd-header-text">
+        <h1 class="fd-title">إدارة الزبائن</h1>
+        <p class="fd-subtitle">بيانات الزبائن وطلباتهم ومحافظاتهم</p>
+      </div>
+    </div>
+  </header>
+
+  <nav class="fd-subnav no-print" aria-label="الزبائن">
+    <a class="fd-subnav-link" href="/customers/">الزبائن</a>
+    <a class="fd-subnav-link" href="/customers/blacklist">{{ _('customers_nav_blacklist') }}</a>
+    <a class="fd-subnav-link active" href="/customers/provinces">المحافظات</a>
+    <a class="fd-subnav-link" href="/customers/credit">بيع آجل / أقساط</a>
+  </nav>
+
+  <div class="fd-kpis no-print">
+    <button type="button" class="fd-kpi fd-kpi--purple active" data-prov-state="">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('provinces_page_title') }}</span>
+        <span><span class="fd-kpi-value" id="provKpiCount">{{ provinces|length }}</span><span class="fd-kpi-unit">محافظة</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('layers', 28) }}</span>
+    </button>
+    <div class="fd-kpi fd-kpi--green">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label" id="provPrimaryLabel">{{ _('provinces_profit_primary').replace('{name}', primary_province) }}</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money" id="provPrimaryTotal">{{ "{:,.0f}".format(primary_profit_total) }}</span><span class="fd-kpi-unit">{{ _('customers_currency_iqd') }}</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('trend', 28) }}</span>
+    </div>
+    <div class="fd-kpi fd-kpi--amber">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('provinces_profit_group') }}</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money" id="provGroupTotal">{{ "{:,.0f}".format(group_profit_total) }}</span><span class="fd-kpi-unit">{{ _('customers_currency_iqd') }}</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('wallet', 28) }}</span>
+    </div>
+    <button type="button" class="fd-kpi fd-kpi--red" data-prov-state="returns">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('provinces_col_returns') }}</span>
+        <span><span class="fd-kpi-value" id="provKpiReturns">{{ provinces|sum(attribute='returns_count') }}</span><span class="fd-kpi-unit">طلب</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('alert', 28) }}</span>
+    </button>
   </div>
 
-  <p class="prov-note">
+  <p class="prov-hint no-print">
     {{ _('provinces_intro') }}
-    <br>
     {{ _('provinces_filter_hint') }}
-    <strong>{{ primary_province }}</strong> / <strong>{{ provinces_group_label }}</strong>
+    <strong id="provHintPrimary">{{ primary_province }}</strong> / <strong>{{ provinces_group_label }}</strong>
   </p>
 
-  <div class="prov-summary">
-    <div class="prov-summary-card">
-      <div class="label" id="provPrimaryLabel">{{ _('provinces_profit_primary').replace('{name}', primary_province) }}</div>
-      <div class="value" id="provPrimaryTotal">{{ "{:,.0f}".format(primary_profit_total) }} {{ _('customers_currency_iqd') }}</div>
+  <div class="fd-toolbar no-print">
+    <div class="fd-chips" id="provChips" role="tablist" aria-label="تصفية المحافظات">
+      <button type="button" class="fd-chip active" data-prov-state="">الكل<span class="fd-chip-count" data-count=""></span></button>
+      <button type="button" class="fd-chip" data-prov-state="active">لديها زبائن<span class="fd-chip-count" data-count="active"></span></button>
+      <button type="button" class="fd-chip" data-prov-state="empty">بدون زبائن<span class="fd-chip-count" data-count="empty"></span></button>
+      <button type="button" class="fd-chip" data-prov-state="returns">بها مرتجعات<span class="fd-chip-count" data-count="returns"></span></button>
     </div>
-    <div class="prov-summary-card">
-      <div class="label">{{ _('provinces_profit_group') }}</div>
-      <div class="value" id="provGroupTotal">{{ "{:,.0f}".format(group_profit_total) }} {{ _('customers_currency_iqd') }}</div>
-    </div>
-  </div>
 
-  <div class="prov-add">
-    <input type="text" id="newProvinceName" placeholder="{{ _('provinces_add_placeholder') }}" maxlength="100" autocomplete="off">
-    <button type="button" class="prov-btn prov-btn-primary" onclick="addProvince()">{{ _('provinces_add') }}</button>
-  </div>
+    <label class="fd-search fd-tool--search">
+      {{ icon('search', 18) }}
+      <input type="search" id="provSearch" autocomplete="off" placeholder="ابحث باسم المحافظة...">
+    </label>
 
-  <!-- Desktop -->
-  <div class="prov-desktop prov-table-wrap">
-    <table class="prov-table">
-      <thead>
-        <tr>
-          <th>{{ _('provinces_col_name') }}</th>
-          <th>{{ _('provinces_col_customers') }}</th>
-          <th>{{ _('provinces_col_orders') }}</th>
-          <th>{{ _('provinces_col_returns') }}</th>
-          <th>{{ _('provinces_col_amount') }}</th>
-          <th>{{ _('provinces_col_profit') }}</th>
-          <th>{{ _('provinces_col_role') }}</th>
-          <th>{{ _('customers_col_actions') }}</th>
-        </tr>
-      </thead>
-      <tbody id="provincesTableBody">
-        {% for p in provinces %}
-        <tr data-name="{{ p.name }}">
-          <td><strong>{{ p.name }}</strong></td>
-          <td>{{ p.count }}</td>
-          <td>{{ p.orders_count }}</td>
-          <td><span class="prov-returns">{{ p.returns_count }}</span></td>
-          <td><span class="prov-amount">{{ "{:,.0f}".format(p.total_amount) }} {{ _('customers_currency_iqd') }}</span></td>
-          <td><span class="prov-amount">{{ "{:,.0f}".format(p.profit) }} {{ _('customers_currency_iqd') }}</span></td>
-          <td>{% if p.is_primary %}<span class="prov-badge">{{ _('provinces_primary_badge') }}</span>{% else %}{{ provinces_group_label }}{% endif %}</td>
-          <td>
-            {% if not p.is_primary %}
-            <button type="button" class="prov-btn prov-btn-muted" onclick="setPrimary('{{ p.name|e }}')">{{ _('provinces_set_primary') }}</button>
-            <button type="button" class="prov-btn prov-btn-danger" onclick="removeProvince('{{ p.name|e }}')">{{ _('provinces_delete') }}</button>
-            {% endif %}
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-      <tfoot>
-        <tr>
-          <td colspan="4" id="provGroupTotalLabel">{{ _('provinces_group_total_label').replace('{name}', primary_province) }}</td>
-          <td><span class="prov-amount" id="provFooterGroupTotal">{{ "{:,.0f}".format(group_total) }} {{ _('customers_currency_iqd') }}</span></td>
-          <td><span class="prov-amount" id="provFooterGroupProfit">{{ "{:,.0f}".format(group_profit_total) }} {{ _('customers_currency_iqd') }}</span></td>
-          <td colspan="2"></td>
-        </tr>
-      </tfoot>
-    </table>
-  </div>
-
-  <!-- Mobile -->
-  <div class="prov-mobile">
-    <div class="prov-m-list" id="provincesMobileList">
-      {% for p in provinces %}
-      <div class="prov-m-card{% if p.is_primary %} is-primary{% endif %}" data-name="{{ p.name }}">
-        <div class="prov-m-head">
-          <span class="prov-m-name">{{ p.name }}</span>
-          {% if p.is_primary %}<span class="prov-badge">{{ _('provinces_primary_badge') }}</span>{% endif %}
+    <div class="fd-tools-row">
+      <button type="button" class="fd-btn fd-btn--primary" onclick="openProvinceDrawer()">
+        {{ icon('package-plus', 18) }}
+        <span class="fd-btn-label">{{ _('provinces_add') }}</span>
+      </button>
+      <div class="fd-pop-wrap">
+        <button type="button" class="fd-btn fd-btn--icon" data-fd-pop="provMorePop" aria-expanded="false" aria-controls="provMorePop" title="المزيد" aria-label="المزيد">{{ icon('dots', 20) }}</button>
+        <div class="fd-pop fd-pop--end fd-menu" id="provMorePop" role="menu" hidden>
+          <a class="fd-menu-item" role="menuitem" href="/customers/">{{ icon('users') }}<span>{{ _('customers') }}</span></a>
+          <div class="fd-menu-sep" role="separator"></div>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="exportProvincesCsv()">{{ icon('download') }}<span>تصدير CSV</span></button>
         </div>
-        <div class="prov-m-stats">
-          <div class="prov-m-stat">
-            <span class="lbl">{{ _('provinces_col_customers') }}</span>
-            <span class="val">{{ p.count }}</span>
-          </div>
-          <div class="prov-m-stat">
-            <span class="lbl">{{ _('provinces_col_orders') }}</span>
-            <span class="val">{{ p.orders_count }}</span>
-          </div>
-          <div class="prov-m-stat">
-            <span class="lbl">{{ _('provinces_col_returns') }}</span>
-            <span class="val is-returns">{{ p.returns_count }}</span>
-          </div>
-          <div class="prov-m-stat wide">
-            <span class="lbl">{{ _('provinces_col_amount') }}</span>
-            <span class="val is-money">{{ "{:,.0f}".format(p.total_amount) }} {{ _('customers_currency_iqd') }}</span>
-          </div>
-          <div class="prov-m-stat wide">
-            <span class="lbl">{{ _('provinces_col_profit') }}</span>
-            <span class="val is-money">{{ "{:,.0f}".format(p.profit) }} {{ _('customers_currency_iqd') }}</span>
-          </div>
-        </div>
-        {% if not p.is_primary %}
-        <div class="prov-m-foot">{{ _('provinces_col_role') }}: {{ provinces_group_label }}</div>
-        <div class="prov-m-actions">
-          <button type="button" class="prov-btn prov-btn-muted" onclick="setPrimary('{{ p.name|e }}')">{{ _('provinces_set_primary') }}</button>
-          <button type="button" class="prov-btn prov-btn-danger" onclick="removeProvince('{{ p.name|e }}')">{{ _('provinces_delete') }}</button>
-        </div>
-        {% endif %}
       </div>
-      {% endfor %}
     </div>
-    <div class="prov-m-total" style="margin-top:12px;">
-      <div class="title" id="provMobileTotalLabel">{{ _('provinces_group_total_label').replace('{name}', primary_province) }}</div>
-      <div class="row"><span>{{ _('provinces_col_amount') }}</span><span id="provMobileFooterTotal">{{ "{:,.0f}".format(group_total) }} {{ _('customers_currency_iqd') }}</span></div>
-      <div class="row"><span>{{ _('provinces_col_profit') }}</span><span id="provMobileFooterProfit">{{ "{:,.0f}".format(group_profit_total) }} {{ _('customers_currency_iqd') }}</span></div>
+  </div>
+
+  <section class="fd-table-card">
+    <div class="fd-table-scroll">
+      <table class="fd-table" id="provTable">
+        <thead>
+          <tr>
+            <th>{{ _('provinces_col_name') }}</th>
+            <th>{{ _('provinces_col_customers') }}</th>
+            <th>{{ _('provinces_col_orders') }}</th>
+            <th>{{ _('provinces_col_returns') }}</th>
+            <th>{{ _('provinces_col_amount') }}</th>
+            <th>{{ _('provinces_col_profit') }}</th>
+            <th class="fd-col-opt2">حصة المبيعات</th>
+            <th class="fd-col-opt">{{ _('provinces_col_role') }}</th>
+            <th class="fd-col-actions"></th>
+          </tr>
+        </thead>
+        <tbody id="provincesTableBody">
+          <tr><td colspan="9" class="fd-empty">جاري التحميل...</td></tr>
+        </tbody>
+      </table>
     </div>
+  </section>
+
+  <footer class="fd-footer no-print">
+    <div class="fd-footer-info">
+      <select id="provPageSize" aria-label="عدد المحافظات في الصفحة">
+        <option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
+      </select>
+      <span class="fd-range" id="provRange"></span>
+      <span class="fd-totals">
+        <span id="provGroupTotalLabel">{{ _('provinces_group_total_label').replace('{name}', primary_province) }}</span>:
+        <b id="provFooterGroupTotal">{{ "{:,.0f}".format(group_total) }} {{ _('customers_currency_iqd') }}</b>
+        · {{ _('provinces_col_profit') }} <b id="provFooterGroupProfit">{{ "{:,.0f}".format(group_profit_total) }} {{ _('customers_currency_iqd') }}</b>
+      </span>
+    </div>
+    <nav class="fd-pager" id="provPager" aria-label="الصفحات"></nav>
+  </footer>
+
+  <!-- Detail panel -->
+  <aside class="fd-detail" id="provDetail" aria-label="تفاصيل المحافظة" hidden>
+    <div class="fd-detail-head">
+      <div class="fd-detail-titles">
+        <h3 class="fd-detail-title" id="provDetailTitle"></h3>
+        <p class="fd-detail-sub" id="provDetailSub"></p>
+      </div>
+      <button type="button" class="fd-close-btn" onclick="closeProvinceDetail()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+    </div>
+    <div class="fd-detail-body" id="provDetailBody"></div>
+  </aside>
+
+  <!-- Drawer: add province -->
+  <div class="fd-drawer" id="provDrawer" hidden>
+    <form class="fd-drawer-panel" id="provForm" role="dialog" aria-modal="true" aria-labelledby="provDrawerTitle" novalidate>
+      <div class="fd-drawer-head">
+        <span class="fd-drawer-icon">{{ icon('layers', 24) }}</span>
+        <div class="fd-drawer-titles">
+          <h2 class="fd-drawer-title" id="provDrawerTitle">{{ _('provinces_add') }}</h2>
+          <p class="fd-drawer-hint">Enter للحفظ · Esc للإغلاق</p>
+        </div>
+        <button type="button" class="fd-close-btn" onclick="closeProvinceDrawer()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+      </div>
+      <div class="fd-drawer-body">
+        <div class="fd-form-error" id="provError" role="alert" hidden></div>
+        <section class="fd-section">
+          <div class="fd-section-head"><span class="fd-section-title">{{ icon('layers', 18) }}بيانات المحافظة</span></div>
+          <label class="fd-field"><span>{{ _('provinces_col_name') }} <b class="fd-req">*</b></span>
+            <input type="text" id="newProvinceName" placeholder="{{ _('provinces_add_placeholder') }}" maxlength="100" autocomplete="off" required>
+          </label>
+          <p class="fd-muted" style="margin:0;font-size:13px;">تُضاف المحافظة إلى مجموعة «{{ provinces_group_label }}». يمكنك تعيينها كمحافظة أساسية من قائمة الإجراءات.</p>
+        </section>
+      </div>
+      <div class="fd-drawer-foot">
+        <button type="submit" class="fd-btn fd-btn--primary" id="provSave">{{ icon('check-circle', 18) }}<span>{{ _('provinces_add') }}</span></button>
+        <button type="button" class="fd-btn" id="provSaveAnother">حفظ وإضافة أخرى</button>
+      </div>
+    </form>
   </div>
 </div>
 
-<div id="provToast" class="prov-toast"></div>
+<script type="application/json" id="provincesData">{{ {
+  "primary": primary_province,
+  "group_label": provinces_group_label,
+  "primary_total": primary_total,
+  "group_total": group_total,
+  "primary_profit_total": primary_profit_total,
+  "group_profit_total": group_profit_total,
+  "provinces": provinces,
+}|tojson }}</script>
 
+<script src="/static/js/finora-ui.js?v=20261018c"></script>
 <script>
-function showProvToast(msg, ok) {
-  const el = document.getElementById('provToast');
-  el.textContent = msg;
-  el.className = 'prov-toast ' + (ok ? 'ok' : 'err');
-  el.style.display = 'block';
-  setTimeout(() => { el.style.display = 'none'; }, 2800);
-}
+  const F = window.FinoraUI;
+  const byId = id => document.getElementById(id);
+  const PROV_PAGE_SIZES = [10, 25, 50, 100];
+  const PROV_PAGE_SIZE_KEY = "provinces_page_size";
+  const currencyLabel = {{ _('customers_currency_iqd')|tojson }};
+  const profitPrimaryTpl = {{ _('provinces_profit_primary')|tojson }};
+  const groupTotalTpl = {{ _('provinces_group_total_label')|tojson }};
+  const setPrimaryLabel = {{ _('provinces_set_primary')|tojson }};
+  const deleteLabel = {{ _('provinces_delete')|tojson }};
+  const primaryBadge = {{ _('provinces_primary_badge')|tojson }};
+  let provState = { primary: "", group_label: "", provinces: [] };
+  let provFilter = "";
+  let provPage = 0;
+  let provDetailName = null;
 
-async function provApi(url, body) {
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body || {}),
+  function provPageSize() {
+    try {
+      const saved = parseInt(localStorage.getItem(PROV_PAGE_SIZE_KEY), 10);
+      if (PROV_PAGE_SIZES.includes(saved)) return saved;
+    } catch (e) { /* storage unavailable */ }
+    return 25;
+  }
+
+  function formatProvAmount(n) {
+    return F.num(n) + ' ' + currencyLabel;
+  }
+
+  function provMatches(p, state) {
+    if (state === "active") return p.count > 0;
+    if (state === "empty") return !(p.count > 0);
+    if (state === "returns") return p.returns_count > 0;
+    return true;
+  }
+
+  function filteredProvinces() {
+    const q = byId("provSearch").value.trim().toLowerCase();
+    return provState.provinces.filter(p => provMatches(p, provFilter) && (!q || String(p.name).toLowerCase().includes(q)));
+  }
+
+  function totalSales() {
+    return provState.provinces.reduce((s, p) => s + (Number(p.total_amount) || 0), 0);
+  }
+
+  function updateProvSummaries(data) {
+    const primaryName = data.primary || "";
+    const set = (id, val) => { const el = byId(id); if (el) el.textContent = val; };
+    set('provPrimaryLabel', profitPrimaryTpl.replace('{name}', primaryName));
+    set('provPrimaryTotal', F.num(data.primary_profit_total || 0));
+    set('provGroupTotal', F.num(data.group_profit_total || 0));
+    set('provGroupTotalLabel', groupTotalTpl.replace('{name}', primaryName));
+    set('provFooterGroupTotal', formatProvAmount(data.group_total || 0));
+    set('provFooterGroupProfit', formatProvAmount(data.group_profit_total || 0));
+    set('provHintPrimary', primaryName);
+    const list = data.provinces || [];
+    set('provKpiCount', F.num(list.length));
+    set('provKpiReturns', F.num(list.reduce((s, p) => s + (Number(p.returns_count) || 0), 0)));
+  }
+
+  function syncProvinceUi() {
+    const counts = { "": provState.provinces.length, active: 0, empty: 0, returns: 0 };
+    provState.provinces.forEach(p => ["active", "empty", "returns"].forEach(k => { if (provMatches(p, k)) counts[k]++; }));
+    document.querySelectorAll("#provChips [data-count]").forEach(el => { el.textContent = F.num(counts[el.getAttribute("data-count")] || 0); });
+    document.querySelectorAll("#fdPage [data-prov-state]").forEach(el => {
+      el.classList.toggle("active", (el.getAttribute("data-prov-state") || "") === provFilter);
+    });
+  }
+
+  function provRole(p, pill) {
+    if (p.is_primary) return `<span class="fd-pill fd-pill--green">${F.esc(primaryBadge)}</span>`;
+    return pill ? `<span class="fd-pill fd-pill--gray">${F.esc(provState.group_label)}</span>` : F.esc(provState.group_label);
+  }
+
+  function provShare(p, total) {
+    const pct = total > 0 ? Math.round((Number(p.total_amount) || 0) * 100 / total) : 0;
+    return `<span class="prov-share"><span class="prov-share-bar"><span style="width:${pct}%"></span></span><b>${pct}%</b></span>`;
+  }
+
+  function renderProvinces() {
+    F.closeRowMenu();
+    syncProvinceUi();
+    const rows = filteredProvinces();
+    const size = provPageSize();
+    const pages = Math.max(1, Math.ceil(rows.length / size));
+    provPage = Math.min(provPage, pages - 1);
+    const pageRows = rows.slice(provPage * size, (provPage + 1) * size);
+    const from = rows.length ? provPage * size + 1 : 0;
+    byId("provRange").innerHTML = "عرض " + F.num(from) + "–" + F.num(Math.min(rows.length, (provPage + 1) * size)) + " من <b>" + F.num(rows.length) + "</b> محافظة";
+    byId("provPager").innerHTML = F.pagerHtml(provPage, pages, "data-prov-page");
+    const total = totalSales();
+    const tbody = byId("provincesTableBody");
+    if (!pageRows.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="fd-empty">' + (provState.provinces.length ? "لا توجد محافظات مطابقة." : "لا توجد محافظات بعد.") + "</td></tr>";
+      return;
+    }
+    const open = byId("provDetail").hidden ? null : provDetailName;
+    tbody.innerHTML = pageRows.map(p => `
+      <tr data-name="${F.esc(p.name)}" class="${p.name === open ? "is-open" : ""}" style="cursor:pointer">
+        <td class="fd-td-title" data-label="{{ _('provinces_col_name') }}"><span class="prov-name"><b>${F.esc(p.name)}</b>${p.is_primary ? `<span class="fd-pill fd-pill--green">${F.esc(primaryBadge)}</span>` : ""}</span></td>
+        <td data-label="{{ _('provinces_col_customers') }}">${F.num(p.count)}</td>
+        <td data-label="{{ _('provinces_col_orders') }}">${F.num(p.orders_count)}</td>
+        <td data-label="{{ _('provinces_col_returns') }}">${p.returns_count ? `<b class="fd-qty--out">${F.num(p.returns_count)}</b>` : '<span class="fd-muted">0</span>'}</td>
+        <td data-label="{{ _('provinces_col_amount') }}" class="fd-cell-amount">${F.money(p.total_amount)}</td>
+        <td data-label="{{ _('provinces_col_profit') }}"><span class="prov-profit">${F.money(p.profit)}</span></td>
+        <td data-label="حصة المبيعات" class="fd-col-opt2">${provShare(p, total)}</td>
+        <td data-label="{{ _('provinces_col_role') }}" class="fd-col-opt">${provRole(p)}</td>
+        <td class="fd-col-actions">
+          <button type="button" class="fd-more-btn" data-fd-row-menu="${F.esc(p.name)}" aria-haspopup="menu" aria-label="إجراءات" title="إجراءات"></button>
+        </td>
+      </tr>`).join("");
+  }
+
+  // ---- Data ----
+  function applyProvinceData(data) {
+    provState = {
+      primary: data.primary || "",
+      group_label: data.group_label || "",
+      provinces: data.provinces || [],
+    };
+    updateProvSummaries(data);
+    renderProvinces();
+    if (provDetailName && !byId("provDetail").hidden) {
+      if (findProvince(provDetailName)) openProvinceDetail(provDetailName);
+      else closeProvinceDetail();
+    }
+  }
+
+  async function reloadProvinces() {
+    const res = await fetch('/customers/provinces/api');
+    const data = await res.json();
+    if (!data.success) return;
+    applyProvinceData(data);
+  }
+
+  async function provApi(url, body) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {}),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.success) throw new Error(data.error || {{ _('provinces_err_generic')|tojson }});
+    return data;
+  }
+
+  function showProvToast(msg, ok) {
+    F.toast(msg, ok ? "success" : "error");
+  }
+
+  async function addProvince(keepOpen) {
+    const input = byId('newProvinceName');
+    const err = byId('provError');
+    const name = (input.value || '').trim();
+    err.hidden = true;
+    if (!name) {
+      err.textContent = "اسم المحافظة مطلوب.";
+      err.hidden = false;
+      input.focus();
+      return;
+    }
+    byId('provSave').disabled = true;
+    try {
+      await provApi('/customers/provinces/add', { name });
+      input.value = '';
+      showProvToast({{ _('provinces_toast_added')|tojson }}, true);
+      await reloadProvinces();
+      if (keepOpen) input.focus(); else closeProvinceDrawer();
+    } catch (e) {
+      err.textContent = e.message;
+      err.hidden = false;
+    } finally {
+      byId('provSave').disabled = false;
+    }
+  }
+
+  async function removeProvince(name) {
+    if (!confirm({{ _('provinces_confirm_delete')|tojson }})) return;
+    try {
+      await provApi('/customers/provinces/remove', { name });
+      showProvToast({{ _('provinces_toast_removed')|tojson }}, true);
+      await reloadProvinces();
+    } catch (e) { showProvToast(e.message, false); }
+  }
+
+  async function setPrimary(name) {
+    try {
+      await provApi('/customers/provinces/set-primary', { name });
+      showProvToast({{ _('provinces_toast_primary_set')|tojson }}, true);
+      await reloadProvinces();
+    } catch (e) { showProvToast(e.message, false); }
+  }
+
+  // ---- Detail panel ----
+  function findProvince(name) {
+    return provState.provinces.find(p => p.name === name);
+  }
+
+  function provKv(key, value) {
+    return `<div class="fd-kv-row"><span class="fd-kv-key">${key}</span><span class="fd-kv-val">${value}</span></div>`;
+  }
+
+  function openProvinceDetail(name) {
+    const p = findProvince(name);
+    if (!p) return;
+    provDetailName = p.name;
+    const orders = Number(p.orders_count) || 0;
+    const avg = orders > 0 ? (Number(p.total_amount) || 0) / orders : 0;
+    const returnRate = orders > 0 ? Math.round((Number(p.returns_count) || 0) * 100 / orders) : 0;
+    const total = totalSales();
+    const share = total > 0 ? Math.round((Number(p.total_amount) || 0) * 100 / total) : 0;
+    byId("provDetailTitle").textContent = p.name;
+    byId("provDetailSub").textContent = p.is_primary ? primaryBadge : provState.group_label;
+    byId("provDetailBody").innerHTML = `
+      <div class="fd-detail-status">${provRole(p, true)}</div>
+      <div class="fd-kv">
+        ${provKv("{{ _('provinces_col_customers') }}", `<b>${F.num(p.count)}</b>`)}
+        ${provKv("{{ _('provinces_col_orders') }}", F.num(orders))}
+        ${provKv("{{ _('provinces_col_returns') }}", p.returns_count ? `<b class="fd-qty--out">${F.num(p.returns_count)}</b> <span class="fd-muted">(${returnRate}%)</span>` : "0")}
+        ${provKv("{{ _('provinces_col_amount') }}", `<b>${F.money(p.total_amount)}</b>`)}
+        ${provKv("{{ _('provinces_col_profit') }}", `<span class="prov-profit">${F.money(p.profit)}</span>`)}
+        ${provKv("متوسط قيمة الطلب", orders ? F.money(avg) : "—")}
+        ${provKv("حصة المبيعات", share + "%")}
+      </div>
+      <div class="fd-detail-actions">
+        ${p.is_primary ? '<span class="fd-muted" style="font-size:13px">المحافظة الأساسية لا يمكن حذفها. عيّن محافظة أخرى كأساسية أولاً.</span>' : `
+          <button type="button" class="fd-btn fd-btn--primary fd-btn--sm" data-prov-act="primary">${F.esc(setPrimaryLabel)}</button>
+          <button type="button" class="fd-btn fd-btn--rose-soft fd-btn--sm" data-prov-act="delete">${F.esc(deleteLabel)}</button>`}
+      </div>`;
+    F.show(byId("provDetail"));
+    document.querySelectorAll("#provincesTableBody tr[data-name]").forEach(tr => {
+      tr.classList.toggle("is-open", tr.getAttribute("data-name") === p.name);
+    });
+  }
+
+  function closeProvinceDetail() {
+    provDetailName = null;
+    F.hide(byId("provDetail"));
+    document.querySelectorAll("#provincesTableBody tr.is-open").forEach(tr => tr.classList.remove("is-open"));
+  }
+
+  // ---- Drawer ----
+  function openProvinceDrawer() {
+    F.closePop();
+    byId("provError").hidden = true;
+    byId("newProvinceName").value = "";
+    F.show(byId("provDrawer"));
+    setTimeout(() => byId("newProvinceName").focus(), 40);
+  }
+
+  function closeProvinceDrawer() { F.hide(byId("provDrawer")); }
+
+  function openProvinceMenu(trigger) {
+    const name = trigger.getAttribute("data-fd-row-menu");
+    const p = findProvince(name);
+    if (!p) return;
+    const items = [{ act: "view", label: "عرض التفاصيل" }];
+    if (!p.is_primary) {
+      items.push({ act: "primary", label: setPrimaryLabel }, "sep", { act: "delete", label: deleteLabel, danger: true });
+    }
+    F.rowMenu(trigger, items, act => {
+      if (act === "view") openProvinceDetail(name);
+      if (act === "primary") setPrimary(name);
+      if (act === "delete") removeProvince(name);
+    });
+  }
+
+  function exportProvincesCsv() {
+    const cell = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+    const lines = [["المحافظة", "عدد الزبائن", "عدد الطلبات", "الطلبات الراجعة", "المبيعات", "الربح", "الدور"].map(cell).join(",")];
+    filteredProvinces().forEach(p => {
+      lines.push([p.name, p.count, p.orders_count, p.returns_count, Math.round(p.total_amount || 0), Math.round(p.profit || 0), p.is_primary ? primaryBadge : provState.group_label].map(cell).join(","));
+    });
+    const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "provinces.csv";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  document.addEventListener("click", event => {
+    const t = event.target;
+    if (!t.closest) return;
+    const menu = t.closest("[data-fd-row-menu]");
+    if (menu) { openProvinceMenu(menu); return; }
+    const act = t.closest("[data-prov-act]");
+    if (act && provDetailName) {
+      const name = provDetailName;
+      if (act.getAttribute("data-prov-act") === "primary") setPrimary(name);
+      else removeProvince(name);
+      return;
+    }
+    const page = t.closest("[data-prov-page]");
+    if (page && !page.disabled) {
+      const v = page.getAttribute("data-prov-page");
+      provPage = v === "prev" ? provPage - 1 : v === "next" ? provPage + 1 : parseInt(v, 10) || 0;
+      renderProvinces();
+      return;
+    }
+    const chip = t.closest("[data-prov-state]");
+    if (chip) { provFilter = chip.getAttribute("data-prov-state") || ""; provPage = 0; renderProvinces(); return; }
+    const row = t.closest("#provincesTableBody tr[data-name]");
+    if (row && !t.closest("a, button")) openProvinceDetail(row.getAttribute("data-name"));
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.success) throw new Error(data.error || {{ _('provinces_err_generic')|tojson }});
-  return data;
-}
 
-const currencyLabel = {{ _('customers_currency_iqd')|tojson }};
-const profitPrimaryTpl = {{ _('provinces_profit_primary')|tojson }};
-const groupTotalTpl = {{ _('provinces_group_total_label')|tojson }};
-const provLabels = {
-  customers: {{ _('provinces_col_customers')|tojson }},
-  orders: {{ _('provinces_col_orders')|tojson }},
-  returns: {{ _('provinces_col_returns')|tojson }},
-  amount: {{ _('provinces_col_amount')|tojson }},
-  profit: {{ _('provinces_col_profit')|tojson }},
-  role: {{ _('provinces_col_role')|tojson }},
-};
-const setPrimaryLabel = {{ _('provinces_set_primary')|tojson }};
-const deleteLabel = {{ _('provinces_delete')|tojson }};
-const primaryBadge = {{ _('provinces_primary_badge')|tojson }};
-
-function formatProvAmount(n) {
-  return (Number(n) || 0).toLocaleString('ar-IQ') + ' ' + currencyLabel;
-}
-
-function updateProvSummaries(data) {
-  const primaryName = data.primary || {{ primary_province|tojson }};
-  const groupTotal = data.group_total || 0;
-  const groupProfitTotal = data.group_profit_total || 0;
-  const primaryProfitTotal = data.primary_profit_total || 0;
-  const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-  set('provPrimaryLabel', profitPrimaryTpl.replace('{name}', primaryName));
-  set('provPrimaryTotal', formatProvAmount(primaryProfitTotal));
-  set('provGroupTotal', formatProvAmount(groupProfitTotal));
-  set('provGroupTotalLabel', groupTotalTpl.replace('{name}', primaryName));
-  set('provFooterGroupTotal', formatProvAmount(groupTotal));
-  set('provFooterGroupProfit', formatProvAmount(groupProfitTotal));
-  set('provMobileTotalLabel', groupTotalTpl.replace('{name}', primaryName));
-  set('provMobileFooterTotal', formatProvAmount(groupTotal));
-  set('provMobileFooterProfit', formatProvAmount(groupProfitTotal));
-}
-
-function buildDesktopRow(p, groupLabel) {
-  const actions = p.is_primary ? '' : `
-    <button type="button" class="prov-btn prov-btn-muted" onclick="setPrimary(${JSON.stringify(p.name)})">${setPrimaryLabel}</button>
-    <button type="button" class="prov-btn prov-btn-danger" onclick="removeProvince(${JSON.stringify(p.name)})">${deleteLabel}</button>`;
-  const role = p.is_primary ? `<span class="prov-badge">${primaryBadge}</span>` : groupLabel;
-  return `<tr data-name="${p.name}">
-    <td><strong>${p.name}</strong></td>
-    <td>${p.count}</td>
-    <td>${p.orders_count || 0}</td>
-    <td><span class="prov-returns">${p.returns_count || 0}</span></td>
-    <td><span class="prov-amount">${formatProvAmount(p.total_amount)}</span></td>
-    <td><span class="prov-amount">${formatProvAmount(p.profit)}</span></td>
-    <td>${role}</td>
-    <td>${actions}</td>
-  </tr>`;
-}
-
-function buildMobileCard(p, groupLabel) {
-  const primaryCls = p.is_primary ? ' is-primary' : '';
-  const badge = p.is_primary ? `<span class="prov-badge">${primaryBadge}</span>` : '';
-  const foot = p.is_primary ? '' : `
-    <div class="prov-m-foot">${provLabels.role}: ${groupLabel}</div>
-    <div class="prov-m-actions">
-      <button type="button" class="prov-btn prov-btn-muted" onclick="setPrimary(${JSON.stringify(p.name)})">${setPrimaryLabel}</button>
-      <button type="button" class="prov-btn prov-btn-danger" onclick="removeProvince(${JSON.stringify(p.name)})">${deleteLabel}</button>
-    </div>`;
-  return `<div class="prov-m-card${primaryCls}" data-name="${p.name}">
-    <div class="prov-m-head"><span class="prov-m-name">${p.name}</span>${badge}</div>
-    <div class="prov-m-stats">
-      <div class="prov-m-stat"><span class="lbl">${provLabels.customers}</span><span class="val">${p.count}</span></div>
-      <div class="prov-m-stat"><span class="lbl">${provLabels.orders}</span><span class="val">${p.orders_count || 0}</span></div>
-      <div class="prov-m-stat"><span class="lbl">${provLabels.returns}</span><span class="val is-returns">${p.returns_count || 0}</span></div>
-      <div class="prov-m-stat wide"><span class="lbl">${provLabels.amount}</span><span class="val is-money">${formatProvAmount(p.total_amount)}</span></div>
-      <div class="prov-m-stat wide"><span class="lbl">${provLabels.profit}</span><span class="val is-money">${formatProvAmount(p.profit)}</span></div>
-    </div>${foot}
-  </div>`;
-}
-
-async function reloadProvinces() {
-  const res = await fetch('/customers/provinces/api');
-  const data = await res.json();
-  if (!data.success) return;
-  const groupLabel = data.group_label || {{ provinces_group_label|tojson }};
-  const provinces = data.provinces || [];
-  document.getElementById('provincesTableBody').innerHTML = provinces.map(p => buildDesktopRow(p, groupLabel)).join('');
-  document.getElementById('provincesMobileList').innerHTML = provinces.map(p => buildMobileCard(p, groupLabel)).join('');
-  updateProvSummaries(data);
-}
-
-async function addProvince() {
-  const input = document.getElementById('newProvinceName');
-  const name = (input.value || '').trim();
-  if (!name) return;
-  try {
-    await provApi('/customers/provinces/add', { name });
-    input.value = '';
-    showProvToast({{ _('provinces_toast_added')|tojson }}, true);
-    await reloadProvinces();
-  } catch (e) { showProvToast(e.message, false); }
-}
-
-async function removeProvince(name) {
-  if (!confirm({{ _('provinces_confirm_delete')|tojson }})) return;
-  try {
-    await provApi('/customers/provinces/remove', { name });
-    showProvToast({{ _('provinces_toast_removed')|tojson }}, true);
-    await reloadProvinces();
-  } catch (e) { showProvToast(e.message, false); }
-}
-
-async function setPrimary(name) {
-  try {
-    await provApi('/customers/provinces/set-primary', { name });
-    showProvToast({{ _('provinces_toast_primary_set')|tojson }}, true);
-    await reloadProvinces();
-  } catch (e) { showProvToast(e.message, false); }
-}
-
-document.getElementById('newProvinceName')?.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') addProvince();
-});
+  document.addEventListener("DOMContentLoaded", () => {
+    let initial = {};
+    try { initial = JSON.parse(byId("provincesData").textContent); } catch (e) { initial = {}; }
+    const size = byId("provPageSize");
+    size.value = String(provPageSize());
+    size.addEventListener("change", () => {
+      try { localStorage.setItem(PROV_PAGE_SIZE_KEY, size.value); } catch (e) { /* storage unavailable */ }
+      provPage = 0;
+      renderProvinces();
+    });
+    byId("provSearch").addEventListener("input", () => { provPage = 0; renderProvinces(); });
+    byId("newProvinceName").addEventListener("input", () => { byId("provError").hidden = true; });
+    byId("provForm").addEventListener("submit", e => { e.preventDefault(); addProvince(false); });
+    byId("provSaveAnother").addEventListener("click", () => addProvince(true));
+    byId("provDrawer").addEventListener("click", e => { if (e.target === byId("provDrawer")) closeProvinceDrawer(); });
+    applyProvinceData(initial);
+  });
 </script>
 {% endblock %}

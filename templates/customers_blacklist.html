@@ -1,229 +1,466 @@
 {% extends "base.html" %}
 {% block title %}{{ _('customers_blacklist_page_title') }}{% endblock %}
-{% block page_title %}🚫 {{ _('customers_blacklist_page_title') }}{% endblock %}
+{% block page_title %}{{ _('customers_blacklist_page_title') }}{% endblock %}
 
 {% block content %}
+{% from "partials/fd_icons.html" import icon %}
+<link rel="stylesheet" href="/static/css/finora-ui.css?v=20261018e">
 <style>
-  .bl-page { max-width: 1100px; margin: 0 auto; padding: 20px; }
-  .bl-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
-  .bl-back { color: var(--primary); text-decoration: none; font-weight: 700; font-size: 14px; }
-  .bl-note {
-    color: var(--text-muted); font-size: 0.88rem; line-height: 1.65;
-    padding: 12px 14px; border-radius: 12px; margin-bottom: 14px;
-    background: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.12);
-  }
-  .bl-toolbar {
-    display: flex; align-items: center; justify-content: space-between; gap: 10px;
-    flex-wrap: wrap; margin-bottom: 14px;
-  }
-  .bl-toolbar label {
-    display: inline-flex; align-items: center; gap: 8px;
-    font-size: 14px; font-weight: 600; cursor: pointer;
-    padding: 8px 12px; border-radius: 10px;
-    background: var(--card); border: 1px solid var(--border);
-  }
-  .bl-toolbar input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--primary); }
-  .bl-count {
-    display: inline-flex; align-items: center; justify-content: center; min-width: 28px;
-    padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 800;
-    background: rgba(239, 68, 68, 0.12); color: #dc2626;
-  }
-  .bl-btn {
-    border: none; border-radius: 10px; padding: 10px 16px; cursor: pointer; font-weight: 700;
-    font-size: 14px;
-  }
-  .bl-btn-danger { background: #fef2f2; color: #dc2626; border: 1px solid #fecaca; }
-  .bl-btn-danger:disabled { opacity: 0.45; cursor: not-allowed; }
-
-  .bl-desktop { display: block; }
-  .bl-mobile { display: none; }
-  .bl-table-wrap { overflow: auto; border: 1px solid var(--border); border-radius: 14px; }
-  .bl-table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  .bl-table th, .bl-table td { padding: 12px 14px; text-align: right; border-bottom: 1px solid var(--border); vertical-align: middle; }
-  .bl-table th { background: var(--card-alt); font-weight: 700; }
-
-  .bl-empty {
-    text-align: center; padding: 48px 24px;
-    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
-  }
-  .bl-empty .icon { font-size: 40px; margin-bottom: 10px; opacity: 0.7; }
-  .bl-empty .msg { color: var(--text-muted); font-size: 15px; font-weight: 600; }
-
-  .bl-m-list { display: flex; flex-direction: column; gap: 10px; }
-  .bl-m-card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
-    overflow: hidden; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
-  }
-  .bl-m-head {
-    display: flex; align-items: flex-start; gap: 10px;
-    padding: 14px 14px 10px; border-bottom: 1px solid var(--border);
-  }
-  .bl-m-head input[type="checkbox"] { width: 20px; height: 20px; margin-top: 2px; accent-color: var(--primary); flex-shrink: 0; }
-  .bl-m-info { flex: 1; min-width: 0; }
-  .bl-m-name { font-size: 1rem; font-weight: 800; color: var(--text); margin-bottom: 4px; word-break: break-word; }
-  .bl-m-phone { font-size: 13px; color: var(--text-muted); direction: ltr; text-align: right; }
-  .bl-m-body { padding: 10px 14px 12px; display: grid; gap: 8px; }
-  .bl-m-row { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; }
-  .bl-m-row .lbl { color: var(--text-muted); font-weight: 600; flex-shrink: 0; }
-  .bl-m-row .val { color: var(--text); font-weight: 600; text-align: left; word-break: break-word; }
-  .bl-m-actions { padding: 0 12px 12px; }
-  .bl-m-actions .bl-btn { width: 100%; padding: 11px; text-align: center; }
-
-  @media (max-width: 768px) {
-    .bl-page { padding: 10px 12px 20px; }
-    .bl-desktop { display: none !important; }
-    .bl-mobile { display: block !important; }
-    .bl-top { flex-direction: column; align-items: stretch; }
-    .bl-toolbar .bl-btn { flex: 1; text-align: center; }
+  #fdPage .bl-name { display: inline-flex; align-items: center; gap: 10px; min-width: 0; cursor: pointer; }
+  #fdPage .bl-name input[type="checkbox"],
+  #fdPage .bl-head-check input[type="checkbox"] { width: 18px; height: 18px; margin: 0; flex: 0 0 auto; accent-color: var(--fd-purple); }
+  #fdPage .bl-head-check { display: inline-flex; align-items: center; gap: 10px; cursor: pointer; }
+  #fdPage .bl-reason { display: inline-block; max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+  #fdPage .bl-bulk[hidden] { display: none; }
+  #fdPage .bl-bulk .fd-count-badge { margin-inline-start: 2px; }
+  #fdPage .bl-note { margin: 0 0 4px; font-size: 13.5px; line-height: 1.7; color: var(--fd-muted); }
+  #fdPage .bl-orders-loading { color: var(--fd-muted); font-size: 13px; padding: 6px 0; }
+  @container (max-width: 780px) {
+    #fdPage .bl-reason { max-width: 60vw; white-space: normal; }
   }
 </style>
 
-<div class="bl-page">
-  <div class="bl-top">
-    <a class="bl-back" href="/customers">← {{ _('customers_blacklist_back') }}</a>
-    {% if customers|length %}
-    <span class="bl-count">{{ customers|length }}</span>
-    {% endif %}
-  </div>
+<div class="fd blacklist-page" id="fdPage">
 
-  <p class="bl-note">{{ _('customers_blacklist_intro') }}</p>
-
-  {% if customers|length %}
-  <div class="bl-toolbar">
-    <label>
-      <input type="checkbox" id="selectAllBlacklist" onchange="toggleAllBlacklist(this.checked)">
-      <span>{{ _('orders_select_all') }}</span>
-      <span class="bl-count" id="blSelectedCount">0</span>
-    </label>
-    <button type="button" class="bl-btn bl-btn-danger" id="blRemoveSelectedBtn" onclick="removeSelectedBlacklist()" disabled>
-      إزالة المحدد
-    </button>
-  </div>
-  {% endif %}
-
-  {% if not customers|length %}
-  <div class="bl-empty">
-    <div class="icon">✅</div>
-    <div class="msg">{{ _('customers_blacklist_empty') }}</div>
-  </div>
-  {% else %}
-
-  <!-- Desktop -->
-  <div class="bl-desktop bl-table-wrap">
-    <table class="bl-table">
-      <thead>
-        <tr>
-          <th style="width:44px;"><input type="checkbox" onchange="toggleAllBlacklist(this.checked)"></th>
-          <th>#</th>
-          <th>{{ _('customers_col_name') }}</th>
-          <th>{{ _('customers_col_phone') }}</th>
-          <th>{{ _('customers_blacklist_col_reason') }}</th>
-          <th>{{ _('customers_blacklist_col_date') }}</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for c in customers %}
-        <tr>
-          <td><input type="checkbox" class="bl-select-item" value="{{ c.id }}"></td>
-          <td>{{ c.id }}</td>
-          <td><strong>{{ c.name }}</strong></td>
-          <td>{{ c.phone }}{% if c.phone2 %} / {{ c.phone2 }}{% endif %}</td>
-          <td>{{ c.blacklist_reason or '—' }}</td>
-          <td>{% if c.blacklisted_at %}{{ c.blacklisted_at.strftime('%Y-%m-%d %H:%M') }}{% else %}—{% endif %}</td>
-          <td>
-            <button type="button" class="bl-btn bl-btn-danger" onclick="removeBlacklist({{ c.id }})">{{ _('customers_blacklist_remove') }}</button>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
-  <!-- Mobile -->
-  <div class="bl-mobile bl-m-list">
-    {% for c in customers %}
-    <div class="bl-m-card">
-      <div class="bl-m-head">
-        <input type="checkbox" class="bl-select-item" value="{{ c.id }}">
-        <div class="bl-m-info">
-          <div class="bl-m-name">{{ c.name }}</div>
-          <div class="bl-m-phone">{{ c.phone }}{% if c.phone2 %} · {{ c.phone2 }}{% endif %}</div>
-        </div>
-      </div>
-      <div class="bl-m-body">
-        <div class="bl-m-row"><span class="lbl">{{ _('customers_blacklist_col_reason') }}</span><span class="val">{{ c.blacklist_reason or '—' }}</span></div>
-        <div class="bl-m-row"><span class="lbl">{{ _('customers_blacklist_col_date') }}</span><span class="val">{% if c.blacklisted_at %}{{ c.blacklisted_at.strftime('%Y-%m-%d %H:%M') }}{% else %}—{% endif %}</span></div>
-      </div>
-      <div class="bl-m-actions">
-        <button type="button" class="bl-btn bl-btn-danger" onclick="removeBlacklist({{ c.id }})">{{ _('customers_blacklist_remove') }}</button>
+  <header class="fd-header no-print">
+    <div class="fd-header-main">
+      <span class="fd-header-icon" style="color: var(--fd-purple);">{{ icon('users', 26) }}</span>
+      <div class="fd-header-text">
+        <h1 class="fd-title">إدارة الزبائن</h1>
+        <p class="fd-subtitle">بيانات الزبائن وطلباتهم ومحافظاتهم</p>
       </div>
     </div>
-    {% endfor %}
+  </header>
+
+  <nav class="fd-subnav no-print" aria-label="الزبائن">
+    <a class="fd-subnav-link" href="/customers/">الزبائن</a>
+    <a class="fd-subnav-link active" href="/customers/blacklist">{{ _('customers_nav_blacklist') }}</a>
+    <a class="fd-subnav-link" href="/customers/provinces">المحافظات</a>
+    <a class="fd-subnav-link" href="/customers/credit">بيع آجل / أقساط</a>
+  </nav>
+
+  <div class="fd-kpis no-print">
+    <button type="button" class="fd-kpi fd-kpi--purple active" data-bl-state="">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">المحظورون</span>
+        <span><span class="fd-kpi-value" data-kpi="">0</span><span class="fd-kpi-unit">زبون</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('ban', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--amber" data-bl-state="manual">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">إضافة يدوية</span>
+        <span><span class="fd-kpi-value" data-kpi="manual">0</span><span class="fd-kpi-unit">زبون</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('pencil', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--red" data-bl-state="auto">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">تلقائي بسبب المرتجعات</span>
+        <span><span class="fd-kpi-value" data-kpi="auto">0</span><span class="fd-kpi-unit">زبون</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('alert', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--green" data-bl-state="month">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">أضيفوا هذا الشهر</span>
+        <span><span class="fd-kpi-value" data-kpi="month">0</span><span class="fd-kpi-unit">زبون</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('calendar', 28) }}</span>
+    </button>
   </div>
-  {% endif %}
+
+  <p class="bl-note no-print">{{ _('customers_blacklist_intro') }}</p>
+
+  <div class="fd-toolbar no-print">
+    <div class="fd-chips" id="blChips" role="tablist" aria-label="نوع الإضافة">
+      <button type="button" class="fd-chip active" data-bl-state="">الكل<span class="fd-chip-count" data-count=""></span></button>
+      <button type="button" class="fd-chip" data-bl-state="manual">يدوي<span class="fd-chip-count" data-count="manual"></span></button>
+      <button type="button" class="fd-chip" data-bl-state="auto">تلقائي<span class="fd-chip-count" data-count="auto"></span></button>
+      <button type="button" class="fd-chip" data-bl-state="month">هذا الشهر<span class="fd-chip-count" data-count="month"></span></button>
+    </div>
+
+    <label class="fd-search fd-tool--search">
+      {{ icon('search', 18) }}
+      <input type="search" id="blSearch" autocomplete="off" placeholder="ابحث بالاسم أو الهاتف أو السبب...">
+    </label>
+
+    <div class="fd-tools-row">
+      <button type="button" class="fd-btn fd-btn--rose-soft bl-bulk" id="blRemoveSelectedBtn" onclick="removeSelectedBlacklist()" hidden>
+        {{ icon('check-circle', 18) }}
+        <span class="fd-btn-label">إزالة المحدد</span>
+        <span class="fd-count-badge" id="blSelectedCount">0</span>
+      </button>
+      <a class="fd-btn" href="/customers/">
+        {{ icon('users', 18) }}
+        <span class="fd-btn-label">{{ _('customers_blacklist_back') }}</span>
+      </a>
+      <div class="fd-pop-wrap">
+        <button type="button" class="fd-btn fd-btn--icon" data-fd-pop="blMorePop" aria-expanded="false" aria-controls="blMorePop" title="المزيد" aria-label="المزيد">{{ icon('dots', 20) }}</button>
+        <div class="fd-pop fd-pop--end fd-menu" id="blMorePop" role="menu" hidden>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="toggleAllBlacklist(true)">{{ icon('check-circle') }}<span>{{ _('orders_select_all') }}</span></button>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="toggleAllBlacklist(false)">{{ icon('x') }}<span>إلغاء التحديد</span></button>
+          <button type="button" class="fd-menu-item is-danger" role="menuitem" data-fd-pop-close onclick="removeSelectedBlacklist()">{{ icon('ban') }}<span>{{ _('customers_blacklist_remove_selected') }}</span></button>
+          <div class="fd-menu-sep" role="separator"></div>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="exportBlacklistCsv()">{{ icon('download') }}<span>تصدير CSV</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="fd-table-card">
+    <div class="fd-table-scroll">
+      <table class="fd-table" id="blTable">
+        <thead>
+          <tr>
+            <th><label class="bl-head-check"><input type="checkbox" id="selectAllBlacklist" onchange="toggleAllBlacklist(this.checked, 'page')" aria-label="{{ _('orders_select_all') }}"><span>{{ _('customers_col_name') }}</span></label></th>
+            <th>{{ _('customers_col_phone') }}</th>
+            <th class="fd-col-opt">المحافظة</th>
+            <th>{{ _('customers_blacklist_col_reason') }}</th>
+            <th class="fd-col-opt2">الطلبات</th>
+            <th class="fd-col-opt2">المرتجعات</th>
+            <th>{{ _('customers_blacklist_col_date') }}</th>
+            <th class="fd-col-actions"></th>
+          </tr>
+        </thead>
+        <tbody id="blBody">
+          <tr><td colspan="8" class="fd-empty">جاري التحميل...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="fd-footer no-print">
+    <div class="fd-footer-info">
+      <select id="blPageSize" aria-label="عدد الزبائن في الصفحة">
+        <option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
+      </select>
+      <span class="fd-range" id="blRange"></span>
+      <span class="fd-totals" id="blTotals"></span>
+    </div>
+    <nav class="fd-pager" id="blPager" aria-label="الصفحات"></nav>
+  </footer>
+
+  <!-- Detail panel -->
+  <aside class="fd-detail" id="blDetail" aria-label="تفاصيل الزبون" hidden>
+    <div class="fd-detail-head">
+      <div class="fd-detail-titles">
+        <h3 class="fd-detail-title" id="blDetailTitle"></h3>
+        <p class="fd-detail-sub" id="blDetailSub" dir="ltr" style="text-align:end"></p>
+      </div>
+      <button type="button" class="fd-close-btn" onclick="closeBlacklistDetail()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+    </div>
+    <div class="fd-detail-body" id="blDetailBody"></div>
+  </aside>
 </div>
 
+<script type="application/json" id="blacklistData">[
+  {% for c in customers %}{% set st = order_stats.get(c.id, (0, 0)) %}
+  {"id": {{ c.id }}, "name": {{ (c.name or '')|tojson }}, "phone": {{ (c.phone or '')|tojson }}, "phone2": {{ (c.phone2 or '')|tojson }},
+   "city": {{ (c.city or '')|tojson }}, "address": {{ (c.address or '')|tojson }}, "notes": {{ (c.notes or '')|tojson }},
+   "reason": {{ (c.blacklist_reason or '')|tojson }}, "auto": {{ 'true' if (c.blacklist_reason or '') == auto_reason else 'false' }},
+   "blacklisted_at": {{ (c.blacklisted_at.strftime('%Y-%m-%d %H:%M') if c.blacklisted_at else '')|tojson }},
+   "orders": {{ st[0] }}, "returns": {{ st[1] }}}{% if not loop.last %},{% endif %}
+  {% endfor %}
+]</script>
+
+<script src="/static/js/finora-ui.js?v=20261018c"></script>
 <script>
-const blMsgs = {
-  confirmRemove: {{ _('customers_blacklist_confirm_remove')|tojson }},
-  confirmRemoveSelected: {{ _('customers_blacklist_confirm_remove_selected')|tojson }} || 'سيتم إزالة {count} زبون من القائمة السوداء، هل أنت متأكد؟',
-  selectFirst: {{ _('customers_blacklist_select_first')|tojson }},
-};
+  const F = window.FinoraUI;
+  const byId = id => document.getElementById(id);
+  const BL_PAGE_SIZES = [10, 25, 50, 100];
+  const BL_PAGE_SIZE_KEY = "blacklist_page_size";
+  const blMsgs = {
+    confirmRemove: {{ _('customers_blacklist_confirm_remove')|tojson }},
+    confirmRemoveSelected: {{ _('customers_blacklist_confirm_remove_selected')|tojson }} || 'سيتم إزالة {count} زبون من القائمة السوداء، هل أنت متأكد؟',
+    selectFirst: {{ _('customers_blacklist_select_first')|tojson }},
+    empty: {{ _('customers_blacklist_empty')|tojson }},
+  };
+  let blData = [];
+  let blState = "";
+  let blPage = 0;
+  let blDetailId = null;
+  const blSelected = new Set();
 
-function selectedBlacklistIds() {
-  return Array.from(document.querySelectorAll('.bl-select-item:checked')).map(el => Number(el.value)).filter(Boolean);
-}
+  function monthStartIso() {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-01";
+  }
 
-function updateBlacklistSelection() {
-  const items = document.querySelectorAll('.bl-select-item');
-  const checked = selectedBlacklistIds().length;
-  const total = items.length;
-  const allChecked = total > 0 && checked === total;
-  document.querySelectorAll('#selectAllBlacklist, .bl-toolbar input[type="checkbox"]').forEach(el => {
-    if (el.id === 'selectAllBlacklist' || el.closest('.bl-toolbar')) el.checked = allChecked;
-  });
-  const counter = document.getElementById('blSelectedCount');
-  if (counter) counter.textContent = String(checked);
-  const btn = document.getElementById('blRemoveSelectedBtn');
-  if (btn) btn.disabled = checked === 0;
-}
+  function blPageSize() {
+    try {
+      const saved = parseInt(localStorage.getItem(BL_PAGE_SIZE_KEY), 10);
+      if (BL_PAGE_SIZES.includes(saved)) return saved;
+    } catch (e) { /* storage unavailable */ }
+    return 25;
+  }
 
-function toggleAllBlacklist(checked) {
-  document.querySelectorAll('.bl-select-item').forEach(el => { el.checked = !!checked; });
-  updateBlacklistSelection();
-}
+  function blMatches(c, state) {
+    if (state === "manual") return !c.auto;
+    if (state === "auto") return c.auto;
+    if (state === "month") return (c.blacklisted_at || "") >= monthStartIso();
+    return true;
+  }
 
-async function removeBlacklist(id) {
-  if (!confirm(blMsgs.confirmRemove)) return;
-  try {
-    const r = await fetch('/customers/blacklist/remove', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ customer_ids: [id] })
+  function filteredBlacklist() {
+    const q = byId("blSearch").value.trim().toLowerCase();
+    return blData.filter(c => {
+      if (!blMatches(c, blState)) return false;
+      if (q && !([c.name, c.phone, c.phone2, c.city, c.reason].join(" ").toLowerCase().includes(q))) return false;
+      return true;
     });
-    const d = await r.json();
-    if (!d.success) { alert(d.error || 'Error'); return; }
-    location.reload();
-  } catch (e) { alert(String(e)); }
-}
+  }
 
-async function removeSelectedBlacklist() {
-  const ids = selectedBlacklistIds();
-  if (!ids.length) { alert(blMsgs.selectFirst); return; }
-  const msg = (blMsgs.confirmRemoveSelected || '').replace('{count}', String(ids.length));
-  if (!confirm(msg)) return;
-  try {
+  function blDate(value) {
+    if (!value) return '<span class="fd-muted">—</span>';
+    return '<span dir="ltr">' + F.esc(value) + "</span>";
+  }
+
+  function syncBlacklistUi() {
+    const counts = { "": blData.length, manual: 0, auto: 0, month: 0 };
+    blData.forEach(c => ["manual", "auto", "month"].forEach(k => { if (blMatches(c, k)) counts[k]++; }));
+    document.querySelectorAll("#blChips [data-count]").forEach(el => { el.textContent = F.num(counts[el.getAttribute("data-count")] || 0); });
+    document.querySelectorAll("#fdPage [data-kpi]").forEach(el => { el.textContent = F.num(counts[el.getAttribute("data-kpi")] || 0); });
+    document.querySelectorAll("#fdPage [data-bl-state]").forEach(el => {
+      el.classList.toggle("active", (el.getAttribute("data-bl-state") || "") === blState);
+    });
+  }
+
+  function renderBlacklist() {
+    F.closeRowMenu();
+    syncBlacklistUi();
+    const rows = filteredBlacklist();
+    const size = blPageSize();
+    const pages = Math.max(1, Math.ceil(rows.length / size));
+    blPage = Math.min(blPage, pages - 1);
+    const pageRows = rows.slice(blPage * size, (blPage + 1) * size);
+
+    let returns = 0;
+    rows.forEach(c => { returns += c.returns || 0; });
+    byId("blTotals").innerHTML = rows.length ? "المرتجعات <b>" + F.num(returns) + "</b>" : "";
+    const from = rows.length ? blPage * size + 1 : 0;
+    byId("blRange").innerHTML = "عرض " + F.num(from) + "–" + F.num(Math.min(rows.length, (blPage + 1) * size)) + " من <b>" + F.num(rows.length) + "</b> زبون";
+    byId("blPager").innerHTML = F.pagerHtml(blPage, pages, "data-bl-page");
+
+    const tbody = byId("blBody");
+    if (!pageRows.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="fd-empty">' + (blData.length ? "لا يوجد زبائن مطابقون." : F.esc(blMsgs.empty)) + "</td></tr>";
+    } else {
+      tbody.innerHTML = pageRows.map(c => `
+      <tr data-bl-row="${c.id}" class="${c.id === blDetailId && !byId("blDetail").hidden ? "is-open" : ""}" style="cursor:pointer">
+        <td class="fd-td-title" data-label="الزبون">
+          <label class="bl-name"><input type="checkbox" class="bl-select-item" value="${c.id}"${blSelected.has(c.id) ? " checked" : ""} aria-label="تحديد ${F.esc(c.name)}"><b>${F.esc(c.name)}</b></label>
+        </td>
+        <td data-label="الهاتف" class="${F.blank(c.phone) ? "fd-td-blank" : ""}"><span dir="ltr">${F.esc(c.phone)}${F.blank(c.phone2) ? "" : " / " + F.esc(c.phone2)}</span></td>
+        <td data-label="المحافظة" class="fd-col-opt${F.blank(c.city) ? " fd-td-blank" : ""}">${F.dash(c.city)}</td>
+        <td data-label="السبب">${c.auto ? '<span class="fd-pill fd-pill--red">تلقائي</span>' : (F.blank(c.reason) ? '<span class="fd-muted">—</span>' : `<span class="bl-reason" title="${F.esc(c.reason)}">${F.esc(c.reason)}</span>`)}</td>
+        <td data-label="الطلبات" class="fd-col-opt2">${F.num(c.orders)}</td>
+        <td data-label="المرتجعات" class="fd-col-opt2">${c.returns ? `<b class="fd-qty--out">${F.num(c.returns)}</b>` : "0"}</td>
+        <td data-label="تاريخ الإضافة" class="fd-cell-muted">${blDate(c.blacklisted_at)}</td>
+        <td class="fd-col-actions">
+          <button type="button" class="fd-more-btn" data-fd-row-menu="${c.id}" aria-haspopup="menu" aria-label="إجراءات" title="إجراءات"></button>
+        </td>
+      </tr>`).join("");
+    }
+    updateBlacklistSelection();
+  }
+
+  // ---- Selection (bulk remove) ----
+  function selectedBlacklistIds() {
+    return Array.from(blSelected);
+  }
+
+  function updateBlacklistSelection() {
+    const visible = Array.from(document.querySelectorAll(".bl-select-item"));
+    const all = byId("selectAllBlacklist");
+    all.checked = visible.length > 0 && visible.every(el => el.checked);
+    all.indeterminate = !all.checked && visible.some(el => el.checked);
+    byId("blSelectedCount").textContent = F.num(blSelected.size);
+    byId("blRemoveSelectedBtn").hidden = blSelected.size === 0;
+  }
+
+  function toggleAllBlacklist(checked, scope) {
+    // the header box toggles the current page; the menu items select every matching row / clear all
+    if (scope === "page") {
+      document.querySelectorAll(".bl-select-item").forEach(el => {
+        if (checked) blSelected.add(Number(el.value)); else blSelected.delete(Number(el.value));
+      });
+    } else if (checked) {
+      filteredBlacklist().forEach(c => blSelected.add(c.id));
+    } else {
+      blSelected.clear();
+    }
+    document.querySelectorAll(".bl-select-item").forEach(el => { el.checked = blSelected.has(Number(el.value)); });
+    updateBlacklistSelection();
+  }
+
+  async function postBlacklistRemove(ids) {
     const r = await fetch('/customers/blacklist/remove', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ customer_ids: ids })
     });
-    const d = await r.json();
-    if (!d.success) { alert(d.error || 'Error'); return; }
-    location.reload();
-  } catch (e) { alert(String(e)); }
-}
+    const d = await r.json().catch(() => ({}));
+    if (!d.success) throw new Error(d.error || 'Error');
+    return d;
+  }
 
-document.querySelectorAll('.bl-select-item').forEach(el => el.addEventListener('change', updateBlacklistSelection));
-updateBlacklistSelection();
+  function dropFromBlacklist(ids) {
+    const gone = new Set(ids.map(Number));
+    blData = blData.filter(c => !gone.has(c.id));
+    gone.forEach(id => blSelected.delete(id));
+    if (blDetailId && gone.has(blDetailId)) closeBlacklistDetail();
+    renderBlacklist();
+  }
+
+  async function removeBlacklist(id) {
+    if (!confirm(blMsgs.confirmRemove)) return;
+    try {
+      await postBlacklistRemove([id]);
+      dropFromBlacklist([id]);
+      F.toast({{ _('customers_blacklist_toast_added')|tojson }}, "success");
+    } catch (e) { F.toast(String(e.message || e), "error"); }
+  }
+
+  async function removeSelectedBlacklist() {
+    const ids = selectedBlacklistIds();
+    if (!ids.length) { F.toast(blMsgs.selectFirst, "warning"); return; }
+    const msg = (blMsgs.confirmRemoveSelected || '').replace('{count}', String(ids.length));
+    if (!confirm(msg)) return;
+    try {
+      await postBlacklistRemove(ids);
+      dropFromBlacklist(ids);
+      F.toast({{ _('customers_blacklist_toast_added')|tojson }}, "success");
+    } catch (e) { F.toast(String(e.message || e), "error"); }
+  }
+
+  // ---- Detail panel ----
+  function blKv(key, value) {
+    return `<div class="fd-kv-row"><span class="fd-kv-key">${key}</span><span class="fd-kv-val">${value}</span></div>`;
+  }
+
+  function findBlacklisted(id) {
+    return blData.find(c => c.id === Number(id));
+  }
+
+  function openBlacklistDetail(id) {
+    const c = findBlacklisted(id);
+    if (!c) return;
+    blDetailId = c.id;
+    byId("blDetailTitle").textContent = c.name;
+    byId("blDetailSub").textContent = [c.phone, c.phone2].filter(v => !F.blank(v)).join(" · ");
+    byId("blDetailBody").innerHTML = `
+      <div class="fd-detail-status"><span class="fd-pill fd-pill--red">محظور</span>${c.auto ? '<span class="fd-pill fd-pill--amber">تلقائي</span>' : '<span class="fd-pill fd-pill--gray">يدوي</span>'}</div>
+      <div class="fd-kv">
+        ${blKv("الهاتف", F.blank(c.phone) ? "—" : `<span dir="ltr">${F.esc(c.phone)}</span>`)}
+        ${F.blank(c.phone2) ? "" : blKv("هاتف ثانٍ", `<span dir="ltr">${F.esc(c.phone2)}</span>`)}
+        ${blKv("المحافظة", F.dash(c.city))}
+        ${blKv("العنوان", F.dash(c.address))}
+        ${blKv("{{ _('customers_blacklist_col_reason') }}", F.dash(c.reason))}
+        ${blKv("{{ _('customers_blacklist_col_date') }}", blDate(c.blacklisted_at))}
+        ${blKv("الطلبات", F.num(c.orders))}
+        ${blKv("المرتجعات", c.returns ? `<b class="fd-qty--out">${F.num(c.returns)}</b>` : "0")}
+        ${F.blank(c.notes) ? "" : blKv("ملاحظات", F.esc(c.notes))}
+      </div>
+      <section class="fd-section">
+        <div class="fd-section-head"><span class="fd-section-title">{{ icon('receipt', 18) }}آخر الطلبات</span></div>
+        <div id="blOrders"><div class="bl-orders-loading">جاري التحميل...</div></div>
+      </section>
+      <div class="fd-detail-actions">
+        <button type="button" class="fd-btn fd-btn--primary fd-btn--sm" onclick="removeBlacklist(${c.id})">{{ _('customers_blacklist_remove') }}</button>
+        ${F.blank(c.phone) ? "" : `<a class="fd-btn fd-btn--sm" href="tel:${F.esc(c.phone)}">اتصال</a>`}
+      </div>`;
+    F.show(byId("blDetail"));
+    document.querySelectorAll("#blBody tr[data-bl-row]").forEach(tr => {
+      tr.classList.toggle("is-open", Number(tr.getAttribute("data-bl-row")) === c.id);
+    });
+    loadBlacklistOrders(c.id);
+  }
+
+  async function loadBlacklistOrders(id) {
+    const box = () => byId("blOrders");
+    try {
+      const res = await fetch("/customers/orders/" + id);
+      const orders = await res.json();
+      if (blDetailId !== id || !box()) return;
+      if (!orders.length) { box().innerHTML = '<p class="fd-muted" style="margin:0">لا توجد طلبات.</p>'; return; }
+      box().innerHTML = '<table class="fd-lines"><thead><tr><th>الطلب</th><th>التاريخ</th><th>الحالة</th><th>المبلغ</th></tr></thead><tbody>' +
+        orders.slice(0, 8).map(o => `<tr><td>#${F.num(o.id)}</td><td dir="ltr">${F.esc(o.date)}</td><td>${F.esc(o.status || "")}</td><td>${F.money(o.total)}</td></tr>`).join("") +
+        "</tbody></table>";
+    } catch (e) {
+      if (box()) box().innerHTML = '<p class="fd-muted" style="margin:0">تعذر تحميل الطلبات.</p>';
+    }
+  }
+
+  function closeBlacklistDetail() {
+    blDetailId = null;
+    F.hide(byId("blDetail"));
+    document.querySelectorAll("#blBody tr.is-open").forEach(tr => tr.classList.remove("is-open"));
+  }
+
+  function openBlacklistMenu(trigger) {
+    const id = Number(trigger.getAttribute("data-fd-row-menu"));
+    const c = findBlacklisted(id);
+    if (!c) return;
+    const items = [{ act: "view", label: "عرض التفاصيل" }];
+    if (!F.blank(c.phone)) items.push({ href: "tel:" + c.phone, label: "اتصال" });
+    items.push("sep", { act: "remove", label: {{ _('customers_blacklist_remove')|tojson }}, danger: true });
+    F.rowMenu(trigger, items, act => {
+      if (act === "view") openBlacklistDetail(id);
+      if (act === "remove") removeBlacklist(id);
+    });
+  }
+
+  function exportBlacklistCsv() {
+    const cell = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+    const lines = [["#", "الزبون", "الهاتف", "هاتف ثانٍ", "المحافظة", "السبب", "تاريخ الإضافة", "الطلبات", "المرتجعات"].map(cell).join(",")];
+    filteredBlacklist().forEach(c => {
+      lines.push([c.id, c.name, c.phone, c.phone2, c.city, c.reason, c.blacklisted_at, c.orders, c.returns].map(cell).join(","));
+    });
+    const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "customers_blacklist.csv";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  document.addEventListener("change", event => {
+    const box = event.target.closest && event.target.closest(".bl-select-item");
+    if (!box) return;
+    const id = Number(box.value);
+    if (box.checked) blSelected.add(id); else blSelected.delete(id);
+    updateBlacklistSelection();
+  });
+
+  document.addEventListener("click", event => {
+    const t = event.target;
+    if (!t.closest) return;
+    const menu = t.closest("[data-fd-row-menu]");
+    if (menu) { openBlacklistMenu(menu); return; }
+    const page = t.closest("[data-bl-page]");
+    if (page && !page.disabled) {
+      const v = page.getAttribute("data-bl-page");
+      blPage = v === "prev" ? blPage - 1 : v === "next" ? blPage + 1 : parseInt(v, 10) || 0;
+      renderBlacklist();
+      return;
+    }
+    const chip = t.closest("[data-bl-state]");
+    if (chip) { blState = chip.getAttribute("data-bl-state") || ""; blPage = 0; renderBlacklist(); return; }
+    const row = t.closest("tr[data-bl-row]");
+    if (row && !t.closest("a, button, input, label")) openBlacklistDetail(row.getAttribute("data-bl-row"));
+  });
+
+  document.addEventListener("DOMContentLoaded", () => {
+    try { blData = JSON.parse(byId("blacklistData").textContent); } catch (e) { blData = []; }
+    const size = byId("blPageSize");
+    size.value = String(blPageSize());
+    size.addEventListener("change", () => {
+      try { localStorage.setItem(BL_PAGE_SIZE_KEY, size.value); } catch (e) { /* storage unavailable */ }
+      blPage = 0;
+      renderBlacklist();
+    });
+    byId("blSearch").addEventListener("input", () => { blPage = 0; renderBlacklist(); });
+    renderBlacklist();
+  });
 </script>
 {% endblock %}

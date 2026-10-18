@@ -727,7 +727,30 @@ def customers_blacklist_page():
         .order_by(Customer.id.desc())
         .all()
     )
-    return render_template("customers_blacklist.html", customers=rows)
+    # عدد الطلبات والمرتجعات لكل زبون محظور (للعرض فقط)
+    ids = [c.id for c in rows]
+    order_stats = {}
+    if ids:
+        returned = invoice_returned_condition(Invoice)
+        order_stats = {
+            cid: (int(count or 0), int(returns or 0))
+            for cid, count, returns in db.session.query(
+                Invoice.customer_id,
+                func.count(Invoice.id),
+                func.coalesce(func.sum(case((returned, 1), else_=0)), 0),
+            )
+            .filter(Invoice.customer_id.in_(ids))
+            .group_by(Invoice.customer_id)
+            .all()
+        }
+    from utils.customer_blacklist import AUTO_REASON_AR
+
+    return render_template(
+        "customers_blacklist.html",
+        customers=rows,
+        order_stats=order_stats,
+        auto_reason=AUTO_REASON_AR,
+    )
 
 
 @customers_bp.route("/blacklist/add", methods=["POST"])

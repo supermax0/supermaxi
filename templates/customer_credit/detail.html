@@ -3,150 +3,546 @@
 {% block page_title %}{{ _('customer_credit_statement') }} — {{ customer.name }}{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/customer-credit.css') }}">
-
-{% macro fmt_money(n) -%}
-{{ "{:,}".format((n or 0)|int) }} {{ _('reports_currency_iqd') }}
-{%- endmacro %}
+{% from "partials/fd_icons.html" import icon %}
+<link rel="stylesheet" href="/static/css/finora-ui.css?v=20261018e">
 
 {% set paid_pct = ((summary.total_paid or 0) * 100 // (summary.total_debt or 1)) if (summary.total_debt or 0) > 0 else 0 %}
+{% set plan_seq = {} %}{% for plan in plans|reverse %}{% set _ = plan_seq.update({plan.id: loop.index}) %}{% endfor %}
 
-<div class="cc-page cc-page--detail">
-  <div class="cc-detail-hero">
-    <a href="{{ url_for('customer_credit.index') }}" class="cc-btn cc-btn-ghost cc-back-btn"><i class="fas fa-arrow-right"></i> {{ _('customer_credit_back') }}</a>
-    <div class="cc-detail-customer">
-      <h2 class="cc-detail-name">{{ customer.name }}</h2>
-      <div class="cc-detail-meta">{{ customer.phone }}{% if customer.city %} · {{ customer.city }}{% endif %}</div>
-    </div>
-  </div>
+<style>
+  #fdPage .cc-hero {
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+    padding: 16px 18px; border: 1px solid var(--fd-border); border-radius: var(--fd-radius, 18px);
+    background: var(--fd-surface); box-shadow: var(--fd-shadow);
+  }
+  #fdPage .cc-hero-back { flex: 0 0 auto; }
+  #fdPage .cc-hero-avatar {
+    display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto;
+    width: 48px; height: 48px; border-radius: 14px; background: var(--fd-purple-soft); color: var(--fd-purple);
+    font-size: 20px; font-weight: 800;
+  }
+  #fdPage .cc-hero-text { flex: 1 1 200px; min-width: 0; }
+  #fdPage .cc-hero-name { margin: 0; font-size: 20px; font-weight: 800; color: var(--fd-text); overflow-wrap: anywhere; }
+  #fdPage .cc-hero-meta { margin: 2px 0 0; font-size: 14px; color: var(--fd-muted); }
+  #fdPage .cc-hero-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  #fdPage .cc-progress-line { gap: 16px; }
+  #fdPage .cc-progress-line .cc-bar { flex: 1 1 auto; height: 10px; border-radius: 999px; background: var(--fd-surface); overflow: hidden; border: 1px solid var(--fd-border); }
+  #fdPage .cc-progress-line .cc-bar span { display: block; height: 100%; border-radius: inherit; background: var(--fd-green); }
+  #fdPage .cc-progress-line b { font-variant-numeric: tabular-nums; }
+  #fdPage .cc-tabs .fd-tab { border: 0 !important; background: transparent; font-family: inherit !important; cursor: pointer; width: auto !important; min-width: 0 !important; }
+  #fdPage .cc-tabs { box-shadow: none; }
+  #fdPage .cc-chips-row[hidden] { display: none; }
+  #fdPage .fd-lines .fd-pill { padding: 2px 8px; font-size: 11.5px; white-space: nowrap; }
+  @container (max-width: 780px) {
+    #fdPage table.fd-table tbody td.fd-td-title { min-height: 44px; }
+  }
+  @media (max-width: 600px) {
+    #fdPage .cc-hero-avatar { display: none; }
+    #fdPage .cc-hero-actions { width: 100%; }
+    #fdPage .cc-hero-actions .fd-btn--primary { flex: 1 1 auto; justify-content: center; }
+  }
+</style>
 
-  <div class="cc-stats">
-    <div class="cc-stat">
-      <div class="cc-stat-label">{{ _('customer_credit_stat_total_debt') }}</div>
-      <div class="cc-stat-value">{{ fmt_money(summary.total_debt) }}</div>
+<div class="fd credit-detail-page" id="fdPage">
+
+  <header class="fd-header no-print">
+    <div class="fd-header-main">
+      <span class="fd-header-icon" style="color: var(--fd-purple);">{{ icon('users', 26) }}</span>
+      <div class="fd-header-text">
+        <h1 class="fd-title">إدارة الزبائن</h1>
+        <p class="fd-subtitle">بيانات الزبائن وطلباتهم ومحافظاتهم</p>
+      </div>
     </div>
-    <div class="cc-stat">
-      <div class="cc-stat-label">{{ _('customer_credit_stat_paid') }}</div>
-      <div class="cc-stat-value success">{{ fmt_money(summary.total_paid) }}</div>
+  </header>
+
+  <nav class="fd-subnav no-print" aria-label="الزبائن">
+    <a class="fd-subnav-link" href="/customers/">الزبائن</a>
+    <a class="fd-subnav-link" href="/customers/blacklist">{{ _('customers_nav_blacklist') }}</a>
+    <a class="fd-subnav-link" href="/customers/provinces">المحافظات</a>
+    <a class="fd-subnav-link active" href="/customers/credit">بيع آجل / أقساط</a>
+  </nav>
+
+  <section class="cc-hero">
+    <a class="fd-btn fd-btn--icon cc-hero-back no-print" href="{{ url_for('customer_credit.index') }}" title="{{ _('customer_credit_back') }}" aria-label="{{ _('customer_credit_back') }}">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+    </a>
+    <span class="cc-hero-avatar" aria-hidden="true">{{ (customer.name or '?')[:1] }}</span>
+    <div class="cc-hero-text">
+      <h2 class="cc-hero-name">{{ customer.name }}</h2>
+      <p class="cc-hero-meta"><span dir="ltr">{{ customer.phone }}</span>{% if customer.city %} · {{ customer.city }}{% endif %} · {{ _('customer_credit_statement') }}</p>
     </div>
-    <div class="cc-stat">
-      <div class="cc-stat-label">{{ _('customer_credit_stat_remaining') }}</div>
-      <div class="cc-stat-value danger">{{ fmt_money(summary.remaining) }}</div>
+    <div class="cc-hero-actions no-print">
+      <button type="button" class="fd-btn fd-btn--primary" onclick="openPayDrawer()" {% if summary.remaining <= 0 %}disabled{% endif %}>
+        {{ icon('wallet', 18) }}<span class="fd-btn-label">{{ _('customer_credit_pay_submit') }}</span>
+      </button>
+      <a class="fd-btn" href="{{ url_for('customer_credit.index') }}?add={{ customer.id }}&name={{ customer.name|urlencode }}&phone={{ (customer.phone or '')|urlencode }}">
+        {{ icon('package-plus', 18) }}<span class="fd-btn-label">{{ _('customer_credit_add_debt') }}</span>
+      </a>
+      <div class="fd-pop-wrap">
+        <button type="button" class="fd-btn fd-btn--icon" data-fd-pop="ccdMorePop" aria-expanded="false" aria-controls="ccdMorePop" title="المزيد" aria-label="المزيد">{{ icon('dots', 20) }}</button>
+        <div class="fd-pop fd-pop--end fd-menu" id="ccdMorePop" role="menu" hidden>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="window.print()">{{ icon('print') }}<span>طباعة الكشف</span></button>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="exportStatementCsv()">{{ icon('download') }}<span>تصدير CSV</span></button>
+          {% if customer.phone %}
+          <div class="fd-menu-sep" role="separator"></div>
+          <a class="fd-menu-item" role="menuitem" href="tel:{{ customer.phone }}">{{ icon('users') }}<span>اتصال</span></a>
+          {% endif %}
+        </div>
+      </div>
     </div>
-    <div class="cc-stat">
-      <div class="cc-stat-label">{{ _('customer_credit_stat_overdue') }}</div>
-      <div class="cc-stat-value warning">{{ summary.overdue_count }}</div>
+  </section>
+
+  <div class="fd-kpis">
+    <div class="fd-kpi fd-kpi--purple">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('customer_credit_stat_total_debt') }}</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money">{{ "{:,}".format((summary.total_debt or 0)|int) }}</span><span class="fd-kpi-unit">{{ _('reports_currency_iqd') }}</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('receipt', 28) }}</span>
     </div>
+    <div class="fd-kpi fd-kpi--green">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('customer_credit_stat_paid') }}</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money">{{ "{:,}".format((summary.total_paid or 0)|int) }}</span><span class="fd-kpi-unit">{{ _('reports_currency_iqd') }}</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('check-circle', 28) }}</span>
+    </div>
+    <button type="button" class="fd-kpi fd-kpi--red" data-inst-state="open">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('customer_credit_stat_remaining') }}</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money">{{ "{:,}".format((summary.remaining or 0)|int) }}</span><span class="fd-kpi-unit">{{ _('reports_currency_iqd') }}</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('wallet', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--amber" data-inst-state="overdue">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('customer_credit_stat_overdue') }}</span>
+        <span><span class="fd-kpi-value">{{ summary.overdue_count }}</span><span class="fd-kpi-unit">قسط</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('alert', 28) }}</span>
+    </button>
   </div>
 
   {% if summary.total_debt > 0 %}
-  <div class="cc-panel cc-progress-panel">
-    <div class="cc-progress-label">{{ _('customer_credit_payment_progress') }}</div>
-    <div class="cc-progress"><div class="cc-progress-bar" style="width:{{ paid_pct }}%;"></div></div>
-    <div class="cc-progress-pct">{{ paid_pct }}%</div>
+  <div class="fd-stock-line cc-progress-line">
+    <span>{{ _('customer_credit_payment_progress') }}</span>
+    <span class="cc-bar"><span style="width:{{ paid_pct }}%;"></span></span>
+    <b>{{ paid_pct }}%</b>
   </div>
   {% endif %}
 
-  <form class="cc-pay-form cc-pay-form--sticky" method="POST" action="{{ url_for('customer_credit.pay_customer', customer_id=customer.id) }}" onsubmit="return validatePayForm(event)">
-    <div class="cc-pay-form__fields">
-      <div class="cc-field">
-        <label>{{ _('customer_credit_pay_amount') }}</label>
-        <input type="number" name="amount" id="payAmount" min="1" step="1" max="{{ summary.remaining }}" placeholder="0" inputmode="numeric" required>
-        <small class="cc-field-hint">{{ _('customer_credit_stat_remaining') }}: {{ fmt_money(summary.remaining) }}</small>
-      </div>
-      <div class="cc-field">
-        <label>{{ _('customer_credit_pay_note') }}</label>
-        <input type="text" name="note" placeholder="{{ _('customer_credit_pay_note_placeholder') }}">
-      </div>
+  <div class="fd-toolbar no-print">
+    <div class="fd-tabs cc-tabs" id="ccdTabs" role="tablist" aria-label="أقسام الكشف">
+      <button type="button" class="fd-tab active" data-ccd-tab="installments" role="tab">{{ _('customer_credit_installments_title') }}<span class="fd-tab-count">{{ installments|length }}</span></button>
+      <button type="button" class="fd-tab" data-ccd-tab="payments" role="tab">{{ _('customer_credit_payments_title') }}<span class="fd-tab-count">{{ payments|length }}</span></button>
+      <button type="button" class="fd-tab" data-ccd-tab="plans" role="tab">{{ _('customer_credit_plans_title') }}<span class="fd-tab-count">{{ plans|length }}</span></button>
     </div>
-    <button type="submit" class="cc-btn cc-btn-primary cc-pay-submit" {% if summary.remaining <= 0 %}disabled{% endif %}>
-      <i class="fas fa-coins"></i> {{ _('customer_credit_pay_submit') }}
-    </button>
-  </form>
-
-  <div class="cc-section cc-panel">
-    <div class="cc-section-title"><i class="fas fa-list"></i> {{ _('customer_credit_plans_title') }}</div>
-    {% if plans %}
-    <div class="cc-cards">
-      {% for plan in plans %}
-      <article class="cc-mcard">
-        <div class="cc-mcard__head">
-          <span class="cc-mcard__index">#{{ loop.index }}</span>
-          <span class="cc-badge cc-badge-pending">{{ entry_type_label(plan.entry_type) }}</span>
-        </div>
-        <div class="cc-mcard__title">{{ plan.description or '—' }}</div>
-        <div class="cc-mcard__grid">
-          <div><span>{{ _('customer_credit_th_total') }}</span><strong>{{ fmt_money(plan.total_amount) }}</strong></div>
-          <div><span>{{ _('customer_credit_th_paid') }}</span><strong class="text-success">{{ fmt_money(plan.paid_amount) }}</strong></div>
-          <div><span>{{ _('customer_credit_th_remaining') }}</span><strong class="text-danger">{{ fmt_money(plan.remaining) }}</strong></div>
-          {% if plan.invoice_id %}
-          <div><span>{{ _('customer_credit_th_order') }}</span><strong><a href="/orders">#{{ plan.invoice_id }}</a></strong></div>
-          {% endif %}
-        </div>
-      </article>
-      {% endfor %}
-    </div>
-    {% else %}
-    <p class="cc-empty">{{ _('customer_credit_no_plans') }}</p>
-    {% endif %}
+    <label class="fd-search fd-tool--search">
+      {{ icon('search', 18) }}
+      <input type="search" id="ccdSearch" autocomplete="off" placeholder="ابحث بالتاريخ أو الوصف أو الملاحظة...">
+    </label>
   </div>
 
-  <div class="cc-section cc-panel">
-    <div class="cc-section-title"><i class="fas fa-calendar-days"></i> {{ _('customer_credit_installments_title') }}</div>
-    {% if installments %}
-    <div class="cc-cards">
-      {% for inst in installments %}
-      <article class="cc-mcard cc-mcard--installment{% if inst.status == 'overdue' %} cc-mcard--overdue-highlight{% endif %}">
-        <div class="cc-mcard__head">
-          <span class="cc-mcard__index">{{ _('customer_credit_th_due_date') }} · #{{ inst.sequence }}</span>
-          <span class="cc-badge cc-badge-{{ inst.status if inst.status in ['pending','partial','paid','overdue'] else 'pending' }}">
-            {{ status_label(inst.status) }}
-          </span>
-        </div>
-        <div class="cc-mcard__due">{{ inst.due_date.strftime('%Y-%m-%d') if inst.due_date else '—' }}</div>
-        <div class="cc-mcard__grid">
-          <div><span>{{ _('customer_credit_th_amount') }}</span><strong>{{ fmt_money(inst.amount) }}</strong></div>
-          <div><span>{{ _('customer_credit_th_paid') }}</span><strong class="text-success">{{ fmt_money(inst.paid_amount) }}</strong></div>
-          <div><span>{{ _('customer_credit_th_remaining') }}</span><strong class="text-danger">{{ fmt_money(inst.remaining) }}</strong></div>
-        </div>
-      </article>
-      {% endfor %}
+  <div class="fd-toolbar fd-toolbar--chips no-print cc-chips-row" id="ccdChipsRow">
+    <div class="fd-chips" id="ccdChips" role="tablist" aria-label="حالة القسط">
+      <button type="button" class="fd-chip active" data-inst-state="">الكل<span class="fd-chip-count" data-count=""></span></button>
+      <button type="button" class="fd-chip" data-inst-state="open">غير مسددة<span class="fd-chip-count" data-count="open"></span></button>
+      <button type="button" class="fd-chip" data-inst-state="overdue">{{ status_label('overdue') }}<span class="fd-chip-count" data-count="overdue"></span></button>
+      <button type="button" class="fd-chip" data-inst-state="partial">{{ status_label('partial') }}<span class="fd-chip-count" data-count="partial"></span></button>
+      <button type="button" class="fd-chip" data-inst-state="paid">{{ status_label('paid') }}<span class="fd-chip-count" data-count="paid"></span></button>
     </div>
-    {% else %}
-    <p class="cc-empty">{{ _('customer_credit_no_installments') }}</p>
-    {% endif %}
   </div>
 
-  <div class="cc-section cc-panel">
-    <div class="cc-section-title"><i class="fas fa-receipt"></i> {{ _('customer_credit_payments_title') }}</div>
-    {% if payments %}
-    <div class="cc-cards">
-      {% for pay in payments %}
-      <article class="cc-mcard cc-mcard--payment">
-        <div class="cc-mcard__head">
-          <span class="cc-mcard__date">{{ pay.created_at.strftime('%Y-%m-%d %H:%M') if pay.created_at else '—' }}</span>
-          <strong class="cc-mcard__amount text-success">{{ fmt_money(pay.amount) }}</strong>
-        </div>
-        {% if pay.note %}<div class="cc-mcard__note">{{ pay.note }}</div>{% endif %}
-      </article>
-      {% endfor %}
+  <section class="fd-table-card">
+    <div class="fd-table-scroll">
+      <table class="fd-table" id="ccdTable">
+        <thead id="ccdHead"></thead>
+        <tbody id="ccdBody"><tr><td class="fd-empty">جاري التحميل...</td></tr></tbody>
+      </table>
     </div>
-    {% else %}
-    <p class="cc-empty">{{ _('customer_credit_no_payments') }}</p>
-    {% endif %}
+  </section>
+
+  <footer class="fd-footer no-print">
+    <div class="fd-footer-info">
+      <select id="ccdPageSize" aria-label="عدد الصفوف في الصفحة">
+        <option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
+      </select>
+      <span class="fd-range" id="ccdRange"></span>
+      <span class="fd-totals" id="ccdTotals"></span>
+    </div>
+    <nav class="fd-pager" id="ccdPager" aria-label="الصفحات"></nav>
+  </footer>
+
+  <!-- Detail panel: one debt item and its installments -->
+  <aside class="fd-detail" id="ccdDetail" aria-label="تفاصيل البند" hidden>
+    <div class="fd-detail-head">
+      <div class="fd-detail-titles">
+        <h3 class="fd-detail-title" id="ccdDetailTitle"></h3>
+        <p class="fd-detail-sub" id="ccdDetailSub"></p>
+      </div>
+      <button type="button" class="fd-close-btn" onclick="closePlanDetail()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+    </div>
+    <div class="fd-detail-body" id="ccdDetailBody"></div>
+  </aside>
+
+  <!-- Drawer: pay (same form as before) -->
+  <div class="fd-drawer" id="payDrawer" hidden>
+    <form class="fd-drawer-panel cc-pay-form" method="POST" action="{{ url_for('customer_credit.pay_customer', customer_id=customer.id) }}" onsubmit="return validatePayForm(event)" role="dialog" aria-modal="true" aria-labelledby="payDrawerTitle">
+      <div class="fd-drawer-head">
+        <span class="fd-drawer-icon">{{ icon('wallet', 24) }}</span>
+        <div class="fd-drawer-titles">
+          <h2 class="fd-drawer-title" id="payDrawerTitle">{{ _('customer_credit_pay_submit') }} — {{ customer.name }}</h2>
+          <p class="fd-drawer-hint">Enter للتسديد · Esc للإغلاق</p>
+        </div>
+        <button type="button" class="fd-close-btn" onclick="closePayDrawer()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+      </div>
+      <div class="fd-drawer-body">
+        <div class="fd-form-error" id="payError" role="alert" hidden></div>
+        <div class="fd-stock-line"><span>{{ _('customer_credit_stat_remaining') }}</span><b dir="ltr">{{ "{:,}".format((summary.remaining or 0)|int) }} {{ _('reports_currency_iqd') }}</b></div>
+        <section class="fd-section">
+          <div class="fd-section-head"><span class="fd-section-title">{{ icon('wallet', 18) }}بيانات التسديد</span></div>
+          <label class="fd-field"><span>{{ _('customer_credit_pay_amount') }} <b class="fd-req">*</b></span>
+            <span class="fd-money"><input type="number" name="amount" id="payAmount" min="1" step="1" max="{{ summary.remaining }}" placeholder="0" inputmode="numeric" required></span>
+          </label>
+          <label class="fd-field"><span>{{ _('customer_credit_pay_note') }}</span>
+            <input type="text" name="note" id="payNote" placeholder="{{ _('customer_credit_pay_note_placeholder') }}">
+          </label>
+          <p class="fd-muted" style="margin:0;font-size:13px;" id="payHint">يُوزَّع المبلغ على الأقساط الأقدم أولاً.</p>
+        </section>
+      </div>
+      <div class="fd-drawer-foot">
+        <button type="submit" class="fd-btn fd-btn--primary cc-pay-submit" id="paySave" {% if summary.remaining <= 0 %}disabled{% endif %}>{{ icon('check-circle', 18) }}<span>{{ _('customer_credit_pay_submit') }}</span></button>
+        <button type="button" class="fd-btn" onclick="closePayDrawer()">{{ _('cancel') }}</button>
+      </div>
+    </form>
   </div>
 </div>
 
+<script type="application/json" id="ccdData">{
+  "plans": [
+    {% for plan in plans %}
+    {"id": {{ plan.id }}, "no": {{ plan_seq.get(plan.id, loop.index) }}, "entry_type": {{ (plan.entry_type or '')|tojson }}, "type_label": {{ entry_type_label(plan.entry_type)|tojson }},
+     "description": {{ (plan.description or '')|tojson }}, "total_amount": {{ (plan.total_amount or 0)|int }}, "paid_amount": {{ (plan.paid_amount or 0)|int }},
+     "remaining": {{ plan.remaining|int }}, "installments_count": {{ plan.installments_count or 0 }}, "invoice_id": {{ plan.invoice_id|tojson }},
+     "created_at": {{ (plan.created_at.strftime('%Y-%m-%d') if plan.created_at else '')|tojson }}}{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ],
+  "installments": [
+    {% for inst in installments %}
+    {"id": {{ inst.id }}, "plan_id": {{ inst.plan_id }}, "sequence": {{ inst.sequence }},
+     "due_date": {{ (inst.due_date.strftime('%Y-%m-%d') if inst.due_date else '')|tojson }},
+     "amount": {{ (inst.amount or 0)|int }}, "paid_amount": {{ (inst.paid_amount or 0)|int }}, "remaining": {{ inst.remaining|int }},
+     "status": {{ (inst.status if inst.status in ['pending','partial','paid','overdue'] else 'pending')|tojson }}, "status_label": {{ status_label(inst.status)|tojson }}}{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ],
+  "payments": [
+    {% for pay in payments %}
+    {"id": {{ pay.id }}, "created_at": {{ (pay.created_at.strftime('%Y-%m-%d %H:%M') if pay.created_at else '')|tojson }},
+     "amount": {{ (pay.amount or 0)|int }}, "note": {{ (pay.note or '')|tojson }}, "plan_id": {{ pay.plan_id|tojson }}, "installment_id": {{ pay.installment_id|tojson }}}{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]
+}</script>
+
+<script src="/static/js/finora-ui.js?v=20261018c"></script>
 <script>
-  function validatePayForm(e) {
-    var max = {{ summary.remaining|int }};
-    var val = parseInt(document.getElementById('payAmount').value || '0', 10);
-    if (val <= 0 || val > max) {
-      e.preventDefault();
-      if (typeof showToast === 'function') showToast('{{ _('customer_credit_err_pay_amount')|tojson }}', 'warning');
-      return false;
-    }
+  const F = window.FinoraUI;
+  const byId = id => document.getElementById(id);
+  const CCD_PAGE_SIZES = [10, 25, 50, 100];
+  const CCD_PAGE_SIZE_KEY = "customer_credit_detail_page_size";
+  const PAY_MAX = {{ summary.remaining|int }};
+  const STATUS_PILL = { pending: "blue", partial: "amber", paid: "green", overdue: "red" };
+  const L = {
+    no: "#",
+    type: {{ _('customer_credit_th_type')|tojson }},
+    description: {{ _('customer_credit_th_description')|tojson }},
+    total: {{ _('customer_credit_th_total')|tojson }},
+    paid: {{ _('customer_credit_th_paid')|tojson }},
+    remaining: {{ _('customer_credit_th_remaining')|tojson }},
+    order: {{ _('customer_credit_th_order')|tojson }},
+    due: {{ _('customer_credit_th_due_date')|tojson }},
+    amount: {{ _('customer_credit_th_amount')|tojson }},
+    status: {{ _('customer_credit_th_status')|tojson }},
+    date: {{ _('customer_credit_th_date')|tojson }},
+    note: {{ _('customer_credit_pay_note')|tojson }},
+  };
+  const EMPTY = {
+    installments: {{ _('customer_credit_no_installments')|tojson }},
+    payments: {{ _('customer_credit_no_payments')|tojson }},
+    plans: {{ _('customer_credit_no_plans')|tojson }},
+  };
+  let ccd = { plans: [], installments: [], payments: [] };
+  let ccdTab = "installments";
+  let instState = "";
+  let ccdPage = 0;
+  let planDetailId = null;
+
+  function ccdPageSize() {
+    try {
+      const saved = parseInt(localStorage.getItem(CCD_PAGE_SIZE_KEY), 10);
+      if (CCD_PAGE_SIZES.includes(saved)) return saved;
+    } catch (e) { /* storage unavailable */ }
+    return 25;
+  }
+
+  const planById = id => ccd.plans.find(p => p.id === Number(id));
+  const instById = id => ccd.installments.find(i => i.id === Number(id));
+  const planName = p => p ? (p.description || p.type_label) : "—";
+  const statusPill = i => `<span class="fd-pill fd-pill--${STATUS_PILL[i.status] || "gray"}">${F.esc(i.status_label)}</span>`;
+  const day = v => v ? `<span dir="ltr">${F.esc(v)}</span>` : '<span class="fd-muted">—</span>';
+  const more = (attr, id) => `<button type="button" class="fd-more-btn" data-fd-row-menu="${id}" data-ccd-kind="${attr}" aria-haspopup="menu" aria-label="إجراءات" title="إجراءات"></button>`;
+
+  function instMatches(i, state) {
+    if (state === "open") return i.remaining > 0;
+    if (state) return i.status === state;
     return true;
   }
+
+  function hay(row) {
+    if (ccdTab === "installments") return [row.due_date, row.status_label, planName(planById(row.plan_id)), "#" + row.sequence].join(" ");
+    if (ccdTab === "payments") return [row.created_at, row.note, String(row.amount)].join(" ");
+    return [row.description, row.type_label, row.created_at, row.invoice_id ? "#" + row.invoice_id : ""].join(" ");
+  }
+
+  function currentRows() {
+    const q = byId("ccdSearch").value.trim().toLowerCase();
+    return ccd[ccdTab].filter(r => (ccdTab !== "installments" || instMatches(r, instState)) && (!q || hay(r).toLowerCase().includes(q)));
+  }
+
+  const HEADS = {
+    installments: () => `<tr><th>${L.no}</th><th>${L.due}</th><th class="fd-col-opt">البند</th><th>${L.amount}</th><th class="fd-col-opt2">${L.paid}</th><th>${L.remaining}</th><th>${L.status}</th><th class="fd-col-actions"></th></tr>`,
+    payments: () => `<tr><th>${L.date}</th><th>${L.amount}</th><th class="fd-col-opt">البند / القسط</th><th>${L.note}</th><th class="fd-col-actions"></th></tr>`,
+    plans: () => `<tr><th>${L.description}</th><th>${L.type}</th><th>${L.total}</th><th class="fd-col-opt2">${L.paid}</th><th>${L.remaining}</th><th class="fd-col-opt">الأقساط</th><th class="fd-col-opt">${L.order}</th><th class="fd-col-opt2">${L.date}</th><th class="fd-col-actions"></th></tr>`,
+  };
+  const COLS = { installments: 8, payments: 5, plans: 9 };
+
+  const ROWS = {
+    installments: i => {
+      const p = planById(i.plan_id);
+      return `<tr data-ccd-plan="${i.plan_id}" style="cursor:pointer">
+        <td class="fd-td-title" data-label="${L.no}"><b>قسط #${F.num(i.sequence)}</b>${ccd.plans.length > 1 ? ` <span class="fd-muted" style="font-size:13px">· بند ${F.num(p ? p.no : 0)}</span>` : ""}</td>
+        <td data-label="${L.due}">${day(i.due_date)}</td>
+        <td data-label="البند" class="fd-col-opt">${F.esc(planName(p))}</td>
+        <td data-label="${L.amount}" class="fd-cell-amount">${F.money(i.amount)}</td>
+        <td data-label="${L.paid}" class="fd-col-opt2 fd-cell-muted">${F.money(i.paid_amount)}</td>
+        <td data-label="${L.remaining}"><b class="${i.remaining > 0 ? "fd-qty--out" : "fd-qty--ok"}">${F.money(i.remaining)}</b></td>
+        <td data-label="${L.status}">${statusPill(i)}</td>
+        <td class="fd-col-actions">${more("inst", i.id)}</td>
+      </tr>`;
+    },
+    payments: pay => {
+      const p = planById(pay.plan_id);
+      const inst = instById(pay.installment_id);
+      const ref = [p ? planName(p) : "", inst ? "قسط #" + inst.sequence : ""].filter(Boolean).join(" · ");
+      return `<tr${pay.plan_id ? ` data-ccd-plan="${pay.plan_id}" style="cursor:pointer"` : ""}>
+        <td class="fd-td-title" data-label="${L.date}"><b dir="ltr">${F.esc(pay.created_at || "—")}</b></td>
+        <td data-label="${L.amount}"><b class="fd-qty--ok">${F.money(pay.amount)}</b></td>
+        <td data-label="البند / القسط" class="fd-col-opt${ref ? "" : " fd-td-blank"}">${F.dash(ref)}</td>
+        <td data-label="${L.note}" class="${F.blank(pay.note) ? "fd-td-blank" : ""}">${F.dash(pay.note)}</td>
+        <td class="fd-col-actions fd-td-blank"></td>
+      </tr>`;
+    },
+    plans: p => `<tr data-ccd-plan="${p.id}" style="cursor:pointer">
+        <td class="fd-td-title" data-label="${L.description}"><b>${F.esc(planName(p))}</b> <span class="fd-muted" style="font-size:13px">#${F.num(p.no)}</span></td>
+        <td data-label="${L.type}"><span class="fd-pill fd-pill--purple">${F.esc(p.type_label)}</span></td>
+        <td data-label="${L.total}" class="fd-cell-amount">${F.money(p.total_amount)}</td>
+        <td data-label="${L.paid}" class="fd-col-opt2 fd-cell-muted">${F.money(p.paid_amount)}</td>
+        <td data-label="${L.remaining}"><b class="${p.remaining > 0 ? "fd-qty--out" : "fd-qty--ok"}">${F.money(p.remaining)}</b></td>
+        <td data-label="الأقساط" class="fd-col-opt">${F.num(p.installments_count)}</td>
+        <td data-label="${L.order}" class="fd-col-opt${p.invoice_id ? "" : " fd-td-blank"}">${p.invoice_id ? `<a href="/orders">#${F.num(p.invoice_id)}</a>` : '<span class="fd-muted">—</span>'}</td>
+        <td data-label="${L.date}" class="fd-col-opt2 fd-cell-muted">${day(p.created_at)}</td>
+        <td class="fd-col-actions">${more("plan", p.id)}</td>
+      </tr>`,
+  };
+
+  function syncCcdUi() {
+    document.querySelectorAll("#ccdTabs [data-ccd-tab]").forEach(t => {
+      const on = t.getAttribute("data-ccd-tab") === ccdTab;
+      t.classList.toggle("active", on);
+      t.setAttribute("aria-selected", on ? "true" : "false");
+    });
+    byId("ccdChipsRow").hidden = ccdTab !== "installments";
+    const counts = { "": ccd.installments.length, open: 0, overdue: 0, partial: 0, paid: 0 };
+    ccd.installments.forEach(i => ["open", "overdue", "partial", "paid"].forEach(k => { if (instMatches(i, k)) counts[k]++; }));
+    document.querySelectorAll("#ccdChips [data-count]").forEach(el => { el.textContent = F.num(counts[el.getAttribute("data-count")] || 0); });
+    document.querySelectorAll("#fdPage [data-inst-state]").forEach(el => {
+      el.classList.toggle("active", ccdTab === "installments" && (el.getAttribute("data-inst-state") || "") === instState && (instState !== "" || !el.classList.contains("fd-kpi")));
+    });
+  }
+
+  function renderCcd() {
+    F.closeRowMenu();
+    syncCcdUi();
+    const rows = currentRows();
+    const size = ccdPageSize();
+    const pages = Math.max(1, Math.ceil(rows.length / size));
+    ccdPage = Math.min(ccdPage, pages - 1);
+    const pageRows = rows.slice(ccdPage * size, (ccdPage + 1) * size);
+    const unit = { installments: "قسط", payments: "تسديد", plans: "بند" }[ccdTab];
+    const from = rows.length ? ccdPage * size + 1 : 0;
+    byId("ccdRange").innerHTML = "عرض " + F.num(from) + "–" + F.num(Math.min(rows.length, (ccdPage + 1) * size)) + " من <b>" + F.num(rows.length) + "</b> " + unit;
+    const sumKey = ccdTab === "payments" ? "amount" : "remaining";
+    const sum = rows.reduce((s, r) => s + (Number(r[sumKey]) || 0), 0);
+    byId("ccdTotals").innerHTML = rows.length ? (ccdTab === "payments" ? "المسدد " : "المتبقي ") + "<b>" + F.num(sum) + " د.ع</b>" : "";
+    byId("ccdPager").innerHTML = F.pagerHtml(ccdPage, pages, "data-ccd-page");
+    byId("ccdHead").innerHTML = HEADS[ccdTab]();
+    byId("ccdBody").innerHTML = pageRows.length
+      ? pageRows.map(ROWS[ccdTab]).join("")
+      : `<tr><td colspan="${COLS[ccdTab]}" class="fd-empty">${F.esc(ccd[ccdTab].length ? "لا توجد نتائج مطابقة." : EMPTY[ccdTab])}</td></tr>`;
+  }
+
+  // ---- Detail panel (a debt item) ----
+  function ccdKv(key, value) {
+    return `<div class="fd-kv-row"><span class="fd-kv-key">${key}</span><span class="fd-kv-val">${value}</span></div>`;
+  }
+
+  function openPlanDetail(id) {
+    const p = planById(id);
+    if (!p) return;
+    planDetailId = p.id;
+    const insts = ccd.installments.filter(i => i.plan_id === p.id).sort((a, b) => a.sequence - b.sequence);
+    const pays = ccd.payments.filter(x => x.plan_id === p.id);
+    const pct = p.total_amount > 0 ? Math.min(100, Math.floor(p.paid_amount * 100 / p.total_amount)) : 0;
+    byId("ccdDetailTitle").textContent = planName(p);
+    byId("ccdDetailSub").textContent = "بند #" + p.no + (p.created_at ? " · \u2066" + p.created_at + "\u2069" : "");
+    byId("ccdDetailBody").innerHTML = `
+      <div class="fd-detail-status"><span class="fd-pill fd-pill--purple">${F.esc(p.type_label)}</span><span class="fd-pill fd-pill--${p.remaining > 0 ? "amber" : "green"}">${p.remaining > 0 ? "مفتوح" : "{{ status_label('paid') }}"}</span></div>
+      <div class="fd-stock-line cc-progress-line"><span>{{ _('customer_credit_payment_progress') }}</span><span class="cc-bar"><span style="width:${pct}%"></span></span><b>${pct}%</b></div>
+      <div class="fd-kv">
+        ${ccdKv(L.total, `<b>${F.money(p.total_amount)}</b>`)}
+        ${ccdKv(L.paid, `<span class="fd-qty--ok">${F.money(p.paid_amount)}</span>`)}
+        ${ccdKv(L.remaining, `<b class="${p.remaining > 0 ? "fd-qty--out" : "fd-qty--ok"}">${F.money(p.remaining)}</b>`)}
+        ${p.invoice_id ? ccdKv(L.order, `<a href="/orders">#${F.num(p.invoice_id)}</a>`) : ""}
+        ${ccdKv("التسديدات", F.num(pays.length))}
+      </div>
+      <section class="fd-section">
+        <div class="fd-section-head"><span class="fd-section-title">{{ icon('calendar', 18) }}{{ _('customer_credit_installments_title') }}</span></div>
+        ${insts.length ? `<table class="fd-lines"><thead><tr><th>${L.due}</th><th>${L.amount}</th><th>${L.remaining}</th><th>${L.status}</th></tr></thead><tbody>
+          ${insts.map(i => `<tr><td><span dir="ltr">${F.esc(i.due_date)}</span> <span class="fd-muted">#${i.sequence}</span></td><td>${F.money(i.amount)}</td><td>${F.money(i.remaining)}</td><td>${statusPill(i)}</td></tr>`).join("")}
+        </tbody></table>` : `<p class="fd-muted" style="margin:0">${F.esc(EMPTY.installments)}</p>`}
+      </section>
+      ${PAY_MAX > 0 ? `<div class="fd-detail-actions"><button type="button" class="fd-btn fd-btn--primary fd-btn--sm" data-ccd-pay="${Math.min(p.remaining, PAY_MAX)}">{{ _('customer_credit_pay_submit') }}</button></div>` : ""}`;
+    F.show(byId("ccdDetail"));
+  }
+
+  function closePlanDetail() {
+    planDetailId = null;
+    F.hide(byId("ccdDetail"));
+  }
+
+  // ---- Pay drawer ----
+  function openPayDrawer(amount, hint) {
+    if (PAY_MAX <= 0) return;
+    closePlanDetail();
+    F.closePop();
+    byId("payError").hidden = true;
+    byId("payAmount").value = amount ? String(Math.min(amount, PAY_MAX)) : "";
+    byId("payHint").textContent = hint || "يُوزَّع المبلغ على الأقساط الأقدم أولاً.";
+    F.show(byId("payDrawer"));
+    setTimeout(() => { byId("payAmount").focus(); byId("payAmount").select(); }, 40);
+  }
+
+  function closePayDrawer() { F.hide(byId("payDrawer")); }
+
+  function validatePayForm(e) {
+    var max = PAY_MAX;
+    var val = parseInt(byId('payAmount').value || '0', 10);
+    if (val <= 0 || val > max) {
+      e.preventDefault();
+      byId("payError").textContent = {{ _('customer_credit_err_pay_amount')|tojson }};
+      byId("payError").hidden = false;
+      return false;
+    }
+    byId("paySave").disabled = true;
+    return true;
+  }
+
+  function openCcdMenu(trigger) {
+    const id = Number(trigger.getAttribute("data-fd-row-menu"));
+    const kind = trigger.getAttribute("data-ccd-kind");
+    if (kind === "inst") {
+      const i = instById(id);
+      const items = [{ act: "plan", label: "عرض البند" }];
+      if (i.remaining > 0 && PAY_MAX > 0) items.unshift({ act: "pay", label: "تسديد مبلغ هذا القسط" });
+      F.rowMenu(trigger, items, act => {
+        if (act === "plan") openPlanDetail(i.plan_id);
+        if (act === "pay") openPayDrawer(i.remaining, "مبلغ القسط #" + i.sequence + " — يُوزَّع التسديد على الأقساط الأقدم أولاً.");
+      });
+      return;
+    }
+    const p = planById(id);
+    const items = [{ act: "view", label: "عرض البند وأقساطه" }];
+    if (p.remaining > 0 && PAY_MAX > 0) items.push({ act: "pay", label: "تسديد المتبقي من البند" });
+    if (p.invoice_id) items.push("sep", { href: "/orders", label: L.order + " #" + p.invoice_id });
+    F.rowMenu(trigger, items, act => {
+      if (act === "view") openPlanDetail(id);
+      if (act === "pay") openPayDrawer(p.remaining, "يُوزَّع التسديد على الأقساط الأقدم أولاً.");
+    });
+  }
+
+  function exportStatementCsv() {
+    const cell = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+    const lines = [];
+    lines.push([{{ customer.name|tojson }}, {{ (customer.phone or '')|tojson }}].map(cell).join(","));
+    lines.push("");
+    lines.push(["{{ _('customer_credit_installments_title') }}"].map(cell).join(","));
+    lines.push(["#", L.due, "البند", L.amount, L.paid, L.remaining, L.status].map(cell).join(","));
+    ccd.installments.forEach(i => lines.push([i.sequence, i.due_date, planName(planById(i.plan_id)), i.amount, i.paid_amount, i.remaining, i.status_label].map(cell).join(",")));
+    lines.push("");
+    lines.push(["{{ _('customer_credit_payments_title') }}"].map(cell).join(","));
+    lines.push([L.date, L.amount, L.note].map(cell).join(","));
+    ccd.payments.forEach(x => lines.push([x.created_at, x.amount, x.note].map(cell).join(",")));
+    const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "customer_statement_{{ customer.id }}.csv";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  document.addEventListener("click", event => {
+    const t = event.target;
+    if (!t.closest) return;
+    const menu = t.closest("[data-fd-row-menu]");
+    if (menu) { openCcdMenu(menu); return; }
+    const pay = t.closest("[data-ccd-pay]");
+    if (pay) { openPayDrawer(Number(pay.getAttribute("data-ccd-pay"))); return; }
+    const tab = t.closest("[data-ccd-tab]");
+    if (tab) { ccdTab = tab.getAttribute("data-ccd-tab"); ccdPage = 0; renderCcd(); return; }
+    const page = t.closest("[data-ccd-page]");
+    if (page && !page.disabled) {
+      const v = page.getAttribute("data-ccd-page");
+      ccdPage = v === "prev" ? ccdPage - 1 : v === "next" ? ccdPage + 1 : parseInt(v, 10) || 0;
+      renderCcd();
+      return;
+    }
+    const chip = t.closest("[data-inst-state]");
+    if (chip) {
+      const v = chip.getAttribute("data-inst-state") || "";
+      instState = chip.classList.contains("fd-kpi") && instState === v && ccdTab === "installments" ? "" : v;
+      ccdTab = "installments";
+      ccdPage = 0;
+      renderCcd();
+      return;
+    }
+    const row = t.closest("#ccdBody tr[data-ccd-plan]");
+    if (row && !t.closest("a, button")) openPlanDetail(row.getAttribute("data-ccd-plan"));
+  });
+
+  document.addEventListener("DOMContentLoaded", () => {
+    try { ccd = JSON.parse(byId("ccdData").textContent); } catch (e) { ccd = { plans: [], installments: [], payments: [] }; }
+    const size = byId("ccdPageSize");
+    size.value = String(ccdPageSize());
+    size.addEventListener("change", () => {
+      try { localStorage.setItem(CCD_PAGE_SIZE_KEY, size.value); } catch (e) { /* storage unavailable */ }
+      ccdPage = 0;
+      renderCcd();
+    });
+    byId("ccdSearch").addEventListener("input", () => { ccdPage = 0; renderCcd(); });
+    byId("payDrawer").addEventListener("click", e => { if (e.target === byId("payDrawer")) closePayDrawer(); });
+    renderCcd();
+    {% with messages = get_flashed_messages(with_categories=true) %}{% for category, message in messages %}
+    F.toast({{ message|tojson }}, {{ ('error' if category == 'error' else 'success')|tojson }});
+    {% endfor %}{% endwith %}
+  });
 </script>
 {% endblock %}
