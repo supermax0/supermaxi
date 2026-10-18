@@ -2254,6 +2254,17 @@
   white-space: nowrap;
 }
 
+/* large amounts shrink with the card instead of spilling past it */
+#fdPage .fd-kpi {
+  container-type: inline-size;
+}
+
+@supports (font-size: 1cqi) {
+  #fdPage .fd-kpi-value--money {
+    font-size: clamp(16px, 8cqi, 25px);
+  }
+}
+
 #fdPage .fd-kpi-text {
   flex: 1 1 auto;
 }
@@ -2299,7 +2310,7 @@
   }
 
   #fdPage .fd-kpi-value--money {
-    font-size: 19px;
+    font-size: clamp(15px, 10cqi, 19px);
   }
 }
 
@@ -2361,6 +2372,11 @@
 
   #fdPage table.fd-table tbody td.fd-empty::before {
     content: none;
+  }
+
+  /* empty optional fields add nothing to a card */
+  #fdPage table.fd-table tbody td.fd-td-blank {
+    display: none !important;
   }
 
   #fdPage table.fd-table,

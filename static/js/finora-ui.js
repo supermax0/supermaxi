@@ -233,6 +233,50 @@
     return page;
   };
 
+  // ---- Row menu: one floating menu (bottom sheet on phones) ----
+  // items: [{ act, label, href, danger }] or "sep"; onPick(act) for buttons.
+  let rowMenu = null;
+
+  FinoraUI.closeRowMenu = function () {
+    if (rowMenu) rowMenu.hidden = true;
+  };
+
+  FinoraUI.rowMenu = function (trigger, items, onPick) {
+    if (!rowMenu) {
+      rowMenu = document.createElement("div");
+      rowMenu.className = "fd-pop fd-menu fd-row-menu";
+      rowMenu.setAttribute("role", "menu");
+      (document.getElementById("fdPage") || document.body).appendChild(rowMenu);
+      global.addEventListener("scroll", FinoraUI.closeRowMenu, true);
+      document.addEventListener("click", event => {
+        if (!rowMenu.hidden && !rowMenu.contains(event.target) && !event.target.closest("[data-fd-row-menu]")) FinoraUI.closeRowMenu();
+      });
+    }
+    rowMenu.innerHTML = items.map(item => {
+      if (item === "sep") return '<div class="fd-menu-sep" role="separator"></div>';
+      const cls = "fd-menu-item" + (item.danger ? " is-danger" : "");
+      if (item.href) {
+        return '<a class="' + cls + '" role="menuitem" href="' + FinoraUI.esc(item.href) + '"' + (item.target ? ' target="' + item.target + '"' : "") + ">" + FinoraUI.esc(item.label) + "</a>";
+      }
+      return '<button type="button" class="' + cls + '" role="menuitem" data-fd-act="' + FinoraUI.esc(item.act) + '">' + FinoraUI.esc(item.label) + "</button>";
+    }).join("");
+    rowMenu.onclick = event => {
+      const btn = event.target.closest("[data-fd-act], a");
+      if (!btn) return;
+      FinoraUI.closeRowMenu();
+      if (btn.hasAttribute("data-fd-act") && onPick) onPick(btn.getAttribute("data-fd-act"));
+    };
+    rowMenu.hidden = false;
+    if (global.matchMedia("(max-width: 860px)").matches) {
+      rowMenu.style.left = rowMenu.style.top = "";
+      return;
+    }
+    const r = trigger.getBoundingClientRect();
+    const m = rowMenu.getBoundingClientRect();
+    rowMenu.style.left = Math.max(8, Math.min(r.left, global.innerWidth - m.width - 8)) + "px";
+    rowMenu.style.top = (r.bottom + 6 + m.height > global.innerHeight - 8 ? Math.max(8, r.top - m.height - 6) : r.bottom + 6) + "px";
+  };
+
   // ---- Side panels (detail / drawer): Esc closes the top-most one ----
   FinoraUI.show = function (el) { if (el) el.hidden = false; };
   FinoraUI.hide = function (el) { if (el) el.hidden = true; };
@@ -244,6 +288,17 @@
     if (drawer) { drawer.hidden = true; return; }
     const detail = document.querySelector("#fdPage .fd-detail:not([hidden])");
     if (detail) detail.hidden = true;
+  });
+
+  // Sub-nav scrolls sideways on phones: keep the current page's tab in view
+  document.addEventListener("DOMContentLoaded", function () {
+    document.querySelectorAll("#fdPage .fd-subnav").forEach(nav => {
+      const active = nav.querySelector(".fd-subnav-link.active");
+      if (!active || nav.scrollWidth <= nav.clientWidth) return;
+      const navBox = nav.getBoundingClientRect();
+      const box = active.getBoundingClientRect();
+      nav.scrollLeft += box.left - navBox.left - (navBox.width - box.width) / 2;
+    });
   });
 
   global.FinoraUI = FinoraUI;

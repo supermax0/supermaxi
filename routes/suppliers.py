@@ -147,7 +147,34 @@ def suppliers():
         return redirect(url_for("suppliers.suppliers"))
 
     suppliers = Supplier.query.all()
-    return render_template("suppliers.html", suppliers=suppliers)
+
+    from sqlalchemy import func
+
+    purchase_stats = {
+        supplier_id: (int(count or 0), last_date.isoformat() if last_date else "")
+        for supplier_id, count, last_date in (
+            db.session.query(
+                Purchase.supplier_id,
+                func.count(Purchase.id),
+                func.max(Purchase.purchase_date),
+            )
+            .filter(func.coalesce(Purchase.status, "confirmed") != "cancelled")
+            .group_by(Purchase.supplier_id)
+            .all()
+        )
+    }
+    supplier_kpis = {
+        "count": len(suppliers),
+        "total_debt": sum(int(s.total_debt or 0) for s in suppliers),
+        "total_paid": sum(int(s.total_paid or 0) for s in suppliers),
+        "remaining": sum(max(int(s.total_debt or 0) - int(s.total_paid or 0), 0) for s in suppliers),
+    }
+    return render_template(
+        "suppliers.html",
+        suppliers=suppliers,
+        purchase_stats=purchase_stats,
+        supplier_kpis=supplier_kpis,
+    )
 
 
 # =============================
@@ -184,6 +211,24 @@ def supplier_details(id):
         treasury_choices=treasury_choices_for_form(),
         supplier_receivable=supplier_receivable,
     )
+
+
+@suppliers_bp.route("/<int:id>/update", methods=["POST"])
+@feature_required("suppliers")
+def supplier_update(id):
+    """Edit a supplier's contact details (the debt ledger is left untouched)."""
+    if not check_permission("can_manage_suppliers"):
+        return jsonify({"success": False, "error": "لا تملك صلاحية إدارة الموردين"}), 403
+    supplier = Supplier.query.get_or_404(id)
+    data = request.get_json(silent=True) or request.form
+    name = (data.get("name") or "").strip()
+    if not name:
+        return jsonify({"success": False, "error": "اسم المورد مطلوب"}), 400
+    supplier.name = name[:150]
+    supplier.phone = (data.get("phone") or "").strip()[:50] or None
+    supplier.address = (data.get("address") or "").strip()[:255] or None
+    db.session.commit()
+    return jsonify({"success": True})
 
 
 # =============================
