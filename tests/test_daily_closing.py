@@ -3,6 +3,8 @@ import json
 from unittest.mock import patch
 
 import pytest
+from utils.business_time import business_today
+from utils.payment_ledger import calendar_day_bounds_utc
 from flask import Flask, session
 
 from extensions import db
@@ -50,17 +52,20 @@ def _seed(daily_app, *, opening_cash=100_000):
     db.session.add(product)
     db.session.flush()
     db.session.add(BranchStock(branch_id=branch.id, product_id=product.id, quantity=12, opening_stock=10))
-    opened = datetime.utcnow() - timedelta(hours=2)
+    now = datetime.utcnow()
+    day_start = calendar_day_bounds_utc(business_today())[0]
+    opened = max(now - timedelta(hours=2), day_start)
+    elapsed = now - opened
     daily = DailySession(
         report_number="DR-20260825-001", company_key="tenant-a", branch_id=branch.id,
-        business_date=date.today(), opened_by=employee.id, opened_at=opened,
+        business_date=business_today(), opened_by=employee.id, opened_at=opened,
         opening_cash=opening_cash, status="open",
     )
     db.session.add(daily)
     db.session.flush()
     db.session.add_all([
-        StockMovement(movement_key="purchase:1", movement_type="purchase", direction="in", product_id=product.id, branch_id=branch.id, quantity=5, unit_cost=100, total_cost=500, source_type="purchase", source_id=1, created_at=opened + timedelta(minutes=10)),
-        StockMovement(movement_key="sale:1", movement_type="sale", direction="out", product_id=product.id, branch_id=branch.id, quantity=3, unit_cost=100, total_cost=300, source_type="invoice", source_id=900, created_at=opened + timedelta(minutes=20)),
+        StockMovement(movement_key="purchase:1", movement_type="purchase", direction="in", product_id=product.id, branch_id=branch.id, quantity=5, unit_cost=100, total_cost=500, source_type="purchase", source_id=1, created_at=opened + min(timedelta(minutes=10), elapsed / 3)),
+        StockMovement(movement_key="sale:1", movement_type="sale", direction="out", product_id=product.id, branch_id=branch.id, quantity=3, unit_cost=100, total_cost=300, source_type="invoice", source_id=900, created_at=opened + min(timedelta(minutes=20), elapsed * 2 / 3)),
         DailyInventoryCount(daily_session_id=daily.id, company_key="tenant-a", branch_id=branch.id, product_id=product.id, warehouse_id=0, actual_quantity=12, counted_by=employee.id),
     ])
     db.session.commit()
@@ -401,7 +406,11 @@ def test_super_admin_current_cash_immediately_persists_variance(daily_app):
 def test_stock_details_uses_full_business_day_not_session_open_time(daily_app):
     with daily_app.app_context():
         daily, product, employee = _seed(daily_app)
+        # A completed business day keeps the late-opening scenario valid even
+        # when this test runs just after midnight in Baghdad.
+        daily.business_date = business_today() - timedelta(days=1)
         day_start, _day_end = _window(daily)
+        daily.opened_at = day_start + timedelta(hours=12)
         early = StockMovement(
             movement_key="early-order-deduct", movement_type="order_deduct", direction="out",
             product_id=product.id, branch_id=daily.branch_id, quantity=2,

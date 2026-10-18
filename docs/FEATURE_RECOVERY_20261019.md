@@ -48,3 +48,9 @@ though transaction periods use Baghdad dates. Default report dates and new
 daily sessions now use `business_today()`. Explicit user-selected dates remain
 supported. Boundary and session-creation tests cover UTC 20:59, UTC 21:00 and the
 late evening; the affected report/integrity suite passed 29 checks.
+
+Finance and daily-closing test fixtures now supply business-calendar dates,
+instead of the server's UTC calendar. Seeded movements stay inside their actual
+report window, and the late-opening test uses a completed business day. The
+previously failing loan/report cases and all 18 daily-closing cases also passed
+against the real clock during Baghdad's midnight boundary.

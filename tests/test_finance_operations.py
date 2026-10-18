@@ -5,6 +5,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
+from utils.business_time import business_today
 
 
 @pytest.fixture
@@ -86,7 +87,7 @@ def standalone_debt(f, total=500_000, paid=100_000):
     customer = Customer(name="دين سابق", phone="07001002003", branch_id=f["branch"].id)
     f["db"].session.add(customer)
     f["db"].session.flush()
-    plan = create_credit_plan(customer.id, "opening", total, 2, date.today(), "monthly")
+    plan = create_credit_plan(customer.id, "opening", total, 2, business_today(), "monthly")
     f["db"].session.flush()
     plan.paid_amount = paid
     plan.installments[0].paid_amount = paid
@@ -289,7 +290,7 @@ def test_new_standalone_principal_edit_posts_no_revenue_or_cash(finance):
     customer = Customer(name="رصيد سابق مضاف", phone="07002003004", branch_id=f["branch"].id)
     f["db"].session.add(customer)
     f["db"].session.flush()
-    plan = create_credit_plan(customer.id, "manual", 400_000, 2, date.today(), "monthly")
+    plan = create_credit_plan(customer.id, "manual", 400_000, 2, business_today(), "monthly")
     f["db"].session.commit()
     assert ledger.account("receivable").balance == 400_000 and balance(f) == 20_000_000
     update_credit_plan(plan.id, total_amount=500_000)
@@ -442,7 +443,7 @@ def test_similar_manual_vouchers_warn_without_blocking_legitimate_payments(finan
 def test_six_million_borrowing_and_principal_payment_do_not_make_profit(finance):
     from modules.finance import ledger
     f = finance
-    loan = f["call"]("loan.create", {"direction":"borrowed", "party_name":"المصرف", "principal":6_000_000, "instalments":12, "first_due":date.today().isoformat(), "treasury_account_id":f["cash"].id, "branch_id":f["branch"].id})
+    loan = f["call"]("loan.create", {"direction":"borrowed", "party_name":"المصرف", "principal":6_000_000, "instalments":12, "first_due":business_today().isoformat(), "treasury_account_id":f["cash"].id, "branch_id":f["branch"].id})
     assert balance(f) == 20_000_000
     funded = f["call"]("loan.fund", {"id":loan["id"], "version":loan["version"]})
     assert balance(f) == 26_000_000
@@ -546,7 +547,7 @@ def installment_invoice(f):
         total=400_000, paid_amount=0, status="مكتمل", payment_status="غير مسدد")
     f["db"].session.add(invoice)
     f["db"].session.flush()
-    plan = create_credit_plan(customer.id, "products", 400_000, 2, date.today(), "monthly", invoice_id=invoice.id)
+    plan = create_credit_plan(customer.id, "products", 400_000, 2, business_today(), "monthly", invoice_id=invoice.id)
     f["db"].session.commit()
     return customer, invoice, plan
 
@@ -766,7 +767,7 @@ def test_customer_installment_mismatch_rejects_collection_atomically(finance, in
     f = finance
     customer, invoice, plan = installment_invoice(f)
     if invalid == "duplicate":
-        create_credit_plan(customer.id, "products", 400_000, 2, date.today(), "monthly", invoice_id=invoice.id)
+        create_credit_plan(customer.id, "products", 400_000, 2, business_today(), "monthly", invoice_id=invoice.id)
     elif invalid == "customer":
         other = Customer(name="عميل آخر", phone="07700000002", branch_id=f["branch"].id)
         f["db"].session.add(other)
@@ -882,7 +883,7 @@ def test_finance_supplier_payment_uses_posting_time_and_keeps_its_accounting_dat
         quantity=3, branch_id=f["branch"].id)
     f["db"].session.add_all([supplier, product])
     f["db"].session.flush()
-    on = date.today() - timedelta(days=2)
+    on = business_today() - timedelta(days=2)
     purchases = [Purchase(supplier_id=supplier.id, product_id=product.id, quantity=1, price=200_000,
         branch_id=f["branch"].id, total=200_000,
         grand_total=200_000, paid_total=0, status="confirmed", purchase_mode="credit",
@@ -1065,7 +1066,7 @@ def test_current_debt_aging_installment_and_employee_reports_print(finance):
     assert customer["total"]==250000 and customer["rows"][0]["status"]=="31–60"
     assert supplier["total"]==1250000 and supplier["rows"][0]["status"]=="90+"
     loan=f["call"]("loan.create",{"direction":"borrowed","party_name":"أقساط تقرير","principal":6000000,"instalments":12,
-        "first_due":date.today().isoformat(),"branch_id":f["branch"].id,"treasury_account_id":f["cash"].id})
+        "first_due":business_today().isoformat(),"branch_id":f["branch"].id,"treasury_account_id":f["cash"].id})
     f["call"]("loan.fund",{"id":loan["id"],"version":loan["version"]})
     assert f["get"]("/api/finance/reports/instalments").get_json()["data"]["total"]==6000000
     assert f["get"]("/api/finance/reports/employee-advances").get_json()["data"]["rows"]==[]
@@ -1225,7 +1226,7 @@ def test_existing_receipt_bank_and_cancellation_use_exact_journals_once(finance)
         session["user_id"]=f["admin"].id
         receipt=receipt_service.create_receipt(None,{"source_type":"customer","source_id":customer.id,"amount":300,
             "payment_method":"bank","treasury_account_id":bank.id,"allocation_method":"oldest_first",
-            "idempotency_key":uuid4().hex,"receipt_date":date.today().isoformat()},employee_id=f["admin"].id)
+            "idempotency_key":uuid4().hex,"receipt_date":business_today().isoformat()},employee_id=f["admin"].id)
         f["db"].session.commit()
         assert invoice.paid_amount==300 and ledger.account("receivable").balance==700
         assert ledger.treasury_gl(bank).balance==calculate_treasury_balance(bank.id)==300
@@ -1311,7 +1312,7 @@ def test_advance_application_moves_no_cash_and_restores_credit_on_reversal(finan
 def test_loan_net_funding_and_preaccrued_interest_are_not_expensed_twice(finance):
     from modules.finance import ledger
     f=finance
-    loan=f["call"]("loan.create",{"direction":"borrowed","party_name":"قرض برسوم","principal":1_000_000,"interest":100_000,"upfront_fee":25_000,"instalments":2,"first_due":date.today().isoformat(),"treasury_account_id":f["cash"].id,"branch_id":f["branch"].id})
+    loan=f["call"]("loan.create",{"direction":"borrowed","party_name":"قرض برسوم","principal":1_000_000,"interest":100_000,"upfront_fee":25_000,"instalments":2,"first_due":business_today().isoformat(),"treasury_account_id":f["cash"].id,"branch_id":f["branch"].id})
     loan=f["call"]("loan.fund",{"id":loan["id"],"version":loan["version"]})
     assert balance(f)==20_975_000
     assert ledger.account("interest_expense").balance==25_000
@@ -1340,7 +1341,7 @@ def test_migration_is_reviewed_once_and_existing_expenses_post_atomically(financ
         f["call"]("migration.apply",{"preview_hash":preview["hash"],"reason":"تكرار"})
     with f["app"].test_request_context("/expenses"):
         session["user_id"]=f["admin"].id
-        row=Expense(title="مصروف قديم المسار",amount=200_000,branch_id=f["branch"].id,treasury_account_id=f["cash"].id,cash_posted=True,expense_date=date.today())
+        row=Expense(title="مصروف قديم المسار",amount=200_000,branch_id=f["branch"].id,treasury_account_id=f["cash"].id,cash_posted=True,expense_date=business_today())
         f["db"].session.add(row)
         f["db"].session.commit()
         assert ledger.account("expense").balance==200_000
@@ -1357,7 +1358,7 @@ def test_print_views_preserve_draft_and_exact_schedule(finance):
     (artifacts/"finance-voucher.html").write_text(html,encoding="utf-8")
     assert "200,000" in html and "لا يثبت حركة نقدية" in html
     assert "@media print" in html and "display:none!important" in html
-    loan=f["call"]("loan.create",{"direction":"borrowed","party_name":"عقد طباعة","principal":6_000_000,"instalments":12,"first_due":date.today().isoformat(),"treasury_account_id":f["cash"].id,"branch_id":f["branch"].id})
+    loan=f["call"]("loan.create",{"direction":"borrowed","party_name":"عقد طباعة","principal":6_000_000,"instalments":12,"first_due":business_today().isoformat(),"treasury_account_id":f["cash"].id,"branch_id":f["branch"].id})
     html=f["get"](f"/accounts/finance/loans/{loan['id']}/print")
     (artifacts/"finance-loan.html").write_text(html,encoding="utf-8")
     (artifacts/"finance-report.html").write_text(f["get"]("/accounts/finance/reports/trial-balance/print"),encoding="utf-8")
@@ -1372,7 +1373,7 @@ def test_employee_advance_is_deducted_by_real_payroll_without_cash(finance):
     from modules.hr import finance as hr
     from modules.finance import ledger
     f=finance
-    payroll_date=(date.today().replace(day=1)-timedelta(days=1)).replace(day=1)
+    payroll_date=(business_today().replace(day=1)-timedelta(days=1)).replace(day=1)
     f["call"]("settings.save",{"policy":{}})
     p=HRPerson(name="موظف سلفة",code="FIN-HR",branch_id=f["branch"].id,joined_on=date(2026,1,1),salary=650_000,status="active")
     f["db"].session.add(p)
@@ -1436,7 +1437,7 @@ def test_stale_version_double_post_closed_period_and_insufficient_funds(finance)
         f["call"]("voucher.approve",{"id":row["id"],"version":row["version"]})
     with pytest.raises(FinanceError):
         f["call"]("voucher.reverse",{"id":row["id"],"version":1,"reason":"نسخة قديمة"})
-    f["call"]("period.close",{"year":date.today().year,"month":date.today().month,"reason":"إقفال اختبار"})
+    f["call"]("period.close",{"year":business_today().year,"month":business_today().month,"reason":"إقفال اختبار"})
     with pytest.raises(PeriodClosedError):
         voucher(f,"expense",5_000,party_name="فترة مقفلة")
     assert balance(f)==19_990_000
@@ -1470,7 +1471,7 @@ def test_reconciliation_never_adjusts_balance_and_requires_exact_statement(finan
     from modules.finance.common import FinanceError
     f=finance
     voucher(f,"account_transfer",1_000_000,target_account_id=f["bank"].id)
-    values={"treasury_account_id":f["bank"].id,"starts_on":date.today().isoformat(),"ends_on":date.today().isoformat(),"opening_balance":0,"closing_balance":1_000_000,"lines":[{"date":date.today().isoformat(),"amount":1_000_000,"reference":"تحويل داخلي"}]}
+    values={"treasury_account_id":f["bank"].id,"starts_on":business_today().isoformat(),"ends_on":business_today().isoformat(),"opening_balance":0,"closing_balance":1_000_000,"lines":[{"date":business_today().isoformat(),"amount":1_000_000,"reference":"تحويل داخلي"}]}
     f["call"]("reconciliation.create",values)
     data=f["get"]("/api/finance/reconciliations").get_json()["data"]["items"][0]
     assert data["status"]=="matched" and data["difference"]==0
@@ -1578,7 +1579,7 @@ def test_separate_approval_creates_pending_without_cash_effect(finance):
     from modules.finance import routes
     f=finance
     f["call"]("settings.save",{"policy":{"separate_approval":True,"sensitive_threshold":1000000}})
-    loan=f["call"]("loan.create",{"direction":"borrowed","party_name":"شركة تمويل","principal":6000000,"instalments":12,"first_due":date.today().isoformat(),"treasury_account_id":f["cash"].id,"branch_id":f["branch"].id})
+    loan=f["call"]("loan.create",{"direction":"borrowed","party_name":"شركة تمويل","principal":6000000,"instalments":12,"first_due":business_today().isoformat(),"treasury_account_id":f["cash"].id,"branch_id":f["branch"].id})
     requested=f["call"]("loan.fund",{"id":loan["id"],"version":loan["version"]})
     pending=requested["pending_vouchers"][0]
     assert balance(f)==20000000
@@ -1694,12 +1695,12 @@ def test_schedule_rounding_partial_early_pay_reschedule_and_history(finance):
     from modules.finance.loans import monthly_date
     f=finance
     assert monthly_date(date(2026,1,31),1)==date(2026,2,28)
-    row=f["call"]("loan.create",{"direction":"borrowed","party_name":"عقد دقيق","principal":1000001,"instalments":3,"first_due":date.today().isoformat(),"treasury_account_id":f["cash"].id,"branch_id":f["branch"].id})
+    row=f["call"]("loan.create",{"direction":"borrowed","party_name":"عقد دقيق","principal":1000001,"instalments":3,"first_due":business_today().isoformat(),"treasury_account_id":f["cash"].id,"branch_id":f["branch"].id})
     assert sum(i["principal"] for i in row["schedule"])==1000001
     row=f["call"]("loan.fund",{"id":row["id"],"version":row["version"]})
     row=f["call"]("loan.pay",{"id":row["id"],"version":row["version"],"amount":100000})
     assert row["schedule"][0]["status"]=="partial" and row["remaining_principal"]==900001
-    row=f["call"]("loan.reschedule",{"id":row["id"],"version":row["version"],"instalments":2,"first_due":date.today().isoformat(),"reason":"تعديل اتفاق الاستحقاق"})
+    row=f["call"]("loan.reschedule",{"id":row["id"],"version":row["version"],"instalments":2,"first_due":business_today().isoformat(),"reason":"تعديل اتفاق الاستحقاق"})
     assert row["schedule_version"]==2 and len(row["schedule_history"][0]["rows"])==3
     assert sum(i["principal"] for i in row["schedule"])==900001
     row=f["call"]("loan.pay",{"id":row["id"],"version":row["version"],"amount":900001,"principal":900001})

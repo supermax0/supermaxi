@@ -1,8 +1,8 @@
 """Measured net assets versus accounting, with real isolated finance services."""
 from uuid import uuid4
-from datetime import date
 
 import pytest
+from utils.business_time import business_today
 from tests.test_finance_operations import finance, voucher, balance, review_opening
 from tests.test_desktop_stock_operations import stock
 from tests.test_desktop_order_returns_shipping import shipment, receipt, returned
@@ -188,7 +188,7 @@ def test_loan_principal_and_accrued_interest_use_independent_liabilities(finance
     start = measure(f)
     loan = f["call"]("loan.create", {"direction": "borrowed", "party_name": "قرض للمطابقة",
         "principal": 1_000_000, "interest": 100_000, "upfront_fee": 25_000, "instalments": 2,
-        "first_due": date.today().isoformat(), "treasury_account_id": f["cash"].id, "branch_id": f["branch"].id})
+        "first_due": business_today().isoformat(), "treasury_account_id": f["cash"].id, "branch_id": f["branch"].id})
     loan = f["call"]("loan.fund", {"id": loan["id"], "version": loan["version"]})
     loan = f["call"]("loan.accrue", {"id": loan["id"], "version": loan["version"], "amount": 50_000, "notes": "فائدة مستحقة"})
     accrued = measure(f)
