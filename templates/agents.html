@@ -1,185 +1,624 @@
 {% extends "base.html" %}
 {% block title %}{{ _('delivery_agents') }}{% endblock %}
-{% block page_title %}🚚 {{ _('delivery_agents_page_title') }}{% endblock %}
+{% block page_title %}{{ _('delivery_agents_page_title') }}{% endblock %}
 {% block content %}
+{% from "partials/fd_icons.html" import icon %}
+<link rel="stylesheet" href="/static/css/finora-ui.css?v=20261018e">
+<style>
+  #fdPage.agents-page .fd-drawer-panel { width: min(560px, 100vw); }
+  #fdPage.agents-page .agt-name-pill { margin-inline-start: 6px; vertical-align: middle; }
+  @container (max-width: 780px) { #fdPage.agents-page table.fd-table tbody td.fd-td-title { min-height: 44px; justify-content: flex-start; } }
+</style>
 
-<link rel="stylesheet" href="{{ url_for('static', filename='css/agents-admin.css') }}">
+{% set sn_shipping = (is_admin or (current_employee and can_see_shipping)) and business_allows('shipping') and plan_has("shipping") %}
+{% set sn_pending = business_allows('agents_pending_execution') %}
+{% set sn_ship_orders = (is_admin or (current_employee and current_employee.has_permission('view_orders_shipped'))) and business_allows('orders_shipping') %}
+{% set can_portal = business_allows('delivery_agent_portal') %}
+{% set portal_url = '/delivery-agent/login/' ~ (session.get('tenant_slug') or '') %}
+{% set total_agents = agents_data|length %}
+{% set total_orders_all = agents_data|sum(attribute="total_orders") or 0 %}
+{% set total_amount_all = agents_data|sum(attribute="total_amount") or 0 %}
+{% set total_reports_all = agents_data|sum(attribute="reports_count") or 0 %}
 
-<div class="team-admin-page agents-page">
-  <div class="toast-container" id="toastContainer"></div>
-  <div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div></div>
+<div class="fd agents-page" id="fdPage">
 
-  {% set total_agents = agents_data|length %}
-  {% set total_orders_all = agents_data|sum(attribute="total_orders") or 0 %}
-  {% set total_amount_all = agents_data|sum(attribute="total_amount") or 0 %}
-  {% set total_reports_all = agents_data|sum(attribute="reports_count") or 0 %}
-
-  <div class="admin-page-header">
-    <div class="admin-page-header__meta">
-      <p>{{ _('agents_list_title') }}</p>
+  <header class="fd-header no-print">
+    <div class="fd-header-main">
+      <span class="fd-header-icon" style="color: var(--fd-purple);">{{ icon('users', 26) }}</span>
+      <div class="fd-header-text">
+        <h1 class="fd-title">{{ _('delivery_agents_page_title') }}</h1>
+        <p class="fd-subtitle">{{ _('agents_list_title') }} وطلباتهم وكشوف حساباتهم</p>
+      </div>
     </div>
-    <div class="admin-page-header__actions">
-      {% if business_allows('delivery_agent_portal') %}
-      <a href="/delivery-agent/login/{% if session.get('tenant_slug') %}{{ session.get('tenant_slug') }}{% endif %}" target="_blank" rel="noopener" class="nav-crosslink nav-crosslink--portal"><i class="fas fa-truck"></i> بوابة المندوب</a>
+  </header>
+
+  <nav class="fd-subnav no-print" aria-label="الشحن والتوصيل">
+    {% if sn_shipping %}<a class="fd-subnav-link" href="/shipping/">شركات الشحن</a>{% endif %}
+    <a class="fd-subnav-link active" href="/agents/">المندوبون</a>
+    {% if sn_pending %}<a class="fd-subnav-link" href="/agents/pending-execution">تنفيذ كشوف المندوب</a>{% endif %}
+    {% if sn_ship_orders %}<a class="fd-subnav-link" href="/orders/shipping">طلبات قيد الشحن</a>{% endif %}
+    {% if business_allows('delivery_archive') %}<a class="fd-subnav-link" href="/delivery/archive">أرشيف التوصيل</a>{% endif %}
+  </nav>
+
+  <div class="fd-kpis no-print">
+    <button type="button" class="fd-kpi fd-kpi--purple active" data-agt-state="">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('agents_stat_total_agents') }}</span>
+        <span><span class="fd-kpi-value">{{ "{:,}".format(total_agents) }}</span><span class="fd-kpi-unit">مندوب</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('users', 28) }}</span>
+    </button>
+    <div class="fd-kpi fd-kpi--green">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('agents_stat_total_orders') }}</span>
+        <span><span class="fd-kpi-value">{{ "{:,}".format(total_orders_all) }}</span><span class="fd-kpi-unit">طلب</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('truck', 28) }}</span>
+    </div>
+    <div class="fd-kpi fd-kpi--amber">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('agents_stat_total_sales') }}</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money">{{ "{:,.0f}".format(total_amount_all) }}</span><span class="fd-kpi-unit">{{ _('agents_currency_iqd') }}</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('wallet', 28) }}</span>
+    </div>
+    <div class="fd-kpi fd-kpi--red">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('agents_stat_total_reports') }}</span>
+        <span><span class="fd-kpi-value">{{ "{:,}".format(total_reports_all) }}</span><span class="fd-kpi-unit">كشف</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('sheet', 28) }}</span>
+    </div>
+  </div>
+
+  <div class="fd-toolbar no-print">
+    <div class="fd-chips" id="agtChips" role="tablist" aria-label="حالة المندوب">
+      <button type="button" class="fd-chip active" data-agt-state="">الكل<span class="fd-chip-count" data-count=""></span></button>
+      <button type="button" class="fd-chip" data-agt-state="login">دخول مفعّل<span class="fd-chip-count" data-count="login"></span></button>
+      <button type="button" class="fd-chip" data-agt-state="nologin">بلا دخول<span class="fd-chip-count" data-count="nologin"></span></button>
+      <button type="button" class="fd-chip" data-agt-state="inactive">معطّلون<span class="fd-chip-count" data-count="inactive"></span></button>
+    </div>
+
+    <label class="fd-search fd-tool--search">
+      {{ icon('search', 18) }}
+      <input type="search" id="searchInput" autocomplete="off" placeholder="ابحث باسم المندوب أو الهاتف...">
+    </label>
+
+    <div class="fd-tools-row">
+      {% if can_manage_agents %}
+      <button type="button" class="fd-btn fd-btn--primary" onclick="openAgentDrawer()">
+        {{ icon('package-plus', 18) }}
+        <span class="fd-btn-label">{{ _('agents_add_title') }}</span>
+      </button>
       {% endif %}
-      <a href="/employees" class="nav-crosslink"><i class="fas fa-user-tie"></i> {{ _('employees') }}</a>
+      <div class="fd-pop-wrap">
+        <button type="button" class="fd-btn fd-btn--icon" data-fd-pop="agtMorePop" aria-expanded="false" aria-controls="agtMorePop" title="المزيد" aria-label="المزيد">{{ icon('dots', 20) }}</button>
+        <div class="fd-pop fd-pop--end fd-menu" id="agtMorePop" role="menu" hidden>
+          {% if can_portal %}<a class="fd-menu-item" role="menuitem" href="{{ portal_url }}" target="_blank" rel="noopener">{{ icon('external') }}<span>بوابة المندوب</span></a>{% endif %}
+          {% if sn_pending %}<a class="fd-menu-item" role="menuitem" href="/agents/pending-execution">{{ icon('check-circle') }}<span>تنفيذ كشوف المندوب</span></a>{% endif %}
+          <a class="fd-menu-item" role="menuitem" href="/employees">{{ icon('users') }}<span>{{ _('employees') }}</span></a>
+          <div class="fd-menu-sep" role="separator"></div>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="exportAgentsCsv()">{{ icon('download') }}<span>تصدير CSV</span></button>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div class="stats-grid">
-    <div class="stat-card primary">
-      <div class="stat-icon">🚚</div>
-      <div class="stat-label">{{ _('agents_stat_total_agents') }}</div>
-      <div class="stat-value">{{ total_agents }}</div>
+  <section class="fd-table-card">
+    <div class="fd-table-scroll">
+      <table class="fd-table" id="agentsTable">
+        <thead>
+          <tr>
+            <th>{{ _('agents_th_name') }}</th>
+            <th>{{ _('agents_th_phone') }}</th>
+            <th>{{ _('agents_th_orders') }}</th>
+            <th>{{ _('agents_th_total_amount') }}</th>
+            <th class="fd-col-opt2">الكشوف</th>
+            <th>الدخول</th>
+            <th class="fd-col-actions"></th>
+          </tr>
+        </thead>
+        <tbody id="agentsTableBody">
+          <tr><td colspan="7" class="fd-empty">جاري التحميل...</td></tr>
+        </tbody>
+      </table>
     </div>
-    <div class="stat-card success">
-      <div class="stat-icon">📦</div>
-      <div class="stat-label">{{ _('agents_stat_total_orders') }}</div>
-      <div class="stat-value">{{ total_orders_all }}</div>
+  </section>
+
+  <footer class="fd-footer no-print">
+    <div class="fd-footer-info">
+      <select id="agtPageSize" aria-label="عدد المندوبين في الصفحة">
+        <option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
+      </select>
+      <span class="fd-range" id="agtRange"></span>
+      <span class="fd-totals" id="agtTotals"></span>
     </div>
-    <div class="stat-card warning">
-      <div class="stat-icon">💰</div>
-      <div class="stat-label">{{ _('agents_stat_total_sales') }}</div>
-      <div class="stat-value">{{ "{:,.0f}".format(total_amount_all) }} {{ _('agents_currency_iqd') }}</div>
+    <nav class="fd-pager" id="agtPager" aria-label="الصفحات"></nav>
+  </footer>
+
+  <!-- Detail panel -->
+  <aside class="fd-detail" id="agtDetail" aria-label="تفاصيل المندوب" hidden>
+    <div class="fd-detail-head">
+      <div class="fd-detail-titles">
+        <h3 class="fd-detail-title" id="agtDetailTitle"></h3>
+        <p class="fd-detail-sub" id="agtDetailSub"></p>
+      </div>
+      {% if can_manage_agents %}<button type="button" class="fd-btn fd-btn--soft fd-btn--sm" id="agtDetailEdit">{{ icon('pencil', 16) }}<span>تعديل</span></button>{% endif %}
+      <button type="button" class="fd-close-btn" onclick="closeAgentDetail()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
     </div>
-    <div class="stat-card success">
-      <div class="stat-icon">📋</div>
-      <div class="stat-label">{{ _('agents_stat_total_reports') }}</div>
-      <div class="stat-value">{{ total_reports_all }}</div>
-    </div>
-  </div>
+    <div class="fd-detail-body" id="agtDetailBody"></div>
+  </aside>
 
   {% if can_manage_agents %}
-  <div class="collapsible-group" id="groupAddAgent">
-    <div class="group-header" onclick="document.getElementById('groupAddAgent').classList.toggle('collapsed')">
-      <h3><span class="section-icon primary">➕</span>{{ _('agents_add_title') }}</h3>
-      <button type="button" class="toggle-btn" tabindex="-1"><i class="fas fa-chevron-up"></i></button>
-    </div>
-    <div class="group-content">
-      <form class="add-agent-grid" onsubmit="addAgent(event)" id="addAgentForm">
-        <div>
-          <label>{{ _('agents_field_name_label') }}</label>
-          <input type="text" id="agentName" placeholder="{{ _('agents_field_name_placeholder') }}" required>
+  <!-- Drawer: add / edit agent -->
+  <div class="fd-drawer" id="agtDrawer" hidden>
+    <form class="fd-drawer-panel" id="addAgentForm" role="dialog" aria-modal="true" aria-labelledby="agtDrawerTitle" novalidate>
+      <input type="hidden" id="agentId">
+      <div class="fd-drawer-head">
+        <span class="fd-drawer-icon">{{ icon('users', 24) }}</span>
+        <div class="fd-drawer-titles">
+          <h2 class="fd-drawer-title" id="agtDrawerTitle">{{ _('agents_add_title') }}</h2>
+          <p class="fd-drawer-hint">Ctrl+S للحفظ · Esc للإغلاق</p>
         </div>
-        <div>
-          <label>{{ _('agents_field_phone_label') }}</label>
-          <input type="text" id="agentPhone" placeholder="{{ _('agents_field_phone_placeholder') }}">
+        <button type="button" class="fd-close-btn" onclick="closeAgentDrawer()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+      </div>
+      <div class="fd-drawer-body">
+        <div class="fd-form-error" id="agtError" role="alert" hidden></div>
+        <section class="fd-section">
+          <div class="fd-section-head"><span class="fd-section-title">{{ icon('users', 18) }}بيانات المندوب</span></div>
+          <label class="fd-field"><span>{{ _('agents_field_name_label')|replace(' *', '') }} <b class="fd-req">*</b></span>
+            <input type="text" id="agentName" autocomplete="off" placeholder="{{ _('agents_field_name_placeholder') }}">
+          </label>
+          <label class="fd-field"><span>{{ _('agents_field_phone_label') }}</span>
+            <input type="tel" id="agentPhone" autocomplete="off" dir="ltr" placeholder="07XXXXXXXXX">
+          </label>
+          <label class="fd-field"><span>ملاحظات</span>
+            <input type="text" id="agentNotes" autocomplete="off" placeholder="ملاحظات اختيارية">
+          </label>
+        </section>
+        <section class="fd-section" id="agtLoginSection">
+          <div class="fd-section-head"><span class="fd-section-title">{{ icon('external', 18) }}دخول بوابة المندوب (اختياري)</span></div>
+          <div class="fd-grid-2">
+            <label class="fd-field"><span>اسم المستخدم</span>
+              <input type="text" id="agentUsername" autocomplete="off" dir="ltr">
+            </label>
+            <label class="fd-field"><span>كلمة المرور</span>
+              <input type="text" id="agentPassword" autocomplete="new-password" dir="ltr">
+            </label>
+          </div>
+          <p class="fd-muted" style="margin:0;font-size:13px;">يمكن ضبطها لاحقاً من «بيانات الدخول».</p>
+        </section>
+      </div>
+      <div class="fd-drawer-foot">
+        <button type="submit" class="fd-btn fd-btn--primary" id="addAgentBtn">{{ icon('check-circle', 18) }}<span id="agtSaveLabel">{{ _('agents_add_button') }}</span></button>
+        <button type="button" class="fd-btn" onclick="closeAgentDrawer()">إلغاء</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Drawer: login credentials -->
+  <div class="fd-drawer" id="agtCredDrawer" hidden>
+    <form class="fd-drawer-panel" id="agtCredForm" role="dialog" aria-modal="true" aria-labelledby="agtCredTitle" novalidate>
+      <input type="hidden" id="credAgentId">
+      <div class="fd-drawer-head">
+        <span class="fd-drawer-icon">{{ icon('external', 24) }}</span>
+        <div class="fd-drawer-titles">
+          <h2 class="fd-drawer-title" id="agtCredTitle">بيانات الدخول</h2>
+          <p class="fd-drawer-hint" id="agtCredHint"></p>
         </div>
-        <div>
-          <label>ملاحظات</label>
-          <input type="text" id="agentNotes" placeholder="ملاحظات اختيارية">
-        </div>
-        <div style="display:flex;align-items:flex-end;">
-          <button type="submit" class="btn-submit-primary" id="addAgentBtn" style="width:100%;">
-            <span>➕</span><span>{{ _('agents_add_button') }}</span>
-          </button>
-        </div>
-      </form>
-    </div>
+        <button type="button" class="fd-close-btn" onclick="closeCredDrawer()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+      </div>
+      <div class="fd-drawer-body">
+        <div class="fd-form-error" id="credError" role="alert" hidden></div>
+        <section class="fd-section">
+          <label class="fd-field"><span>اسم مستخدم الدخول <b class="fd-req">*</b></span>
+            <input type="text" id="credUsername" autocomplete="off" dir="ltr">
+          </label>
+          <label class="fd-field"><span>كلمة المرور <b class="fd-req">*</b></span>
+            <input type="text" id="credPassword" autocomplete="new-password" dir="ltr">
+          </label>
+          <p class="fd-muted" style="margin:0;font-size:13px;">كلمة المرور الجديدة تستبدل القديمة.</p>
+        </section>
+      </div>
+      <div class="fd-drawer-foot">
+        <button type="submit" class="fd-btn fd-btn--primary" id="credSave">{{ icon('check-circle', 18) }}<span>حفظ بيانات الدخول</span></button>
+        <button type="button" class="fd-btn" onclick="closeCredDrawer()">إلغاء</button>
+      </div>
+    </form>
   </div>
   {% endif %}
-
-  <div class="admin-toolbar search-filters">
-    <input type="text" id="searchInput" placeholder="{{ _('agents_search_placeholder') }}" onkeyup="filterTable()">
-    <select id="filterAgent" onchange="filterTable()">
-      <option value="">{{ _('agents_filter_all_agents') }}</option>
-      {% for data in agents_data %}
-      <option value="{{ data.agent.name }}">{{ data.agent.name }}</option>
-      {% endfor %}
-    </select>
-  </div>
-
-  <div class="admin-table-wrap">
-    <table class="admin-table">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>{{ _('agents_th_name') }}</th>
-          <th>{{ _('agents_th_phone') }}</th>
-          <th>{{ _('agents_th_orders') }}</th>
-          <th>{{ _('agents_th_total_amount') }}</th>
-          <th>الدخول</th>
-          <th class="actions-col">{{ _('agents_th_actions') }}</th>
-        </tr>
-      </thead>
-      <tbody id="agentsTableBody">
-        {% for data in agents_data %}
-        <tr data-search="{{ data.agent.name|e }} {{ data.agent.phone|e }}" data-agent-name="{{ data.agent.name|e }}">
-          <td>{{ loop.index }}</td>
-          <td><strong>{{ data.agent.name }}</strong>{% if data.agent.is_active is defined and not data.agent.is_active %} <span class="admin-metric admin-metric--danger">معطّل</span>{% endif %}</td>
-          <td>{{ data.agent.phone or '—' }}</td>
-          <td><span class="admin-metric admin-metric--neutral">{{ data.total_orders }}</span></td>
-          <td class="total-cell">{{ "{:,.0f}".format(data.total_amount) }} {{ _('agents_currency_iqd') }}</td>
-          <td>
-            {% if data.agent.username %}
-            <span class="admin-metric admin-metric--success" title="{{ data.agent.username }}">✓ مفعّل</span>
-            {% else %}
-            <span class="admin-metric admin-metric--neutral">غير مُعد</span>
-            {% endif %}
-          </td>
-          <td class="actions-col">
-            <div class="admin-actions" data-compact-actions>
-              <button type="button" class="admin-actions-trigger" data-compact-actions-trigger="1"
-                aria-haspopup="menu" aria-expanded="false" aria-label="{{ _('agents_th_actions') }}" title="{{ _('agents_th_actions') }}">&#8942;</button>
-              <div class="compact-actions-source" hidden>
-                <a href="/agents/{{ data.agent.id }}/reports" class="action-btn action-btn--text" title="كشف حساب المندوب">
-                  <i class="fas fa-file-invoice"></i><span>كشف</span>
-                </a>
-                {% if business_allows('delivery_agent_portal') %}
-                <a href="/delivery-agent/login/{% if session.get('tenant_slug') %}{{ session.get('tenant_slug') }}{% endif %}" target="_blank" rel="noopener" class="action-btn action-btn--text" title="بوابة المندوب">
-                  <i class="fas fa-external-link-alt"></i><span>بوابة</span>
-                </a>
-                {% endif %}
-                {% if can_manage_agents %}
-                <button type="button" class="action-btn" title="بيانات الدخول"
-                  onclick='setAgentCredentials({{ data.agent.id }}, {{ data.agent.name|tojson }}, {{ (data.agent.username or "")|tojson }})'>
-                  <i class="fas fa-key"></i>
-                </button>
-                <button type="button" class="action-btn" title="تعديل"
-                  onclick='editAgent({{ data.agent.id }}, {{ data.agent.name|tojson }}, {{ (data.agent.phone or "")|tojson }}, {{ (data.agent.notes or "")|tojson }})'>
-                  <i class="fas fa-pen"></i>
-                </button>
-                <button type="button" class="action-btn danger" title="{{ _('agents_action_delete') if _('agents_action_delete') != 'agents_action_delete' else 'حذف' }}"
-                  onclick='deleteAgent({{ data.agent.id }}, {{ data.agent.name|tojson }})'>
-                  <i class="fas fa-trash"></i>
-                </button>
-                {% endif %}
-              </div>
-            </div>
-          </td>
-        </tr>
-        {% else %}
-        <tr>
-          <td colspan="8" class="admin-empty">
-            <div class="admin-empty-icon">🚚</div>
-            <div>{{ _('agents_empty_title') }}</div>
-            <div style="font-size:13px;margin-top:6px;">{{ _('agents_empty_subtitle') }}</div>
-          </td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
 </div>
 
-{% endblock %}
+<script type="application/json" id="agentsData">[
+  {% for data in agents_data %}{% set a = data.agent %}
+  {"id": {{ a.id }}, "name": {{ (a.name or '')|tojson }}, "phone": {{ (a.phone or '')|tojson }}, "notes": {{ (a.notes or '')|tojson }},
+   "username": {{ (a.username or '')|tojson }}, "is_active": {{ 'false' if (a.is_active is defined and a.is_active is not none and not a.is_active) else 'true' }},
+   "created_at": {{ (a.created_at.strftime('%Y-%m-%d') if a.created_at else '')|tojson }},
+   "total_orders": {{ data.total_orders or 0 }}, "total_amount": {{ data.total_amount or 0 }}, "reports_count": {{ data.reports_count or 0 }}}{% if not loop.last %},{% endif %}
+  {% endfor %}
+]</script>
 
-{% block scripts %}
+<script src="/static/js/finora-ui.js?v=20261018c"></script>
 <script>
-  window.AGENTS_I18N = {
-    err_name: {{ _('agents_err_name_required')|tojson }},
-    add_ok: {{ _('agents_toast_add_success')|tojson }},
-    delete_ok: {{ _('agents_toast_delete_success')|tojson }},
-    err_generic: {{ _('agents_err_generic')|tojson }},
-    err_add: {{ _('agents_err_add')|tojson }},
-    err_delete: {{ _('agents_err_delete')|tojson }},
-    confirm_delete: {{ _('agents_confirm_delete')|tojson }},
-    empty_filter: {{ _('agents_empty_filter_title')|tojson }},
-    prompt_name: {{ (_('agents_field_name_label'))|tojson }},
-    prompt_phone: {{ (_('agents_field_phone_label'))|tojson }},
-    prompt_notes: {{ 'ملاحظات'|tojson }}
+  const F = window.FinoraUI;
+  const byId = id => document.getElementById(id);
+  const CAN_MANAGE = {{ 'true' if can_manage_agents else 'false' }};
+  const PORTAL_URL = {{ (portal_url if can_portal else '')|tojson }};
+  const T = {
+    errName: {{ _('agents_err_name_required')|tojson }},
+    addOk: {{ _('agents_toast_add_success')|tojson }},
+    deleteOk: {{ _('agents_toast_delete_success')|tojson }},
+    errGeneric: {{ _('agents_err_generic')|tojson }},
+    errAdd: {{ _('agents_err_add')|tojson }},
+    errDelete: {{ _('agents_err_delete')|tojson }},
+    confirmDelete: {{ _('agents_confirm_delete')|tojson }},
+    emptyFilter: {{ _('agents_empty_filter_title')|tojson }},
+    emptyTitle: {{ _('agents_empty_title')|tojson }},
+    emptySub: {{ _('agents_empty_subtitle')|tojson }},
+    del: {{ (_('agents_action_delete') if _('agents_action_delete') != 'agents_action_delete' else 'حذف')|tojson }},
+    iqd: {{ _('agents_currency_iqd')|tojson }}
   };
+  const AGT_PAGE_SIZES = [10, 25, 50, 100];
+  const AGT_PAGE_SIZE_KEY = "agents_page_size";
+  let agentsData = [];
+  let agtState = "";
+  let agtPage = 0;
+  let agtDetailId = null;
+
+  const toast = (msg, type) => (typeof window.showToast === "function" ? window.showToast(msg, type) : F.toast(msg, type));
+  const loading = on => { const fn = on ? window.showLoading : window.hideLoading; if (typeof fn === "function") fn(); };
+  const findAgent = id => agentsData.find(a => a.id === Number(id));
+
+  function agtPageSize() {
+    try {
+      const saved = parseInt(localStorage.getItem(AGT_PAGE_SIZE_KEY), 10);
+      if (AGT_PAGE_SIZES.includes(saved)) return saved;
+    } catch (e) { /* storage unavailable */ }
+    return 25;
+  }
+
+  const matchesState = (a, st) => !st || (st === "login" ? !!a.username : st === "nologin" ? !a.username : st === "inactive" ? !a.is_active : true);
+
+  function filteredAgents() {
+    const q = byId("searchInput").value.trim().toLowerCase();
+    return agentsData.filter(a => matchesState(a, agtState) && (!q || (a.name + " " + a.phone + " " + a.username).toLowerCase().includes(q)));
+  }
+
+  // kept: old inline handlers called filterTable()
+  function filterTable() { agtPage = 0; renderAgents(); }
+
+  function renderAgents() {
+    F.closeRowMenu();
+    const counts = { "": agentsData.length, login: 0, nologin: 0, inactive: 0 };
+    agentsData.forEach(a => ["login", "nologin", "inactive"].forEach(st => { if (matchesState(a, st)) counts[st]++; }));
+    document.querySelectorAll("#agtChips [data-count]").forEach(el => { el.textContent = F.num(counts[el.getAttribute("data-count")] || 0); });
+    document.querySelectorAll("#fdPage [data-agt-state]").forEach(el => {
+      el.classList.toggle("active", (el.getAttribute("data-agt-state") || "") === agtState);
+    });
+
+    const rows = filteredAgents();
+    const size = agtPageSize();
+    const pages = Math.max(1, Math.ceil(rows.length / size));
+    agtPage = Math.min(agtPage, pages - 1);
+    const pageRows = rows.slice(agtPage * size, (agtPage + 1) * size);
+    let amount = 0;
+    rows.forEach(a => { amount += Number(a.total_amount) || 0; });
+    byId("agtTotals").innerHTML = rows.length ? "المبيعات <b>" + F.num(amount) + " " + T.iqd + "</b>" : "";
+    const from = rows.length ? agtPage * size + 1 : 0;
+    byId("agtRange").innerHTML = "عرض " + F.num(from) + "–" + F.num(Math.min(rows.length, (agtPage + 1) * size)) + " من <b>" + F.num(rows.length) + "</b> مندوب";
+    byId("agtPager").innerHTML = F.pagerHtml(agtPage, pages, "data-agt-page");
+
+    const tbody = byId("agentsTableBody");
+    if (!pageRows.length) {
+      tbody.innerHTML = agentsData.length
+        ? '<tr><td colspan="7" class="fd-empty">' + F.esc(T.emptyFilter) + "</td></tr>"
+        : '<tr><td colspan="7" class="fd-empty"><b>' + F.esc(T.emptyTitle) + '</b><div class="fd-muted" style="margin-top:6px;font-size:13px;">' + F.esc(T.emptySub) + "</div></td></tr>";
+      return;
+    }
+    tbody.innerHTML = pageRows.map(a => `
+      <tr data-agt-row="${a.id}" class="${a.id === agtDetailId ? "is-open" : ""}" style="cursor:pointer">
+        <td class="fd-td-title" data-label="{{ _('agents_th_name') }}"><b>${F.esc(a.name)}</b>${a.is_active ? "" : '<span class="fd-pill fd-pill--red agt-name-pill">معطّل</span>'}</td>
+        <td data-label="{{ _('agents_th_phone') }}" class="${F.blank(a.phone) ? "fd-td-blank" : ""}">${F.blank(a.phone) ? '<span class="fd-muted">—</span>' : `<span dir="ltr">${F.esc(a.phone)}</span>`}</td>
+        <td data-label="{{ _('agents_th_orders') }}">${F.num(a.total_orders)}</td>
+        <td data-label="{{ _('agents_th_total_amount') }}" class="fd-cell-amount">${F.money(a.total_amount)}</td>
+        <td data-label="الكشوف" class="fd-col-opt2">${F.num(a.reports_count)}</td>
+        <td data-label="الدخول">${a.username ? `<span class="fd-pill fd-pill--green" title="${F.esc(a.username)}">مفعّل</span>` : '<span class="fd-pill fd-pill--gray">غير مُعد</span>'}</td>
+        <td class="fd-col-actions">
+          <button type="button" class="fd-more-btn" data-fd-row-menu="${a.id}" aria-haspopup="menu" aria-label="{{ _('agents_th_actions') }}" title="{{ _('agents_th_actions') }}"></button>
+        </td>
+      </tr>`).join("");
+  }
+
+  // ---- Detail ----
+  const kv = (key, value) => `<div class="fd-kv-row"><span class="fd-kv-key">${key}</span><span class="fd-kv-val">${value}</span></div>`;
+
+  function openAgentDetail(id) {
+    const a = findAgent(id);
+    if (!a) return;
+    agtDetailId = a.id;
+    byId("agtDetailTitle").textContent = a.name;
+    byId("agtDetailSub").textContent = a.phone || "";
+    byId("agtDetailBody").innerHTML = `
+      <div class="fd-detail-status">
+        ${a.is_active ? '<span class="fd-pill fd-pill--green">نشط</span>' : '<span class="fd-pill fd-pill--red">معطّل</span>'}
+        ${a.username ? '<span class="fd-pill fd-pill--purple">دخول مفعّل</span>' : '<span class="fd-pill fd-pill--gray">بلا دخول</span>'}
+      </div>
+      <div class="fd-kv">
+        ${kv("{{ _('agents_th_phone') }}", F.blank(a.phone) ? "—" : `<span dir="ltr">${F.esc(a.phone)}</span>`)}
+        ${kv("{{ _('agents_th_orders') }}", F.num(a.total_orders))}
+        ${kv("{{ _('agents_th_total_amount') }}", `<b>${F.money(a.total_amount)}</b>`)}
+        ${kv("الكشوف", F.num(a.reports_count))}
+        ${kv("اسم المستخدم", a.username ? `<span dir="ltr">${F.esc(a.username)}</span>` : "—")}
+        ${a.created_at ? kv("تاريخ الإضافة", `<span dir="ltr">${F.esc(a.created_at)}</span>`) : ""}
+        ${F.blank(a.notes) ? "" : kv("ملاحظات", F.esc(a.notes))}
+      </div>
+      <div class="fd-detail-actions">
+        <a class="fd-btn fd-btn--primary fd-btn--sm" href="/agents/${a.id}/reports">كشف حساب المندوب</a>
+        ${PORTAL_URL ? `<a class="fd-btn fd-btn--sm" href="${F.esc(PORTAL_URL)}" target="_blank" rel="noopener">بوابة المندوب</a>` : ""}
+        ${CAN_MANAGE ? '<button type="button" class="fd-btn fd-btn--sm" data-agt-act="creds">بيانات الدخول</button>' : ""}
+        ${CAN_MANAGE ? `<button type="button" class="fd-btn fd-btn--sm" data-agt-act="toggle">${a.is_active ? "تعطيل" : "تفعيل"}</button>` : ""}
+        ${F.blank(a.phone) ? "" : `<a class="fd-btn fd-btn--sm" href="tel:${F.esc(a.phone)}">اتصال</a>`}
+      </div>`;
+    F.show(byId("agtDetail"));
+    document.querySelectorAll("#agentsTableBody tr[data-agt-row]").forEach(tr => {
+      tr.classList.toggle("is-open", Number(tr.getAttribute("data-agt-row")) === a.id);
+    });
+  }
+
+  function closeAgentDetail() {
+    agtDetailId = null;
+    F.hide(byId("agtDetail"));
+    document.querySelectorAll("#agentsTableBody tr.is-open").forEach(tr => tr.classList.remove("is-open"));
+  }
+
+  // ---- Add / edit drawer ----
+  function openAgentDrawer(id) {
+    if (!CAN_MANAGE) return;
+    closeAgentDetail();
+    F.closePop();
+    const a = id ? findAgent(id) : null;
+    byId("addAgentForm").reset();
+    byId("agtError").hidden = true;
+    byId("agentId").value = a ? a.id : "";
+    byId("agentName").value = a ? a.name : "";
+    byId("agentPhone").value = a ? a.phone : "";
+    byId("agentNotes").value = a ? a.notes : "";
+    byId("agtLoginSection").hidden = !!a;
+    byId("agtDrawerTitle").textContent = a ? a.name : {{ _('agents_add_title')|tojson }};
+    byId("agtSaveLabel").textContent = a ? "حفظ التعديلات" : {{ _('agents_add_button')|tojson }};
+    F.show(byId("agtDrawer"));
+    setTimeout(() => byId("agentName").focus(), 40);
+  }
+  function closeAgentDrawer() { F.hide(byId("agtDrawer")); }
+  // kept for compatibility with the old page API
+  function editAgent(id) { openAgentDrawer(id); }
+
+  let agtSaving = false;
+  async function addAgent(event) {
+    if (event) event.preventDefault();
+    if (agtSaving) return;
+    const err = byId("agtError");
+    const id = byId("agentId").value;
+    const name = byId("agentName").value.trim();
+    const phone = byId("agentPhone").value.trim();
+    const notes = byId("agentNotes").value.trim();
+    if (!name) { err.textContent = T.errName; err.hidden = false; byId("agentName").focus(); return; }
+    const body = { name, phone, notes };
+    if (!id) {
+      const username = byId("agentUsername").value.trim();
+      const password = byId("agentPassword").value.trim();
+      if ((username && !password) || (!username && password)) {
+        err.textContent = "أدخل اسم المستخدم وكلمة المرور معاً، أو اتركهما فارغين.";
+        err.hidden = false;
+        return;
+      }
+      if (username) { body.username = username; body.password = password; }
+    }
+    agtSaving = true;
+    byId("addAgentBtn").disabled = true;
+    try {
+      const res = await fetch(id ? "/agents/edit/" + id : "/agents/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        err.textContent = data.error || (id ? T.errGeneric : T.errAdd);
+        err.hidden = false;
+        return;
+      }
+      if (id) {
+        Object.assign(findAgent(id), { name, phone, notes });
+        closeAgentDrawer();
+        renderAgents();
+        openAgentDetail(id);
+        toast(data.message || "تم تحديث بيانات المندوب", "success");
+      } else {
+        agentsData.unshift({ id: Number(data.agent_id), name, phone, notes, username: body.username || "", is_active: true,
+          created_at: new Date().toISOString().slice(0, 10), total_orders: 0, total_amount: 0, reports_count: 0 });
+        closeAgentDrawer();
+        renderAgents();
+        toast(T.addOk, "success");
+      }
+    } catch (e) {
+      err.textContent = id ? T.errGeneric : T.errAdd;
+      err.hidden = false;
+    } finally {
+      agtSaving = false;
+      byId("addAgentBtn").disabled = false;
+    }
+  }
+
+  // ---- Credentials drawer ----
+  function setAgentCredentials(id) {
+    const a = findAgent(id);
+    if (!a || !CAN_MANAGE) return;
+    closeAgentDetail();
+    byId("credError").hidden = true;
+    byId("credAgentId").value = a.id;
+    byId("agtCredHint").textContent = "دخول بوابة المندوب: " + a.name;
+    byId("credUsername").value = a.username || "";
+    byId("credPassword").value = "";
+    F.show(byId("agtCredDrawer"));
+    setTimeout(() => byId(a.username ? "credPassword" : "credUsername").focus(), 40);
+  }
+  function closeCredDrawer() { F.hide(byId("agtCredDrawer")); }
+
+  let credSaving = false;
+  async function saveCredentials(event) {
+    if (event) event.preventDefault();
+    if (credSaving) return;
+    const err = byId("credError");
+    const id = Number(byId("credAgentId").value);
+    const username = byId("credUsername").value.trim();
+    const password = byId("credPassword").value.trim();
+    if (!username) { err.textContent = "يرجى إدخال اسم المستخدم"; err.hidden = false; return; }
+    if (!password) { err.textContent = "يرجى إدخال كلمة المرور"; err.hidden = false; return; }
+    credSaving = true;
+    byId("credSave").disabled = true;
+    try {
+      const res = await fetch("/agents/set-credentials/" + id, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password })
+      });
+      const d = await res.json().catch(() => ({}));
+      if (!res.ok || !d.success) { err.textContent = d.error || T.errGeneric; err.hidden = false; return; }
+      findAgent(id).username = username;
+      closeCredDrawer();
+      renderAgents();
+      openAgentDetail(id);
+      toast(d.message || "تم تحديث بيانات الدخول", "success");
+    } catch (e) {
+      err.textContent = T.errGeneric;
+      err.hidden = false;
+    } finally {
+      credSaving = false;
+      byId("credSave").disabled = false;
+    }
+  }
+
+  // ---- Toggle / delete ----
+  function toggleAgent(id) {
+    const a = findAgent(id);
+    if (!a) return;
+    loading(true);
+    fetch("/agents/toggle/" + id, { method: "POST", headers: { "Content-Type": "application/json" } })
+      .then(r => r.json())
+      .then(d => {
+        loading(false);
+        if (!d.success) { toast(d.error || T.errGeneric, "error"); return; }
+        a.is_active = !!d.is_active;
+        renderAgents();
+        if (agtDetailId === a.id && !byId("agtDetail").hidden) openAgentDetail(a.id);
+        toast(a.is_active ? "تم تفعيل المندوب" : "تم تعطيل المندوب", "success");
+      })
+      .catch(() => { loading(false); toast(T.errGeneric, "error"); });
+  }
+
+  function deleteAgent(id) {
+    const a = findAgent(id);
+    if (!a) return;
+    if (!confirm(T.confirmDelete.replace("{name}", a.name))) return;
+    loading(true);
+    fetch("/agents/delete/" + id, { method: "POST", headers: { "Content-Type": "application/json" } })
+      .then(r => r.json())
+      .then(data => {
+        loading(false);
+        if (data.success) {
+          agentsData = agentsData.filter(x => x.id !== a.id);
+          if (agtDetailId === a.id) closeAgentDetail();
+          renderAgents();
+          toast(T.deleteOk, "success");
+        } else {
+          toast(data.error || T.errGeneric, "error");
+        }
+      })
+      .catch(() => { loading(false); toast(T.errDelete, "error"); });
+  }
+
+  // ---- Row menu ----
+  function agentAction(act, id) {
+    if (act === "view") openAgentDetail(id);
+    if (act === "edit") openAgentDrawer(id);
+    if (act === "creds") setAgentCredentials(id);
+    if (act === "toggle") toggleAgent(id);
+    if (act === "delete") deleteAgent(id);
+  }
+
+  function openAgentMenu(trigger) {
+    const id = Number(trigger.getAttribute("data-fd-row-menu"));
+    const a = findAgent(id);
+    if (!a) return;
+    const items = [
+      { act: "view", label: "عرض الملخص" },
+      { href: "/agents/" + id + "/reports", label: "كشف حساب المندوب" }
+    ];
+    if (PORTAL_URL) items.push({ href: PORTAL_URL, label: "بوابة المندوب", target: "_blank" });
+    if (CAN_MANAGE) {
+      items.push({ act: "edit", label: "تعديل البيانات" }, { act: "creds", label: "بيانات الدخول" },
+        { act: "toggle", label: a.is_active ? "تعطيل المندوب" : "تفعيل المندوب" }, "sep", { act: "delete", label: T.del, danger: true });
+    }
+    F.rowMenu(trigger, items, act => agentAction(act, id));
+  }
+
+  function exportAgentsCsv() {
+    const cell = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+    const lines = [["المندوب", "الهاتف", "الطلبات", "المبلغ الإجمالي", "الكشوف", "اسم المستخدم", "الحالة"].map(cell).join(",")];
+    filteredAgents().forEach(a => lines.push([a.name, a.phone, a.total_orders, a.total_amount, a.reports_count, a.username, a.is_active ? "نشط" : "معطّل"].map(cell).join(",")));
+    const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "delivery-agents.csv";
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  }
+
+  document.addEventListener("click", event => {
+    const t = event.target;
+    if (!t.closest) return;
+    const menu = t.closest("[data-fd-row-menu]");
+    if (menu) { openAgentMenu(menu); return; }
+    const page = t.closest("[data-agt-page]");
+    if (page && !page.disabled) {
+      const v = page.getAttribute("data-agt-page");
+      agtPage = v === "prev" ? agtPage - 1 : v === "next" ? agtPage + 1 : parseInt(v, 10) || 0;
+      renderAgents();
+      return;
+    }
+    const chip = t.closest("[data-agt-state]");
+    if (chip) { agtState = chip.getAttribute("data-agt-state") || ""; agtPage = 0; renderAgents(); return; }
+    if (t.closest("#agtDetailEdit") && agtDetailId) { openAgentDrawer(agtDetailId); return; }
+    const act = t.closest("[data-agt-act]");
+    if (act && agtDetailId) { agentAction(act.getAttribute("data-agt-act"), agtDetailId); return; }
+    const row = t.closest("tr[data-agt-row]");
+    if (row && !t.closest("a, button")) openAgentDetail(row.getAttribute("data-agt-row"));
+  });
+
+  document.addEventListener("DOMContentLoaded", () => {
+    try { agentsData = JSON.parse(byId("agentsData").textContent); } catch (e) { agentsData = []; }
+    const size = byId("agtPageSize");
+    size.value = String(agtPageSize());
+    size.addEventListener("change", () => {
+      try { localStorage.setItem(AGT_PAGE_SIZE_KEY, size.value); } catch (e) { /* storage unavailable */ }
+      agtPage = 0;
+      renderAgents();
+    });
+    byId("searchInput").addEventListener("input", filterTable);
+    if (CAN_MANAGE) {
+      byId("addAgentForm").addEventListener("submit", addAgent);
+      byId("agtCredForm").addEventListener("submit", saveCredentials);
+      ["agtDrawer", "agtCredDrawer"].forEach(d => {
+        byId(d).addEventListener("click", e => { if (e.target === byId(d)) F.hide(byId(d)); });
+      });
+      document.addEventListener("keydown", e => {
+        if (!(e.ctrlKey || e.metaKey) || (e.key !== "s" && e.key !== "S")) return;
+        if (!byId("agtDrawer").hidden) { e.preventDefault(); byId("addAgentForm").requestSubmit(); }
+        else if (!byId("agtCredDrawer").hidden) { e.preventDefault(); byId("agtCredForm").requestSubmit(); }
+      });
+    }
+    renderAgents();
+  });
 </script>
-<script src="{{ url_for('static', filename='js/admin-actions-menu.js') }}?v=20260720a"></script>
-<script src="{{ url_for('static', filename='js/agents-admin.js') }}"></script>
 {% endblock %}
