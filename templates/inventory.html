@@ -1743,7 +1743,7 @@
       }
     }
   </style>
-  <link rel="stylesheet" href="/static/css/finora-ui.css?v=20261018a">
+  <link rel="stylesheet" href="/static/css/finora-ui.css?v=20261018b">
 
 
   {% from "partials/fd_icons.html" import icon %}
@@ -1888,7 +1888,7 @@
 
   <!-- ================= PRODUCTS TABLE ================= -->
   <section class="fd-table-card">
-    <div class="fd-grid-wrap inv-table-wrap-products" id="invGridWrap">
+    <div class="fd-grid-wrap" id="invGridWrap">
       <div id="productsTable" class="fd-grid ag-theme-quartz" style="height: 600px; width: 100%;"></div>
     </div>
   </section>
@@ -2564,7 +2564,7 @@
     const footer = document.querySelector("#fdPage .fd-footer");
     const footerHeight = footer ? footer.offsetHeight + 14 : 0;
     const top = gridEl.getBoundingClientRect().top + window.scrollY;
-    gridEl.style.height = Math.max(320, window.innerHeight - top - footerHeight - 18) + "px";
+    gridEl.style.height = Math.max(560, window.innerHeight - top - footerHeight - 18) + "px";
   }
 
   function readInvPageSize() {

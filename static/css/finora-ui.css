@@ -2398,3 +2398,11 @@
     justify-content: flex-end;
   }
 }
+
+/* Grid containers size from their content / JS, never from older page rules */
+#fdPage .fd-grid-wrap {
+  height: auto !important;
+  min-height: 0 !important;
+  max-height: none !important;
+  margin-inline: 0 !important;
+}
