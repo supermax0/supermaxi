@@ -5,423 +5,891 @@
 {% block page_title %}📦 جرد المخزون{% endblock %}
 
 {% block content %}
+{% from "partials/fd_icons.html" import icon %}
+<link rel="stylesheet" href="/static/css/finora-ui.css?v=20261018e">
 <style>
-    /* تصميم مخصص لصفحة الجرد */
-    .audit-container {
-        padding: 24px;
-        padding-bottom: 80px;
-        /* Prevent overlap with mobile nav */
-        max-width: 1200px;
-        margin: 0 auto;
-    }
+  #fdPage .aud-scan-card {
+    position: relative;
+    margin: 0 0 14px;
+    padding: 18px 20px;
+    border: 1px solid var(--fd-border);
+    border-radius: 18px;
+    background: var(--fd-surface);
+    box-shadow: var(--fd-shadow);
+    transition: border-color .2s ease, box-shadow .2s ease;
+  }
+  #fdPage .aud-scan-card.scanning {
+    border-color: var(--fd-purple);
+    box-shadow: 0 0 0 3px rgba(108, 63, 209, 0.12), var(--fd-shadow);
+  }
+  #fdPage .aud-scan-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  #fdPage .aud-scan-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: var(--fd-purple-soft);
+    color: var(--fd-purple);
+  }
+  #fdPage .aud-scan-title { margin: 0; font-size: 16px; font-weight: 800; color: var(--fd-text); }
+  #fdPage .aud-scan-hint { margin: 2px 0 0; font-size: 13px; color: var(--fd-text-2); }
+  #fdPage .aud-scan-row { position: relative; }
+  #fdPage .aud-scan-row .fd-search { width: 100%; max-width: none; }
+  #fdPage .aud-scan-row .fd-search input { font-size: 16px !important; height: 50px !important; min-height: 50px !important; }
+  #fdPage .aud-suggest {
+    position: absolute;
+    inset-inline: 0;
+    top: calc(100% + 6px);
+    z-index: 40;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 6px;
+    border: 1px solid var(--fd-border);
+    border-radius: 14px;
+    background: var(--fd-surface);
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.16);
+  }
+  #fdPage .aud-suggest[hidden] { display: none; }
+  #fdPage .aud-suggest-item {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+    min-height: 44px;
+    padding: 8px 12px !important;
+    border: 0 !important;
+    border-radius: 10px !important;
+    background: transparent !important;
+    color: var(--fd-text) !important;
+    font: inherit !important;
+    text-align: start;
+    cursor: pointer;
+  }
+  #fdPage .aud-suggest-item.is-active,
+  #fdPage .aud-suggest-item:hover { background: var(--fd-purple-soft) !important; }
+  #fdPage .aud-suggest-meta { color: var(--fd-text-2); font-size: 12.5px; white-space: nowrap; }
+  #fdPage .aud-scan-log { max-height: 116px; overflow-y: auto; }
+  #fdPage .aud-scan-log:empty { display: none; }
 
-    .audit-header {
-        background: #fff;
-        border-radius: 12px;
-        padding: 24px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        margin-bottom: 24px;
-    }
-
-    .scanner-box {
-        background: #f8fafc;
-        border: 2px dashed #94a3b8;
-        border-radius: 12px;
-        padding: 32px;
-        text-align: center;
-        transition: all 0.3s ease;
-    }
-
-    .scanner-box.scanning {
-        border-color: #3b82f6;
-        background: #eff6ff;
-    }
-
-    .scanner-input {
-        width: 100%;
-        max-width: 420px;
-        height: 44px;
-        border: 1px solid #cbd5e1;
-        border-radius: 10px;
-        padding: 0 12px;
-        margin-top: 14px;
-        font-size: 15px;
-        text-align: center;
-        background: #fff;
-    }
-
-    .barcode-icon {
-        font-size: 48px;
-        color: #64748b;
-        margin-bottom: 16px;
-    }
-
-    .audit-stats {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 16px;
-        margin-bottom: 24px;
-    }
-
-    .stat-card {
-        background: #fff;
-        padding: 16px;
-        border-radius: 8px;
-        border: 1px solid #e2e8f0;
-        text-align: center;
-    }
-
-    .stat-value {
-        font-size: 24px;
-        font-weight: 700;
-        color: #0f172a;
-    }
-
-    .stat-label {
-        color: #64748b;
-        font-size: 14px;
-    }
-
-    .audit-list {
-        background: #fff;
-        border-radius: 12px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        overflow: hidden;
-    }
-
-    .audit-item {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 16px 24px;
-        border-bottom: 1px solid #e2e8f0;
-        animation: slideIn 0.3s ease;
-    }
-
-    .audit-item.matched {
-        background-color: #f0fdf4;
-        border-left: 4px solid #22c55e;
-    }
-
-    .audit-item.mismatch {
-        background-color: #fef2f2;
-        border-left: 4px solid #ef4444;
-    }
-
-    .item-details h4 {
-        margin: 0 0 4px 0;
-        font-size: 16px;
-        color: #0f172a;
-    }
-
-    .item-meta {
-        font-size: 14px;
-        color: #64748b;
-        display: flex;
-        gap: 16px;
-    }
-
-    .qty-controls {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-    }
-
-    .qty-btn {
-        width: 32px;
-        height: 32px;
-        border-radius: 6px;
-        border: 1px solid #e2e8f0;
-        background: #fff;
-        cursor: pointer;
-        font-weight: bold;
-        color: #475569;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-
-    .qty-btn:hover {
-        background: #f8fafc;
-    }
-
-    .actual-qty {
-        font-size: 18px;
-        font-weight: 600;
-        width: 60px;
-        text-align: center;
-        border: 1px solid #e2e8f0;
-        border-radius: 6px;
-        padding: 4px;
-    }
-
-    .save-audit-btn {
-        background: #3b82f6;
-        color: white;
-        border: none;
-        padding: 12px 24px;
-        border-radius: 8px;
-        font-weight: 600;
-        cursor: pointer;
-        width: 100%;
-        margin-top: 24px;
-        transition: background 0.2s;
-    }
-
-    .save-audit-btn:hover {
-        background: #2563eb;
-    }
-
-/* تحسين الهواتف والأجهزة اللوحية */
-    @media (max-width: 768px) {
-        .audit-container {
-            padding: 16px;
-            padding-bottom: 96px;
-        }
-        .audit-header {
-            padding: 16px;
-        }
-        .scanner-box {
-            padding: 22px 16px;
-        }
-        .audit-item {
-            flex-wrap: wrap;
-            padding: 14px 16px;
-        }
-        .item-meta {
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-    }
-
-    @keyframes slideIn {
-        from {
-            opacity: 0;
-            transform: translateY(-10px);
-        }
-
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
+  #fdPage .aud-qty {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  #fdPage .aud-qty-btn {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    padding: 0 !important;
+    border: 1px solid var(--fd-border-strong) !important;
+    border-radius: 10px !important;
+    background: var(--fd-surface) !important;
+    color: var(--fd-text) !important;
+    font-size: 18px !important;
+    font-weight: 800 !important;
+    cursor: pointer;
+  }
+  #fdPage .aud-qty-btn:hover { background: var(--fd-soft) !important; }
+  #fdPage .aud-qty input.actual-qty {
+    width: 72px !important;
+    height: 36px !important;
+    min-height: 36px !important;
+    padding: 0 6px !important;
+    border: 1px solid var(--fd-border-strong) !important;
+    border-radius: 10px !important;
+    background: var(--fd-surface) !important;
+    color: var(--fd-text) !important;
+    font: inherit !important;
+    font-size: 16px !important;
+    font-weight: 800 !important;
+    text-align: center;
+  }
+  #fdPage .aud-qty input.actual-qty:focus {
+    outline: none;
+    border-color: var(--fd-purple) !important;
+    box-shadow: 0 0 0 3px rgba(108, 63, 209, 0.12);
+  }
+  #fdPage .aud-n { unicode-bidi: isolate; direction: ltr; display: inline-block; }
+  #fdPage .aud-plus { color: var(--fd-green); font-weight: 800; }
+  #fdPage .aud-minus { color: #dc2626; font-weight: 800; }
+  #fdPage tr.aud-flash td { animation: audFlash 1.1s ease; }
+  @keyframes audFlash { 0% { background: var(--fd-purple-soft); } 100% { background: transparent; } }
+  #fdPage .aud-remove {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    height: 34px !important;
+    min-height: 34px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 10px !important;
+    background: transparent !important;
+    color: var(--fd-muted) !important;
+    cursor: pointer;
+  }
+  #fdPage .aud-remove:hover { background: #fdecee !important; color: #b91c1c !important; }
+  #fdPage .aud-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  #fdPage .aud-summary-item {
+    padding: 12px 14px;
+    border: 1px solid var(--fd-border);
+    border-radius: 12px;
+    background: var(--fd-soft);
+  }
+  #fdPage .aud-summary-item > span { display: block; color: var(--fd-text-2); font-size: 12.5px; }
+  #fdPage .aud-summary-item b { font-size: 18px; }
+  #fdPage .aud-hist {
+    border: 1px solid var(--fd-border);
+    border-radius: 14px;
+    background: var(--fd-surface);
+    overflow: hidden;
+  }
+  #fdPage .aud-hist + .aud-hist { margin-top: 10px; }
+  #fdPage .aud-hist summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+    padding: 12px 14px;
+    cursor: pointer;
+    list-style: none;
+  }
+  #fdPage .aud-hist summary::-webkit-details-marker { display: none; }
+  #fdPage .aud-hist summary b { flex: 1 1 auto; }
+  #fdPage .aud-hist[open] summary { border-bottom: 1px solid var(--fd-border); background: var(--fd-soft); }
+  #fdPage .aud-hist .fd-lines { margin: 10px; width: calc(100% - 20px); }
+  #fdPage .aud-print-title { display: none; }
+  @media print {
+    #fdPage .aud-print-title { display: block; margin: 0 0 10px; font-size: 16px; font-weight: 800; }
+    #fdPage .fd-table-scroll { overflow: visible !important; max-height: none !important; }
+    #fdPage .aud-qty-btn, #fdPage .aud-remove { display: none !important; }
+    #fdPage .aud-qty input.actual-qty { border: 0 !important; }
+  }
 </style>
 
-<div class="audit-container responsive-audit">
-    <div class="audit-stats">
-        <div class="stat-card">
-            <div class="stat-value" id="totalScanned">0</div>
-            <div class="stat-label">العناصر الممسوحة</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value" id="matchedItems">0</div>
-            <div class="stat-label">مطابق للمخزون</div>
-        </div>
-        <div class="stat-card">
-            <div class="stat-value" id="mismatchedItems">0</div>
-            <div class="stat-label">يوجد عجز/زيادة</div>
-        </div>
+<div class="fd audit-page" id="fdPage">
+
+  <header class="fd-header no-print">
+    <div class="fd-header-main">
+      <span class="fd-header-icon" style="color: var(--fd-purple);">{{ icon('scan', 26) }}</span>
+      <div class="fd-header-text">
+        <h1 class="fd-title">جرد المخزون</h1>
+        <p class="fd-subtitle">امسح الباركود أو ابحث عن المنتج وأدخل الكمية المعدودة{% if audit_branch_name %} — فرع {{ audit_branch_name }}{% endif %}</p>
+      </div>
+    </div>
+  </header>
+
+  <nav class="fd-subnav no-print" aria-label="المخزون">
+    <a class="fd-subnav-link" href="{{ url_for('inventory.inventory') }}">المنتجات</a>
+    <a class="fd-subnav-link" href="{{ url_for('stock_transfers.transfers_index') }}">نقل المخزون</a>
+    <a class="fd-subnav-link" href="{{ url_for('inventory_ledger.inventory_ledger') }}">حركة المخزون</a>
+    <a class="fd-subnav-link active" href="{{ url_for('inventory.audit') }}">جرد المخزون</a>
+  </nav>
+
+  <div class="fd-kpis no-print">
+    <button type="button" class="fd-kpi fd-kpi--purple active" data-aud-state="">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">العناصر الممسوحة</span>
+        <span><span class="fd-kpi-value" id="totalScanned">0</span><span class="fd-kpi-unit">منتج</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('scan', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--green" data-aud-state="matched">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">مطابق للمخزون</span>
+        <span><span class="fd-kpi-value" id="matchedItems">0</span><span class="fd-kpi-unit">منتج</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('check-circle', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--red" data-aud-state="mismatch">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">يوجد عجز/زيادة</span>
+        <span><span class="fd-kpi-value" id="mismatchedItems">0</span><span class="fd-kpi-unit">منتج</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('alert', 28) }}</span>
+    </button>
+    <div class="fd-kpi fd-kpi--amber">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">صافي فرق القيمة</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money"><span class="aud-n" id="audValueDiff">0</span></span><span class="fd-kpi-unit">د.ع</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('wallet', 28) }}</span>
+    </div>
+  </div>
+
+  <!-- Scanner -->
+  <section class="aud-scan-card no-print" id="scannerArea">
+    <div class="aud-scan-head">
+      <span class="aud-scan-icon">{{ icon('scan', 24) }}</span>
+      <div>
+        <h2 class="aud-scan-title">جهاز ضوئي لجرد المخزون</h2>
+        <p class="aud-scan-hint">امسح الباركود (كل مسحة تضيف قطعة) أو اكتب اسم المنتج واختره من القائمة ثم Enter</p>
+      </div>
+    </div>
+    <div class="aud-scan-row">
+      <label class="fd-search fd-search--scan">
+        {{ icon('search', 18) }}
+        <input type="text" id="barcodeInput" class="scanner-input" autofocus autocomplete="off" role="combobox" aria-expanded="false" aria-controls="audSuggest"
+               placeholder="امسح الباركود أو اكتب اسم المنتج ثم Enter">
+        <span class="fd-search-scan" aria-hidden="true">{{ icon('scan', 20) }}</span>
+      </label>
+      <div class="aud-suggest" id="audSuggest" role="listbox" hidden></div>
+    </div>
+    <div class="fd-scan-log aud-scan-log" id="audScanLog" aria-live="polite"></div>
+  </section>
+
+  <div class="fd-toolbar no-print">
+    <div class="fd-chips" id="audChips" role="tablist" aria-label="حالة الجرد">
+      <button type="button" class="fd-chip active" data-aud-state="">الكل<span class="fd-chip-count" data-count=""></span></button>
+      <button type="button" class="fd-chip" data-aud-state="matched">مطابق<span class="fd-chip-count" data-count="matched"></span></button>
+      <button type="button" class="fd-chip" data-aud-state="short">عجز<span class="fd-chip-count" data-count="short"></span></button>
+      <button type="button" class="fd-chip" data-aud-state="over">زيادة<span class="fd-chip-count" data-count="over"></span></button>
     </div>
 
-    <div class="audit-header">
-        <div class="scanner-box" id="scannerArea" onclick="document.getElementById('barcodeInput').focus()">
-            <div class="barcode-icon">📱</div>
-            <h3>جهاز ضوئي لجرد المخزون</h3>
-            <p style="color: #64748b; margin-top: 8px;">اضغط هنا وابدأ بمسح الباركود الخاص بالمنتجات</p>
-            <input type="text" id="barcodeInput" class="scanner-input" autofocus autocomplete="off"
-                placeholder="امسح الباركود أو اكتبه هنا ثم Enter">
-        </div>
-    </div>
+    <label class="fd-search fd-tool--search">
+      {{ icon('search', 18) }}
+      <input type="search" id="audSearch" autocomplete="off" placeholder="ابحث في المنتجات المجرودة...">
+    </label>
 
-    <div class="audit-list">
-        <div
-            class="audit-list-header-row"
-            style="padding: 16px 24px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-weight: 600;">
-            <span>المنتج</span>
-            <span style="margin-left: 20px;">المخزون الفعلي</span>
-        </div>
-        <div id="scannedItemsList">
-            <!-- يتم إضافة العناصر الممسوحة هنا -->
-        </div>
-    </div>
-
-    <!-- TODO: إرسال تقرير الجرد وحفظ التسويات -->
-    <button class="save-audit-btn" onclick="saveAuditReport()">حفظ تقرير الجرد وإنشاء تسويات</button>
-</div>
-
-<script>
-    const productsData = JSON.parse('[{% for p in products %}{"id":{{p.id}},"name":{{p.name|tojson}},"barcode":{{(p.barcode or "")|tojson}},"expected_qty":{{p.quantity}}}{% if not loop.last %},{% endif %}{% endfor %}]');
-
-    const scannedList = document.getElementById('scannedItemsList');
-    const barcodeInput = document.getElementById('barcodeInput');
-    const scannerArea = document.getElementById('scannerArea');
-
-    // سجل العناصر التي تم جردها
-    let auditedItems = {};
-
-    function normalizeBarcode(value) {
-        return String(value || '').trim().replace(/\s+/g, '');
-    }
-
-    // التركيز التلقائي على حقل الباركود
-    document.addEventListener('keydown', () => {
-        if (document.activeElement !== barcodeInput) barcodeInput.focus();
-    });
-
-    window.addEventListener('load', () => {
-        setTimeout(() => barcodeInput.focus(), 120);
-    });
-
-    barcodeInput.addEventListener('focus', () => {
-        scannerArea.classList.add('scanning');
-    });
-
-    barcodeInput.addEventListener('blur', () => {
-        scannerArea.classList.remove('scanning');
-        // إبقاء التركيز
-        setTimeout(() => barcodeInput.focus(), 100);
-    });
-
-    // معالجة إدخال الباركود (أوثق من keypress على بعض الأجهزة)
-    barcodeInput.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') {
-            const barcode = normalizeBarcode(this.value);
-            if (barcode) {
-                processBarcode(barcode);
-            }
-            this.value = '';
-        }
-    });
-
-    function processBarcode(barcode) {
-        const scan = normalizeBarcode(barcode);
-        const product = productsData.find(p => normalizeBarcode(p.barcode) === scan);
-
-        if (product) {
-            if (auditedItems[product.id]) {
-                // زيادة الكمية إذا تم المسح مسبقاً
-                updateActualQty(product.id, auditedItems[product.id].actual_qty + 1);
-            } else {
-                // إضافة عنصر جديد للقائمة
-                auditedItems[product.id] = {
-                    ...product,
-                    actual_qty: 1
-                };
-                renderAuditedItem(product.id);
-            }
-            updateStats();
-
-            // تشغيل تأثير صوتي (اختياري)
-            // new Audio('/static/beep.mp3').play();
-        } else {
-            alert("الباركود غير موجود في النظام: " + scan);
-        }
-    }
-
-    function updateActualQty(id, newQty) {
-        if (newQty < 0) return;
-        auditedItems[id].actual_qty = newQty;
-
-        // تحديث العرض
-        const qtyInput = document.getElementById(`qty_${id}`);
-        if (qtyInput) qtyInput.value = newQty;
-
-        // تحديث حالة المطابقة
-        updateMatchStatus(id);
-        updateStats();
-    }
-
-    function handleQtyInput(id, inputElement) {
-        const val = parseInt(inputElement.value) || 0;
-        updateActualQty(id, val);
-    }
-
-    function updateMatchStatus(id) {
-        const itemDom = document.getElementById(`audit_item_${id}`);
-        const itemData = auditedItems[id];
-
-        if (!itemDom) return;
-
-        itemDom.classList.remove('matched', 'mismatch');
-        if (itemData.actual_qty === itemData.expected_qty) {
-            itemDom.classList.add('matched');
-        } else {
-            itemDom.classList.add('mismatch');
-        }
-    }
-
-    function renderAuditedItem(id) {
-        const item = auditedItems[id];
-        const statusClass = item.actual_qty === item.expected_qty ? 'matched' : 'mismatch';
-
-        const html = `
-      <div class="audit-item ${statusClass} responsive-audit-item" id="audit_item_${id}">
-        <div class="item-details">
-          <h4>${item.name}</h4>
-          <div class="item-meta">
-            <span>الباركود: ${item.barcode || '---'}</span>
-            <span>مسجل في النظام: <strong>${item.expected_qty}</strong></span>
-          </div>
-        </div>
-        <div class="qty-controls">
-          <button class="qty-btn" onclick="updateActualQty(${id}, ${item.actual_qty - 1})">-</button>
-          <input type="number" id="qty_${id}" class="actual-qty" value="${item.actual_qty}" 
-            onchange="handleQtyInput(${id}, this)">
-          <button class="qty-btn" onclick="updateActualQty(${id}, ${item.actual_qty + 1})">+</button>
+    <div class="fd-tools-row">
+      <button type="button" class="fd-btn fd-btn--primary save-audit-btn" onclick="saveAuditReport()">
+        {{ icon('check-circle', 18) }}
+        <span class="fd-btn-label">حفظ تقرير الجرد وإنشاء تسويات</span>
+      </button>
+      <div class="fd-pop-wrap">
+        <button type="button" class="fd-btn fd-btn--icon" data-fd-pop="audMorePop" aria-expanded="false" aria-controls="audMorePop" title="المزيد" aria-label="المزيد">{{ icon('dots', 20) }}</button>
+        <div class="fd-pop fd-pop--end fd-menu" id="audMorePop" role="menu" hidden>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="openAuditHistory()">{{ icon('calendar') }}<span>سجل عمليات الجرد ({{ audit_history|length }})</span></button>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="addAllProductsToAudit()">{{ icon('layers') }}<span>جرد شامل: إضافة كل المنتجات بالكمية المسجلة</span></button>
+          <a class="fd-menu-item" role="menuitem" href="{{ url_for('inventory.download_inventory_audit_template') }}?branch_id=all">{{ icon('sheet') }}<span>تحميل قالب الجرد (Excel)</span></a>
+          <div class="fd-menu-sep" role="separator"></div>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="exportAuditCsv()">{{ icon('download') }}<span>تصدير CSV</span></button>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="window.print()">{{ icon('print') }}<span>طباعة ورقة الجرد</span></button>
+          <div class="fd-menu-sep" role="separator"></div>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="clearAudit()">{{ icon('x') }}<span>تفريغ قائمة الجرد</span></button>
         </div>
       </div>
-    `;
+    </div>
+  </div>
 
-        // إضافة بالبداية ليكون الأحدث ظاهراً
-        scannedList.insertAdjacentHTML('afterbegin', html);
+  <h2 class="aud-print-title">ورقة جرد المخزون{% if audit_branch_name %} — {{ audit_branch_name }}{% endif %}</h2>
+
+  <section class="fd-table-card">
+    <div class="fd-table-scroll">
+      <table class="fd-table" id="audTable">
+        <thead>
+          <tr>
+            <th>المنتج</th>
+            <th>مسجل في النظام</th>
+            <th>المخزون الفعلي</th>
+            <th>الفرق</th>
+            <th class="fd-col-opt">قيمة الفرق</th>
+            <th>الحالة</th>
+            <th class="fd-col-actions"></th>
+          </tr>
+        </thead>
+        <tbody id="scannedItemsList">
+          <tr><td colspan="7" class="fd-empty">ابدأ بمسح باركود المنتجات لإضافتها إلى الجرد.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="fd-footer no-print">
+    <div class="fd-footer-info">
+      <select id="audPageSize" aria-label="عدد الصفوف في الصفحة">
+        <option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
+      </select>
+      <span class="fd-range" id="audRange"></span>
+      <span class="fd-totals" id="audTotals"></span>
+    </div>
+    <nav class="fd-pager" id="audPager" aria-label="الصفحات"></nav>
+  </footer>
+
+  <!-- Drawer: review & save -->
+  <div class="fd-drawer" id="audReviewDrawer" hidden>
+    <div class="fd-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="audReviewTitle">
+      <div class="fd-drawer-head">
+        <span class="fd-drawer-icon">{{ icon('check-circle', 24) }}</span>
+        <div class="fd-drawer-titles">
+          <h2 class="fd-drawer-title" id="audReviewTitle">مراجعة الجرد قبل الحفظ</h2>
+          <p class="fd-drawer-hint">سيتم تعديل المخزون للمنتجات المختلفة وتسجيل قيد تسوية لكل فرق</p>
+        </div>
+        <button type="button" class="fd-close-btn" onclick="closeAuditReview()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+      </div>
+      <div class="fd-drawer-body">
+        <div class="fd-form-error" id="audSaveError" role="alert" hidden></div>
+        <div class="aud-summary" id="audReviewSummary"></div>
+        <section class="fd-section">
+          <div class="fd-section-head"><span class="fd-section-title">{{ icon('alert', 18) }}المنتجات التي ستُسوّى</span></div>
+          <div id="audReviewLines"></div>
+        </section>
+      </div>
+      <div class="fd-drawer-foot">
+        <button type="button" class="fd-btn fd-btn--primary" id="audConfirmSave" onclick="confirmSaveAudit()">{{ icon('check-circle', 18) }}<span>تأكيد الحفظ وإجراء التسويات</span></button>
+        <button type="button" class="fd-btn" onclick="closeAuditReview()">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Drawer: audit history -->
+  <div class="fd-drawer" id="audHistoryDrawer" hidden>
+    <div class="fd-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="audHistoryTitle">
+      <div class="fd-drawer-head">
+        <span class="fd-drawer-icon">{{ icon('calendar', 24) }}</span>
+        <div class="fd-drawer-titles">
+          <h2 class="fd-drawer-title" id="audHistoryTitle">سجل عمليات الجرد</h2>
+          <p class="fd-drawer-hint">آخر {{ audit_history|length }} عملية جرد محفوظة</p>
+        </div>
+        <button type="button" class="fd-close-btn" onclick="closeAuditHistory()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+      </div>
+      <div class="fd-drawer-body" id="audHistoryBody"></div>
+      <div class="fd-drawer-foot">
+        <a class="fd-btn fd-btn--soft" href="{{ url_for('inventory_ledger.inventory_ledger') }}">{{ icon('layers', 18) }}<span>حركة المخزون</span></a>
+        <button type="button" class="fd-btn" onclick="closeAuditHistory()">إغلاق</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="application/json" id="auditProductsData">[
+  {% for p in products %}
+  {"id": {{ p.id }}, "name": {{ (p.name or '')|tojson }}, "barcode": {{ (p.barcode or '')|tojson }}, "sku": {{ (p.sku or '')|tojson }},
+   "expected_qty": {{ audit_expected.get(p.id, p.quantity or 0) if audit_expected else (p.quantity or 0) }}, "buy_price": {{ p.buy_price or 0 }}}{% if not loop.last %},{% endif %}
+  {% endfor %}
+]</script>
+<script type="application/json" id="auditHistoryData">{{ (audit_history or [])|tojson }}</script>
+
+<script src="/static/js/finora-ui.js?v=20261018c"></script>
+<script>
+  const F = window.FinoraUI;
+  const byId = id => document.getElementById(id);
+  const AUD_DRAFT_KEY = "inventory_audit_draft_v1";
+  const AUD_PAGE_SIZES = [10, 25, 50, 100];
+  const AUD_PAGE_SIZE_KEY = "inventory_audit_page_size";
+
+  let productsData = [];
+  try { productsData = JSON.parse(byId("auditProductsData").textContent); } catch (e) { productsData = []; }
+  let auditHistory = [];
+  try { auditHistory = JSON.parse(byId("auditHistoryData").textContent) || []; } catch (e) { auditHistory = []; }
+
+  const scannedList = byId("scannedItemsList");
+  const barcodeInput = byId("barcodeInput");
+  const scannerArea = byId("scannerArea");
+
+  // سجل العناصر التي تم جردها
+  let auditedItems = {};
+  let auditSeq = 0;
+  let audState = "";
+  let audPage = 0;
+  let audPrintAll = false;
+  let audFlashId = null;
+  let audSuggestIdx = 0;
+  let audSuggestions = [];
+  let audSuggestNav = false; // user moved through the suggestions with the arrow keys
+  let audSaving = false;
+
+  function normalizeBarcode(value) {
+    return String(value || "").trim().replace(/\s+/g, "");
+  }
+
+  function audPageSize() {
+    try {
+      const saved = parseInt(localStorage.getItem(AUD_PAGE_SIZE_KEY), 10);
+      if (AUD_PAGE_SIZES.includes(saved)) return saved;
+    } catch (e) { /* storage unavailable */ }
+    return 25;
+  }
+
+  const diffOf = item => (Number(item.actual_qty) || 0) - (Number(item.expected_qty) || 0);
+  function stateOf(item) {
+    const d = diffOf(item);
+    return d === 0 ? "matched" : (d < 0 ? "short" : "over");
+  }
+  const signed = n => `<span class="aud-n">${n > 0 ? "+" : ""}${F.num(n)}</span>`;
+
+  // ---------- Draft (per browser, survives refresh) ----------
+  function saveDraft() {
+    try {
+      const ids = Object.keys(auditedItems);
+      if (!ids.length) { localStorage.removeItem(AUD_DRAFT_KEY); return; }
+      const draft = ids.map(id => [Number(id), auditedItems[id].actual_qty, auditedItems[id].seq]);
+      localStorage.setItem(AUD_DRAFT_KEY, JSON.stringify(draft));
+    } catch (e) { /* storage unavailable */ }
+  }
+
+  function restoreDraft() {
+    let draft = null;
+    try { draft = JSON.parse(localStorage.getItem(AUD_DRAFT_KEY) || "null"); } catch (e) { draft = null; }
+    if (!Array.isArray(draft) || !draft.length) return 0;
+    let n = 0;
+    draft.forEach(row => {
+      const product = productsData.find(p => p.id === Number(row[0]));
+      if (!product) return;
+      auditedItems[product.id] = { ...product, actual_qty: Math.max(0, parseInt(row[1], 10) || 0), seq: Number(row[2]) || 0 };
+      auditSeq = Math.max(auditSeq, auditedItems[product.id].seq);
+      n++;
+    });
+    return n;
+  }
+
+  // ---------- Scanner focus ----------
+  // Scanner keystrokes land in the barcode field unless the user is typing in another field.
+  document.addEventListener("keydown", e => {
+    const a = document.activeElement;
+    if (a === barcodeInput) return;
+    if (a && (a.matches("input, textarea, select, [contenteditable]") || a.closest(".fd-drawer:not([hidden]), .fd-pop:not([hidden])"))) return;
+    if (e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
+    barcodeInput.focus();
+  });
+
+  window.addEventListener("load", () => { setTimeout(() => barcodeInput.focus(), 120); });
+  barcodeInput.addEventListener("focus", () => { scannerArea.classList.add("scanning"); });
+  barcodeInput.addEventListener("blur", () => {
+    scannerArea.classList.remove("scanning");
+    setTimeout(hideSuggest, 150);
+  });
+  scannerArea.addEventListener("click", e => { if (!e.target.closest("button")) barcodeInput.focus(); });
+
+  // ---------- Suggestions (search by name / SKU / barcode) ----------
+  function findMatches(q) {
+    const s = q.trim().toLowerCase();
+    if (s.length < 2) return [];
+    return productsData.filter(p => (p.name + " " + p.sku + " " + p.barcode).toLowerCase().includes(s)).slice(0, 8);
+  }
+
+  function renderSuggest() {
+    const box = byId("audSuggest");
+    if (!audSuggestions.length) { hideSuggest(); return; }
+    box.innerHTML = audSuggestions.map((p, i) => `
+      <button type="button" class="aud-suggest-item${i === audSuggestIdx ? " is-active" : ""}" role="option" data-aud-pick="${p.id}">
+        <span><b>${F.esc(p.name)}</b>${p.barcode ? ` <span class="aud-suggest-meta" dir="ltr">${F.esc(p.barcode)}</span>` : ""}</span>
+        <span class="aud-suggest-meta">مسجل: ${F.num(p.expected_qty)}${auditedItems[p.id] ? " · معدود: " + F.num(auditedItems[p.id].actual_qty) : ""}</span>
+      </button>`).join("");
+    box.hidden = false;
+    barcodeInput.setAttribute("aria-expanded", "true");
+  }
+
+  function hideSuggest() {
+    byId("audSuggest").hidden = true;
+    barcodeInput.setAttribute("aria-expanded", "false");
+  }
+
+  barcodeInput.addEventListener("input", () => {
+    audSuggestions = findMatches(barcodeInput.value);
+    audSuggestIdx = 0;
+    audSuggestNav = false;
+    renderSuggest();
+  });
+
+  // معالجة إدخال الباركود (أوثق من keypress على بعض الأجهزة)
+  barcodeInput.addEventListener("keydown", function (e) {
+    const open = !byId("audSuggest").hidden && audSuggestions.length;
+    if (open && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
+      e.preventDefault();
+      audSuggestNav = true;
+      audSuggestIdx = (audSuggestIdx + (e.key === "ArrowDown" ? 1 : -1) + audSuggestions.length) % audSuggestions.length;
+      renderSuggest();
+      return;
     }
-
-    function updateStats() {
-        let total = 0;
-        let matched = 0;
-        let mismatched = 0;
-
-        Object.values(auditedItems).forEach(item => {
-            total += item.actual_qty;
-            if (item.actual_qty === item.expected_qty) {
-                matched++;
-            } else {
-                mismatched++;
-            }
-        });
-
-        document.getElementById('totalScanned').innerText = Object.keys(auditedItems).length;
-        document.getElementById('matchedItems').innerText = matched;
-        document.getElementById('mismatchedItems').innerText = mismatched;
+    if (e.key === "Escape" && open) { e.stopPropagation(); hideSuggest(); return; }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const barcode = normalizeBarcode(this.value);
+      if (barcode) processBarcode(this.value);
+      this.value = "";
+      audSuggestions = [];
+      hideSuggest();
     }
+  });
 
-    function saveAuditReport() {
-        if (Object.keys(auditedItems).length === 0) {
-            alert("الرجاء جرد المنتجات أولاً");
-            return;
+  function logScan(text, ok) {
+    const log = byId("audScanLog");
+    const div = document.createElement("div");
+    div.className = "fd-scan-item " + (ok ? "is-ok" : "is-miss");
+    div.textContent = text;
+    log.prepend(div);
+    while (log.children.length > 6) log.lastChild.remove();
+  }
+
+  function addProduct(product, step) {
+    if (auditedItems[product.id]) {
+      // زيادة الكمية إذا تم المسح مسبقاً
+      auditedItems[product.id].seq = ++auditSeq;
+      updateActualQty(product.id, auditedItems[product.id].actual_qty + (step || 1), true);
+    } else {
+      // إضافة عنصر جديد للقائمة
+      auditedItems[product.id] = { ...product, actual_qty: step == null ? 1 : step, seq: ++auditSeq };
+    }
+    audFlashId = product.id;
+    if (audState && stateOf(auditedItems[product.id]) !== audState) audState = "";
+    byId("audSearch").value = "";
+    audPage = 0;
+    renderAudit();
+    saveDraft();
+    logScan(`✓ ${product.name} — معدود ${auditedItems[product.id].actual_qty} / مسجل ${product.expected_qty}`, true);
+  }
+
+  function processBarcode(barcode) {
+    const raw = String(barcode || "").trim();
+    const scan = normalizeBarcode(raw);
+    let product = productsData.find(p => normalizeBarcode(p.barcode) === scan)
+      || productsData.find(p => p.sku && normalizeBarcode(p.sku).toLowerCase() === scan.toLowerCase());
+    // a scanned (all-digit) code must match exactly; typed names may fall back to the suggestions
+    const typedName = !/^\d+$/.test(scan) || audSuggestNav;
+    if (!product && typedName && !byId("audSuggest").hidden && audSuggestions[audSuggestIdx]) product = audSuggestions[audSuggestIdx];
+    if (!product && typedName) {
+      const matches = findMatches(raw);
+      if (matches.length === 1) product = matches[0];
+    }
+    if (product) {
+      addProduct(product);
+    } else {
+      logScan("✗ الباركود غير موجود في النظام: " + scan, false);
+      F.toast("الباركود غير موجود في النظام: " + scan, "error");
+    }
+  }
+
+  // ---------- Quantities ----------
+  function updateActualQty(id, newQty, silent) {
+    const item = auditedItems[id];
+    if (!item) return;
+    newQty = parseInt(newQty, 10);
+    if (isNaN(newQty) || newQty < 0) return;
+    item.actual_qty = newQty;
+
+    // تحديث العرض
+    const qtyInput = byId(`qty_${id}`);
+    if (qtyInput && String(qtyInput.value) !== String(newQty)) qtyInput.value = newQty;
+
+    // تحديث حالة المطابقة
+    updateMatchStatus(id);
+    updateStats();
+    if (!silent) saveDraft();
+  }
+
+  function handleQtyInput(id, inputElement, live) {
+    if (live && inputElement.value === "") return; // still typing
+    const val = parseInt(inputElement.value, 10) || 0;
+    updateActualQty(id, Math.max(0, val));
+  }
+
+  function statusPill(item) {
+    const st = stateOf(item);
+    if (st === "matched") return '<span class="fd-pill fd-pill--green">مطابق</span>';
+    return st === "short" ? '<span class="fd-pill fd-pill--red">عجز</span>' : '<span class="fd-pill fd-pill--amber">زيادة</span>';
+  }
+
+  function diffCell(item) {
+    const d = diffOf(item);
+    return d === 0 ? '<span class="fd-muted">0</span>' : `<span class="${d > 0 ? "aud-plus" : "aud-minus"}">${signed(d)}</span>`;
+  }
+
+  function valueCell(item) {
+    const v = diffOf(item) * (Number(item.buy_price) || 0);
+    return v === 0 ? '<span class="fd-muted">—</span>' : `<span class="${v > 0 ? "aud-plus" : "aud-minus"}"><span class="aud-n">${v > 0 ? "+" : ""}${F.num(v)} د.ع</span></span>`;
+  }
+
+  function updateMatchStatus(id) {
+    const row = byId(`audit_item_${id}`);
+    const item = auditedItems[id];
+    if (!row || !item) return;
+    row.querySelector("[data-aud-diff]").innerHTML = diffCell(item);
+    row.querySelector("[data-aud-value]").innerHTML = valueCell(item);
+    row.querySelector("[data-aud-status]").innerHTML = statusPill(item);
+    row.classList.remove("matched", "mismatch");
+    row.classList.add(diffOf(item) === 0 ? "matched" : "mismatch");
+  }
+
+  function updateStats() {
+    let matched = 0, mismatched = 0, value = 0, units = 0;
+    const counts = { "": 0, matched: 0, short: 0, over: 0 };
+    Object.values(auditedItems).forEach(item => {
+      const st = stateOf(item);
+      counts[""]++; counts[st]++;
+      if (st === "matched") matched++; else mismatched++;
+      value += diffOf(item) * (Number(item.buy_price) || 0);
+      units += Number(item.actual_qty) || 0;
+    });
+    byId("totalScanned").innerText = F.num(Object.keys(auditedItems).length);
+    byId("matchedItems").innerText = F.num(matched);
+    byId("mismatchedItems").innerText = F.num(mismatched);
+    byId("audValueDiff").innerText = (value > 0 ? "+" : "") + F.num(value);
+    document.querySelectorAll("#audChips [data-count]").forEach(el => {
+      el.textContent = F.num(counts[el.getAttribute("data-count")] || 0);
+    });
+    byId("audTotals").innerHTML = counts[""] ? `معدود <b>${F.num(units)}</b> قطعة · فرق القيمة <b class="${value < 0 ? "aud-minus" : value > 0 ? "aud-plus" : ""}"><span class="aud-n">${value > 0 ? "+" : ""}${F.num(value)} د.ع</span></b>` : "";
+  }
+
+  // ---------- Table ----------
+  function filteredItems() {
+    const q = byId("audSearch").value.trim().toLowerCase();
+    return Object.values(auditedItems)
+      .filter(item => {
+        const st = stateOf(item);
+        if (audState === "mismatch" ? st === "matched" : (audState && st !== audState)) return false;
+        if (q && !((item.name + " " + item.barcode + " " + item.sku).toLowerCase().includes(q))) return false;
+        return true;
+      })
+      .sort((a, b) => b.seq - a.seq);
+  }
+
+  function renderAuditedItem(item) {
+    return `
+      <tr class="${diffOf(item) === 0 ? "matched" : "mismatch"}${item.id === audFlashId ? " aud-flash" : ""}" id="audit_item_${item.id}">
+        <td class="fd-td-title" data-label="المنتج"><b>${F.esc(item.name)}</b><div class="fd-cell-muted" style="font-size:12px">الباركود: <span dir="ltr">${F.esc(item.barcode || "---")}</span></div></td>
+        <td data-label="مسجل في النظام"><b class="aud-n">${F.num(item.expected_qty)}</b></td>
+        <td data-label="المخزون الفعلي">
+          <span class="aud-qty" dir="ltr">
+            <button type="button" class="aud-qty-btn" data-aud-step="-1" data-id="${item.id}" aria-label="إنقاص">−</button>
+            <input type="number" id="qty_${item.id}" class="actual-qty" min="0" step="1" inputmode="numeric" value="${item.actual_qty}"
+              oninput="handleQtyInput(${item.id}, this, true)" onchange="handleQtyInput(${item.id}, this)" aria-label="الكمية الفعلية">
+            <button type="button" class="aud-qty-btn" data-aud-step="1" data-id="${item.id}" aria-label="زيادة">+</button>
+          </span>
+        </td>
+        <td data-label="الفرق" data-aud-diff>${diffCell(item)}</td>
+        <td data-label="قيمة الفرق" class="fd-col-opt" data-aud-value>${valueCell(item)}</td>
+        <td data-label="الحالة" data-aud-status>${statusPill(item)}</td>
+        <td class="fd-col-actions"><button type="button" class="aud-remove" data-aud-remove="${item.id}" aria-label="إزالة من الجرد" title="إزالة من الجرد">{{ icon('x', 18) }}</button></td>
+      </tr>`;
+  }
+
+  function renderAudit() {
+    updateStats();
+    document.querySelectorAll("#fdPage [data-aud-state]").forEach(el => {
+      el.classList.toggle("active", (el.getAttribute("data-aud-state") || "") === audState);
+    });
+    const rows = filteredItems();
+    const size = audPrintAll ? Math.max(rows.length, 1) : audPageSize();
+    const pages = Math.max(1, Math.ceil(rows.length / size));
+    audPage = Math.min(audPage, pages - 1);
+    const pageRows = rows.slice(audPage * size, (audPage + 1) * size);
+    const from = rows.length ? audPage * size + 1 : 0;
+    byId("audRange").innerHTML = "عرض " + F.num(from) + "–" + F.num(Math.min(rows.length, (audPage + 1) * size)) + " من <b>" + F.num(rows.length) + "</b> منتج";
+    byId("audPager").innerHTML = F.pagerHtml(audPage, pages, "data-aud-page");
+    if (!pageRows.length) {
+      scannedList.innerHTML = '<tr><td colspan="7" class="fd-empty">' + (Object.keys(auditedItems).length ? "لا توجد منتجات مطابقة." : "ابدأ بمسح باركود المنتجات لإضافتها إلى الجرد.") + "</td></tr>";
+    } else {
+      scannedList.innerHTML = pageRows.map(renderAuditedItem).join("");
+    }
+    audFlashId = null;
+  }
+
+  function removeAuditItem(id) {
+    delete auditedItems[id];
+    renderAudit();
+    saveDraft();
+  }
+
+  function clearAudit() {
+    if (!Object.keys(auditedItems).length) return;
+    if (!confirm("تفريغ قائمة الجرد الحالية؟ لن يتم حفظ أي شيء.")) return;
+    auditedItems = {};
+    byId("audScanLog").innerHTML = "";
+    renderAudit();
+    saveDraft();
+  }
+
+  function addAllProductsToAudit() {
+    let n = 0;
+    productsData.forEach(p => {
+      if (auditedItems[p.id]) return;
+      auditedItems[p.id] = { ...p, actual_qty: Number(p.expected_qty) || 0, seq: ++auditSeq };
+      n++;
+    });
+    audPage = 0;
+    renderAudit();
+    saveDraft();
+    F.toast(n ? `أضيفت ${n} منتج بالكمية المسجلة — عدّل الكميات المختلفة فقط` : "كل المنتجات مضافة مسبقاً", "info");
+  }
+
+  // ---------- Save ----------
+  function saveAuditReport() {
+    if (Object.keys(auditedItems).length === 0) {
+      F.toast("الرجاء جرد المنتجات أولاً", "warning");
+      barcodeInput.focus();
+      return;
+    }
+    openAuditReview();
+  }
+
+  function openAuditReview() {
+    F.closePop();
+    const items = Object.values(auditedItems);
+    const diffs = items.filter(i => diffOf(i) !== 0).sort((a, b) => diffOf(a) - diffOf(b));
+    let upUnits = 0, upValue = 0, downUnits = 0, downValue = 0;
+    diffs.forEach(i => {
+      const d = diffOf(i), v = d * (Number(i.buy_price) || 0);
+      if (d > 0) { upUnits += d; upValue += v; } else { downUnits += -d; downValue += -v; }
+    });
+    byId("audSaveError").hidden = true;
+    byId("audReviewSummary").innerHTML = `
+      <div class="aud-summary-item"><span>منتجات مجرودة</span><b>${F.num(items.length)}</b></div>
+      <div class="aud-summary-item"><span>مطابقة</span><b>${F.num(items.length - diffs.length)}</b></div>
+      <div class="aud-summary-item"><span>زيادة (تسوية إيداع)</span><b class="${upUnits ? "aud-plus" : ""}"><span class="aud-n">${upUnits ? "+" : ""}${F.num(upUnits)}</span></b> قطعة<div class="fd-muted" style="font-size:13px">${F.money(upValue)}</div></div>
+      <div class="aud-summary-item"><span>عجز (تسوية سحب)</span><b class="${downUnits ? "aud-minus" : ""}"><span class="aud-n">${downUnits ? "-" : ""}${F.num(downUnits)}</span></b> قطعة<div class="fd-muted" style="font-size:13px">${F.money(downValue)}</div></div>`;
+    byId("audReviewLines").innerHTML = diffs.length ? `
+      <table class="fd-lines">
+        <thead><tr><th>المنتج</th><th>مسجل</th><th>فعلي</th><th>الفرق</th></tr></thead>
+        <tbody>${diffs.map(i => `<tr><td>${F.esc(i.name)}</td><td>${F.num(i.expected_qty)}</td><td>${F.num(i.actual_qty)}</td><td>${diffCell(i)}</td></tr>`).join("")}</tbody>
+      </table>` : '<p class="fd-muted" style="margin:0">كل المنتجات المجرودة مطابقة — لن تُنشأ أي تسويات.</p>';
+    F.show(byId("audReviewDrawer"));
+    setTimeout(() => byId("audConfirmSave").focus(), 40);
+  }
+
+  function closeAuditReview() { F.hide(byId("audReviewDrawer")); }
+
+  function confirmSaveAudit() {
+    if (audSaving) return;
+    audSaving = true;
+    const btn = byId("audConfirmSave");
+    btn.disabled = true;
+    const items = Object.values(auditedItems).map(i => ({ id: i.id, name: i.name, barcode: i.barcode, expected_qty: i.expected_qty, actual_qty: i.actual_qty }));
+    // إرسال البيانات للخادم
+    fetch("/inventory/save-audit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ items })
+    }).then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          try { localStorage.removeItem(AUD_DRAFT_KEY); } catch (e) { /* storage unavailable */ }
+          auditedItems = {};
+          F.toast(data.message || "تم حفظ الجرد بنجاح", "success");
+          setTimeout(() => window.location.reload(), 700);
+        } else {
+          const err = byId("audSaveError");
+          err.textContent = data.error ? "حدث خطأ أثناء الحفظ: " + data.error : "حدث خطأ أثناء الحفظ";
+          err.hidden = false;
         }
+      }).catch(err => {
+        console.error(err);
+        const box = byId("audSaveError");
+        box.textContent = "حدث خطأ في الاتصال";
+        box.hidden = false;
+      }).finally(() => {
+        audSaving = false;
+        btn.disabled = false;
+      });
+  }
 
-        if (confirm("هل أنت متأكد من حفظ الجرد وإجراء تسويات المخزون تلقائياً؟")) {
-            // إرسال البيانات للخادم
-            fetch('/inventory/save-audit', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ items: Object.values(auditedItems) })
-            }).then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('تم حفظ الجرد بنجاح');
-                        window.location.reload();
-                    } else {
-                        alert('حدث خطأ أثناء الحفظ');
-                    }
-                }).catch(err => {
-                    console.error(err);
-                    alert('حدث خطأ في الاتصال');
-                });
-        }
+  // ---------- History ----------
+  function openAuditHistory() {
+    const body = byId("audHistoryBody");
+    if (!auditHistory.length) {
+      body.innerHTML = '<p class="fd-empty" style="padding:24px 0">لا توجد عمليات جرد محفوظة بعد.</p>';
+    } else {
+      body.innerHTML = auditHistory.map(h => {
+        const diffs = h.items.filter(i => i.actual_qty !== i.expected_qty);
+        return `
+        <details class="aud-hist">
+          <summary>
+            <b dir="ltr" style="text-align:end">${F.esc(h.date)}</b>
+            <span class="fd-muted">${F.esc(h.employee || "—")}</span>
+            <span class="fd-pill fd-pill--purple">${F.num(h.items.length)} منتج</span>
+            ${diffs.length ? `<span class="fd-pill fd-pill--amber">${F.num(diffs.length)} فرق</span>` : '<span class="fd-pill fd-pill--green">مطابق</span>'}
+          </summary>
+          ${h.items.length ? `<table class="fd-lines">
+            <thead><tr><th>المنتج</th><th>مسجل</th><th>فعلي</th><th>الفرق</th></tr></thead>
+            <tbody>${h.items.map(i => `<tr><td>${F.esc(i.name)}</td><td>${F.num(i.expected_qty)}</td><td>${F.num(i.actual_qty)}</td><td>${diffCell(i)}</td></tr>`).join("")}</tbody>
+          </table>` : `<p class="fd-muted" style="margin:10px 14px">${F.esc(h.summary)}</p>`}
+        </details>`;
+      }).join("");
     }
+    F.show(byId("audHistoryDrawer"));
+  }
+
+  function closeAuditHistory() { F.hide(byId("audHistoryDrawer")); }
+
+  // ---------- Export / print ----------
+  function exportAuditCsv() {
+    const cell = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+    const lines = [["المنتج", "الباركود", "مسجل في النظام", "المخزون الفعلي", "الفرق", "قيمة الفرق"].map(cell).join(",")];
+    filteredItems().forEach(i => {
+      lines.push([i.name, i.barcode, i.expected_qty, i.actual_qty, diffOf(i), diffOf(i) * (Number(i.buy_price) || 0)].map(cell).join(","));
+    });
+    const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "inventory_audit.csv";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+  window.addEventListener("beforeprint", () => { audPrintAll = true; renderAudit(); });
+  window.addEventListener("afterprint", () => { audPrintAll = false; renderAudit(); });
+
+  // ---------- Events ----------
+  document.addEventListener("click", event => {
+    const t = event.target;
+    if (!t.closest) return;
+    const pick = t.closest("[data-aud-pick]");
+    if (pick) {
+      const p = productsData.find(x => x.id === Number(pick.getAttribute("data-aud-pick")));
+      if (p) addProduct(p);
+      barcodeInput.value = "";
+      audSuggestions = [];
+      hideSuggest();
+      barcodeInput.focus();
+      return;
+    }
+    const step = t.closest("[data-aud-step]");
+    if (step) {
+      const id = Number(step.getAttribute("data-id"));
+      if (auditedItems[id]) updateActualQty(id, auditedItems[id].actual_qty + Number(step.getAttribute("data-aud-step")));
+      return;
+    }
+    const rm = t.closest("[data-aud-remove]");
+    if (rm) { removeAuditItem(Number(rm.getAttribute("data-aud-remove"))); return; }
+    const page = t.closest("[data-aud-page]");
+    if (page && !page.disabled) {
+      const v = page.getAttribute("data-aud-page");
+      audPage = v === "prev" ? audPage - 1 : v === "next" ? audPage + 1 : parseInt(v, 10) || 0;
+      renderAudit();
+      return;
+    }
+    const st = t.closest("[data-aud-state]");
+    if (st) { audState = st.getAttribute("data-aud-state") || ""; audPage = 0; renderAudit(); }
+  });
+
+  document.addEventListener("keydown", e => {
+    if (e.key !== "Escape") return;
+    if (!byId("audReviewDrawer").hidden) closeAuditReview();
+    else if (!byId("audHistoryDrawer").hidden) closeAuditHistory();
+  });
+  ["audReviewDrawer", "audHistoryDrawer"].forEach(id => {
+    byId(id).addEventListener("click", e => { if (e.target === byId(id)) F.hide(byId(id)); });
+  });
+
+  (function initAudit() {
+    const size = byId("audPageSize");
+    size.value = String(audPageSize());
+    size.addEventListener("change", () => {
+      try { localStorage.setItem(AUD_PAGE_SIZE_KEY, size.value); } catch (e) { /* storage unavailable */ }
+      audPage = 0;
+      renderAudit();
+    });
+    byId("audSearch").addEventListener("input", () => { audPage = 0; renderAudit(); });
+    const restored = restoreDraft();
+    renderAudit();
+    if (restored) setTimeout(() => F.toast(`تمت استعادة جرد غير محفوظ (${restored} منتج)`, "info"), 300);
+  })();
 </script>
 {% endblock %}

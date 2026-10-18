@@ -1308,7 +1308,75 @@ def audit():
 
     ensure_product_schema()
     products = Product.query.filter_by(active=True).all()
-    return render_template("inventory_audit.html", products=products)
+
+    # Expected quantities as /save-audit computes them (branch stock when a branch is active).
+    audit_expected = {}
+    audit_branch_name = ""
+    try:
+        branch_id = _inventory_branch_id()
+        if branch_id:
+            from models.branch import Branch
+
+            branch = Branch.query.get(branch_id)
+            audit_branch_name = branch.name if branch else ""
+            for p in products:
+                audit_expected[p.id] = int(get_branch_stock(branch_id, p.id) or 0)
+    except Exception:
+        db.session.rollback()
+        audit_expected = {}
+
+    # Recent saved audits (from the activity log written by /save-audit).
+    audit_history = []
+    try:
+        from models.activity_log import ActivityLog
+
+        logs = (
+            ActivityLog.query.filter(
+                ActivityLog.category == "inventory",
+                ActivityLog.summary.like("حفظ جرد مخزون%"),
+            )
+            .order_by(ActivityLog.created_at.desc())
+            .limit(30)
+            .all()
+        )
+        for log in logs:
+            items = log.get_payload().get("items") or []
+            if not isinstance(items, list):
+                items = []
+            rows = []
+            for it in items:
+                if not isinstance(it, dict):
+                    continue
+                try:
+                    expected = int(it.get("expected_qty") or 0)
+                    actual = int(it.get("actual_qty") or 0)
+                except (TypeError, ValueError):
+                    continue
+                rows.append({
+                    "id": it.get("id"),
+                    "name": str(it.get("name") or ""),
+                    "barcode": str(it.get("barcode") or ""),
+                    "expected_qty": expected,
+                    "actual_qty": actual,
+                })
+            audit_history.append({
+                "id": log.id,
+                "date": log.created_at.strftime("%Y-%m-%d %H:%M") if log.created_at else "",
+                "employee": log.employee_name or "",
+                "summary": log.summary or "",
+                "items": rows,
+            })
+    except Exception:
+        db.session.rollback()
+        audit_history = []
+
+    return render_template(
+        "inventory_audit.html",
+        products=products,
+        audit_expected=audit_expected,
+        audit_branch_name=audit_branch_name,
+        audit_history=audit_history,
+    )
 @inventory_bp.route("/save-audit", methods=["POST"])
 def save_audit():
     if not check_permission("can_manage_inventory"):

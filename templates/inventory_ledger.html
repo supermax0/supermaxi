@@ -3,532 +3,286 @@
 {% block page_title %}سجل حركات المخزون{% endblock %}
 
 {% block content %}
-<div class="ledger-page">
-
+{% from "partials/fd_icons.html" import icon %}
+<link rel="stylesheet" href="/static/css/finora-ui.css?v=20261018e">
 <style>
-/* ================= CSS Variables ================= */
-:root {
-  /* map to global SaaS tokens */
-  --ledger-primary: var(--primary);
-  --ledger-success: var(--success);
-  --ledger-danger: var(--danger);
-  --ledger-warning: var(--warning);
-}
-
-/* ================= Main Container ================= */
-.ledger-page {
-  padding: 0;
-  direction: rtl;
-  max-width: 1280px;
-  margin: 0 auto;
-}
-
-/* ================= Cards ================= */
-.ledger-card {
-  background: linear-gradient(145deg, var(--card), var(--card-alt));
-  border: 1px solid var(--border-light);
-  border-radius: 20px;
-  padding: 28px;
-  margin-bottom: 24px;
-  backdrop-filter: blur(10px);
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
-
-.ledger-card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 6px;
-  height: 100%;
-  background: linear-gradient(180deg, #3b82f6, #10b981);
-  border-radius: 0 20px 20px 0;
-  opacity: 0.8;
-}
-
-.ledger-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-}
-
-.ledger-h3 {
-  color: var(--text);
-  font-size: 18px;
-  font-weight: 800;
-  margin: 0 0 14px 0;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border-light);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-/* ================= Stats ================= */
-.ledger-stats {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
-
-.ledger-stat {
-  background: linear-gradient(145deg, var(--card), var(--card-alt));
-  border: 1px solid var(--border-light);
-  border-radius: 18px;
-  padding: 16px;
-  text-align: center;
-  transition: all 0.3s ease;
-}
-
-.ledger-stat:hover {
-  transform: translateY(-2px);
-}
-
-.ledger-stat-label {
-  color: var(--text-muted);
-  font-size: 13px;
-  margin-bottom: 8px;
-  font-weight: 500;
-}
-
-.ledger-stat-value {
-  font-size: 26px;
-  font-weight: 900;
-  color: var(--text);
-}
-
-.ledger-stat-value.is-warning { color: var(--ledger-warning); }
-.ledger-stat-value.is-danger { color: var(--ledger-danger); }
-.ledger-stat-value.is-success { color: var(--ledger-success); }
-
-/* ================= Product Selector ================= */
-.ledger-product-selector {
-  margin-bottom: 24px;
-}
-
-.ledger-select {
-  width: 100%;
-  padding: 14px 16px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: rgba(15, 23, 42, 0.35);
-  color: var(--text);
-  font-size: 15px;
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-:root[data-theme="light"] .ledger-select {
-  background: rgba(255, 255, 255, 0.9);
-}
-
-.ledger-select:focus {
-  outline: none;
-  border-color: var(--ledger-primary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-}
-
-/* ================= Empty State ================= */
-.ledger-empty {
-  text-align: center;
-  padding: 48px 26px;
-  min-height: 380px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-}
-
-.ledger-empty-icon {
-  font-size: 72px;
-  margin-bottom: 20px;
-  opacity: 0.5;
-}
-
-.ledger-empty-title {
-  font-weight: 900;
-  font-size: 20px;
-  color: var(--text);
-  margin: 0 0 10px 0;
-}
-
-.ledger-empty-desc {
-  color: var(--text-muted);
-  margin: 0 0 12px 0;
-  line-height: 1.8;
-  font-size: 15px;
-  max-width: 420px;
-}
-
-.ledger-empty-hint {
-  color: var(--text-muted);
-  font-size: 13px;
-  margin-top: 8px;
-}
-
-/* ================= Movements Table ================= */
-.ledger-table-wrap {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  margin-top: 16px;
-  border-radius: 18px;
-  border: 1px solid var(--border-light);
-  background: rgba(2, 6, 23, 0.12);
-}
-
-:root[data-theme="light"] .ledger-table-wrap {
-  background: rgba(255, 255, 255, 0.55);
-}
-
-.ledger-table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  min-width: 980px;
-}
-
-.ledger-table th {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background: rgba(30, 41, 59, 0.82);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  padding: 14px 16px;
-  text-align: right;
-  color: var(--text-muted);
-  font-weight: 800;
-  font-size: 13px;
-  border-bottom: 1px solid var(--border-light);
-  white-space: nowrap;
-}
-
-.ledger-table td {
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--border-light);
-  color: var(--text);
-  transition: all 0.2s ease;
-  vertical-align: middle;
-}
-
-.ledger-table tr {
-  transition: all 0.3s ease;
-}
-
-.ledger-table tr:hover {
-  background: rgba(59, 130, 246, 0.05);
-}
-
-.ledger-table tr:last-child td {
-  border-bottom: none;
-}
-
-/* ================= Movement Types ================= */
-.movement-type {
-  display: inline-block;
-  padding: 6px 12px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.movement-type.opening {
-  background: rgba(59, 130, 246, 0.2);
-  color: var(--ledger-primary);
-}
-
-.movement-type.purchase {
-  background: rgba(16, 185, 129, 0.2);
-  color: var(--ledger-success);
-}
-
-.movement-type.sale {
-  background: rgba(239, 68, 68, 0.2);
-  color: var(--ledger-danger);
-}
-
-.movement-type.return {
-  background: rgba(245, 158, 11, 0.2);
-  color: var(--ledger-warning);
-}
-
-.movement-type.reconciliation {
-  background: rgba(99, 102, 241, 0.18);
-  color: var(--ledger-primary);
-}
-
-/* ================= Cards View (Mobile) ================= */
-.ledger-cards-view {
-  display: none;
-  gap: 16px;
-  margin-top: 20px;
-}
-
-.ledger-movement-card {
-  background: linear-gradient(145deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.7));
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 20px;
-  transition: all 0.3s ease;
-}
-
-.ledger-movement-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-}
-
-.ledger-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.ledger-card-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: #f1f5f9;
-}
-
-.ledger-card-date {
-  font-size: 13px;
-  color: #94a3b8;
-}
-
-.ledger-card-body {
-  display: grid;
-  gap: 12px;
-}
-
-.ledger-card-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.ledger-card-label {
-  color: #94a3b8;
-  font-size: 13px;
-}
-
-.ledger-card-value {
-  color: #f1f5f9;
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.ledger-card-value.in {
-  color: var(--ledger-success);
-}
-
-.ledger-card-value.out {
-  color: var(--ledger-danger);
-}
-
-/* ================= Summary ================= */
-.ledger-summary {
-  background: linear-gradient(145deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1));
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  border-radius: 16px;
-  padding: 20px;
-  margin-bottom: 24px;
-}
-
-.ledger-summary-title {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text);
-  margin-bottom: 16px;
-}
-
-.ledger-summary-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 16px;
-}
-
-.ledger-summary-item {
-  text-align: center;
-}
-
-.ledger-summary-label {
-  color: var(--text-muted);
-  font-size: 12px;
-  margin-bottom: 4px;
-}
-
-.ledger-summary-value {
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text);
-}
-
-/* ================= Responsive ================= */
-@media (max-width: 768px) {
-  .ledger-page {
-    padding: 0;
+  #fdPage .led-product-pick {
+    flex: 1 1 280px;
+    min-width: 0;
+    max-width: 420px;
   }
-  
-  .ledger-card {
-    padding: 20px;
+  #fdPage .led-product-pick select.fd-input {
+    cursor: pointer;
+  }
+  #fdPage .led-head-strip {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 16px;
+    margin: 0 0 14px;
+    padding: 14px 18px;
+    border: 1px solid var(--fd-border);
     border-radius: 16px;
+    background: var(--fd-surface);
+    box-shadow: var(--fd-shadow);
   }
-  
-  .ledger-stats {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
+  #fdPage .led-head-strip[hidden] { display: none; }
+  #fdPage .led-head-name {
+    flex: 1 1 220px;
+    min-width: 0;
+    margin: 0;
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--fd-text);
+    overflow-wrap: anywhere;
   }
-  
-  .ledger-stat {
-    padding: 16px;
+  #fdPage .led-head-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    color: var(--fd-text-2);
+    font-size: 13.5px;
   }
-  
-  .ledger-stat-value {
-    font-size: 24px;
+  #fdPage .led-head-meta b { color: var(--fd-text); }
+  #fdPage .led-in,
+  #fdPage .led-out,
+  #fdPage .led-n { unicode-bidi: isolate; direction: ltr; display: inline-block; }
+  #fdPage .led-in { color: var(--fd-green); font-weight: 800; }
+  #fdPage .led-out { color: #dc2626; font-weight: 800; }
+  #fdPage .led-desc {
+    min-width: 180px;
+    max-width: 360px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    color: var(--fd-text-2);
+    font-size: 13px;
+    line-height: 1.5;
   }
-  
-  .ledger-table-wrap {
-    display: none;
-  }
-  
-  .ledger-cards-view {
-    display: grid;
-  }
-  
-  .ledger-summary-grid {
-    grid-template-columns: 1fr;
-  }
-}
+  #fdPage .led-print-title { display: none; }
+  #fdPage tr[data-led-row],
+  #fdPage tr[data-led-product] { cursor: pointer; }
 
-@media (min-width: 769px) {
-  .ledger-cards-view {
-    display: none !important;
+  @media print {
+    #fdPage .led-print-title {
+      display: block;
+      margin: 0 0 10px;
+      font-size: 16px;
+      font-weight: 800;
+    }
+    #fdPage .fd-table-scroll { overflow: visible !important; max-height: none !important; }
+    #fdPage .fd-table th,
+    #fdPage .fd-table td { padding: 6px 8px !important; font-size: 11px !important; }
   }
-  
-  .ledger-table-wrap {
-    display: block !important;
-  }
-}
-
-/* ================= Light Mode Contrast Fix =================
-   Some earlier selectors use an invalid ::root prefix.
-   These valid overrides ensure readability in light theme. */
-:root[data-theme="light"] .ledger-select {
-  background: rgba(255, 255, 255, 0.92);
-  color: #0f172a;
-  border-color: rgba(2, 6, 23, 0.10);
-}
-
-:root[data-theme="light"] .ledger-table-wrap {
-  border-color: rgba(2, 6, 23, 0.08);
-  background: rgba(255, 255, 255, 0.92);
-}
-
-:root[data-theme="light"] .ledger-table th {
-  background: rgba(241, 245, 249, 0.96);
-  color: #0f172a;
-  border-bottom-color: rgba(2, 6, 23, 0.10);
-}
-
-:root[data-theme="light"] .ledger-table td {
-  color: #0f172a;
-  border-bottom-color: rgba(2, 6, 23, 0.06);
-}
-
-:root[data-theme="light"] .ledger-table tr:hover {
-  background: rgba(37, 99, 235, 0.06);
-}
-
-:root[data-theme="light"] .movement-type.opening { background: rgba(37, 99, 235, 0.12); color: #1d4ed8; }
-:root[data-theme="light"] .movement-type.purchase { background: rgba(22, 163, 74, 0.12); color: #166534; }
-:root[data-theme="light"] .movement-type.sale { background: rgba(220, 38, 38, 0.12); color: #991b1b; }
-:root[data-theme="light"] .movement-type.return { background: rgba(245, 158, 11, 0.14); color: #92400e; }
-:root[data-theme="light"] .movement-type.reconciliation { background: rgba(79, 70, 229, 0.12); color: #3730a3; }
 </style>
 
-<!-- ================= Stats ================= -->
-<div class="ledger-stats">
-  <div class="ledger-stat">
-    <div class="ledger-stat-label">إجمالي المنتجات</div>
-    <div class="ledger-stat-value">{{ total_products }}</div>
-  </div>
-  <div class="ledger-stat">
-    <div class="ledger-stat-label">منخفض المخزون</div>
-    <div class="ledger-stat-value is-warning">{{ low_stock_count }}</div>
-  </div>
-  <div class="ledger-stat">
-    <div class="ledger-stat-label">نافد من المخزون</div>
-    <div class="ledger-stat-value is-danger">{{ out_of_stock_count }}</div>
-  </div>
-  <div class="ledger-stat">
-    <div class="ledger-stat-label">متوازن</div>
-    <div class="ledger-stat-value is-success">{{ balanced_count }}</div>
-  </div>
-</div>
+<div class="fd ledger-page" id="fdPage">
 
-<!-- ================= Product Selector ================= -->
-<div class="ledger-card">
-  <h3 class="ledger-h3">
-    <span>📋</span>
-    <span>اختر منتج لعرض سجل الحركات</span>
-  </h3>
-  
-  <select class="ledger-select" id="productSelector" onchange="loadMovements()">
-    <option value="">-- اختر منتج --</option>
-    {% for p in products %}
-    <option value="{{ p.id }}" {% if request.args.get('product_id')|int == p.id %}selected{% endif %}>
-      {{ p.name }} (المخزون: {{ p.quantity }})
-    </option>
-    {% endfor %}
-  </select>
-</div>
+  <header class="fd-header no-print">
+    <div class="fd-header-main">
+      <span class="fd-header-icon" style="color: var(--fd-purple);">{{ icon('layers', 26) }}</span>
+      <div class="fd-header-text">
+        <h1 class="fd-title">حركة المخزون</h1>
+        <p class="fd-subtitle">سجل الوارد والصادر والرصيد لكل منتج (للعرض فقط)</p>
+      </div>
+    </div>
+  </header>
 
-<!-- ================= Empty State ================= -->
-<div class="ledger-card ledger-empty" id="ledgerEmptyState">
-  <div class="ledger-empty-icon">📋</div>
-  <h4 class="ledger-empty-title">لم يُختر أي منتج بعد</h4>
-  <p class="ledger-empty-desc">هذه المساحة مخصصة لعرض سجل الحركات (وارد / صادر / رصيد) للمنتج الذي تختاره.</p>
-  <p class="ledger-empty-hint">اختر منتجاً من القائمة «اختر منتج لعرض سجل الحركات» أعلاه وسيظهر الجدول والملخص هنا.</p>
-</div>
+  <nav class="fd-subnav no-print" aria-label="المخزون">
+    <a class="fd-subnav-link" href="{{ url_for('inventory.inventory') }}">المنتجات</a>
+    <a class="fd-subnav-link" href="{{ url_for('stock_transfers.transfers_index') }}">نقل المخزون</a>
+    <a class="fd-subnav-link active" href="{{ url_for('inventory_ledger.inventory_ledger') }}">حركة المخزون</a>
+    <a class="fd-subnav-link" href="{{ url_for('inventory.audit') }}">جرد المخزون</a>
+  </nav>
 
-<!-- ================= Movements Display ================= -->
-<div id="movementsContainer" style="display:none;">
-  <div class="ledger-card">
-    <h3 class="ledger-h3">
-      <span>📊</span>
-      <span id="productNameHeader">سجل الحركات</span>
-    </h3>
-    
-    <!-- Summary -->
-    <div class="ledger-summary" id="summaryContainer">
-      <div class="ledger-summary-title">ملخص الحركات</div>
-      <div class="ledger-summary-grid">
-        <div class="ledger-summary-item">
-          <div class="ledger-summary-label">إجمالي الوارد</div>
-          <div class="ledger-summary-value" id="totalIn" style="color: var(--ledger-success);">0</div>
+  <!-- KPI cards: all products (overview) -->
+  <div class="fd-kpis no-print" id="ledKpisAll">
+    <button type="button" class="fd-kpi fd-kpi--purple active" data-led-state="">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">إجمالي المنتجات</span>
+        <span><span class="fd-kpi-value">{{ "{:,}".format(total_products) }}</span><span class="fd-kpi-unit">منتج</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('boxes', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--amber" data-led-state="low">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">منخفض المخزون</span>
+        <span><span class="fd-kpi-value">{{ "{:,}".format(low_stock_count) }}</span><span class="fd-kpi-unit">منتج</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('alert', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--red" data-led-state="out">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">نافد من المخزون</span>
+        <span><span class="fd-kpi-value">{{ "{:,}".format(out_of_stock_count) }}</span><span class="fd-kpi-unit">منتج</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('ban', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--green" data-led-state="balanced">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">متوازن</span>
+        <span><span class="fd-kpi-value">{{ "{:,}".format(balanced_count) }}</span><span class="fd-kpi-unit">منتج</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('check-circle', 28) }}</span>
+    </button>
+  </div>
+
+  <!-- KPI cards: selected product (movement summary) -->
+  <div class="fd-kpis no-print" id="ledKpisProduct" hidden>
+    <button type="button" class="fd-kpi fd-kpi--purple active" data-led-dir="">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">عدد الحركات</span>
+        <span><span class="fd-kpi-value" id="movementsCount">0</span><span class="fd-kpi-unit">حركة</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('layers', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--green" data-led-dir="in">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">إجمالي الوارد</span>
+        <span><span class="fd-kpi-value" id="totalIn">0</span><span class="fd-kpi-unit">قطعة</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('download', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--red" data-led-dir="out">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">إجمالي الصادر</span>
+        <span><span class="fd-kpi-value" id="totalOut">0</span><span class="fd-kpi-unit">قطعة</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('upload', 28) }}</span>
+    </button>
+    <div class="fd-kpi fd-kpi--amber">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">الرصيد الحالي</span>
+        <span><span class="fd-kpi-value" id="currentBalance">0</span><span class="fd-kpi-unit">قطعة</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('boxes', 28) }}</span>
+    </div>
+  </div>
+
+  <div class="fd-toolbar no-print">
+    <label class="led-product-pick">
+      <span class="fd-sr-only">المنتج</span>
+      <select class="fd-input" id="productSelector" aria-label="اختر منتج لعرض سجل الحركات">
+        <option value="">كل المنتجات — ملخص الحركات</option>
+        {% for p in products %}
+        <option value="{{ p.id }}" {% if request.args.get('product_id')|int == p.id %}selected{% endif %}>{{ p.name }} (المخزون: {{ p.quantity }})</option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <div class="fd-pop-wrap fd-tool--filter" id="ledFilterWrap" hidden>
+      <button type="button" class="fd-btn" data-fd-pop="ledFiltersPop" aria-expanded="false" aria-controls="ledFiltersPop">
+        {{ icon('filter', 18) }}
+        <span class="fd-btn-label">تصفية</span>
+        <span class="fd-count-badge" id="ledFilterCount" hidden></span>
+        <span class="fd-chevron">{{ icon('chevron', 16) }}</span>
+      </button>
+      <div class="fd-pop fd-pop--start fd-filter-pop" id="ledFiltersPop" role="dialog" aria-label="تصفية الحركات" hidden>
+        <div class="fd-form-grid">
+          <label class="fd-field"><span>من تاريخ</span><input type="date" id="ledDateFrom"></label>
+          <label class="fd-field"><span>إلى تاريخ</span><input type="date" id="ledDateTo"></label>
+          <label class="fd-field"><span>نوع الحركة</span>
+            <select id="ledTypeFilter">
+              <option value="">الكل</option>
+              <option value="opening_stock">مخزون افتتاحي</option>
+              <option value="purchase">شراء</option>
+              <option value="sale">بيع</option>
+              <option value="return_sale">إرجاع مخزون</option>
+              <option value="transfer_in">نقل وارد</option>
+              <option value="transfer_out">نقل صادر</option>
+              <option value="stock_reconciliation">تسوية رصيد</option>
+            </select>
+          </label>
+          <label class="fd-field"><span>الاتجاه</span>
+            <select id="ledDirFilter">
+              <option value="">الكل</option>
+              <option value="in">وارد</option>
+              <option value="out">صادر</option>
+            </select>
+          </label>
+          {% if branches|length > 1 %}
+          <label class="fd-field fd-field--wide"><span>الفرع</span>
+            <select id="ledBranchFilter">
+              <option value="">كل الفروع</option>
+              {% for b in branches %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}
+            </select>
+          </label>
+          {% endif %}
         </div>
-        <div class="ledger-summary-item">
-          <div class="ledger-summary-label">إجمالي الصادر</div>
-          <div class="ledger-summary-value" id="totalOut" style="color: var(--ledger-danger);">0</div>
-        </div>
-        <div class="ledger-summary-item">
-          <div class="ledger-summary-label">الرصيد الحالي</div>
-          <div class="ledger-summary-value" id="currentBalance" style="color: var(--ledger-primary);">0</div>
-        </div>
-        <div class="ledger-summary-item">
-          <div class="ledger-summary-label">عدد الحركات</div>
-          <div class="ledger-summary-value" id="movementsCount">0</div>
+        <div class="fd-pop-foot fd-pop-foot--split">
+          <button type="button" class="fd-link-btn" onclick="clearLedgerFilters()">مسح التصفية</button>
+          <button type="button" class="fd-btn fd-btn--accent fd-btn--apply" data-fd-pop-close>تطبيق</button>
         </div>
       </div>
     </div>
-    
-    <!-- Desktop Table View -->
-    <div class="ledger-table-wrap" id="tableView">
-      <table class="ledger-table" id="movementsTable">
+
+    <label class="fd-search fd-tool--search">
+      {{ icon('search', 18) }}
+      <input type="search" id="ledSearch" autocomplete="off" placeholder="ابحث باسم المنتج أو الباركود...">
+    </label>
+
+    <div class="fd-tools-row">
+      <button type="button" class="fd-btn" id="ledBackBtn" hidden onclick="selectLedgerProduct('')">
+        {{ icon('boxes', 18) }}<span class="fd-btn-label">كل المنتجات</span>
+      </button>
+      <div class="fd-pop-wrap">
+        <button type="button" class="fd-btn fd-btn--icon" data-fd-pop="ledMorePop" aria-expanded="false" aria-controls="ledMorePop" title="المزيد" aria-label="المزيد">{{ icon('dots', 20) }}</button>
+        <div class="fd-pop fd-pop--end fd-menu" id="ledMorePop" role="menu" hidden>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="exportLedgerCsv()">{{ icon('download') }}<span>تصدير CSV</span></button>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="printLedger()">{{ icon('print') }}<span>طباعة</span></button>
+          <div class="fd-menu-sep" role="separator"></div>
+          <a class="fd-menu-item" role="menuitem" href="{{ url_for('inventory.audit') }}">{{ icon('scan') }}<span>جرد المخزون</span></a>
+          <a class="fd-menu-item" role="menuitem" href="{{ url_for('stock_transfers.transfers_index') }}">{{ icon('truck') }}<span>نقل المخزون</span></a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="fd-toolbar fd-toolbar--chips no-print">
+    <div class="fd-chips" id="ledStateChips" role="tablist" aria-label="حالة المنتج">
+      <button type="button" class="fd-chip active" data-led-state="">الكل<span class="fd-chip-count" data-count=""></span></button>
+      <button type="button" class="fd-chip" data-led-state="low">منخفض<span class="fd-chip-count" data-count="low"></span></button>
+      <button type="button" class="fd-chip" data-led-state="out">نافد<span class="fd-chip-count" data-count="out"></span></button>
+      <button type="button" class="fd-chip" data-led-state="balanced">متوازن<span class="fd-chip-count" data-count="balanced"></span></button>
+      <button type="button" class="fd-chip" data-led-state="unbalanced">غير متوازن<span class="fd-chip-count" data-count="unbalanced"></span></button>
+    </div>
+    <div class="fd-chips" id="ledTypeChips" role="tablist" aria-label="نوع الحركة" hidden></div>
+  </div>
+
+  <!-- Selected product strip -->
+  <div class="led-head-strip" id="ledHeadStrip" hidden>
+    <h2 class="led-head-name" id="productNameHeader">سجل الحركات</h2>
+    <div class="led-head-meta" id="ledHeadMeta"></div>
+  </div>
+
+  <h2 class="led-print-title" id="ledPrintTitle">سجل حركات المخزون</h2>
+
+  <!-- Overview: all products -->
+  <section class="fd-table-card" id="ledgerEmptyState">
+    <div class="fd-table-scroll">
+      <table class="fd-table" id="ledOverviewTable">
+        <thead>
+          <tr>
+            <th>المنتج</th>
+            <th>الوارد</th>
+            <th>الصادر</th>
+            <th class="fd-col-opt">الرصيد حسب الحركات</th>
+            <th>المخزون الفعلي</th>
+            <th class="fd-col-opt2">الحركات</th>
+            <th>الحالة</th>
+          </tr>
+        </thead>
+        <tbody id="ledOverviewBody">
+          <tr><td colspan="7" class="fd-empty">جاري التحميل...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- Selected product movements -->
+  <section class="fd-table-card" id="movementsContainer" hidden>
+    <div class="fd-table-scroll">
+      <table class="fd-table" id="movementsTable">
         <thead>
           <tr>
             <th>التاريخ</th>
@@ -536,165 +290,477 @@
             <th>الوارد</th>
             <th>الصادر</th>
             <th>الرصيد بعد</th>
-            <th>تكلفة الوحدة</th>
-            <th>إجمالي التكلفة</th>
+            <th class="fd-col-opt">تكلفة الوحدة</th>
+            <th class="fd-col-opt2">إجمالي التكلفة</th>
             <th>الوصف</th>
           </tr>
         </thead>
-        <tbody id="movementsTableBody">
-        </tbody>
+        <tbody id="movementsTableBody"></tbody>
       </table>
     </div>
-    
-    <!-- Mobile Cards View -->
-    <div class="ledger-cards-view" id="cardsView">
-      <div id="movementsCards">
-      </div>
+  </section>
+
+  <footer class="fd-footer no-print">
+    <div class="fd-footer-info">
+      <select id="ledPageSize" aria-label="عدد الصفوف في الصفحة">
+        <option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
+      </select>
+      <span class="fd-range" id="ledRange"></span>
+      <span class="fd-totals" id="ledTotals"></span>
     </div>
-  </div>
+    <nav class="fd-pager" id="ledPager" aria-label="الصفحات"></nav>
+  </footer>
+
+  <!-- Detail panel: one movement -->
+  <aside class="fd-detail" id="ledDetail" aria-label="تفاصيل الحركة" hidden>
+    <div class="fd-detail-head">
+      <div class="fd-detail-titles">
+        <h3 class="fd-detail-title" id="ledDetailTitle"></h3>
+        <p class="fd-detail-sub" id="ledDetailSub"></p>
+      </div>
+      <button type="button" class="fd-close-btn" onclick="closeLedgerDetail()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+    </div>
+    <div class="fd-detail-body" id="ledDetailBody"></div>
+  </aside>
 </div>
 
+<script type="application/json" id="ledgerData">[
+  {% set pmap = {} %}{% for p in products %}{% set _ = pmap.update({p.id: p}) %}{% endfor %}
+  {% for s in summaries %}{% set p = pmap.get(s.product_id) %}
+  {"id": {{ s.product_id }}, "name": {{ (s.product_name or '')|tojson }}, "barcode": {{ ((p.barcode if p else '') or '')|tojson }}, "sku": {{ ((p.sku if p else '') or '')|tojson }},
+   "active": {{ 'true' if p else 'false' }}, "total_in": {{ s.total_in or 0 }}, "total_out": {{ s.total_out or 0 }},
+   "balance": {{ s.calculated_balance or 0 }}, "actual": {{ s.actual_quantity or 0 }}, "count": {{ s.movements_count or 0 }},
+   "balanced": {{ 'true' if s.is_balanced else 'false' }}, "difference": {{ s.difference or 0 }}}{% if not loop.last %},{% endif %}
+  {% endfor %}
+]</script>
+
+<script src="/static/js/finora-ui.js?v=20261018c"></script>
 <script>
-// ================= Load Movements =================
-function loadMovements() {
-  const productId = document.getElementById('productSelector').value;
-  
-  if (!productId) {
-    document.getElementById('movementsContainer').style.display = 'none';
-    const empty = document.getElementById('ledgerEmptyState');
-    if (empty) empty.style.display = 'block';
-    return;
+  const F = window.FinoraUI;
+  const byId = id => document.getElementById(id);
+  const LED_PAGE_SIZES = [10, 25, 50, 100];
+  const LED_PAGE_SIZE_KEY = "inventory_ledger_page_size";
+  const LED_TYPES = {
+    opening_stock: ["blue", "مخزون افتتاحي"],
+    purchase: ["green", "شراء"],
+    sale: ["red", "بيع"],
+    return_sale: ["amber", "إرجاع مخزون"],
+    transfer_in: ["sky", "نقل وارد"],
+    transfer_out: ["purple", "نقل صادر"],
+    stock_reconciliation: ["gray", "تسوية رصيد"]
+  };
+
+  let ledgerProducts = [];
+  let ledState = "";         // overview chip
+  let ledType = "";          // movement type chip / filter
+  let ledDir = "";           // in / out
+  let ledPage = 0;
+  let ledProductId = "";
+  let ledMovements = [];
+  let ledSummary = {};
+  let ledLoading = false;
+  let ledDetailIdx = null;
+  let ledPrintAll = false;
+  let ledReq = 0;
+
+  function ledPageSize() {
+    try {
+      const saved = parseInt(localStorage.getItem(LED_PAGE_SIZE_KEY), 10);
+      if (LED_PAGE_SIZES.includes(saved)) return saved;
+    } catch (e) { /* storage unavailable */ }
+    return 25;
   }
-  const empty = document.getElementById('ledgerEmptyState');
-  if (empty) empty.style.display = 'none';
-  
-  // Show loading
-  document.getElementById('movementsContainer').style.display = 'block';
-  document.getElementById('movementsTableBody').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#64748b;">جاري التحميل...</td></tr>';
-  document.getElementById('movementsCards').innerHTML = '<div style="text-align:center;padding:40px;color:#64748b;">جاري التحميل...</div>';
-  
-  // Fetch movements
-  fetch(`/inventory/ledger/api/product/${productId}`)
-    .then(response => response.json())
-    .then(data => {
-      displayMovements(data);
-    })
-    .catch(error => {
-      console.error('Error:', error);
-      document.getElementById('movementsTableBody').innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#ef4444;">حدث خطأ أثناء تحميل البيانات</td></tr>';
+
+  function ledDate(value) {
+    if (!value) return "";
+    const s = String(value);
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+    const d = new Date(s);
+    return isNaN(d) ? s : d.toISOString().slice(0, 10);
+  }
+
+  function productStates(p) {
+    const st = [];
+    if (p.actual === 0) st.push("out");
+    else if (p.actual > 0 && p.actual <= 5) st.push("low");
+    st.push(p.balanced ? "balanced" : "unbalanced");
+    return st;
+  }
+
+  function isProductMode() { return !!ledProductId; }
+
+  // ---------- Overview (all products) ----------
+  function filteredProducts() {
+    const q = byId("ledSearch").value.trim().toLowerCase();
+    return ledgerProducts.filter(p => {
+      if (ledState && !productStates(p).includes(ledState)) return false;
+      if (q && !((p.name + " " + p.barcode + " " + p.sku).toLowerCase().includes(q))) return false;
+      return true;
     });
-}
-
-// ================= Display Movements =================
-function displayMovements(data) {
-  const movements = data.movements || [];
-  const summary = data.summary || {};
-  
-  // Update summary
-  document.getElementById('productNameHeader').textContent = `سجل حركات: ${summary.product_name || ''}`;
-  document.getElementById('totalIn').textContent = summary.total_in || 0;
-  document.getElementById('totalOut').textContent = summary.total_out || 0;
-  document.getElementById('currentBalance').textContent = summary.calculated_balance || 0;
-  document.getElementById('movementsCount').textContent = summary.movements_count || 0;
-  
-  // Clear previous content
-  const tableBody = document.getElementById('movementsTableBody');
-  const cardsContainer = document.getElementById('movementsCards');
-  tableBody.innerHTML = '';
-  cardsContainer.innerHTML = '';
-  
-  if (movements.length === 0) {
-    tableBody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#64748b;">لا توجد حركات مسجلة</td></tr>';
-    cardsContainer.innerHTML = '<div style="text-align:center;padding:40px;color:#64748b;">لا توجد حركات مسجلة</div>';
-    return;
   }
-  
-  // Display table rows
-  movements.forEach(m => {
-    const row = document.createElement('tr');
-    const typeClass = {
-      'opening_stock': 'opening',
-      'purchase': 'purchase',
-      'sale': 'sale',
-      'return_sale': 'return',
-      'stock_reconciliation': 'reconciliation'
-    }[m.type] || '';
-    
-    row.innerHTML = `
-      <td>${m.date}</td>
-      <td><span class="movement-type ${typeClass}">${m.type_ar}</span></td>
-      <td style="color: var(--ledger-success);font-weight:600;">${m.quantity_in > 0 ? '+' + m.quantity_in : '—'}</td>
-      <td style="color: var(--ledger-danger);font-weight:600;">${m.quantity_out > 0 ? '-' + m.quantity_out : '—'}</td>
-      <td style="font-weight:700;">${m.balance_after}</td>
-      <td>${m.cost_per_unit.toLocaleString('ar')} د.ع</td>
-      <td>${m.total_cost.toLocaleString('ar')} د.ع</td>
-      <td style="font-size:13px;color:#94a3b8;">${m.description}</td>
-    `;
-    tableBody.appendChild(row);
-  });
-  
-  // Display cards (mobile)
-  movements.forEach(m => {
-    const typeClass = {
-      'opening_stock': 'opening',
-      'purchase': 'purchase',
-      'sale': 'sale',
-      'return_sale': 'return',
-      'stock_reconciliation': 'reconciliation'
-    }[m.type] || '';
-    
-    const card = document.createElement('div');
-    card.className = 'ledger-movement-card';
-    card.innerHTML = `
-      <div class="ledger-card-header">
-        <div class="ledger-card-title">${m.type_ar}</div>
-        <div class="ledger-card-date">${m.date}</div>
-      </div>
-      <div class="ledger-card-body">
-        ${m.quantity_in > 0 ? `
-        <div class="ledger-card-row">
-          <span class="ledger-card-label">الوارد:</span>
-          <span class="ledger-card-value in">+${m.quantity_in}</span>
-        </div>
-        ` : ''}
-        ${m.quantity_out > 0 ? `
-        <div class="ledger-card-row">
-          <span class="ledger-card-label">الصادر:</span>
-          <span class="ledger-card-value out">-${m.quantity_out}</span>
-        </div>
-        ` : ''}
-        <div class="ledger-card-row">
-          <span class="ledger-card-label">الرصيد بعد:</span>
-          <span class="ledger-card-value">${m.balance_after}</span>
-        </div>
-        <div class="ledger-card-row">
-          <span class="ledger-card-label">التكلفة:</span>
-          <span class="ledger-card-value">${m.total_cost.toLocaleString('ar')} د.ع</span>
-        </div>
-        <div class="ledger-card-row">
-          <span class="ledger-card-label">الوصف:</span>
-          <span class="ledger-card-value" style="font-size:12px;color:#94a3b8;">${m.description}</span>
-        </div>
-      </div>
-    `;
-    cardsContainer.appendChild(card);
-  });
-}
 
-// ================= Initialize =================
-document.addEventListener('DOMContentLoaded', function() {
-  // Auto-load if product_id in URL
-  const urlParams = new URLSearchParams(window.location.search);
-  const productId = urlParams.get('product_id');
-  if (productId) {
-    document.getElementById('productSelector').value = productId;
+  function statusPill(p) {
+    if (!p.active) return '<span class="fd-pill fd-pill--gray">غير نشط</span>';
+    if (p.actual === 0) return '<span class="fd-pill fd-pill--red">نافد</span>';
+    if (!p.balanced) return '<span class="fd-pill fd-pill--amber">غير متوازن</span>';
+    if (p.actual <= 5) return '<span class="fd-pill fd-pill--amber">منخفض</span>';
+    return '<span class="fd-pill fd-pill--green">متوازن</span>';
+  }
+
+  function qtyClass(q) { return q <= 0 ? "fd-qty--out" : (q <= 5 ? "fd-qty--low" : "fd-qty--ok"); }
+
+  function renderOverview() {
+    const counts = { "": ledgerProducts.length, low: 0, out: 0, balanced: 0, unbalanced: 0 };
+    ledgerProducts.forEach(p => productStates(p).forEach(s => { counts[s]++; }));
+    document.querySelectorAll("#ledStateChips [data-count]").forEach(el => {
+      el.textContent = F.num(counts[el.getAttribute("data-count")] || 0);
+    });
+    document.querySelectorAll("#fdPage [data-led-state]").forEach(el => {
+      el.classList.toggle("active", (el.getAttribute("data-led-state") || "") === ledState);
+    });
+
+    const rows = filteredProducts();
+    const size = ledPrintAll ? Math.max(rows.length, 1) : ledPageSize();
+    const pages = Math.max(1, Math.ceil(rows.length / size));
+    ledPage = Math.min(ledPage, pages - 1);
+    const pageRows = rows.slice(ledPage * size, (ledPage + 1) * size);
+    let tin = 0, tout = 0;
+    rows.forEach(p => { tin += p.total_in; tout += p.total_out; });
+    byId("ledTotals").innerHTML = rows.length ? `وارد <b class="led-in">${F.num(tin)}</b> · صادر <b class="led-out">${F.num(tout)}</b>` : "";
+    const from = rows.length ? ledPage * size + 1 : 0;
+    byId("ledRange").innerHTML = "عرض " + F.num(from) + "–" + F.num(Math.min(rows.length, (ledPage + 1) * size)) + " من <b>" + F.num(rows.length) + "</b> منتج";
+    byId("ledPager").innerHTML = F.pagerHtml(ledPage, pages, "data-led-page");
+    byId("ledPrintTitle").textContent = "ملخص حركات المخزون";
+
+    const tbody = byId("ledOverviewBody");
+    if (!pageRows.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="fd-empty">' + (ledgerProducts.length ? "لا توجد منتجات مطابقة." : "لا توجد منتجات بعد.") + "</td></tr>";
+      return;
+    }
+    tbody.innerHTML = pageRows.map(p => `
+      <tr data-led-product="${p.id}" title="عرض سجل الحركات">
+        <td class="fd-td-title" data-label="المنتج"><b>${F.esc(p.name)}</b>${p.barcode ? `<div class="fd-cell-muted" dir="ltr" style="font-size:12px">${F.esc(p.barcode)}</div>` : ""}</td>
+        <td data-label="الوارد"><span class="led-in">${p.total_in ? "+" + F.num(p.total_in) : "—"}</span></td>
+        <td data-label="الصادر"><span class="led-out">${p.total_out ? "-" + F.num(p.total_out) : "—"}</span></td>
+        <td data-label="الرصيد حسب الحركات" class="fd-col-opt"><span class="led-n">${F.num(p.balance)}</span></td>
+        <td data-label="المخزون الفعلي"><b class="led-n ${qtyClass(p.actual)}">${F.num(p.actual)}</b>${p.difference ? ` <span class="fd-cell-muted" style="font-size:12px">(فرق <span class="led-n">${p.difference > 0 ? "+" : ""}${F.num(p.difference)}</span>)</span>` : ""}</td>
+        <td data-label="الحركات" class="fd-col-opt2 fd-cell-muted">${F.num(p.count)}</td>
+        <td data-label="الحالة">${statusPill(p)}</td>
+      </tr>`).join("");
+  }
+
+  // ---------- Product movements ----------
+  function movementDir(m) { return (Number(m.quantity_in) || 0) > 0 ? "in" : "out"; }
+
+  function filteredMovements() {
+    const q = byId("ledSearch").value.trim().toLowerCase();
+    const from = byId("ledDateFrom").value;
+    const to = byId("ledDateTo").value;
+    const typeSel = byId("ledTypeFilter").value || ledType;
+    const dir = byId("ledDirFilter").value || ledDir;
+    return ledMovements.map((m, idx) => ({ m, idx })).filter(({ m }) => {
+      const d = ledDate(m.date);
+      if (from && d < from) return false;
+      if (to && d > to) return false;
+      if (typeSel && m.type !== typeSel) return false;
+      if (dir && movementDir(m) !== dir) return false;
+      if (q && !((m.type_ar + " " + m.description + " " + d + " " + (m.reference_id || "")).toLowerCase().includes(q))) return false;
+      return true;
+    });
+  }
+
+  function typePill(m) {
+    const t = LED_TYPES[m.type] || ["gray", m.type_ar || m.type];
+    return `<span class="fd-pill fd-pill--${t[0]}">${F.esc(m.type_ar || t[1])}</span>`;
+  }
+
+  function syncFilterBadge() {
+    let n = 0;
+    ["ledDateFrom", "ledDateTo", "ledTypeFilter", "ledDirFilter", "ledBranchFilter"].forEach(id => { const el = byId(id); if (el && el.value) n++; });
+    const badge = byId("ledFilterCount");
+    badge.textContent = n;
+    badge.hidden = !n;
+  }
+
+  function renderTypeChips() {
+    const counts = {};
+    ledMovements.forEach(m => { counts[m.type] = (counts[m.type] || 0) + 1; });
+    const chips = [`<button type="button" class="fd-chip${ledType ? "" : " active"}" data-led-type="">الكل<span class="fd-chip-count">${F.num(ledMovements.length)}</span></button>`];
+    Object.keys(LED_TYPES).forEach(t => {
+      if (!counts[t]) return;
+      chips.push(`<button type="button" class="fd-chip${ledType === t ? " active" : ""}" data-led-type="${t}">${LED_TYPES[t][1]}<span class="fd-chip-count">${F.num(counts[t])}</span></button>`);
+    });
+    byId("ledTypeChips").innerHTML = chips.join("");
+  }
+
+  function renderHeadStrip() {
+    const s = ledSummary || {};
+    const p = ledgerProducts.find(x => x.id === Number(ledProductId)) || {};
+    const branchSel = byId("ledBranchFilter");
+    const branchName = branchSel && branchSel.value ? branchSel.options[branchSel.selectedIndex].text : "";
+    byId("productNameHeader").textContent = `سجل حركات: ${s.product_name || p.name || ""}`;
+    const diff = Number(s.difference) || 0;
+    byId("ledHeadMeta").innerHTML = `
+      ${p.barcode ? `<span>الباركود <b dir="ltr">${F.esc(p.barcode)}</b></span>` : ""}
+      ${branchName ? `<span>الفرع <b>${F.esc(branchName)}</b></span>` : ""}
+      <span>المخزون الفعلي <b class="led-n ${qtyClass(Number(s.actual_quantity) || 0)}">${F.num(s.actual_quantity)}</b></span>
+      ${s.is_balanced ? '<span class="fd-pill fd-pill--green">الرصيد متطابق</span>' : `<span class="fd-pill fd-pill--amber">فرق <span class="led-n">${diff > 0 ? "+" : ""}${F.num(diff)}</span></span>`}`;
+    byId("ledPrintTitle").textContent = `سجل حركات: ${s.product_name || p.name || ""}${branchName ? " — " + branchName : ""}`;
+  }
+
+  function renderMovements() {
+    syncFilterBadge();
+    document.querySelectorAll("#ledKpisProduct [data-led-dir]").forEach(el => {
+      el.classList.toggle("active", (el.getAttribute("data-led-dir") || "") === (byId("ledDirFilter").value || ledDir));
+    });
+    const tbody = byId("movementsTableBody");
+    if (ledLoading) {
+      tbody.innerHTML = '<tr><td colspan="8" class="fd-empty">جاري التحميل...</td></tr>';
+      byId("ledRange").textContent = ""; byId("ledTotals").textContent = ""; byId("ledPager").innerHTML = "";
+      return;
+    }
+    renderTypeChips();
+    const rows = filteredMovements();
+    const size = ledPrintAll ? Math.max(rows.length, 1) : ledPageSize();
+    const pages = Math.max(1, Math.ceil(rows.length / size));
+    ledPage = Math.min(ledPage, pages - 1);
+    const pageRows = rows.slice(ledPage * size, (ledPage + 1) * size);
+    let tin = 0, tout = 0, cost = 0;
+    rows.forEach(({ m }) => { tin += Number(m.quantity_in) || 0; tout += Number(m.quantity_out) || 0; cost += Number(m.total_cost) || 0; });
+    byId("ledTotals").innerHTML = rows.length ? `وارد <b class="led-in">${F.num(tin)}</b> · صادر <b class="led-out">${F.num(tout)}</b> · تكلفة <b>${F.money(cost)}</b>` : "";
+    const from = rows.length ? ledPage * size + 1 : 0;
+    byId("ledRange").innerHTML = "عرض " + F.num(from) + "–" + F.num(Math.min(rows.length, (ledPage + 1) * size)) + " من <b>" + F.num(rows.length) + "</b> حركة";
+    byId("ledPager").innerHTML = F.pagerHtml(ledPage, pages, "data-led-page");
+
+    if (!pageRows.length) {
+      tbody.innerHTML = '<tr><td colspan="8" class="fd-empty">' + (ledMovements.length ? "لا توجد حركات مطابقة للتصفية." : "لا توجد حركات مسجلة") + "</td></tr>";
+      return;
+    }
+    tbody.innerHTML = pageRows.map(({ m, idx }) => `
+      <tr data-led-row="${idx}" class="${idx === ledDetailIdx ? "is-open" : ""}">
+        <td class="fd-td-title" data-label="التاريخ"><span dir="ltr">${F.esc(ledDate(m.date))}</span></td>
+        <td data-label="نوع الحركة">${typePill(m)}</td>
+        <td data-label="الوارد" class="${m.quantity_in > 0 ? "" : "fd-td-blank"}">${m.quantity_in > 0 ? `<span class="led-in">+${F.num(m.quantity_in)}</span>` : '<span class="fd-muted">—</span>'}</td>
+        <td data-label="الصادر" class="${m.quantity_out > 0 ? "" : "fd-td-blank"}">${m.quantity_out > 0 ? `<span class="led-out">-${F.num(m.quantity_out)}</span>` : '<span class="fd-muted">—</span>'}</td>
+        <td data-label="الرصيد بعد"><b class="led-n">${F.num(m.balance_after)}</b></td>
+        <td data-label="تكلفة الوحدة" class="fd-col-opt fd-cell-muted">${F.money(m.cost_per_unit)}</td>
+        <td data-label="إجمالي التكلفة" class="fd-col-opt2 fd-cell-amount">${F.money(m.total_cost)}</td>
+        <td data-label="الوصف"><div class="led-desc">${F.dash(m.description)}</div></td>
+      </tr>`).join("");
+  }
+
+  function render() {
+    F.closeRowMenu && F.closeRowMenu();
+    const prod = isProductMode();
+    byId("ledKpisAll").hidden = prod;
+    byId("ledKpisProduct").hidden = !prod;
+    byId("ledStateChips").hidden = prod;
+    byId("ledTypeChips").hidden = !prod;
+    byId("ledFilterWrap").hidden = !prod;
+    byId("ledBackBtn").hidden = !prod;
+    byId("ledHeadStrip").hidden = !prod;
+    byId("ledgerEmptyState").hidden = prod;
+    byId("movementsContainer").hidden = !prod;
+    byId("ledSearch").placeholder = prod ? "ابحث في الوصف أو نوع الحركة أو رقم المرجع..." : "ابحث باسم المنتج أو الباركود...";
+    if (prod) renderMovements(); else renderOverview();
+  }
+
+  // Kept for compatibility with the old page (select onchange / deep links).
+  function loadMovements() {
+    const productId = byId("productSelector").value;
+    ledProductId = productId || "";
+    ledPage = 0;
+    ledType = "";
+    ledDir = "";
+    closeLedgerDetail();
+    try {
+      const url = new URL(window.location.href);
+      if (ledProductId) url.searchParams.set("product_id", ledProductId); else url.searchParams.delete("product_id");
+      window.history.replaceState(null, "", url.toString());
+    } catch (e) { /* ignore */ }
+    if (!ledProductId) { ledMovements = []; ledSummary = {}; render(); return; }
+
+    ledLoading = true;
+    render();
+    const reqId = ++ledReq;
+    const branchSel = byId("ledBranchFilter");
+    const qs = branchSel && branchSel.value ? "?branch_id=" + encodeURIComponent(branchSel.value) : "";
+    fetch(`/inventory/ledger/api/product/${ledProductId}${qs}`)
+      .then(response => response.json())
+      .then(data => {
+        if (reqId !== ledReq) return;
+        displayMovements(data);
+      })
+      .catch(error => {
+        if (reqId !== ledReq) return;
+        console.error("Error:", error);
+        ledLoading = false;
+        ledMovements = [];
+        render();
+        byId("movementsTableBody").innerHTML = '<tr><td colspan="8" class="fd-empty" style="color:#dc2626">حدث خطأ أثناء تحميل البيانات</td></tr>';
+      });
+  }
+
+  function displayMovements(data) {
+    ledLoading = false;
+    ledMovements = (data && data.movements) || [];
+    ledSummary = (data && data.summary) || {};
+    byId("totalIn").textContent = F.num(ledSummary.total_in || 0);
+    byId("totalOut").textContent = F.num(ledSummary.total_out || 0);
+    byId("currentBalance").textContent = F.num(ledSummary.calculated_balance || 0);
+    byId("movementsCount").textContent = F.num(ledSummary.movements_count || 0);
+    renderHeadStrip();
+    render();
+  }
+
+  function selectLedgerProduct(id) {
+    const sel = byId("productSelector");
+    if (id && !sel.querySelector(`option[value="${CSS.escape(String(id))}"]`)) {
+      // inactive products are not in the selector; add them on demand
+      const p = ledgerProducts.find(x => x.id === Number(id));
+      const opt = document.createElement("option");
+      opt.value = String(id);
+      opt.textContent = (p ? p.name : "#" + id) + " (غير نشط)";
+      sel.appendChild(opt);
+    }
+    sel.value = id ? String(id) : "";
+    byId("ledSearch").value = "";
     loadMovements();
-  } else {
-    const empty = document.getElementById('ledgerEmptyState');
-    if (empty) empty.style.display = 'block';
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
-});
-</script>
 
-</div>
+  function clearLedgerFilters() {
+    ["ledDateFrom", "ledDateTo", "ledTypeFilter", "ledDirFilter"].forEach(id => { byId(id).value = ""; });
+    ledType = ""; ledDir = "";
+    const branchSel = byId("ledBranchFilter");
+    if (branchSel && branchSel.value) { branchSel.value = ""; loadMovements(); return; }
+    ledPage = 0;
+    render();
+  }
+
+  // ---------- Detail panel ----------
+  function ledKv(key, value) {
+    return `<div class="fd-kv-row"><span class="fd-kv-key">${key}</span><span class="fd-kv-val">${value}</span></div>`;
+  }
+
+  function referenceLink(m) {
+    const id = m.reference_id;
+    if (!id) return "";
+    if (m.reference_type === "purchase") return `<a class="fd-btn fd-btn--primary fd-btn--sm" href="/purchases/print/${id}" target="_blank" rel="noopener">فاتورة الشراء #${id}</a>`;
+    if (m.reference_type === "invoice") return `<a class="fd-btn fd-btn--primary fd-btn--sm" href="/orders/${id}">الطلب #${id}</a>`;
+    if (m.reference_type === "stock_transfer") return `<a class="fd-btn fd-btn--primary fd-btn--sm" href="/inventory/transfers/${id}">مستند النقل #${id}</a>`;
+    return "";
+  }
+
+  function openLedgerDetail(idx) {
+    const m = ledMovements[idx];
+    if (!m) return;
+    ledDetailIdx = idx;
+    const refLabel = { purchase: "فاتورة شراء", invoice: "فاتورة بيع", stock_transfer: "نقل مخزون", product: "المنتج", stock_reconciliation: "تسوية" }[m.reference_type] || (m.reference_type || "");
+    byId("ledDetailTitle").textContent = m.type_ar || "حركة مخزون";
+    byId("ledDetailSub").textContent = (ledSummary.product_name || "") + " · " + ledDate(m.date);
+    byId("ledDetailBody").innerHTML = `
+      <div class="fd-detail-status">${typePill(m)}</div>
+      <div class="fd-kv">
+        ${ledKv("التاريخ", `<span dir="ltr">${F.esc(ledDate(m.date))}</span>`)}
+        ${ledKv("الوارد", m.quantity_in > 0 ? `<span class="led-in">+${F.num(m.quantity_in)}</span>` : "—")}
+        ${ledKv("الصادر", m.quantity_out > 0 ? `<span class="led-out">-${F.num(m.quantity_out)}</span>` : "—")}
+        ${ledKv("الرصيد بعد الحركة", `<b class="led-n">${F.num(m.balance_after)}</b>`)}
+        ${ledKv("تكلفة الوحدة", F.money(m.cost_per_unit))}
+        ${ledKv("إجمالي التكلفة", `<b>${F.money(m.total_cost)}</b>`)}
+        ${ledKv("المرجع", refLabel ? F.esc(refLabel) + (m.reference_id ? ` <span dir="ltr">#${F.esc(m.reference_id)}</span>` : "") : "—")}
+        ${ledKv("الوصف", F.dash(m.description))}
+      </div>
+      ${referenceLink(m) ? `<div class="fd-detail-actions">${referenceLink(m)}</div>` : ""}`;
+    F.show(byId("ledDetail"));
+    document.querySelectorAll("#movementsTableBody tr[data-led-row]").forEach(tr => {
+      tr.classList.toggle("is-open", Number(tr.getAttribute("data-led-row")) === idx);
+    });
+  }
+
+  function closeLedgerDetail() {
+    ledDetailIdx = null;
+    F.hide(byId("ledDetail"));
+    document.querySelectorAll("#movementsTableBody tr.is-open").forEach(tr => tr.classList.remove("is-open"));
+  }
+
+  // ---------- Export / print ----------
+  function exportLedgerCsv() {
+    const cell = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+    let lines, name;
+    if (isProductMode()) {
+      lines = [["التاريخ", "نوع الحركة", "الوارد", "الصادر", "الرصيد بعد", "تكلفة الوحدة", "إجمالي التكلفة", "الوصف"].map(cell).join(",")];
+      filteredMovements().forEach(({ m }) => {
+        lines.push([ledDate(m.date), m.type_ar, m.quantity_in, m.quantity_out, m.balance_after, m.cost_per_unit, m.total_cost, m.description].map(cell).join(","));
+      });
+      name = "inventory_ledger_product_" + ledProductId + ".csv";
+    } else {
+      lines = [["المنتج", "الباركود", "الوارد", "الصادر", "الرصيد حسب الحركات", "المخزون الفعلي", "الفرق", "عدد الحركات", "متوازن"].map(cell).join(",")];
+      filteredProducts().forEach(p => {
+        lines.push([p.name, p.barcode, p.total_in, p.total_out, p.balance, p.actual, p.difference, p.count, p.balanced ? "نعم" : "لا"].map(cell).join(","));
+      });
+      name = "inventory_ledger.csv";
+    }
+    const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  function printLedger() { window.print(); }
+  window.addEventListener("beforeprint", () => { ledPrintAll = true; render(); });
+  window.addEventListener("afterprint", () => { ledPrintAll = false; render(); });
+
+  // ---------- Events ----------
+  document.addEventListener("click", event => {
+    const t = event.target;
+    if (!t.closest) return;
+    const page = t.closest("[data-led-page]");
+    if (page && !page.disabled) {
+      const v = page.getAttribute("data-led-page");
+      ledPage = v === "prev" ? ledPage - 1 : v === "next" ? ledPage + 1 : parseInt(v, 10) || 0;
+      render();
+      return;
+    }
+    const st = t.closest("[data-led-state]");
+    if (st) { ledState = st.getAttribute("data-led-state") || ""; ledPage = 0; render(); return; }
+    const ty = t.closest("[data-led-type]");
+    if (ty) { ledType = ty.getAttribute("data-led-type") || ""; byId("ledTypeFilter").value = ledType; ledPage = 0; render(); return; }
+    const dir = t.closest("[data-led-dir]");
+    if (dir) { ledDir = dir.getAttribute("data-led-dir") || ""; byId("ledDirFilter").value = ledDir; ledPage = 0; render(); return; }
+    const prodRow = t.closest("tr[data-led-product]");
+    if (prodRow && !t.closest("a, button")) { selectLedgerProduct(prodRow.getAttribute("data-led-product")); return; }
+    const row = t.closest("tr[data-led-row]");
+    if (row && !t.closest("a, button")) openLedgerDetail(Number(row.getAttribute("data-led-row")));
+  });
+
+  document.addEventListener("DOMContentLoaded", () => {
+    try { ledgerProducts = JSON.parse(byId("ledgerData").textContent); } catch (e) { ledgerProducts = []; }
+    const size = byId("ledPageSize");
+    size.value = String(ledPageSize());
+    size.addEventListener("change", () => {
+      try { localStorage.setItem(LED_PAGE_SIZE_KEY, size.value); } catch (e) { /* storage unavailable */ }
+      ledPage = 0;
+      render();
+    });
+    byId("productSelector").addEventListener("change", () => { byId("ledSearch").value = ""; loadMovements(); });
+    byId("ledSearch").addEventListener("input", () => { ledPage = 0; render(); });
+    ["ledDateFrom", "ledDateTo"].forEach(id => byId(id).addEventListener("change", () => { ledPage = 0; render(); }));
+    byId("ledTypeFilter").addEventListener("change", e => { ledType = e.target.value; ledPage = 0; render(); });
+    byId("ledDirFilter").addEventListener("change", e => { ledDir = e.target.value; ledPage = 0; render(); });
+    const branchSel = byId("ledBranchFilter");
+    if (branchSel) branchSel.addEventListener("change", () => { if (ledProductId) loadMovements(); else syncFilterBadge(); });
+
+    // Auto-load if product_id in URL
+    const productId = new URLSearchParams(window.location.search).get("product_id");
+    if (productId && byId("productSelector").querySelector(`option[value="${CSS.escape(productId)}"]`)) {
+      byId("productSelector").value = productId;
+      loadMovements();
+    } else {
+      render();
+    }
+  });
+</script>
 {% endblock %}

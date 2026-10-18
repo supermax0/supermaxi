@@ -46,6 +46,16 @@ def inventory_ledger():
     if selected_product_id:
         selected_movements = get_product_inventory_movements(selected_product_id)
         selected_summary = get_product_inventory_summary(selected_product_id)
+
+    # الفروع النشطة (لتصفية الحركات حسب الفرع)
+    branches = []
+    try:
+        from models.branch import Branch
+
+        branches = Branch.query.filter_by(is_active=True).order_by(Branch.name).all()
+    except Exception:
+        db.session.rollback()
+        branches = []
     
     return render_template(
         "inventory_ledger.html",
@@ -57,7 +67,8 @@ def inventory_ledger():
         balanced_count=balanced_count,
         selected_product_id=selected_product_id,
         selected_movements=selected_movements,
-        selected_summary=selected_summary
+        selected_summary=selected_summary,
+        branches=branches,
     )
 
 
@@ -70,8 +81,37 @@ def get_product_movements(product_id):
     if not check_permission("can_manage_inventory"):
         return jsonify({"error": "Unauthorized"}), 403
     
-    movements = get_product_inventory_movements(product_id)
-    summary = get_product_inventory_summary(product_id)
+    branch_id = request.args.get("branch_id", type=int)
+    if branch_id:
+        # حركات فرع محدد: الملخص يُحسب من حركات هذا الفرع فقط
+        movements = get_product_inventory_movements(product_id, branch_id=branch_id)
+        product = Product.query.get(product_id)
+        total_in = sum(int(m.get("quantity_in") or 0) for m in movements)
+        total_out = sum(int(m.get("quantity_out") or 0) for m in movements)
+        balance = movements[-1]["balance_after"] if movements else 0
+        actual = balance
+        try:
+            from models.branch import BranchStock
+
+            row = BranchStock.query.filter_by(product_id=product_id, branch_id=branch_id).first()
+            actual = int(row.quantity or 0) if row else 0
+        except Exception:
+            db.session.rollback()
+        summary = {
+            "product_id": product_id,
+            "product_name": product.name if product else "",
+            "total_in": total_in,
+            "total_out": total_out,
+            "calculated_balance": balance,
+            "actual_quantity": actual,
+            "movements_count": len(movements),
+            "is_balanced": balance == actual,
+            "difference": actual - balance,
+            "branch_id": branch_id,
+        }
+    else:
+        movements = get_product_inventory_movements(product_id)
+        summary = get_product_inventory_summary(product_id)
     
     return jsonify({
         "product": {
