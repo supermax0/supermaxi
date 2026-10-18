@@ -2422,3 +2422,25 @@
   max-height: none !important;
   margin-inline: 0 !important;
 }
+
+/* Checkbox row with a title and hint (drawer forms) */
+#fdPage .fd-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+#fdPage .fd-check input[type="checkbox"] {
+  flex: 0 0 auto;
+  width: 18px !important;
+  height: 18px !important;
+  min-height: 0 !important;
+  margin: 2px 0 0 !important;
+  padding: 0 !important;
+}
+
+#fdPage .fd-check small {
+  margin-top: 2px;
+  font-size: 13px;
+}
