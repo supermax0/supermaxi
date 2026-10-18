@@ -1,538 +1,1164 @@
 /* ======================================================
-   ORDERS PAGE — DESKTOP APP LAYOUT
-   Ribbon toolbar + status tabs + dense data grid + status bar,
-   modelled on classic desktop accounting software.
-   Applies only on wide screens; mobile/tablet keep orders-mobile.css.
+   ORDERS PAGE — FINORA DESKTOP LAYOUT
+   Same look as the Finora desktop app: header, one toolbar row,
+   status tabs with counts, roomy table with pills, footer pager.
+   Breakpoints (match ordersLayoutMode() in orders.html):
+     >= 1200px  full table
+     861–1199   compact table (address / agent hidden)
+     <= 860px   one card per order, popovers become bottom sheets
+   Everything is scoped under #ordersFd so it wins over the older
+   inline orders styles, orders-mobile.css and design-refresh.css.
 ====================================================== */
 
-/* Status tabs and status bar are desktop-only */
-.orders-desk-tabs,
-.orders-statusbar {
+#ordersFd {
+  --fd-surface: #ffffff;
+  --fd-soft: #f7f8fb;
+  --fd-border: #e7e9ef;
+  --fd-border-strong: #dcdfe7;
+  --fd-text: #1d2230;
+  --fd-text-2: #3b4252;
+  --fd-muted: #6b7280;
+  --fd-faint: #9aa1ad;
+  --fd-purple: #6c3fd1;
+  --fd-purple-soft: #f1ecfd;
+  --fd-wine: #8e2147;
+  --fd-wine-hover: #7a1c3d;
+  --fd-wine-soft: #fdf1f4;
+  --fd-wine-border: #efc6d3;
+  --fd-green: #15803d;
+  --fd-green-soft: #ecfbf2;
+  --fd-green-border: #a7e3c0;
+  --fd-radius: 14px;
+  --fd-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.04);
+
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  color: var(--fd-text);
+  font-family: "Tajawal", "IBM Plex Sans Arabic", Tahoma, Arial, sans-serif;
+}
+
+/* The page header below replaces the topbar title on larger screens */
+@media (min-width: 861px) {
+  body:has(#ordersFd) .topbar .page-title {
+    visibility: hidden;
+  }
+}
+
+#ordersFd .ofd-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---------- Header ---------- */
+#ordersFd .ofd-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+#ordersFd .ofd-header-icon {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  background: var(--fd-surface);
+  border: 1px solid var(--fd-border);
+  box-shadow: 0 4px 14px rgba(142, 33, 71, 0.08);
+  color: var(--fd-wine);
+}
+
+#ordersFd .ofd-title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.25;
+  color: var(--fd-text);
+}
+
+#ordersFd .ofd-subtitle {
+  margin: 2px 0 0;
+  font-size: 14px;
+  color: var(--fd-muted);
+}
+
+/* ---------- Toolbar ---------- */
+#ordersFd .ofd-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#ordersFd .ofd-tools-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#ordersFd .ofd-pop-wrap {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+#ordersFd .ofd-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  height: 48px !important;
+  min-height: 48px !important;
+  min-width: 0 !important;
+  padding: 0 18px !important;
+  margin: 0 !important;
+  border: 1px solid var(--fd-border-strong) !important;
+  border-radius: var(--fd-radius) !important;
+  background: var(--fd-surface) !important;
+  color: var(--fd-text) !important;
+  font: inherit !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+  transform: none !important;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease !important;
+}
+
+#ordersFd .ofd-btn:hover {
+  border-color: #c9cdd8 !important;
+  background: var(--fd-soft) !important;
+  transform: none !important;
+}
+
+#ordersFd .ofd-btn:focus-visible,
+#ordersFd .ofd-tab:focus-visible,
+#ordersFd .ofd-page:focus-visible {
+  outline: 2px solid var(--fd-purple) !important;
+  outline-offset: 2px !important;
+}
+
+#ordersFd .ofd-btn svg {
+  flex: 0 0 auto !important;
+}
+
+#ordersFd .ofd-btn .ofd-chevron {
+  color: var(--fd-muted) !important;
+}
+
+#ordersFd .ofd-btn[aria-expanded="true"] .ofd-chevron {
+  transform: rotate(180deg) !important;
+}
+
+#ordersFd .ofd-btn--rose-soft {
+  border-color: var(--fd-wine-border) !important;
+  background: var(--fd-wine-soft) !important;
+  color: var(--fd-wine) !important;
+}
+
+#ordersFd .ofd-btn--rose-soft:hover {
+  border-color: #e3a9bc !important;
+  background: #fbe6ec !important;
+}
+
+#ordersFd .ofd-btn--rose {
+  border-color: var(--fd-wine) !important;
+  background: var(--fd-wine) !important;
+  color: #ffffff !important;
+}
+
+#ordersFd .ofd-btn--rose:hover {
+  border-color: var(--fd-wine-hover) !important;
+  background: var(--fd-wine-hover) !important;
+}
+
+#ordersFd .ofd-btn--rose:disabled {
+  border-color: #d9a9b9 !important;
+  background: #d9a9b9 !important;
+  color: #ffffff !important;
+  cursor: not-allowed !important;
+}
+
+#ordersFd .ofd-btn--muted {
+  color: var(--fd-muted) !important;
+  font-weight: 600 !important;
+}
+
+#ordersFd .ofd-btn--accent {
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 16px !important;
+  border-color: var(--fd-purple) !important;
+  background: var(--fd-purple) !important;
+  color: #ffffff !important;
+  font-size: 14px !important;
+}
+
+#ordersFd .ofd-btn--accent:hover {
+  border-color: #5a31b8 !important;
+  background: #5a31b8 !important;
+}
+
+#ordersFd .ofd-btn--ghost {
+  height: 40px !important;
+  min-height: 40px !important;
+  padding: 0 14px !important;
+  font-size: 14px !important;
+  color: var(--fd-muted) !important;
+}
+
+#ordersFd .ofd-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--fd-purple);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+#ordersFd .ofd-count-badge[hidden] {
   display: none;
 }
 
-@media (min-width: 1025px) {
+#ordersFd .ofd-count-badge--light {
+  background: rgba(255, 255, 255, 0.25);
+}
 
-  /* ---------- Palette ----------
-     The app shell (design-refresh.css) is white in both themes,
-     so the desktop palette stays light to match it. */
-  .orders-desk {
-    --desk-bg: #eef1f5;
-    --desk-panel: #ffffff;
-    --desk-ribbon: linear-gradient(180deg, #fdfdfe 0%, #f1f4f8 100%);
-    --desk-border: #c8d0da;
-    --desk-border-soft: #e1e6ec;
-    --desk-text: #1f2937;
-    --desk-muted: #5b6573;
-    --desk-accent: #1d6fd8;
-    --desk-accent-soft: #dbe9fb;
-    --desk-btn: linear-gradient(180deg, #ffffff 0%, #e8ecf1 100%);
-    --desk-btn-hover: linear-gradient(180deg, #f4f8fd 0%, #dce8f7 100%);
-    --desk-btn-border: #b5c0cd;
-    --desk-input: #ffffff;
-    --desk-grid-header: linear-gradient(180deg, #f8f9fb 0%, #e7ebf0 100%);
-    --desk-grid-odd: #f6f8fa;
-    --desk-grid-hover: #e8f1fd;
-    --desk-grid-selected: #cfe2fb;
-    --desk-grid-line: #e0e5eb;
-    --desk-total-bg: #fff8e1;
-    --desk-statusbar: linear-gradient(180deg, #f3f5f8 0%, #e4e8ee 100%);
+/* Search */
+#ordersFd .ofd-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+}
 
-    display: flex;
-    flex-direction: column;
-    gap: 0;
-    color: var(--desk-text);
-    font-family: "Tajawal", Tahoma, Arial, sans-serif;
+#ordersFd .ofd-search svg {
+  position: absolute;
+  inset-inline-start: 16px;
+  color: var(--fd-faint);
+  pointer-events: none;
+}
+
+#ordersFd .ofd-search input {
+  width: 100% !important;
+  height: 48px !important;
+  min-height: 48px !important;
+  padding-block: 0 !important;
+  padding-inline-start: 46px !important;
+  padding-inline-end: 16px !important;
+  border: 1px solid var(--fd-border-strong) !important;
+  border-radius: var(--fd-radius) !important;
+  background: var(--fd-surface) !important;
+  color: var(--fd-text) !important;
+  font: inherit !important;
+  font-size: 15px !important;
+  box-shadow: none !important;
+}
+
+#ordersFd .ofd-search input::placeholder {
+  color: var(--fd-faint) !important;
+}
+
+#ordersFd .ofd-search input:focus {
+  outline: none !important;
+  border-color: var(--fd-purple) !important;
+  box-shadow: 0 0 0 3px rgba(108, 63, 209, 0.12) !important;
+}
+
+/* ---------- Popovers ---------- */
+#ordersFd .ofd-pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  inset-inline-start: 0;
+  z-index: 60;
+  width: max-content;
+  min-width: 280px;
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 16px;
+  border: 1px solid var(--fd-border);
+  border-radius: 16px;
+  background: var(--fd-surface);
+  box-shadow: 0 18px 48px rgba(16, 24, 40, 0.16);
+}
+
+#ordersFd .ofd-pop[hidden] {
+  display: none;
+}
+
+#ordersFd .ofd-pop--end {
+  inset-inline-start: auto;
+  inset-inline-end: 0;
+}
+
+#ordersFd .ofd-pop-head {
+  margin-bottom: 12px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--fd-text);
+}
+
+#ordersFd .ofd-pop-sub {
+  margin-inline-start: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fd-muted);
+}
+
+#ordersFd .ofd-pop-hint {
+  margin: -4px 0 10px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--fd-muted);
+}
+
+#ordersFd .ofd-pop-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+#ordersFd .ofd-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(200px, 1fr));
+  gap: 10px 12px;
+}
+
+#ordersFd .ofd-field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--fd-muted);
+}
+
+#ordersFd .ofd-pop select,
+#ordersFd .ofd-pop input[type="date"],
+#ordersFd .ofd-input {
+  width: 100% !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  padding: 0 12px !important;
+  border: 1px solid var(--fd-border-strong) !important;
+  border-radius: 10px !important;
+  background: var(--fd-surface) !important;
+  color: var(--fd-text) !important;
+  font: inherit !important;
+  font-size: 14px !important;
+  box-shadow: none !important;
+}
+
+#ordersFd .ofd-pop select:focus,
+#ordersFd .ofd-pop input:focus {
+  outline: none !important;
+  border-color: var(--fd-purple) !important;
+  box-shadow: 0 0 0 3px rgba(108, 63, 209, 0.12) !important;
+}
+
+#ordersFd .ofd-note {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border: 1px solid;
+  border-radius: 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #92400e;
+}
+
+#ordersFd .ofd-assign-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+#ordersFd .ofd-assign-row select {
+  flex: 1 1 auto !important;
+  min-width: 220px !important;
+}
+
+#ordersFd .ofd-scan-log {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 10px;
+  font-size: 13px;
+}
+
+#ordersFd .ofd-scan-item {
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-weight: 700;
+}
+
+#ordersFd .ofd-scan-item.is-ok {
+  background: var(--fd-green-soft);
+  color: var(--fd-green);
+}
+
+#ordersFd .ofd-scan-item.is-miss {
+  background: #fdecee;
+  color: #b91c1c;
+}
+
+/* «إجراءات» menu */
+#ordersFd .ofd-menu {
+  min-width: 260px;
+  padding: 6px;
+}
+
+#ordersFd .ofd-menu-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  min-height: 42px !important;
+  height: auto !important;
+  padding: 8px 12px !important;
+  border: 0 !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: var(--fd-text) !important;
+  font: inherit !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  text-align: start !important;
+  cursor: pointer !important;
+}
+
+#ordersFd .ofd-menu-item:hover {
+  background: var(--fd-soft) !important;
+}
+
+#ordersFd .ofd-menu-sep {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--fd-border);
+}
+
+#ordersFd .ofd-menu-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 6px 8px 8px;
+}
+
+#ordersFd .ofd-menu-caption {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--fd-muted);
+}
+
+.ofd-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 55;
+  background: rgba(15, 23, 42, 0.35);
+}
+
+.ofd-backdrop[hidden] {
+  display: none;
+}
+
+/* ---------- Status tabs ---------- */
+#ordersFd .ofd-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  border: 1px solid var(--fd-border);
+  border-radius: 16px;
+  background: var(--fd-surface);
+  box-shadow: var(--fd-shadow);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+#ordersFd .ofd-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+#ordersFd .ofd-tab {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  flex: 0 0 auto !important;
+  padding: 10px 18px !important;
+  border-radius: 12px !important;
+  color: var(--fd-text-2) !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  text-decoration: none !important;
+  white-space: nowrap !important;
+  transition: background 0.15s ease, color 0.15s ease !important;
+}
+
+#ordersFd .ofd-tab:hover {
+  background: var(--fd-soft) !important;
+  color: var(--fd-text) !important;
+}
+
+#ordersFd .ofd-tab.active {
+  background: var(--fd-purple-soft) !important;
+  color: var(--fd-purple) !important;
+}
+
+#ordersFd .ofd-tab-count {
+  padding: 2px 9px !important;
+  border-radius: 8px !important;
+  background: #f1f2f6 !important;
+  color: var(--fd-muted) !important;
+  font-size: 12.5px !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+#ordersFd .ofd-tab.active .ofd-tab-count {
+  background: rgba(108, 63, 209, 0.12) !important;
+  color: var(--fd-purple) !important;
+}
+
+/* ---------- Table card ---------- */
+#ordersFd .ofd-table-card {
+  border: 1px solid var(--fd-border);
+  border-radius: 16px;
+  background: var(--fd-surface);
+  box-shadow: var(--fd-shadow);
+  overflow: hidden;
+}
+
+#ordersFd .ofd-grid-wrap {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  max-height: none;
+  overflow: visible;
+  background: transparent;
+}
+
+#ordersFd #ordersTable {
+  --ag-background-color: var(--fd-surface);
+  --ag-foreground-color: var(--fd-text);
+  --ag-data-color: var(--fd-text);
+  --ag-border-color: transparent;
+  --ag-row-border-color: #eef0f4;
+  --ag-row-border-width: 1px;
+  --ag-header-background-color: var(--fd-soft);
+  --ag-header-foreground-color: var(--fd-text-2);
+  --ag-header-column-separator-display: none;
+  --ag-header-column-resize-handle-display: none;
+  --ag-odd-row-background-color: var(--fd-surface);
+  --ag-row-hover-color: #fafaff;
+  --ag-selected-row-background-color: #f6f2ff;
+  --ag-checkbox-checked-color: var(--fd-purple);
+  --ag-checkbox-unchecked-color: #c5cad4;
+  --ag-checkbox-border-radius: 6px;
+  --ag-input-focus-border-color: var(--fd-purple);
+  --ag-range-selection-border-color: transparent;
+  --ag-cell-horizontal-padding: 14px;
+  --ag-wrapper-border-radius: 0;
+  --ag-font-size: 15px;
+  --ag-font-family: "Tajawal", "IBM Plex Sans Arabic", Tahoma, Arial, sans-serif;
+  font-family: var(--ag-font-family);
+}
+
+#ordersFd #ordersTable .ag-root-wrapper {
+  border: 0 !important;
+  border-radius: 0 !important;
+}
+
+#ordersFd #ordersTable .ag-header {
+  border-bottom: 1px solid var(--fd-border) !important;
+  background: var(--fd-soft) !important;
+}
+
+:root #ordersFd #ordersTable .ag-header-cell,
+:root #ordersFd #ordersTable .ag-header-group-cell {
+  background: transparent !important;
+  color: var(--fd-text-2) !important;
+}
+
+#ordersFd #ordersTable .ag-header-cell-label {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+:root #ordersFd #ordersTable .ag-row .ag-cell {
+  display: flex;
+  align-items: center;
+  border: 0 !important;
+  color: var(--fd-text) !important;
+  background-color: transparent !important;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+:root #ordersFd #ordersTable .ag-row,
+:root #ordersFd #ordersTable .ag-row-odd,
+:root #ordersFd #ordersTable .ag-row-even {
+  background-color: var(--fd-surface) !important;
+}
+
+:root #ordersFd #ordersTable .ag-row:hover {
+  background-color: #fafaff !important;
+}
+
+:root #ordersFd #ordersTable .ag-row-selected,
+:root #ordersFd #ordersTable .ag-row-selected:hover {
+  background-color: #f6f2ff !important;
+}
+
+:root #ordersFd #ordersTable .ag-row.order-row-stock-shortage {
+  background-color: #fff5f5 !important;
+}
+
+#ordersFd #ordersTable .ag-cell-focus,
+#ordersFd #ordersTable .ag-cell:focus-within {
+  outline: none;
+  border-color: transparent !important;
+}
+
+#ordersFd #ordersTable .ag-cell[col-id="checkbox"],
+#ordersFd #ordersTable .ag-header-cell[col-id="checkbox"] {
+  justify-content: center;
+  padding-inline: 0 !important;
+}
+
+#ordersFd .ofd-cell-id {
+  font-size: 17px;
+  font-weight: 800;
+  color: #111827 !important;
+  font-variant-numeric: tabular-nums;
+}
+
+#ordersFd .ofd-cell-amount {
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+#ordersFd .ofd-cell-muted {
+  color: var(--fd-text-2) !important;
+  font-variant-numeric: tabular-nums;
+}
+
+#ordersFd .ofd-muted {
+  color: var(--fd-faint);
+  font-size: 13.5px;
+}
+
+#ordersFd .ofd-cust {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+#ordersFd .ofd-cust-name {
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#ordersFd .ofd-cust-phone {
+  color: var(--fd-muted);
+  font-size: 13.5px;
+  letter-spacing: 0.02em;
+  text-align: end;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Status pills */
+#ordersFd .ofd-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.2;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#ordersFd .ofd-pill--blue { background: #eaf2ff; color: #2563eb; }
+#ordersFd .ofd-pill--green { background: #e8f8ef; color: #16a34a; }
+#ordersFd .ofd-pill--purple { background: var(--fd-purple-soft); color: var(--fd-purple); }
+#ordersFd .ofd-pill--sky { background: #e3f4fb; color: #0b7fae; }
+#ordersFd .ofd-pill--red { background: #fdecee; color: #dc2626; }
+#ordersFd .ofd-pill--amber { background: #fff4dc; color: #b45309; }
+
+/* Payment */
+#ordersFd .ofd-pay-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  padding: 0 16px !important;
+  border: 1px solid var(--fd-green-border) !important;
+  border-radius: 999px !important;
+  background: var(--fd-green-soft) !important;
+  color: var(--fd-green) !important;
+  font: inherit !important;
+  font-size: 14px !important;
+  font-weight: 800 !important;
+  line-height: 1 !important;
+  white-space: nowrap !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+}
+
+#ordersFd .ofd-pay-btn:hover {
+  border-color: #6fcf97 !important;
+  background: #dcf7e7 !important;
+}
+
+#ordersFd .ofd-pay-text {
+  font-size: 14px;
+  font-weight: 800;
+}
+
+#ordersFd .ofd-pay-text--green { color: #16a34a; }
+#ordersFd .ofd-pay-text--amber { color: #b45309; }
+#ordersFd .ofd-pay-text--red { color: #dc2626; }
+#ordersFd .ofd-pay-text--muted { color: var(--fd-muted); }
+
+/* Row actions: only the ⋯ button */
+:root #ordersFd .ag-cell.orders-actions-cell {
+  /* the older inline styles force 190px for the old three-button cell */
+  min-width: 0 !important;
+  max-width: none !important;
+  justify-content: center;
+  overflow: visible !important;
+  padding-inline: 0 !important;
+}
+
+#ordersFd .orders-row-actions {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  min-width: 0 !important;
+  width: auto !important;
+  gap: 0 !important;
+  padding: 0 !important;
+}
+
+#ordersFd .orders-row-actions .orders-actions-trigger,
+#ordersFd .orders-row-actions button.orders-actions-trigger {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 44px !important;
+  min-width: 44px !important;
+  max-width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  max-height: 44px !important;
+  padding: 0 !important;
+  border: 1px solid var(--fd-border-strong) !important;
+  border-radius: 12px !important;
+  background: var(--fd-surface) !important;
+  color: var(--fd-text-2) !important;
+  box-shadow: none !important;
+}
+
+#ordersFd .orders-row-actions .orders-actions-trigger:hover,
+#ordersFd .orders-row-actions .orders-actions-trigger[aria-expanded="true"] {
+  border-color: #c9cdd8 !important;
+  background: var(--fd-soft) !important;
+}
+
+#ordersFd .orders-row-actions .orders-actions-trigger::before {
+  content: "⋯" !important;
+  font-size: 20px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0;
+}
+
+/* ---------- Footer: page size + pager ---------- */
+#ordersFd .ofd-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+#ordersFd .ofd-footer-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  color: var(--fd-muted);
+  font-size: 15px;
+}
+
+#ordersFd .ofd-footer-info b {
+  color: var(--fd-text);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+#ordersFd #ofdPageSize {
+  width: auto !important;
+  height: 46px !important;
+  min-height: 46px !important;
+  padding: 0 14px !important;
+  border: 1px solid var(--fd-border-strong) !important;
+  border-radius: 12px !important;
+  background: var(--fd-surface) !important;
+  color: var(--fd-text) !important;
+  font: inherit !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  cursor: pointer !important;
+}
+
+#ordersFd .ofd-totals {
+  font-size: 14px;
+}
+
+#ordersFd .ofd-pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--fd-border);
+  border-radius: 16px;
+  background: var(--fd-surface);
+  box-shadow: var(--fd-shadow);
+}
+
+#ordersFd .ofd-pager:empty {
+  display: none;
+}
+
+#ordersFd .ofd-page {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  padding: 0 10px !important;
+  border: 0 !important;
+  border-radius: 12px !important;
+  background: transparent !important;
+  color: var(--fd-text-2) !important;
+  font: inherit !important;
+  font-size: 16px !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+}
+
+#ordersFd .ofd-page:hover:not(:disabled) {
+  background: var(--fd-soft) !important;
+}
+
+#ordersFd .ofd-page.active {
+  background: var(--fd-purple) !important;
+  color: #ffffff !important;
+}
+
+#ordersFd .ofd-page:disabled {
+  color: #c5cad4 !important;
+  cursor: default !important;
+}
+
+#ordersFd .ofd-page-gap {
+  padding: 0 4px !important;
+  color: var(--fd-muted) !important;
+  font-weight: 700 !important;
+}
+
+/* ======================================================
+   Cards — one per order (set by ordersLayoutMode() when the
+   table is too narrow for columns: phones, iPad portrait, ...)
+====================================================== */
+:root #ordersFd .ag-cell.ofd-card-cell > * {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+}
+
+:root #ordersFd .ag-cell.ofd-card-cell {
+  align-items: stretch;
+  padding-block: 12px;
+  line-height: 1.35;
+}
+
+#ordersFd .ofd-card {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+}
+
+#ordersFd .ofd-card-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+#ordersFd .ofd-card-id {
+  font-size: 17px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+#ordersFd .ofd-card .ofd-cust {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+}
+
+#ordersFd .ofd-card .ofd-cust-name {
+  font-size: 15px;
+}
+
+#ordersFd .ofd-card .ofd-cust-phone {
+  font-size: 13px;
+}
+
+#ordersFd .ofd-card-date {
+  flex: 0 0 auto;
+  color: var(--fd-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+#ordersFd .ofd-card-meta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  overflow: hidden;
+  color: var(--fd-muted);
+  font-size: 13.5px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+#ordersFd .ofd-card-agent {
+  flex: 0 0 auto;
+}
+
+#ordersFd .ofd-card-amount {
+  font-size: 16px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+#ordersFd .ofd-card-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#ordersFd .ofd-card .ofd-pay-btn {
+  height: 36px !important;
+  min-height: 36px !important;
+  padding: 0 12px !important;
+}
+
+#ordersFd .ofd-card .orders-row-actions .orders-actions-trigger {
+  width: 38px !important;
+  min-width: 38px !important;
+  max-width: 38px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+  border-radius: 10px !important;
+}
+
+/* ======================================================
+   Compact table (iPad landscape / small laptops)
+====================================================== */
+@media (max-width: 1199px) {
+  #ordersFd .ofd-toolbar {
+    flex-wrap: wrap;
   }
 
-  /* ---------- Status tabs (tab control) ---------- */
-  #ordersDesk .orders-desk-tabs {
-    display: flex;
-    align-items: flex-end;
-    gap: 2px;
-    padding: 0 6px;
-    margin-bottom: -1px;
-    position: relative;
-    z-index: 1;
+  #ordersFd .ofd-tool--search {
+    order: -1;
+    flex: 1 1 100%;
+  }
+
+  #ordersFd .ofd-tools-row {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  #ordersFd .ofd-tools-row .ofd-pop-wrap:last-child {
+    margin-inline-start: auto;
+  }
+
+  #ordersFd .ofd-btn {
+    padding: 0 14px !important;
+  }
+
+  #ordersFd #ordersTable {
+    --ag-cell-horizontal-padding: 10px;
+    --ag-font-size: 14px;
+  }
+
+  #ordersFd .ofd-cell-id {
+    font-size: 16px;
+  }
+}
+
+/* ======================================================
+   Cards (phones / iPad portrait)
+====================================================== */
+@media (max-width: 860px) {
+  #ordersFd {
+    gap: 12px;
+  }
+
+  #ordersFd .ofd-header {
+    display: none;
+  }
+
+  #ordersFd .ofd-toolbar {
+    gap: 8px;
+  }
+
+  #ordersFd .ofd-search input {
+    height: 46px !important;
+    min-height: 46px !important;
+    font-size: 16px !important; /* stops iOS zoom on focus */
+  }
+
+  /* Tool buttons scroll sideways instead of wrapping */
+  #ordersFd .ofd-tools-row {
+    flex: 1 1 0;
+    min-width: 0;
+    gap: 8px;
     overflow-x: auto;
     scrollbar-width: none;
   }
 
-  #ordersDesk .orders-desk-tab {
-    flex: 0 0 auto;
-    padding: 7px 16px 6px;
-    border: 1px solid var(--desk-border);
-    border-bottom-color: transparent;
-    border-radius: 5px 5px 0 0;
-    background: var(--desk-bg);
-    color: var(--desk-muted);
-    font-size: 13px;
-    font-weight: 600;
-    text-decoration: none;
-    white-space: nowrap;
-    transition: background 0.12s ease, color 0.12s ease;
-  }
-
-  #ordersDesk .orders-desk-tab:hover {
-    background: var(--desk-panel);
-    color: var(--desk-text);
-  }
-
-  #ordersDesk .orders-desk-tab.active {
-    background: #fdfdfe;
-    color: var(--desk-accent);
-    border-bottom-color: #fdfdfe;
-    font-weight: 800;
-    box-shadow: inset 0 2px 0 var(--desk-accent);
-  }
-
-  /* ---------- Ribbon toolbar ---------- */
-  #ordersDesk .orders-toolbar {
-    flex-direction: row !important;
-    flex-wrap: wrap;
-    align-items: stretch;
-    gap: 0 !important;
-    margin: 0 !important;
-    padding: 6px 4px 0 !important;
-    border: 1px solid var(--desk-border) !important;
-    border-radius: 0 4px 0 0 !important;
-    background: var(--desk-ribbon) !important;
-    box-shadow: none !important;
-  }
-
-  #ordersDesk .orders-toolbar-block,
-  #ordersDesk .orders-toolbar-block--collapsible {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    justify-content: space-between;
-    gap: 4px !important;
-    padding: 2px 10px 0 !important;
-    border: 0 !important;
-    border-inline-start: 1px solid var(--desk-border-soft) !important;
-  }
-
-  #ordersDesk .orders-toolbar-block:first-of-type {
-    border-inline-start: 0 !important;
-  }
-
-  /* Filters absorb the spare ribbon width; bulk and reports keep their size */
-  #ordersDesk .orders-toolbar-block--collapsible {
-    flex: 1 1 420px;
-    min-width: 0;
-  }
-
-  #ordersDesk #bulkActionsSection,
-  #ordersDesk #reportsSection {
-    flex: 0 0 auto;
-  }
-
-  /* Filters stay visible on desktop: the ribbon has no collapsed state */
-  #ordersDesk .orders-toolbar-toggle {
-    display: contents !important;
-    cursor: default;
-  }
-
-  #ordersDesk .orders-toolbar-toggle-icon {
-    display: none !important;
-  }
-
-  #ordersDesk .orders-toolbar-block--collapsible.collapsed .orders-toolbar-panel,
-  #ordersDesk .orders-toolbar-panel {
-    display: flex !important;
-    order: 1;
-  }
-
-  /* Group caption sits under the group, as in a ribbon */
-  #ordersDesk .orders-toolbar-kicker {
-    order: 2;
-    min-width: 0 !important;
-    width: auto !important;
-    margin: 0 -10px;
-    padding: 3px 6px 4px;
-    font-size: 11px !important;
-    font-weight: 600 !important;
-    color: var(--desk-muted) !important;
-    text-align: center;
-    border-top: 1px solid var(--desk-border-soft);
-    letter-spacing: 0;
-  }
-
-  #ordersDesk .filters-grid {
-    display: flex !important;
-    flex-wrap: wrap !important;
-    gap: 4px 6px !important;
-    align-items: center;
-  }
-
-  #ordersDesk .filters-grid .finora-help {
-    margin-inline-start: -2px;
-  }
-
-  #ordersDesk .orders-scan-badge {
-    padding: 3px 8px;
-    font-size: 11.5px;
-    border-radius: 3px;
-  }
-
-  #ordersDesk .bulk-actions {
-    display: flex !important;
-    flex-direction: column !important;
-    flex-wrap: nowrap !important;
-    align-items: stretch !important;
-    gap: 4px !important;
-  }
-
-  #ordersDesk .action-group {
-    display: flex !important;
-    width: auto !important;
-    gap: 4px !important;
-  }
-
-  #ordersDesk .report-section {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: stretch !important;
-    gap: 4px !important;
-  }
-
-  /* ---------- Desktop form controls ---------- */
-  #ordersDesk .filters-grid select,
-  #ordersDesk .date-filter,
-  #ordersDesk .bulk-actions select,
-  #ordersDesk .report-section select,
-  #ordersDesk .action-group select {
-    width: 100% !important;
-    min-width: 0 !important;
-    max-width: none !important;
-    flex: 0 0 auto !important;
-    height: 27px !important;
-    min-height: 27px !important;
-    padding: 0 8px !important;
-    border: 1px solid var(--desk-btn-border) !important;
-    border-radius: 3px !important;
-    background-color: var(--desk-input) !important;
-    color: var(--desk-text) !important;
-    font-size: 12.5px !important;
-    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05) !important;
-  }
-
-  #ordersDesk .filters-grid select,
-  #ordersDesk .filters-grid .date-filter {
-    width: auto !important;
-    min-width: 132px !important;
-    max-width: 190px !important;
-    flex: 1 1 150px !important;
-  }
-
-  #ordersDesk .action-group select {
-    width: 150px !important;
-    flex: 1 1 150px !important;
-  }
-
-  #ordersDesk .filters-grid select:focus,
-  #ordersDesk .date-filter:focus,
-  #ordersDesk .bulk-actions select:focus,
-  #ordersDesk .report-section select:focus,
-  #ordersDesk .orders-table-search input:focus {
-    outline: none !important;
-    border-color: var(--desk-accent) !important;
-    box-shadow: 0 0 0 1px var(--desk-accent) !important;
-  }
-
-  /* Classic raised buttons */
-  #ordersDesk .orders-toolbar .btn,
-  #ordersDesk .orders-table-toolbar .btn {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center;
-    gap: 5px !important;
-    height: 27px !important;
-    min-height: 27px !important;
-    padding: 0 10px !important;
-    border: 1px solid var(--desk-btn-border) !important;
-    border-radius: 3px !important;
-    background: var(--desk-btn) !important;
-    color: var(--desk-text) !important;
-    font-size: 12.5px !important;
-    font-weight: 600 !important;
-    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04) !important;
-    transform: none !important;
-    white-space: nowrap;
-  }
-
-  #ordersDesk .orders-toolbar .btn:hover,
-  #ordersDesk .orders-table-toolbar .btn:hover {
-    background: var(--desk-btn-hover) !important;
-    border-color: var(--desk-accent) !important;
-    transform: none !important;
-  }
-
-  #ordersDesk .orders-toolbar .btn:active,
-  #ordersDesk .orders-table-toolbar .btn:active {
-    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.15) !important;
-  }
-
-  /* Primary "apply" buttons keep the accent so the default action reads */
-  #ordersDesk .action-group .btn-primary {
-    min-width: 64px;
-    border-color: var(--desk-accent) !important;
-    background: linear-gradient(180deg, #3c8af0 0%, #1d6fd8 100%) !important;
-    color: #ffffff !important;
-  }
-
-  #ordersDesk .action-group .btn-primary:hover {
-    background: linear-gradient(180deg, #4a95f5 0%, #1a63c4 100%) !important;
-  }
-
-  #ordersDesk .btn span:first-child {
-    font-size: 13px;
-    line-height: 1;
-  }
-
-  /* ---------- Orders panel ---------- */
-  #ordersDesk .orders-card {
-    margin: 0 !important;
-    padding: 0 !important;
-    border: 1px solid var(--desk-border) !important;
-    border-top: 0 !important;
-    border-radius: 0 0 4px 4px !important;
-    background: var(--desk-panel) !important;
-    backdrop-filter: none !important;
-    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06) !important;
-    overflow: hidden;
-  }
-
-  /* Command bar above the grid */
-  #ordersDesk .orders-table-toolbar {
-    flex-direction: row !important;
-    align-items: center !important;
-    flex-wrap: wrap;
-    gap: 8px !important;
-    margin: 0 !important;
-    padding: 5px 8px !important;
-    border-bottom: 1px solid var(--desk-border) !important;
-    background: var(--desk-ribbon) !important;
-  }
-
-  #ordersDesk .orders-table-search {
-    flex: 0 0 220px;
-    width: 220px !important;
-  }
-
-  #ordersDesk .orders-table-search input {
-    height: 27px !important;
-    min-height: 27px !important;
-    padding: 0 10px !important;
-    border: 1px solid var(--desk-btn-border) !important;
-    border-radius: 3px !important;
-    background: var(--desk-input) !important;
-    color: var(--desk-text) !important;
-    font-size: 12.5px !important;
-    box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.05) !important;
-  }
-
-  #ordersDesk .orders-table-actions-row {
-    display: flex !important;
-    flex: 1 1 auto;
-    align-items: center !important;
-    justify-content: flex-start;
-    flex-wrap: wrap;
-    flex: 1 1 0 !important;
-    min-width: 0;
-    width: auto !important;
-    gap: 6px !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: 0 !important;
-  }
-
-  #ordersDesk .selected-actions-grid,
-  #ordersDesk .orders-section-actions {
-    gap: 4px !important;
-    flex-wrap: wrap;
-  }
-
-  #ordersDesk .orders-section-actions {
-    margin-inline-start: auto;
-    padding-inline-start: 8px;
-    border-inline-start: 1px solid var(--desk-border-soft);
-  }
-
-  #ordersDesk .selected-count {
-    padding: 2px 8px !important;
-    border-radius: 3px !important;
-    background: var(--desk-accent-soft) !important;
-    color: var(--desk-accent) !important;
-    font-size: 12px !important;
-  }
-
-  #ordersDesk .selected-count:empty {
+  #ordersFd .ofd-tools-row::-webkit-scrollbar {
     display: none;
   }
 
-  /* ---------- Data grid ---------- */
-  #ordersDesk .table-container {
-    max-height: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-    background: var(--desk-panel) !important;
-    overflow: visible !important;
+  #ordersFd .ofd-tools-row .ofd-pop-wrap:last-child {
+    margin-inline-start: 0;
   }
 
-  #ordersDesk #ordersTable {
-    --ag-background-color: var(--desk-panel);
-    --ag-foreground-color: var(--desk-text);
-    --ag-border-color: var(--desk-border);
-    --ag-row-border-color: var(--desk-grid-line);
-    --ag-header-background-color: transparent;
-    --ag-header-foreground-color: var(--desk-text);
-    --ag-header-column-separator-display: block;
-    --ag-header-column-separator-color: var(--desk-border);
-    --ag-header-column-separator-height: 100%;
-    --ag-header-column-resize-handle-color: var(--desk-border);
-    --ag-cell-horizontal-border: solid var(--desk-grid-line);
-    --ag-cell-horizontal-padding: 8px;
-    --ag-odd-row-background-color: var(--desk-grid-odd);
-    --ag-row-hover-color: var(--desk-grid-hover);
-    --ag-selected-row-background-color: var(--desk-grid-selected);
-    --ag-range-selection-border-color: var(--desk-accent);
-    --ag-checkbox-checked-color: var(--desk-accent);
-    --ag-wrapper-border-radius: 0;
-    --ag-border-radius: 2px;
-    --ag-font-size: 13px;
-    --ag-font-family: "Tajawal", Tahoma, Arial, sans-serif;
+  #ordersFd .ofd-btn {
+    height: 44px !important;
+    min-height: 44px !important;
+    padding: 0 14px !important;
+    font-size: 14px !important;
   }
 
-  #ordersDesk #ordersTable .ag-root-wrapper {
-    border: 0 !important;
-    border-radius: 0 !important;
+  /* Popovers become bottom sheets */
+  #ordersFd .ofd-pop,
+  #ordersFd .ofd-pop--end {
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 60;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+    max-height: 82vh;
+    overflow-y: auto;
+    padding: 18px 16px calc(16px + env(safe-area-inset-bottom));
+    border-radius: 20px 20px 0 0;
+    box-shadow: 0 -12px 40px rgba(16, 24, 40, 0.2);
   }
 
-  #ordersDesk #ordersTable .ag-header {
-    background: var(--desk-grid-header) !important;
-    border-bottom: 1px solid var(--desk-border) !important;
+  #ordersFd .ofd-form-grid {
+    grid-template-columns: 1fr 1fr;
   }
 
-  :root #ordersDesk #ordersTable .ag-header-cell,
-  :root #ordersDesk #ordersTable .ag-header-group-cell {
-    background: transparent !important;
-    color: var(--desk-text) !important;
-    font-size: 12.5px;
+  #ordersFd .ofd-assign-row select {
+    min-width: 0 !important;
   }
 
-  #ordersDesk #ordersTable .ag-header-cell-label {
-    font-weight: 700;
+  #ordersFd .ofd-pop select,
+  #ordersFd .ofd-pop input[type="date"],
+  #ordersFd .ofd-input {
+    font-size: 16px !important;
   }
 
-  /* Rows: zebra striping + vertical cell lines */
-  :root #ordersDesk #ordersTable .ag-row .ag-cell {
-    color: var(--desk-text) !important;
-    border-inline-end: 1px solid var(--desk-grid-line) !important;
-    line-height: 32px;
-    font-variant-numeric: tabular-nums;
+  #ordersFd .ofd-tab {
+    padding: 9px 14px !important;
+    font-size: 14px !important;
   }
 
-  :root #ordersDesk #ordersTable .ag-row-even .ag-cell {
-    background-color: var(--desk-panel) !important;
+  #ordersFd #ordersTable .ag-header-cell-label {
+    font-size: 14px;
   }
 
-  :root #ordersDesk #ordersTable .ag-row-odd .ag-cell {
-    background-color: var(--desk-grid-odd) !important;
+  #ordersFd .ofd-footer {
+    flex-direction: column-reverse;
+    align-items: stretch;
   }
 
-  :root #ordersDesk #ordersTable .ag-row:hover .ag-cell {
-    background-color: var(--desk-grid-hover) !important;
+  #ordersFd .ofd-footer-info {
+    justify-content: space-between;
+    font-size: 14px;
   }
 
-  :root #ordersDesk #ordersTable .ag-row-selected .ag-cell {
-    background-color: var(--desk-grid-selected) !important;
-    color: var(--desk-text) !important;
+  #ordersFd .ofd-totals {
+    flex: 1 1 100%;
   }
 
-  #ordersDesk #ordersTable .ag-row-selected {
-    box-shadow: inset 3px 0 0 var(--desk-accent);
+  #ordersFd .ofd-pager {
+    justify-content: center;
   }
 
-  #ordersDesk #ordersTable .ag-cell-focus:not(.ag-cell-range-selected) {
-    border: 1px dotted var(--desk-accent) !important;
+  #ordersFd .ofd-page {
+    min-width: 40px !important;
+    height: 40px !important;
+    min-height: 40px !important;
+    font-size: 15px !important;
+  }
+}
+
+@media (max-width: 420px) {
+  #ordersFd .ofd-form-grid {
+    grid-template-columns: 1fr;
   }
 
-  /* Status badge: compact pill that fits a 34px row */
-  #ordersDesk #ordersTable .status-badge {
-    padding: 2px 9px !important;
-    border-radius: 3px !important;
-    font-size: 12px !important;
-    line-height: 18px;
-  }
-
-  /* Totals row pinned at the bottom of the grid */
-  :root #ordersDesk #ordersTable .ag-row-pinned,
-  :root #ordersDesk #ordersTable .ag-row-pinned .ag-cell {
-    background: var(--desk-total-bg) !important;
-    font-weight: 800;
-  }
-
-  #ordersDesk #ordersTable .ag-floating-bottom {
-    border-top: 2px solid var(--desk-border) !important;
-  }
-
-  /* Pager styled as part of the window frame */
-  #ordersDesk #ordersTable .ag-paging-panel {
-    height: 34px;
-    border-top: 1px solid var(--desk-border) !important;
-    background: var(--desk-ribbon) !important;
-    color: var(--desk-muted);
-    font-size: 12px;
-  }
-
-  /* ---------- Status bar ---------- */
-  #ordersDesk .orders-statusbar {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    min-height: 26px;
-    padding: 0 4px;
-    border-top: 1px solid var(--desk-border);
-    background: var(--desk-statusbar);
-    color: var(--desk-muted);
-    font-size: 12px;
-    white-space: nowrap;
-    overflow-x: auto;
-  }
-
-  #ordersDesk .orders-statusbar-item {
-    padding: 3px 10px;
-    border-inline-end: 1px solid var(--desk-border);
-  }
-
-  #ordersDesk .orders-statusbar-item b {
-    color: var(--desk-text);
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-  }
-
-  #ordersDesk .orders-statusbar-spacer {
-    flex: 1 1 auto;
-  }
-
-  #ordersDesk .orders-statusbar-hint {
-    border-inline-end: 0;
-    opacity: 0.85;
-  }
-
-  @media (max-width: 1360px) {
-    #ordersDesk .orders-statusbar-hint {
-      display: none;
-    }
+  #ordersFd .ofd-tool--filter .ofd-btn-label {
+    display: none !important;
   }
 }
 
 @media print {
-  .orders-desk-tabs,
-  .orders-statusbar {
+  #ordersFd .ofd-header,
+  #ordersFd .ofd-toolbar,
+  #ordersFd .ofd-tabs,
+  #ordersFd .ofd-footer {
     display: none !important;
   }
 }
