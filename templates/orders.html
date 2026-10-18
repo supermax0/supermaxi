@@ -67,19 +67,43 @@
       <span class="ofd-count-badge" id="ofdFilterCount" hidden></span>
       <svg class="ofd-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
     </button>
-    <div class="ofd-pop ofd-pop--start" id="ofdFiltersPop" role="dialog" aria-label="{{ _('orders_filters_title') }}" hidden>
-      <div class="ofd-pop-head">{{ _('orders_filters_title') }}</div>
+    <div class="ofd-pop ofd-pop--start ofd-filter-pop" id="ofdFiltersPop" role="dialog" aria-label="تصفية" hidden>
       <div class="ofd-form-grid">
         <label class="ofd-field"><span>المحافظة</span>
           <select id="filterCity">
-            <option value="">{{ _('orders_filter_all_cities') }}</option>
+            <option value="">كل المحافظات</option>
             <option value="{{ province_filter_primary }}">{{ primary_province }}</option>
             <option value="{{ province_filter_group }}">{{ provinces_group_label }}</option>
           </select>
         </label>
+        <label class="ofd-field"><span>شركة النقل</span>
+          <select id="filterShipping">
+            <option value="">الكل</option>
+            {% for s in shippings %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="ofd-field ofd-field--wide"><span>المندوب</span>
+          <select id="filterDeliveryAgent">
+            <option value="">الكل</option>
+            <option value="none">{{ _('orders_option_none') }}</option>
+            {% for agent in delivery_agents or [] %}<option value="{{ agent.name }}">{{ agent.name }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="ofd-field"><span>من تاريخ</span>
+          <input type="date" id="filterDateFrom">
+        </label>
+        <label class="ofd-field"><span>إلى تاريخ</span>
+          <input type="date" id="filterDateTo">
+        </label>
+        <label class="ofd-field"><span>أقل مبلغ</span>
+          <input type="number" id="filterAmountMin" min="0" step="any" inputmode="decimal" placeholder="0">
+        </label>
+        <label class="ofd-field"><span>أعلى مبلغ</span>
+          <input type="number" id="filterAmountMax" min="0" step="any" inputmode="decimal">
+        </label>
         <label class="ofd-field"><span>الحالة</span>
-          <select id="filterStatus" title="{{ _('orders_filter_all_statuses') }}">
-            <option value="">{{ _('orders_filter_all_statuses') }}</option>
+          <select id="filterStatus">
+            <option value="">الكل</option>
             <option>{{ _('orders_status_ordered') }}</option>
             <option>{{ _('orders_status_packed') }}</option>
             <option>{{ _('orders_status_shipping') }}</option>
@@ -89,7 +113,7 @@
         </label>
         <label class="ofd-field"><span>الدفع</span>
           <select id="filterPayment">
-            <option value="">{{ _('orders_filter_all_payments') }}</option>
+            <option value="">الكل</option>
             <option>{{ _('orders_payment_unpaid') }}</option>
             <option>{{ _('orders_payment_partial') }}</option>
             <option>{{ _('orders_payment_paid') }}</option>
@@ -98,21 +122,8 @@
         </label>
         <label class="ofd-field"><span>الموظف</span>
           <select id="filterEmployee">
-            <option value="">{{ _('orders_filter_all_employees') }}</option>
+            <option value="">الكل</option>
             {% for e in employees %}<option value="{{ e.name }}">{{ e.name }}</option>{% endfor %}
-          </select>
-        </label>
-        <label class="ofd-field"><span>شركة النقل</span>
-          <select id="filterShipping">
-            <option value="">{{ _('orders_filter_all_shippings') }}</option>
-            {% for s in shippings %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}
-          </select>
-        </label>
-        <label class="ofd-field"><span>المندوب</span>
-          <select id="filterDeliveryAgent" title="{{ _('orders_filter_all_agents') }}">
-            <option value="">{{ _('orders_filter_all_agents') }}</option>
-            <option value="none">{{ _('orders_option_none') }}</option>
-            {% for agent in delivery_agents or [] %}<option value="{{ agent.name }}">{{ agent.name }}</option>{% endfor %}
           </select>
         </label>
         <label class="ofd-field"><span>{{ _('orders_filter_scheduled_date') }}</span>
@@ -120,9 +131,9 @@
         </label>
       </div>
       <span id="activeShippingScanBadge" class="ofd-note" style="display:none;"></span>
-      <div class="ofd-pop-foot">
-        <button type="button" class="ofd-btn ofd-btn--ghost" onclick="clearFilters()">مسح الفلاتر</button>
-        <button type="button" class="ofd-btn ofd-btn--accent" data-ofd-pop-close>تم</button>
+      <div class="ofd-pop-foot ofd-pop-foot--split">
+        <button type="button" class="ofd-link-btn" onclick="clearFilters()">مسح التصفية</button>
+        <button type="button" class="ofd-btn ofd-btn--accent ofd-btn--apply" data-ofd-pop-close onclick="applyFilters()">تطبيق</button>
       </div>
     </div>
   </div>
@@ -155,34 +166,23 @@
         <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 3 10.5 13.5M21 3l-6.5 18-4-7.5L3 9.5z"/></svg>
         <span class="ofd-btn-label">تسليم وإسناد</span>
       </button>
-      <div class="ofd-pop" id="ofdAssignPop" role="dialog" aria-label="{{ _('orders_bulk_title') }}" hidden>
-        <div class="ofd-pop-head">{{ _('orders_bulk_title') }} <span class="ofd-pop-sub" data-ofd-selected-label></span></div>
-        <div class="ofd-assign-row">
-          <select id="bulkStatus">
-            <option value="">{{ _('orders_bulk_change_status') }}</option>
-            <option>{{ _('orders_status_ordered') }}</option>
-            <option>{{ _('orders_status_packed') }}</option>
-            <option>{{ _('orders_status_shipping') }}</option>
-            <option>{{ _('orders_status_delivered') }}</option>
-          </select>
-          <button class="ofd-btn ofd-btn--accent" type="button" onclick="applyStatus()">{{ _('orders_bulk_apply') }}</button>
-        </div>
-        <div class="ofd-assign-row">
-          <select id="bulkShipping">
-            <option value="">{{ _('orders_bulk_shipping') }}</option>
-            <option value="none">{{ _('orders_option_none') }}</option>
-            {% for s in shippings %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
-          </select>
-          <button class="ofd-btn ofd-btn--accent" type="button" onclick="applyShipping()">{{ _('orders_bulk_apply') }}</button>
-        </div>
-        <div class="ofd-assign-row">
-          <select id="bulkDeliveryAgent">
-            <option value="">{{ _('orders_bulk_agent') }}</option>
-            <option value="none">{{ _('orders_option_none') }}</option>
-            {% for agent in delivery_agents or [] %}<option value="{{ agent.id }}">{{ agent.name }}</option>{% endfor %}
-          </select>
-          <button class="ofd-btn ofd-btn--accent" type="button" onclick="applyDeliveryAgent()">{{ _('orders_bulk_apply') }}</button>
-        </div>
+      <div class="ofd-pop ofd-menu" id="ofdAssignPop" role="menu" aria-label="تسليم وإسناد" hidden>
+        <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-open-view="agent">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></svg>
+          <span>إسناد لمندوب</span>
+        </button>
+        <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-open-view="shipping">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.5h11v9h-11zM13.5 9.5h4l3 3v3h-7"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>
+          <span>تسليم لشركة نقل</span>
+        </button>
+        <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-pop-close onclick="printAgentReport()">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2.5H6.5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8z"/><path d="M14 2.5V8h5.5M8.5 13h7M8.5 17h7"/></svg>
+          <span>كشف مندوب (يظهر في بوابته)</span>
+        </button>
+        <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-open-view="report">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 3 10.5 13.5M21 3l-6.5 18-4-7.5L3 9.5z"/></svg>
+          <span>كشف تسليم لشركة نقل</span>
+        </button>
       </div>
     </div>
 
@@ -197,22 +197,104 @@
         <span class="ofd-btn-label">إجراءات</span>
         <svg class="ofd-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
       </button>
-      <div class="ofd-pop ofd-pop--end ofd-menu" id="ofdMorePop" role="menu" hidden>
-        <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-pop-close onclick="printSelectedReport()">📋 {{ _('orders_selected_print_statement') }}</button>
-        <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-pop-close onclick="printAgentReport()">👤 {{ _('orders_selected_print_agent') }}</button>
-        <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-pop-close onclick="sendWhatsAppToSelected()">📱 {{ _('orders_selected_send_message') }}</button>
-        <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-pop-close onclick="exportOrdersPdf()">📄 تصدير PDF</button>
-        <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-pop-close onclick="openColumnVisibilityModal()">👁️ {{ _('orders_columns_button') }}</button>
-        <div class="ofd-menu-sep" role="separator"></div>
-        <div class="ofd-menu-group">
-          <span class="ofd-menu-caption">{{ _('orders_reports_title') }}</span>
-          <select id="reportShippingCompany">
+      <div class="ofd-pop ofd-pop--end ofd-menu" id="ofdMorePop" role="menu" aria-label="إجراءات" hidden>
+        <div class="ofd-menu-view" data-ofd-view="main">
+          <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-view-go="status">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 12a8.5 8.5 0 0 1-14.6 5.9M3.5 12A8.5 8.5 0 0 1 18.1 6.1"/><path d="M18.5 2.5v4h-4M5.5 21.5v-4h4"/></svg>
+            <span>تغيير الحالة</span>
+          </button>
+          <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-view-go="agent">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></svg>
+            <span>تغيير المندوب</span>
+          </button>
+          <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-view-go="shipping">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.5h11v9h-11zM13.5 9.5h4l3 3v3h-7"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>
+            <span>تغيير شركة النقل</span>
+          </button>
+          <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-pop-close onclick="printAgentReport()">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2.5H6.5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8z"/><path d="M14 2.5V8h5.5M8.5 13h7M8.5 17h7"/></svg>
+            <span>كشف مندوب (يظهر في بوابته)</span>
+          </button>
+          <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-view-go="report">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 3 10.5 13.5M21 3l-6.5 18-4-7.5L3 9.5z"/></svg>
+            <span>كشف تسليم لشركة نقل</span>
+          </button>
+          <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-pop-close onclick="returnSelectedOrders()">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+            <span>ترجيع</span>
+          </button>
+          <div class="ofd-menu-sep" role="separator"></div>
+          <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-pop-close onclick="printSelectedReport()">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3.5" width="14" height="18" rx="2"/><path d="M9 3.5h6v3H9zM8.5 11h7M8.5 15h5"/></svg>
+            <span>{{ _('orders_selected_print_statement') }}</span>
+          </button>
+          <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-pop-close onclick="sendWhatsAppToSelected()">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 11.6a8.5 8.5 0 0 1-12.4 7.5L3.5 20.5l1.4-4.4a8.5 8.5 0 1 1 15.6-4.5z"/></svg>
+            <span>{{ _('orders_selected_send_message') }}</span>
+          </button>
+          <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-pop-close onclick="exportOrdersPdf()">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2.5H6.5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8z"/><path d="M14 2.5V8h5.5M12 11.5v6M9.5 15l2.5 2.5 2.5-2.5"/></svg>
+            <span>تصدير PDF</span>
+          </button>
+          <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-pop-close onclick="openColumnVisibilityModal()">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M9.5 4v16M14.5 4v16"/></svg>
+            <span>{{ _('orders_columns_button') }}</span>
+          </button>
+        </div>
+        <div class="ofd-menu-view" data-ofd-view="status" hidden>
+          <div class="ofd-view-head">
+            <button type="button" class="ofd-view-back" data-ofd-view-go="main" aria-label="رجوع"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+            <span class="ofd-view-title">تغيير الحالة</span>
+            <span class="ofd-pop-sub" data-ofd-selected-label></span>
+          </div>
+          <select id="bulkStatus" aria-label="الحالة الجديدة">
+            <option value="">{{ _('orders_bulk_change_status') }}</option>
+            <option>{{ _('orders_status_ordered') }}</option>
+            <option>{{ _('orders_status_packed') }}</option>
+            <option>{{ _('orders_status_shipping') }}</option>
+            <option>{{ _('orders_status_delivered') }}</option>
+          </select>
+          <button type="button" class="ofd-btn ofd-btn--accent ofd-btn--apply ofd-btn--block" data-ofd-pop-close onclick="applyStatus()">تطبيق</button>
+        </div>
+        <div class="ofd-menu-view" data-ofd-view="agent" hidden>
+          <div class="ofd-view-head">
+            <button type="button" class="ofd-view-back" data-ofd-view-go="main" aria-label="رجوع"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+            <span class="ofd-view-title">تغيير المندوب</span>
+            <span class="ofd-pop-sub" data-ofd-selected-label></span>
+          </div>
+          <select id="bulkDeliveryAgent" aria-label="المندوب">
+            <option value="">{{ _('orders_bulk_agent') }}</option>
+            <option value="none">{{ _('orders_option_none') }}</option>
+            {% for agent in delivery_agents or [] %}<option value="{{ agent.id }}">{{ agent.name }}</option>{% endfor %}
+          </select>
+          <button type="button" class="ofd-btn ofd-btn--accent ofd-btn--apply ofd-btn--block" data-ofd-pop-close onclick="applyDeliveryAgent()">تطبيق</button>
+        </div>
+        <div class="ofd-menu-view" data-ofd-view="shipping" hidden>
+          <div class="ofd-view-head">
+            <button type="button" class="ofd-view-back" data-ofd-view-go="main" aria-label="رجوع"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+            <span class="ofd-view-title">تغيير شركة النقل</span>
+            <span class="ofd-pop-sub" data-ofd-selected-label></span>
+          </div>
+          <select id="bulkShipping" aria-label="شركة النقل">
+            <option value="">{{ _('orders_bulk_shipping') }}</option>
+            <option value="none">{{ _('orders_option_none') }}</option>
+            {% for s in shippings %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+          </select>
+          <button type="button" class="ofd-btn ofd-btn--accent ofd-btn--apply ofd-btn--block" data-ofd-pop-close onclick="applyShipping()">تطبيق</button>
+        </div>
+        <div class="ofd-menu-view" data-ofd-view="report" hidden>
+          <div class="ofd-view-head">
+            <button type="button" class="ofd-view-back" data-ofd-view-go="main" aria-label="رجوع"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+            <span class="ofd-view-title">كشف تسليم لشركة نقل</span>
+            <span class="ofd-pop-sub" data-ofd-selected-label></span>
+          </div>
+          <select id="reportShippingCompany" aria-label="شركة النقل">
             <option value="">{{ _('orders_reports_select_shipping') }}</option>
             {% for s in shippings %}
             <option value="{{ s.id }}" data-name="{{ s.name }}">{{ s.name }}</option>
             {% endfor %}
           </select>
-          <button type="button" class="ofd-btn ofd-btn--accent" onclick="createShippingReport()">{{ _('orders_reports_print_statement') }}</button>
+          <button type="button" class="ofd-btn ofd-btn--accent ofd-btn--apply ofd-btn--block" data-ofd-pop-close onclick="createShippingReport()">طباعة الكشف</button>
         </div>
       </div>
     </div>
@@ -3034,7 +3116,7 @@
     }
   }
 </style>
-<link rel="stylesheet" href="/static/css/orders-desktop.css?v=20261018b">
+<link rel="stylesheet" href="/static/css/orders-desktop.css?v=20261018c">
 
 <!-- ==================== JavaScript ==================== -->
 <script>
@@ -3482,7 +3564,7 @@
   }
 
   function updateOrdersFilterBadge() {
-    const ids = ["filterCity", "filterStatus", "filterPayment", "filterEmployee", "filterShipping", "filterDeliveryAgent", "filterScheduledDate"];
+    const ids = ["filterCity", "filterStatus", "filterPayment", "filterEmployee", "filterShipping", "filterDeliveryAgent", "filterScheduledDate", "filterDateFrom", "filterDateTo", "filterAmountMin", "filterAmountMax"];
     const active = ids.filter(id => document.getElementById(id)?.value).length;
     const badge = document.getElementById("ofdFilterCount");
     if (!badge) return;
@@ -3600,8 +3682,23 @@
     ensureOfdBackdrop().hidden = true;
   }
 
-  function openOfdPop(pop) {
+  // Actions menu: "main" list plus sub-panels (status / agent / shipping / report)
+  function showOfdMenuView(pop, name) {
+    const views = pop.querySelectorAll("[data-ofd-view]");
+    if (!views.length) return;
+    let target = null;
+    views.forEach(view => {
+      const match = view.getAttribute("data-ofd-view") === name;
+      view.hidden = !match;
+      if (match) target = view;
+    });
+    const focusEl = target && (target.querySelector("select") || target.querySelector("button"));
+    if (focusEl && name !== "main") setTimeout(() => focusEl.focus(), 30);
+  }
+
+  function openOfdPop(pop, view) {
     closeOfdPop();
+    showOfdMenuView(pop, view || "main");
     pop.hidden = false;
     ofdOpenPop = pop;
     const trigger = document.querySelector('[data-ofd-pop="' + pop.id + '"]');
@@ -3620,6 +3717,18 @@
   document.addEventListener("click", (event) => {
     const t = event.target;
     if (!t || !t.closest) return;
+    const viewGo = t.closest("[data-ofd-view-go]");
+    if (viewGo && ofdOpenPop) {
+      showOfdMenuView(ofdOpenPop, viewGo.getAttribute("data-ofd-view-go"));
+      return;
+    }
+    // «تسليم وإسناد» shortcuts jump straight into an actions sub-panel
+    const openView = t.closest("[data-ofd-open-view]");
+    if (openView) {
+      const morePop = document.getElementById("ofdMorePop");
+      if (morePop) openOfdPop(morePop, openView.getAttribute("data-ofd-open-view"));
+      return;
+    }
     const trigger = t.closest("[data-ofd-pop]");
     if (trigger) {
       const pop = document.getElementById(trigger.getAttribute("data-ofd-pop"));
@@ -3733,7 +3842,11 @@
       document.getElementById("filterEmployee")?.value ||
       document.getElementById("filterShipping")?.value ||
       document.getElementById("filterDeliveryAgent")?.value ||
-      document.getElementById("filterScheduledDate")?.value
+      document.getElementById("filterScheduledDate")?.value ||
+      document.getElementById("filterDateFrom")?.value ||
+      document.getElementById("filterDateTo")?.value ||
+      document.getElementById("filterAmountMin")?.value ||
+      document.getElementById("filterAmountMax")?.value
     );
   }
 
@@ -3767,6 +3880,22 @@
 
     const scheduled = document.getElementById("filterScheduledDate")?.value || "";
     if (scheduled && (d.scheduled_date || "") !== scheduled) return false;
+
+    // Order date range (YYYY-MM-DD compares as text)
+    const dateFrom = document.getElementById("filterDateFrom")?.value || "";
+    const dateTo = document.getElementById("filterDateTo")?.value || "";
+    if (dateFrom || dateTo) {
+      const day = String(d.date || "").slice(0, 10);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return false;
+      if (dateFrom && day < dateFrom) return false;
+      if (dateTo && day > dateTo) return false;
+    }
+
+    const amountMin = parseFloat(document.getElementById("filterAmountMin")?.value);
+    const amountMax = parseFloat(document.getElementById("filterAmountMax")?.value);
+    const total = parseFloat(d.total) || 0;
+    if (!isNaN(amountMin) && total < amountMin) return false;
+    if (!isNaN(amountMax) && total > amountMax) return false;
 
     return true;
   }
@@ -3815,7 +3944,7 @@
 
 
   function clearFilters() {
-    ['searchInput', 'filterCity', 'filterStatus', 'filterPayment', 'filterEmployee', 'filterShipping', 'filterDeliveryAgent', 'filterScheduledDate'].forEach(id => {
+    ['searchInput', 'filterCity', 'filterStatus', 'filterPayment', 'filterEmployee', 'filterShipping', 'filterDeliveryAgent', 'filterScheduledDate', 'filterDateFrom', 'filterDateTo', 'filterAmountMin', 'filterAmountMax'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = "";
     });
@@ -6029,7 +6158,7 @@
     }
 
     showLoading();
-    fetch('/orders/payment', {
+    return fetch('/orders/payment', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -6077,6 +6206,43 @@
     if (input) input.value = code;
     const branch = modal.querySelector('#rsmBranch');
     if (branch) branch.focus();
+  }
+
+  function isOrderReturnable(row) {
+    if (!row || row.actions_collapsed || row.is_stock_locked || !ORDERS_USER_CAN_MANAGE) return false;
+    if (isReturnedStatus(row.status) || row.status === "ملغي") return false;
+    return row.status !== "تم الطلب";
+  }
+
+  // «ترجيع» from the actions menu: each order still needs its barcode + return branch
+  function returnSelectedOrders() {
+    const rows = gridApi ? gridApi.getSelectedRows() : [];
+    if (!rows.length) {
+      showToast("⚠️ حدّد الطلبات المراد ترجيعها أولاً", "warning");
+      return;
+    }
+    const queue = rows.filter(isOrderReturnable);
+    const skipped = rows.length - queue.length;
+    if (!queue.length) {
+      showToast("⚠️ الطلبات المحددة لا يمكن ترجيعها (تم الطلب، مرتجعة، ملغاة أو مقفلة)", "warning");
+      return;
+    }
+    if (skipped) showToast("ℹ️ سيتم تخطي " + skipped + " طلب لا يمكن ترجيعه", "info");
+
+    let index = 0;
+    const next = () => {
+      if (index >= queue.length) return;
+      const row = queue[index++];
+      openReturnStockModal({
+        orderId: row.id,
+        title: "ترجيع الطلب #" + row.id + (queue.length > 1 ? " (" + index + " من " + queue.length + ")" : ""),
+        onConfirm: function (returnOptions) {
+          collapseRowActions(row.id);
+          Promise.resolve(submitOrderReturn(row.id, null, returnOptions)).then(next);
+        }
+      });
+    };
+    next();
   }
 
   function returnOrder(orderId) {
@@ -6570,8 +6736,11 @@
     }, 500);
 
     // Add event listeners
-    ['searchInput', 'filterCity', 'filterStatus', 'filterPayment', 'filterEmployee', 'filterShipping', 'filterDeliveryAgent', 'filterScheduledDate'].forEach(id => {
+    ['searchInput', 'filterCity', 'filterStatus', 'filterPayment', 'filterEmployee', 'filterShipping', 'filterDeliveryAgent', 'filterScheduledDate', 'filterDateFrom', 'filterDateTo'].forEach(id => {
       document.getElementById(id)?.addEventListener("change", applyFilters);
+    });
+    ['filterAmountMin', 'filterAmountMax'].forEach(id => {
+      document.getElementById(id)?.addEventListener("input", applyFilters);
     });
     document.getElementById("searchInput")?.addEventListener("keyup", applyFilters);
 
@@ -6693,6 +6862,7 @@
   window.cancelOrder = cancelOrder;
   window.toggleSection = toggleSection;
   window.clearOrdersSelection = clearOrdersSelection;
+  window.returnSelectedOrders = returnSelectedOrders;
 </script>
 
 {% endblock %}

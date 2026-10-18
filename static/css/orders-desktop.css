@@ -288,6 +288,8 @@
   width: max-content;
   min-width: 280px;
   max-width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
   padding: 16px;
   border: 1px solid var(--fd-border);
   border-radius: 16px;
@@ -332,20 +334,87 @@
   margin-top: 14px;
 }
 
+#ordersFd .ofd-filter-pop {
+  width: 440px;
+  padding: 18px;
+  border-radius: 18px;
+}
+
 #ordersFd .ofd-form-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(200px, 1fr));
-  gap: 10px 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 16px;
 }
 
 #ordersFd .ofd-field {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 7px;
+  min-width: 0;
   margin: 0;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--fd-muted);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--fd-text-2);
+}
+
+#ordersFd .ofd-field--wide {
+  grid-column: 1 / -1;
+}
+
+#ordersFd .ofd-filter-pop select,
+#ordersFd .ofd-filter-pop input {
+  height: 46px !important;
+  min-height: 46px !important;
+  border-radius: 12px !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+}
+
+#ordersFd .ofd-filter-pop input::placeholder {
+  color: var(--fd-faint);
+  font-weight: 500;
+}
+
+#ordersFd .ofd-pop-foot--split {
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--fd-border);
+}
+
+#ordersFd .ofd-link-btn {
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 6px 4px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--fd-muted) !important;
+  font: inherit !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  box-shadow: none !important;
+}
+
+#ordersFd .ofd-link-btn:hover {
+  color: var(--fd-text) !important;
+}
+
+#ordersFd .ofd-btn--apply {
+  height: 46px !important;
+  min-height: 46px !important;
+  padding: 0 26px !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  background: linear-gradient(135deg, #7b4be6 0%, #5f33c9 100%) !important;
+  font-size: 15px !important;
+  font-weight: 800 !important;
+  box-shadow: 0 6px 16px rgba(108, 63, 209, 0.28) !important;
+}
+
+#ordersFd .ofd-btn--apply:hover {
+  background: linear-gradient(135deg, #6f40dd 0%, #532bb5 100%) !important;
 }
 
 #ordersFd .ofd-pop select,
@@ -372,7 +441,8 @@
 }
 
 #ordersFd .ofd-note {
-  margin-top: 12px;
+  display: block;
+  margin-top: 14px;
   padding: 8px 12px;
   border: 1px solid;
   border-radius: 10px;
@@ -416,52 +486,95 @@
   color: #b91c1c;
 }
 
-/* «إجراءات» menu */
+/* «إجراءات» / «تسليم وإسناد» menus */
 #ordersFd .ofd-menu {
-  min-width: 260px;
-  padding: 6px;
+  min-width: 290px;
+  padding: 8px;
+  border-radius: 18px;
 }
 
 #ordersFd .ofd-menu-item {
   display: flex !important;
   align-items: center !important;
-  gap: 10px !important;
+  gap: 12px !important;
   width: 100% !important;
-  min-height: 42px !important;
+  min-height: 46px !important;
   height: auto !important;
-  padding: 8px 12px !important;
+  padding: 10px 14px !important;
   border: 0 !important;
-  border-radius: 10px !important;
+  border-radius: 12px !important;
   background: transparent !important;
   color: var(--fd-text) !important;
   font: inherit !important;
-  font-size: 14px !important;
-  font-weight: 600 !important;
+  font-size: 15px !important;
+  font-weight: 500 !important;
   text-align: start !important;
   cursor: pointer !important;
 }
 
-#ordersFd .ofd-menu-item:hover {
-  background: var(--fd-soft) !important;
+#ordersFd .ofd-menu-item svg {
+  flex: 0 0 auto;
+  color: var(--fd-text-2);
+}
+
+#ordersFd .ofd-menu-item:hover,
+#ordersFd .ofd-menu-item:focus-visible {
+  outline: none !important;
+  background: var(--fd-purple-soft) !important;
 }
 
 #ordersFd .ofd-menu-sep {
   height: 1px;
-  margin: 6px 4px;
+  margin: 6px 6px;
   background: var(--fd-border);
 }
 
-#ordersFd .ofd-menu-group {
+/* Sub-panel inside the actions menu */
+#ordersFd .ofd-menu-view {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 6px 8px 8px;
+  gap: 2px;
 }
 
-#ordersFd .ofd-menu-caption {
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--fd-muted);
+#ordersFd .ofd-menu-view[hidden] {
+  display: none;
+}
+
+#ordersFd .ofd-menu-view:not([data-ofd-view="main"]) {
+  gap: 12px;
+  padding: 4px 6px 6px;
+}
+
+#ordersFd .ofd-view-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+#ordersFd .ofd-view-back {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 34px !important;
+  min-width: 34px !important;
+  height: 34px !important;
+  min-height: 34px !important;
+  padding: 0 !important;
+  border: 1px solid var(--fd-border) !important;
+  border-radius: 10px !important;
+  background: var(--fd-surface) !important;
+  color: var(--fd-text-2) !important;
+  cursor: pointer !important;
+}
+
+#ordersFd .ofd-view-back:hover {
+  background: var(--fd-soft) !important;
+}
+
+#ordersFd .ofd-btn--block {
+  width: 100% !important;
 }
 
 .ofd-backdrop {
@@ -1145,10 +1258,6 @@
 }
 
 @media (max-width: 420px) {
-  #ordersFd .ofd-form-grid {
-    grid-template-columns: 1fr;
-  }
-
   #ordersFd .ofd-tool--filter .ofd-btn-label {
     display: none !important;
   }
