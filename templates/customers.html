@@ -1,1933 +1,700 @@
 {% extends "base.html" %}
 {% block title %}{{ _('customers') }}{% endblock %}
-{% block page_title %}👥 {{ _('customers_page_title') }}{% endblock %}
+{% block page_title %}{{ _('customers_page_title') }}{% endblock %}
 
 {% block content %}
-
-<!-- Toast Container -->
-<div class="toast-container" id="toastContainer"></div>
-<script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
-
-<!-- Loading Overlay -->
-<div class="loading-overlay" id="loadingOverlay">
-  <div class="loading-spinner"></div>
-</div>
-
-<style>
-  /* ======================================================
-   MODERN CUSTOMERS UI - GLASSMORPHISM DESIGN
-   ====================================================== */
-
-  :root {
-    /* Map to global SaaS tokens (Dark/Light aware) */
-    --cust-primary: var(--primary);
-    --cust-primary-light: var(--primary-hover);
-    --cust-primary-dark: #1d4ed8;
-    --cust-success: var(--success);
-    --cust-danger: var(--danger);
-    --cust-warning: var(--warning);
-    --cust-purple: var(--accent, #8b5cf6);
-
-    /* Glass Effect */
-    --glass-bg: linear-gradient(145deg, var(--card), var(--card-alt));
-    --glass-border: var(--border-light);
-    --glass-hover: var(--border);
-
-    /* Text Colors */
-    --cust-text: var(--text);
-    --cust-text-secondary: var(--text-muted);
-    --cust-muted: var(--text-muted);
-
-    /* Spacing System (8px base) */
-    --spacing-xs: 4px;
-    --spacing-sm: 8px;
-    --spacing-md: 16px;
-    --spacing-lg: 24px;
-    --spacing-xl: 32px;
-
-    /* Border Radius */
-    --radius-sm: 8px;
-    --radius-md: 12px;
-    --radius-lg: 16px;
-    --radius-xl: 20px;
-    --radius-full: 9999px;
-
-    /* Shadows */
-    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
-    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
-    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
-    --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
-  }
-
-  /* AG Grid Custom Styles for Customers */
-  .ag-theme-quartz-dark .ag-row {
-    cursor: pointer;
-  }
-
-  .cust-actions-grid {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    height: 100%;
-  }
-
-  .cust-actions-grid .cust-actions-trigger {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0;
-    min-width: 26px !important;
-    width: 26px !important;
-    height: 26px;
-    min-height: 26px !important;
-    max-height: 26px !important;
-    padding: 0 !important;
-    border-radius: 7px !important;
-    border: 1px solid var(--glass-border, rgba(148, 163, 184, 0.45));
-    background: var(--glass-bg, #fff);
-    color: #334155;
-    font-size: 16px;
-    font-weight: 800;
-    line-height: 1;
-    cursor: pointer;
-    box-shadow: none;
-    font-family: inherit;
-    transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-  }
-
-  .cust-actions-grid .cust-actions-trigger i,
-  .cust-actions-grid .cust-actions-trigger .cust-actions-trigger-label {
-    display: none !important;
-  }
-
-  .cust-actions-grid .cust-actions-trigger:hover,
-  .cust-actions-grid .cust-actions-trigger[aria-expanded="true"] {
-    border-color: #93c5fd;
-    color: #2563eb;
-    background: #eff6ff;
-    box-shadow: none;
-  }
-
-  .cust-actions-menu {
-    position: fixed;
-    z-index: 10080;
-    min-width: 170px;
-    max-width: min(240px, calc(100vw - 16px));
-    padding: 6px;
-    margin: 0;
-    list-style: none;
-    border: 1px solid var(--glass-border, #e2e8f0);
-    border-radius: 12px;
-    background: var(--glass-bg, #fff);
-    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
-    direction: rtl;
-  }
-
-  .cust-actions-menu[hidden] {
-    display: none !important;
-  }
-
-  .cust-actions-menu-item {
-    display: flex;
-    align-items: center;
-    width: 100%;
-    padding: 10px 12px;
-    border: 0;
-    border-radius: 8px;
-    background: transparent;
-    color: var(--text, #0f172a);
-    font-size: 13px;
-    font-weight: 600;
-    text-align: right;
-    text-decoration: none;
-    cursor: pointer;
-    transition: background 0.12s ease, color 0.12s ease;
-  }
-
-  .cust-actions-menu-item:hover,
-  .cust-actions-menu-item:focus-visible {
-    outline: none;
-  }
-
-  .cust-actions-menu-item.is-orders {
-    color: #4338ca;
-  }
-
-  .cust-actions-menu-item.is-orders:hover,
-  .cust-actions-menu-item.is-orders:focus-visible {
-    background: rgba(99, 102, 241, 0.12);
-    color: #4338ca;
-  }
-
-  .cust-actions-menu-item.is-edit {
-    color: #047857;
-  }
-
-  .cust-actions-menu-item.is-edit:hover,
-  .cust-actions-menu-item.is-edit:focus-visible {
-    background: rgba(16, 185, 129, 0.12);
-    color: #047857;
-  }
-
-  .cust-actions-menu-item.is-danger {
-    color: #dc2626;
-  }
-
-  .cust-actions-menu-item.is-danger:hover,
-  .cust-actions-menu-item.is-danger:focus-visible {
-    background: #fef2f2;
-    color: #b91c1c;
-  }
-
-  :root[data-theme="dark"] .cust-actions-menu-item.is-orders {
-    color: #a5b4fc;
-  }
-
-  :root[data-theme="dark"] .cust-actions-menu-item.is-orders:hover,
-  :root[data-theme="dark"] .cust-actions-menu-item.is-orders:focus-visible {
-    background: rgba(99, 102, 241, 0.18);
-    color: #c7d2fe;
-  }
-
-  :root[data-theme="dark"] .cust-actions-menu-item.is-edit {
-    color: #6ee7b7;
-  }
-
-  :root[data-theme="dark"] .cust-actions-menu-item.is-edit:hover,
-  :root[data-theme="dark"] .cust-actions-menu-item.is-edit:focus-visible {
-    background: rgba(16, 185, 129, 0.16);
-    color: #a7f3d0;
-  }
-
-  :root[data-theme="dark"] .cust-actions-menu-item.is-danger {
-    color: #fca5a5;
-  }
-
-  :root[data-theme="dark"] .cust-actions-menu-item.is-danger:hover,
-  :root[data-theme="dark"] .cust-actions-menu-item.is-danger:focus-visible {
-    background: rgba(239, 68, 68, 0.16);
-    color: #fecaca;
-  }
-
-  .ag-theme-finora .ag-header-cell.actions-col .ag-header-cell-label {
-    justify-content: center;
-  }
-
-  .ag-theme-finora .ag-cell.actions-col {
-    background: rgba(99, 102, 241, 0.04);
-    border-inline-start: 1px solid rgba(99, 102, 241, 0.12);
-    border-inline-end: 1px solid rgba(99, 102, 241, 0.12);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  :root[data-theme="light"] .ag-theme-finora .ag-cell.actions-col {
-    background: rgba(99, 102, 241, 0.03);
-  }
-
-  /* ================= STATS GRID ================= */
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--spacing-lg);
-    margin-bottom: var(--spacing-xl);
-  }
-
-  .stat-card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--shadow-md);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    overflow: hidden;
-    pointer-events: auto;
-  }
-
-  .stat-card::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 4px;
-    height: 100%;
-    opacity: 0.8;
-    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
-    transition: opacity 0.3s ease;
-  }
-
-  .stat-card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
-    border-color: var(--glass-hover);
-  }
-
-  .stat-card:hover::before {
-    opacity: 1;
-  }
-
-  .stat-card.primary::before {
-    background: linear-gradient(180deg, var(--cust-primary), var(--cust-primary-dark));
-  }
-
-  .stat-card.success::before {
-    background: linear-gradient(180deg, var(--cust-success), #059669);
-  }
-
-  .stat-card.warning::before {
-    background: linear-gradient(180deg, var(--cust-warning), #d97706);
-  }
-
-  .stat-icon {
-    font-size: 32px;
-    margin-bottom: var(--spacing-sm);
-    opacity: 0.9;
-  }
-
-  .stat-label {
-    font-size: 13px;
-    color: var(--cust-muted);
-    margin-bottom: var(--spacing-xs);
-    font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  .stat-value {
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--cust-text);
-    line-height: 1.2;
-  }
-
-  .stat-card.primary .stat-value {
-    color: var(--cust-primary-light);
-  }
-
-  .stat-card.success .stat-value {
-    color: var(--cust-success);
-  }
-
-  .stat-card.warning .stat-value {
-    color: var(--cust-warning);
-  }
-
-  /* ================= CARDS ================= */
-  .card {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border-radius: var(--radius-lg);
-    padding: var(--spacing-lg);
-    margin-bottom: var(--spacing-lg);
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--shadow-md);
-    animation: fadeInUp 0.5s ease;
-    position: relative;
-    overflow: hidden;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .card::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 4px;
-    height: 100%;
-    background: linear-gradient(180deg, var(--cust-primary), var(--cust-success));
-    border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
-    opacity: 0.7;
-    transition: opacity 0.3s ease;
-  }
-
-  .card:hover {
-    transform: translateY(-4px);
-    box-shadow: var(--shadow-lg);
-    border-color: var(--glass-hover);
-  }
-
-  .card:hover::before {
-    opacity: 1;
-  }
-
-  /* ================= SEARCH & FILTERS ================= */
-  .search-filters {
-    display: flex;
-    gap: var(--spacing-md);
-    flex-wrap: wrap;
-    align-items: center;
-    margin-bottom: var(--spacing-md);
-  }
-
-  .search-filters input,
-  .search-filters select {
-    flex: 1;
-    min-width: 200px;
-    padding: 12px var(--spacing-md);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--glass-border);
-    background: rgba(15, 23, 42, 0.5);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    color: var(--cust-text);
-    font-size: 14px;
-    transition: all 0.2s ease;
-    font-family: inherit;
-  }
-
-  .search-filters input:focus,
-  .search-filters select:focus {
-    outline: none;
-    border-color: var(--cust-primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-    background: rgba(15, 23, 42, 0.7);
-  }
-
-  .search-filters input::placeholder {
-    color: var(--cust-muted);
-  }
-
-  .search-stats {
-    margin-top: var(--spacing-md);
-    color: var(--cust-muted);
-    font-size: 13px;
-    padding-top: var(--spacing-md);
-    border-top: 1px solid var(--glass-border);
-  }
-
-  /* ================= BUTTONS ================= */
-  .btn {
-    padding: 10px 18px;
-    border-radius: var(--radius-md);
-    border: none;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 14px;
-    transition: all 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: var(--spacing-xs);
-    white-space: nowrap;
-    pointer-events: auto;
-  }
-
-  .btn-primary {
-    background: linear-gradient(135deg, var(--cust-primary), var(--cust-primary-light));
-    color: white;
-    box-shadow: var(--shadow-sm);
-  }
-
-  .btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-    background: linear-gradient(135deg, var(--cust-primary-light), var(--cust-primary));
-  }
-
-  .btn-success {
-    background: linear-gradient(135deg, var(--cust-success), #059669);
-    color: white;
-    box-shadow: var(--shadow-sm);
-  }
-
-  .btn-success:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-    background: linear-gradient(135deg, #059669, var(--cust-success));
-  }
-
-  .btn-danger {
-    background: linear-gradient(135deg, var(--cust-danger), #dc2626);
-    color: white;
-    box-shadow: var(--shadow-sm);
-  }
-
-  .btn-danger:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-    background: linear-gradient(135deg, #dc2626, var(--cust-danger));
-  }
-
-  .btn-muted {
-    background: rgba(99, 102, 241, 0.1);
-    color: var(--cust-primary-light);
-    border: 1px solid rgba(99, 102, 241, 0.2);
-  }
-
-  .btn-muted:hover {
-    background: var(--cust-primary);
-    color: white;
-    border-color: var(--cust-primary);
-  }
-
-  .btn:active {
-    transform: translateY(0);
-  }
-
-  /* ================= TABLE ================= */
-  .table-container {
-    overflow-x: auto;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--glass-border);
-    background: rgba(15, 23, 42, 0.3);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    margin-top: var(--spacing-md);
-    scrollbar-width: thin;
-    scrollbar-color: rgba(99, 102, 241, 0.3) transparent;
-  }
-
-  .table-container::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-
-  .table-container::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .table-container::-webkit-scrollbar-thumb {
-    background: rgba(99, 102, 241, 0.3);
-    border-radius: var(--radius-full);
-  }
-
-  .table-container::-webkit-scrollbar-thumb:hover {
-    background: rgba(99, 102, 241, 0.5);
-  }
-
-  table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    font-size: 14px;
-    min-width: 800px;
-  }
-
-  th {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.15), rgba(139, 92, 246, 0.15));
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    padding: var(--spacing-md);
-    text-align: center;
-    color: var(--cust-text-secondary);
-    font-weight: 700;
-    font-size: 13px;
-    border-bottom: 2px solid rgba(99, 102, 241, 0.3);
-    position: sticky;
-    top: 0;
-    z-index: 10;
-    white-space: nowrap;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-
-  td {
-    padding: var(--spacing-md);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    color: var(--cust-text);
-    text-align: center;
-    transition: all 0.2s ease;
-  }
-
-  tbody tr {
-    transition: all 0.2s ease;
-    animation: slideInRight 0.3s ease;
-    animation-fill-mode: both;
-  }
-
-  tbody tr:nth-child(even) {
-    background: rgba(255, 255, 255, 0.02);
-  }
-
-  tbody tr:hover {
-    background: rgba(99, 102, 241, 0.08);
-  }
-
-  tbody tr:hover td {
-    background: transparent;
-  }
-
-  td .btn {
-    margin: 0 var(--spacing-xs);
-    padding: 8px 14px;
-    font-size: 13px;
-  }
-
-  /* ================= MODAL ================= */
-  .modal {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 10000;
-    padding: var(--spacing-md);
-    animation: fadeIn 0.3s ease-out;
-  }
-
-  .modal.show {
-    display: flex;
-  }
-
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-    }
-
-    to {
-      opacity: 1;
-    }
-  }
-
-  .modal-box {
-    background: var(--glass-bg);
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    padding: var(--spacing-xl);
-    border-radius: var(--radius-lg);
-    width: 100%;
-    max-width: 600px;
-    max-height: 90vh;
-    overflow-y: auto;
-    border: 1px solid var(--glass-border);
-    box-shadow: var(--shadow-lg);
-    animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    z-index: 10001;
-  }
-
-  @keyframes slideUp {
-    from {
-      opacity: 0;
-      transform: translateY(40px) scale(0.95);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-    }
-  }
-
-  .modal-box h3 {
-    color: var(--cust-text);
-    font-size: 22px;
-    font-weight: 700;
-    margin: 0 0 var(--spacing-lg);
-    padding-bottom: var(--spacing-md);
-    border-bottom: 1px solid var(--glass-border);
-    text-align: center;
-    letter-spacing: 0.2px;
-  }
-
-  .modal-box input,
-  .modal-box textarea {
-    width: 100%;
-    padding: 12px var(--spacing-md);
-    margin-bottom: var(--spacing-md);
-    border-radius: var(--radius-md);
-    border: 1px solid var(--glass-border);
-    background: rgba(15, 23, 42, 0.5);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    color: var(--cust-text);
-    font-size: 14px;
-    transition: all 0.2s ease;
-    font-family: inherit;
-    box-sizing: border-box;
-  }
-
-  .modal-box input:focus,
-  .modal-box textarea:focus {
-    outline: none;
-    border-color: var(--cust-primary);
-    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-    background: rgba(15, 23, 42, 0.7);
-  }
-
-  .modal-box textarea {
-    min-height: 100px;
-    resize: none;
-  }
-
-  /* ================= Row actions ================= */
-  .row-actions {
-    display: inline-flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    justify-content: center;
-  }
-
-  /* ================= Orders modal (table) ================= */
-  .orders-summary {
-    background: rgba(59, 130, 246, 0.10);
-    padding: var(--spacing-md);
-    border-radius: var(--radius-md);
-    margin-bottom: var(--spacing-lg);
-    border: 1px solid rgba(59, 130, 246, 0.18);
-  }
-
-  .orders-table-wrap {
-    max-height: 420px;
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
-    border-radius: var(--radius-md);
-    border: 1px solid var(--glass-border);
-    background: rgba(2, 6, 23, 0.14);
-  }
-
-  :root[data-theme="light"] .orders-table-wrap {
-    background: rgba(255, 255, 255, 0.92);
-    border-color: rgba(2, 6, 23, 0.08);
-  }
-
-  .orders-table {
-    width: 100%;
-    border-collapse: separate;
-    border-spacing: 0;
-    font-size: 14px;
-    min-width: 560px;
-  }
-
-  .orders-table th {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    padding: var(--spacing-sm);
-    background: rgba(99, 102, 241, 0.10);
-    border-bottom: 1px solid var(--glass-border);
-    color: var(--cust-text-secondary);
-    font-weight: 800;
-    white-space: nowrap;
-  }
-
-  .orders-table td {
-    padding: var(--spacing-sm);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    color: var(--cust-text);
-    vertical-align: middle;
-  }
-
-  :root[data-theme="light"] .orders-table td {
-    border-bottom-color: rgba(2, 6, 23, 0.06);
-  }
-
-  .orders-amount {
-    color: var(--cust-success);
-    font-weight: 800;
-  }
-
-  .orders-date {
-    color: var(--cust-muted);
-    font-size: 13px;
-    white-space: nowrap;
-  }
-
-  .orders-status {
-    font-weight: 800;
-  }
-
-  .orders-status.is-paid {
-    color: var(--cust-success);
-  }
-
-  .orders-status.is-return {
-    color: var(--cust-danger);
-  }
-
-  .orders-status.is-other {
-    color: var(--cust-warning);
-  }
-
-  .orders-total-row td {
-    background: rgba(16, 185, 129, 0.10);
-    font-weight: 900;
-    border-top: 2px solid rgba(16, 185, 129, 0.22);
-  }
-
-  .orders-close-btn {
-    width: 100%;
-    margin-top: var(--spacing-lg);
-    padding: var(--spacing-md);
-    border-radius: var(--radius-md);
-    background: rgba(148, 163, 184, 0.14);
-    color: var(--cust-text);
-    border: 1px solid var(--glass-border);
-    cursor: pointer;
-    font-weight: 800;
-  }
-
-  .orders-close-btn:hover {
-    background: rgba(148, 163, 184, 0.22);
-  }
-
-  /* ================= Light mode readability ================= */
-  :root[data-theme="light"] .table-container {
-    background: rgba(255, 255, 255, 0.92);
-    border-color: rgba(2, 6, 23, 0.08);
-  }
-
-  :root[data-theme="light"] th {
-    background: rgba(241, 245, 249, 0.96);
-    color: #0f172a;
-    border-bottom-color: rgba(2, 6, 23, 0.10);
-  }
-
-  :root[data-theme="light"] td {
-    color: #0f172a;
-    border-bottom-color: rgba(2, 6, 23, 0.06);
-  }
-
-  :root[data-theme="light"] tbody tr:nth-child(even) {
-    background: rgba(2, 6, 23, 0.02);
-  }
-
-  :root[data-theme="light"] tbody tr:hover {
-    background: rgba(37, 99, 235, 0.06);
-  }
-
-  :root[data-theme="light"] .search-filters input,
-  :root[data-theme="light"] .search-filters select,
-  :root[data-theme="light"] .modal-box input,
-  :root[data-theme="light"] .modal-box textarea {
-    background: rgba(255, 255, 255, 0.92);
-    border-color: rgba(2, 6, 23, 0.10);
-    color: #0f172a;
-  }
-
-  :root[data-theme="light"] .modal-box {
-    background: rgba(255, 255, 255, 0.92);
-    border-color: rgba(2, 6, 23, 0.08);
-  }
-
-  :root[data-theme="light"] .btn-muted {
-    color: #1d4ed8;
-    border-color: rgba(37, 99, 235, 0.18);
-  }
-
-  .modal-box .btn-submit,
-  .modal-box .orders-close-btn {
-    width: 100%;
-    padding: var(--spacing-md);
-    border-radius: var(--radius-md);
-    border: none;
-    background: linear-gradient(135deg, var(--cust-primary), var(--cust-primary-light));
-    color: white;
-    font-weight: 700;
-    font-size: 15px;
-    cursor: pointer;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    margin-top: var(--spacing-sm);
-    box-shadow: var(--shadow-sm);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-  }
-
-  .modal-box .btn-submit:hover,
-  .modal-box .orders-close-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-    filter: brightness(1.1);
-  }
-
-  .modal-box .btn-submit:active,
-  .modal-box .orders-close-btn:active {
-    transform: translateY(0);
-  }
-
-  .modal-close {
-    position: absolute;
-    top: 15px;
-    left: 15px;
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    border: none;
-    background: rgba(239, 68, 68, 0.15);
-    color: #ef4444;
-    font-size: 20px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s ease;
-    z-index: 10;
-    line-height: 1;
-    padding: 0;
-  }
-
-  .modal-close:hover {
-    background: #ef4444;
-    color: white;
-    transform: rotate(90deg);
-  }
-
-  /* ================= LOADING & TOAST ================= */
-  .loading-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.7);
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    z-index: 9999;
-    pointer-events: auto;
-  }
-
-  .loading-overlay.show {
-    display: flex;
-  }
-
-  .loading-spinner {
-    width: 50px;
-    height: 50px;
-    border: 4px solid rgba(99, 102, 241, 0.2);
-    border-top-color: var(--cust-primary);
-    border-radius: var(--radius-full);
-    animation: spin 0.8s linear infinite;
-  }
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  .toast-container {
-    position: fixed;
-    top: var(--spacing-lg);
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 10001;
-    display: flex;
-    flex-direction: column;
-    gap: var(--spacing-md);
-    width: calc(100% - var(--spacing-xl));
-    max-width: 500px;
-    pointer-events: none;
-  }
-
-  .toast {
-    min-width: 280px;
-    max-width: 100%;
-    width: 100%;
-    padding: var(--spacing-md) var(--spacing-lg);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-lg);
-    display: flex;
-    align-items: center;
-    gap: var(--spacing-md);
-    animation: slideInDown 0.4s ease-out;
-    pointer-events: auto;
-    backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
-    border: 1px solid var(--glass-border);
-  }
-
-  .toast.success {
-    background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
-    color: #fff;
-  }
-
-  .toast.error {
-    background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(220, 38, 38, 0.95));
-    color: #fff;
-  }
-
-  .toast.warning {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.95));
-    color: #fff;
-  }
-
-  .toast.info {
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.95), rgba(79, 70, 229, 0.95));
-    color: #fff;
-  }
-
-  .toast.fade-out {
-    animation: fadeOutToast 0.3s ease-out forwards;
-  }
-
-  @keyframes slideInDown {
-    from {
-      opacity: 0;
-      transform: translateX(-50%) translateY(-20px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
-    }
-  }
-
-  @keyframes fadeOutToast {
-    to {
-      opacity: 0;
-      transform: translateX(-50%) translateY(-20px);
-    }
-  }
-
-  /* ================= EMPTY STATE ================= */
-  .empty-state {
-    text-align: center;
-    padding: var(--spacing-xl);
-    color: var(--cust-muted);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--spacing-md);
-  }
-
-  .empty-state-icon {
-    font-size: 64px;
-    opacity: 0.5;
-    animation: pulse 2s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-
-    0%,
-    100% {
-      opacity: 0.5;
-      transform: scale(1);
-    }
-
-    50% {
-      opacity: 0.8;
-      transform: scale(1.05);
-    }
-  }
-
-  .empty-state-text {
-    font-size: 18px;
-    font-weight: 600;
-    color: var(--cust-text);
-  }
-
-  .empty-state-subtext {
-    font-size: 14px;
-    color: var(--cust-muted);
-  }
-
-  /* ================= ANIMATIONS ================= */
-  @keyframes fadeInUp {
-    from {
-      opacity: 0;
-      transform: translateY(20px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes slideInRight {
-    from {
-      opacity: 0;
-      transform: translateX(-20px);
-    }
-
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  tbody tr:nth-child(1) {
-    animation-delay: 0.05s;
-  }
-
-  tbody tr:nth-child(2) {
-    animation-delay: 0.1s;
-  }
-
-  tbody tr:nth-child(3) {
-    animation-delay: 0.15s;
-  }
-
-  tbody tr:nth-child(4) {
-    animation-delay: 0.2s;
-  }
-
-  tbody tr:nth-child(5) {
-    animation-delay: 0.25s;
-  }
-
-  /* ================= RESPONSIVE ================= */
-  @media (max-width: 768px) {
-    .stats-grid {
-      grid-template-columns: repeat(2, 1fr);
-      gap: var(--spacing-md);
-    }
-
-    .card {
-      padding: var(--spacing-md);
-    }
-
-    .search-filters {
-      flex-direction: column;
-    }
-
-    .search-filters input,
-    .search-filters select {
-      width: 100%;
-    }
-
-    table {
-      min-width: auto;
-    }
-
-    th,
-    td {
-      padding: var(--spacing-sm);
-      font-size: 13px;
-    }
-
-    td .btn {
-      display: block;
-      margin: var(--spacing-xs) 0;
-      width: 100%;
-    }
-
-    .modal-box {
-      padding: var(--spacing-lg);
-      margin: var(--spacing-md);
-    }
-
-    .cust-actions-grid .cust-actions-trigger {
-      min-width: 24px !important;
-      width: 24px !important;
-      height: 24px;
-      min-height: 24px !important;
-      max-height: 24px !important;
-      border-radius: 6px !important;
-    }
-
-    .toast-container {
-      top: var(--spacing-md);
-      left: var(--spacing-md);
-      right: var(--spacing-md);
-      width: auto;
-      max-width: none;
-      transform: none;
-    }
-
-    @keyframes slideInDown {
-      from {
-        opacity: 0;
-        transform: translateY(-20px);
-      }
-
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
-    }
-  }
-
-  @media (max-width: 480px) {
-    .stats-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .stat-value {
-      font-size: 20px;
-    }
-  }
-</style>
-
-<!-- ============ STATS CARDS ============ -->
-{% set total_customers = customers|length %}
-{% set customers_with_orders = customers|selectattr("id")|list|length %}
-
-<div class="stats-grid">
-  <div class="stat-card primary">
-    <div class="stat-icon">👥</div>
-    <div class="stat-label">{{ _('customers_stat_total') }}</div>
-    <div class="stat-value">{{ total_customers }}</div>
+{% from "partials/fd_icons.html" import icon %}
+<script src="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.4/dist/ag-grid-community.min.noStyle.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.4/styles/ag-grid.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.4/styles/ag-theme-quartz.css">
+<link rel="stylesheet" href="/static/css/finora-ui.css?v=20261018b">
+
+<div class="fd" id="fdPage">
+
+  <header class="fd-header no-print">
+    <div class="fd-header-main">
+      <span class="fd-header-icon" style="color: var(--fd-purple);">{{ icon('users', 26) }}</span>
+      <div class="fd-header-text">
+        <h1 class="fd-title">إدارة الزبائن</h1>
+        <p class="fd-subtitle">بيانات الزبائن وطلباتهم ومحافظاتهم</p>
+      </div>
+    </div>
+  </header>
+
+  <nav class="fd-subnav no-print" aria-label="الزبائن">
+    <a class="fd-subnav-link active" href="/customers/">الزبائن</a>
+    <a class="fd-subnav-link" href="/customers/blacklist">{{ _('customers_nav_blacklist') }}</a>
+    <a class="fd-subnav-link" href="/customers/provinces">المحافظات</a>
+    <a class="fd-subnav-link" href="/customers/credit">بيع آجل / أقساط</a>
+  </nav>
+
+  <div class="fd-kpis no-print">
+    <button type="button" class="fd-kpi fd-kpi--purple active" data-cust-quick="">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('customers_stat_total') }}</span>
+        <span><span class="fd-kpi-value">{{ "{:,}".format(customer_kpis.total) }}</span><span class="fd-kpi-unit">زبون</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('users', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--green" data-cust-quick="with_orders">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">لديهم طلبات</span>
+        <span><span class="fd-kpi-value">{{ "{:,}".format(customer_kpis.with_orders) }}</span><span class="fd-kpi-unit">زبون</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('cart', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--amber" data-cust-quick="new">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">جدد هذا الشهر</span>
+        <span><span class="fd-kpi-value">{{ "{:,}".format(customer_kpis.new_this_month) }}</span><span class="fd-kpi-unit">زبون</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('calendar', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--red" data-cust-quick="blacklisted">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('customers_nav_blacklist') }}</span>
+        <span><span class="fd-kpi-value">{{ "{:,}".format(customer_kpis.blacklisted) }}</span><span class="fd-kpi-unit">زبون</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('ban', 28) }}</span>
+    </button>
   </div>
-  <div class="stat-card success">
-    <div class="stat-icon">📋</div>
-    <div class="stat-label">{{ _('customers_stat_active') }}</div>
-    <div class="stat-value">{{ customers_with_orders }}</div>
+
+  <div class="fd-toolbar no-print">
+    <div class="fd-pop-wrap fd-tool--filter">
+      <button type="button" class="fd-btn" data-fd-pop="custFiltersPop" aria-expanded="false" aria-controls="custFiltersPop">
+        {{ icon('filter', 18) }}
+        <span class="fd-btn-label">تصفية</span>
+        <span class="fd-count-badge" id="custFilterCount" hidden></span>
+        <span class="fd-chevron">{{ icon('chevron', 16) }}</span>
+      </button>
+      <div class="fd-pop fd-pop--start fd-filter-pop" id="custFiltersPop" role="dialog" aria-label="تصفية" hidden>
+        <div class="fd-form-grid">
+          <label class="fd-field"><span>المحافظة</span>
+            <select id="cityFilter">
+              <option value="">{{ _('customers_all_cities') }}</option>
+              <option value="{{ province_filter_primary }}">{{ primary_province }}</option>
+              <option value="{{ province_filter_group }}">{{ provinces_group_label }}</option>
+            </select>
+          </label>
+          <label class="fd-field"><span>الطلبات</span>
+            <select id="ordersFilter">
+              <option value="">الكل</option>
+              <option value="with">لديهم طلبات</option>
+              <option value="without">بدون طلبات</option>
+            </select>
+          </label>
+          <label class="fd-field"><span>الحالة</span>
+            <select id="statusFilter">
+              <option value="">الكل</option>
+              <option value="active">نشط</option>
+              <option value="blacklisted">في القائمة السوداء</option>
+            </select>
+          </label>
+          <label class="fd-field"><span>أقل إجمالي مشتريات</span>
+            <input type="number" id="spentMin" min="0" step="any" inputmode="decimal" placeholder="0">
+          </label>
+          <label class="fd-field"><span>أضيف من تاريخ</span><input type="date" id="addedFrom"></label>
+          <label class="fd-field"><span>إلى تاريخ</span><input type="date" id="addedTo"></label>
+        </div>
+        <div class="fd-pop-foot fd-pop-foot--split">
+          <button type="button" class="fd-link-btn" onclick="clearCustomerFilters()">مسح التصفية</button>
+          <button type="button" class="fd-btn fd-btn--accent fd-btn--apply" data-fd-pop-close>تطبيق</button>
+        </div>
+      </div>
+    </div>
+
+    <label class="fd-search fd-tool--search">
+      {{ icon('search', 18) }}
+      <input type="search" id="searchInput" autocomplete="off" placeholder="ابحث بالاسم أو الرقم أو المحافظة...">
+    </label>
+
+    <div class="fd-tools-row">
+      <button type="button" class="fd-btn fd-btn--primary" onclick="openCustomerDrawer()">
+        {{ icon('users', 18) }}
+        <span class="fd-btn-label">{{ _('customers_add_button') }}</span>
+      </button>
+      <div class="fd-pop-wrap">
+        <button type="button" class="fd-btn fd-btn--icon" data-fd-pop="custMorePop" aria-expanded="false" aria-controls="custMorePop" title="المزيد" aria-label="المزيد">{{ icon('dots', 20) }}</button>
+        <div class="fd-pop fd-pop--end fd-menu" id="custMorePop" role="menu" hidden>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="addSelectedToBlacklist()">{{ icon('ban') }}<span>{{ _('customers_blacklist_add_selected') }}</span></button>
+          <a class="fd-menu-item" role="menuitem" href="/customers/blacklist">{{ icon('users') }}<span>{{ _('customers_nav_blacklist') }}</span></a>
+          <div class="fd-menu-sep" role="separator"></div>
+          <a class="fd-menu-item" role="menuitem" href="/customers/export">{{ icon('download') }}<span>تصدير Excel</span></a>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="triggerImportCustomers()">{{ icon('upload') }}<span>استيراد من ملف</span></button>
+        </div>
+      </div>
+    </div>
+    <input type="file" id="customersImportInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportCustomers(event)">
+  </div>
+
+  <section class="fd-table-card">
+    <div class="fd-grid-wrap" id="custGridWrap">
+      <div id="customersTable" class="fd-grid ag-theme-quartz" style="height: 600px; width: 100%;"></div>
+    </div>
+  </section>
+
+  <footer class="fd-footer no-print">
+    <div class="fd-footer-info">
+      <select id="custPageSize" aria-label="عدد الزبائن في الصفحة">
+        <option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
+      </select>
+      <span class="fd-range" id="custRange"></span>
+      <span class="fd-totals" id="custTotals"></span>
+    </div>
+    <nav class="fd-pager" id="custPager" aria-label="الصفحات"></nav>
+  </footer>
+
+  <!-- Detail panel -->
+  <aside class="fd-detail" id="custDetail" aria-label="تفاصيل الزبون" hidden>
+    <div class="fd-detail-head">
+      <div class="fd-detail-titles">
+        <h3 class="fd-detail-title" id="custDetailTitle"></h3>
+        <p class="fd-detail-sub" id="custDetailSub" dir="ltr" style="text-align:end"></p>
+      </div>
+      <button type="button" class="fd-btn fd-btn--soft fd-btn--sm" id="custDetailEdit">{{ icon('pencil', 16) }}<span>تعديل</span></button>
+      <button type="button" class="fd-close-btn" onclick="FinoraUI.hide(document.getElementById('custDetail'))" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+    </div>
+    <div class="fd-detail-body" id="custDetailBody"></div>
+  </aside>
+
+  <!-- Drawer: new / edit customer -->
+  <div class="fd-drawer" id="custDrawer" hidden>
+    <form class="fd-drawer-panel" id="custForm" role="dialog" aria-modal="true" aria-labelledby="custDrawerTitle" novalidate>
+      <input type="hidden" id="cfId">
+      <div class="fd-drawer-head">
+        <span class="fd-drawer-icon">{{ icon('users', 24) }}</span>
+        <div class="fd-drawer-titles">
+          <h2 class="fd-drawer-title" id="custDrawerTitle">{{ _('customers_add_modal_title') }}</h2>
+          <p class="fd-drawer-hint">Ctrl+S للحفظ · Esc للإغلاق</p>
+        </div>
+        <button type="button" class="fd-close-btn" onclick="closeCustomerDrawer()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+      </div>
+      <div class="fd-drawer-body">
+        <div class="fd-form-error" id="cfError" role="alert" hidden></div>
+        <section class="fd-section">
+          <div class="fd-section-head"><span class="fd-section-title">{{ icon('users', 18) }}بيانات الزبون</span></div>
+          <label class="fd-field"><span>{{ _('customers_field_full_name') }} <b class="fd-req">*</b></span>
+            <input type="text" name="name" id="cfName" required autocomplete="off" placeholder="{{ _('customers_placeholder_full_name') }}">
+          </label>
+          <div class="fd-grid-2">
+            <label class="fd-field"><span>{{ _('customers_field_phone') }} <b class="fd-req">*</b></span>
+              <input type="tel" name="phone" id="cfPhone" required autocomplete="off" dir="ltr" placeholder="{{ _('customers_placeholder_phone') }}">
+            </label>
+            <label class="fd-field"><span>{{ _('customers_field_phone2') }}</span>
+              <input type="tel" name="phone2" id="cfPhone2" autocomplete="off" dir="ltr" placeholder="{{ _('customers_placeholder_optional') }}">
+            </label>
+          </div>
+        </section>
+        <section class="fd-section">
+          <div class="fd-section-head"><span class="fd-section-title">{{ icon('truck', 18) }}العنوان</span></div>
+          <label class="fd-field"><span>{{ _('customers_field_city') }}</span>
+            <select name="city" id="cfCity">
+              <option value="{{ primary_province }}">{{ primary_province }}</option>
+              <option value="{{ provinces_group_label }}">{{ provinces_group_label }}</option>
+            </select>
+          </label>
+          <label class="fd-field"><span>{{ _('customers_field_address') }}</span>
+            <input type="text" name="address" id="cfAddress" autocomplete="off" placeholder="{{ _('customers_placeholder_address') }}">
+          </label>
+        </section>
+        <section class="fd-section">
+          <label class="fd-field"><span>{{ _('customers_field_notes') }}</span>
+            <textarea name="notes" id="cfNotes" rows="3" placeholder="{{ _('customers_placeholder_notes') }}"></textarea>
+          </label>
+        </section>
+      </div>
+      <div class="fd-drawer-foot">
+        <button type="submit" class="fd-btn fd-btn--primary" id="cfSave">{{ icon('check-circle', 18) }}<span id="cfSaveLabel">{{ _('customers_save_customer') }}</span></button>
+        <button type="button" class="fd-btn" id="cfSaveAnother">حفظ وإضافة آخر</button>
+      </div>
+    </form>
   </div>
 </div>
 
-<!-- ============ SEARCH & FILTERS ============ -->
-<div class="card">
-  <div class="search-filters">
-    <input id="searchInput" placeholder="{{ _('customers_search_placeholder') }}" onkeyup="updateSearch()">
-    <select id="cityFilter" onchange="updateSearch()">
-      <option value="">{{ _('customers_all_cities') }}</option>
-      <option value="{{ province_filter_primary }}">{{ primary_province }}</option>
-      <option value="{{ province_filter_group }}">{{ provinces_group_label }}</option>
-    </select>
-    <button class="btn btn-muted" type="button" onclick="exportCustomers()">
-      <span>📤</span>
-      <span>تصدير</span>
-    </button>
-    <button class="btn btn-muted" type="button" onclick="triggerImportCustomers()">
-      <span>📥</span>
-      <span>استيراد</span>
-    </button>
-    <a href="/customers/blacklist" class="btn btn-muted" style="text-decoration:none;display:inline-flex;align-items:center;gap:6px;">
-      <span>🚫</span>
-      <span>{{ _('customers_nav_blacklist') }}</span>
-    </a>
-    <button type="button" class="btn btn-muted" onclick="addSelectedToBlacklist()">
-      <span>⛔</span>
-      <span>{{ _('customers_blacklist_add_selected') }}</span>
-    </button>
-    <button class="btn-premium" onclick="openAdd()">
-      <span>➕</span>
-      <span>{{ _('customers_add_button') }}</span>
-    </button>
-  </div>
-  <div id="searchStats" class="search-stats"></div>
-</div>
-
-<!-- ============ CUSTOMERS TABLE ============ -->
-<div class="card">
-  <div class="table-container" style="height: 600px;">
-    <div id="customersTable" class="ag-theme-finora" style="height: 100%; width: 100%;"></div>
-  </div>
-</div>
-
-<!-- ================= CUSTOMERS DATA (JSON) ================= -->
-<script type="application/json" id="customersData">
-[
-  {% for c in customers %}
-  {
-    "id": {{ c.id }},
-    "name": {{ c.name|tojson }},
-    "phone": {{ (c.phone or '—')|tojson }},
-    "phone2": {{ (c.phone2 or '')|tojson }},
-    "city": {{ (c.city or '—')|tojson }},
-    "address": {{ (c.address or '—')|tojson }},
-    "notes": {{ (c.notes or '')|tojson }},
-    "created_at": {{ ((c.created_at.strftime("%Y-%m-%d %H:%M")) if c.created_at else '—')|tojson }},
-    "is_blacklisted": {{ 'true' if c.is_blacklisted else 'false' }}
-  }{% if not loop.last %},{% endif %}
+<script type="application/json" id="customersData">[
+  {% for c in customers %}{% set st = order_stats.get(c.id, (0, 0)) %}
+  {"id": {{ c.id }}, "name": {{ (c.name or '')|tojson }}, "phone": {{ (c.phone or '')|tojson }}, "phone2": {{ (c.phone2 or '')|tojson }},
+   "city": {{ (c.city or '')|tojson }}, "address": {{ (c.address or '')|tojson }}, "notes": {{ (c.notes or '')|tojson }},
+   "created_at": {{ (c.created_at.strftime("%Y-%m-%d %H:%M") if c.created_at else '')|tojson }},
+   "is_blacklisted": {{ 'true' if c.is_blacklisted else 'false' }}, "orders_count": {{ st[0] }}, "orders_total": {{ st[1] }}}{% if not loop.last %},{% endif %}
   {% endfor %}
-]
-</script>
+]</script>
 
-<input type="file" id="customersImportInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportCustomers(event)">
-
-<!-- ============ MODAL ============ -->
-<div class="modal" id="modal">
-  <div class="modal-box" id="modalContent"></div>
-</div>
-
+<script src="/static/js/finora-ui.js?v=20261018a"></script>
 <script>
-  // ==================== Toast Notifications ====================
-  function showToast(message, type = 'info') {
-    const container = document.getElementById('toastContainer');
-    if (!container) return;
+  const F = window.FinoraUI;
+  const CITY_PRIMARY = {{ primary_province|tojson }};
+  const CITY_GROUP = {{ provinces_group_label|tojson }};
+  const CITY_GROUP_LIST = {{ tenant_group_provinces|tojson }};
+  const CITY_FILTER_PRIMARY = {{ province_filter_primary|tojson }};
+  const CITY_FILTER_GROUP = {{ province_filter_group|tojson }};
+  let allCustomers = [];
+  let gridApi = null;
+  let custQuick = "";
+  let custDetailId = null;
+  const byId = id => document.getElementById(id);
 
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
+  function monthStartIso() {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-01";
+  }
 
-    const icons = {
-      success: '✅',
-      error: '❌',
-      warning: '⚠️',
-      info: 'ℹ️'
+  function custDate(value) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(value || ""));
+    return m ? '<span dir="ltr">' + m[3] + "/" + m[2] + "/" + m[1] + "</span>" : '<span class="fd-muted">—</span>';
+  }
+
+  function custName(row) {
+    return '<span class="fd-cell-name">' + F.esc(row.name || "—") + "</span>" +
+      (row.is_blacklisted ? ' <span class="fd-pill fd-pill--red" style="padding:3px 10px;font-size:12px;">محظور</span>' : "");
+  }
+
+  function custPhones(row) {
+    if (F.blank(row.phone)) return '<span class="fd-muted">—</span>';
+    return '<div class="fd-cust"><span class="fd-cust-name" dir="ltr" style="text-align:end;font-weight:600">' + F.esc(row.phone) + "</span>" +
+      (F.blank(row.phone2) ? "" : '<span class="fd-cust-phone" dir="ltr">' + F.esc(row.phone2) + "</span>") + "</div>";
+  }
+
+  function custMore(row) {
+    return '<button type="button" class="fd-more-btn" data-cust-menu="' + row.id + '" aria-haspopup="menu" aria-label="إجراءات" title="إجراءات"></button>';
+  }
+
+  function custCard(row) {
+    const place = [row.city, row.address].filter(v => !F.blank(v)).map(F.esc).join(" · ");
+    return '<div class="fd-card">' +
+      '<div class="fd-card-line">' + custName(row) + '<span class="fd-cust-phone" dir="ltr">' + F.esc(row.phone || "") + "</span></div>" +
+      '<div class="fd-card-meta">' + (place || '<span class="fd-muted">بدون عنوان</span>') + "</div>" +
+      '<div class="fd-card-line fd-card-foot"><span class="fd-card-amount">' + F.money(row.orders_total) + "</span>" +
+      '<span class="fd-card-actions"><span class="fd-muted">' + F.num(row.orders_count) + " طلب</span>" + custMore(row) + "</span></div>" +
+    "</div>";
+  }
+
+  function passesCity(city) {
+    const mode = byId("cityFilter").value;
+    if (!mode) return true;
+    const c = String(city || "").trim();
+    if (mode === CITY_FILTER_PRIMARY) return c === CITY_PRIMARY;
+    if (mode === CITY_FILTER_GROUP) return c === CITY_GROUP || CITY_GROUP_LIST.includes(c);
+    return c === mode;
+  }
+
+  function custFiltersActive() {
+    return ["cityFilter", "ordersFilter", "statusFilter", "spentMin", "addedFrom", "addedTo"].filter(id => byId(id).value).length;
+  }
+
+  function custPasses(row) {
+    if (!passesCity(row.city)) return false;
+    const orders = byId("ordersFilter").value;
+    if (orders === "with" && !(row.orders_count > 0)) return false;
+    if (orders === "without" && row.orders_count > 0) return false;
+    const status = byId("statusFilter").value;
+    if (status === "active" && row.is_blacklisted) return false;
+    if (status === "blacklisted" && !row.is_blacklisted) return false;
+    const min = parseFloat(byId("spentMin").value);
+    if (!isNaN(min) && (row.orders_total || 0) < min) return false;
+    const day = String(row.created_at || "").slice(0, 10);
+    if (byId("addedFrom").value && day < byId("addedFrom").value) return false;
+    if (byId("addedTo").value && day > byId("addedTo").value) return false;
+    if (custQuick === "with_orders" && !(row.orders_count > 0)) return false;
+    if (custQuick === "new" && day < monthStartIso()) return false;
+    if (custQuick === "blacklisted" && !row.is_blacklisted) return false;
+    return true;
+  }
+
+  function refreshCustomerFilters() {
+    if (!gridApi) return;
+    gridApi.onFilterChanged();
+    const active = custFiltersActive();
+    byId("custFilterCount").hidden = active === 0;
+    byId("custFilterCount").textContent = String(active);
+    document.querySelectorAll("[data-cust-quick]").forEach(card => card.classList.toggle("active", card.getAttribute("data-cust-quick") === custQuick));
+  }
+
+  function clearCustomerFilters() {
+    ["cityFilter", "ordersFilter", "statusFilter", "spentMin", "addedFrom", "addedTo"].forEach(id => { byId(id).value = ""; });
+    custQuick = "";
+    refreshCustomerFilters();
+  }
+
+  function updateCustomerKpis() {
+    const counts = { "": 0, with_orders: 0, new: 0, blacklisted: 0 };
+    const monthStart = monthStartIso();
+    gridApi.forEachNode(node => {
+      const row = node.data;
+      counts[""] += 1;
+      if (row.orders_count > 0) counts.with_orders += 1;
+      if ((row.created_at || "") >= monthStart) counts.new += 1;
+      if (row.is_blacklisted) counts.blacklisted += 1;
+    });
+    document.querySelectorAll("[data-cust-quick]").forEach(card => {
+      const value = card.querySelector(".fd-kpi-value");
+      if (value) value.textContent = F.num(counts[card.getAttribute("data-cust-quick")] || 0);
+    });
+  }
+
+  function updateCustomerTotals() {
+    let orders = 0, spent = 0;
+    gridApi.forEachNodeAfterFilter(node => {
+      orders += node.data.orders_count || 0;
+      spent += node.data.orders_total || 0;
+    });
+    byId("custTotals").innerHTML = "الطلبات <b>" + F.num(orders) + "</b> · المشتريات <b>" + F.num(spent) + " د.ع</b>";
+  }
+
+  const custPage = F.gridPage({
+    gridEl: byId("customersTable"),
+    wrapEl: byId("custGridWrap"),
+    pagerEl: byId("custPager"),
+    rangeEl: byId("custRange"),
+    sizeEl: byId("custPageSize"),
+    sizeKey: "customers_page_size",
+    unit: "زبون",
+    cardCol: "card",
+    cardKeep: ["_sel"],
+    alwaysHidden: ["notes"],
+    rowHeight: 72,
+    cardRowHeight: 118,
+    tiers: [
+      { mode: "full", minWidth: 1120, hidden: [] },
+      { mode: "medium", minWidth: 960, hidden: ["created_at"] },
+      { mode: "compact", minWidth: 820, hidden: ["created_at", "address", "id"] }
+    ]
+  });
+
+  function initCustomersGrid() {
+    try { allCustomers = JSON.parse(byId("customersData").textContent); } catch (e) { allCustomers = []; }
+    const html = render => params => (params.data ? render(params.data, params.value) : "");
+    const columnDefs = [
+      { colId: "_sel", headerName: "", width: 52, minWidth: 52, maxWidth: 52, checkboxSelection: true, headerCheckboxSelection: true, headerCheckboxSelectionFilteredOnly: true, sortable: false, resizable: false, suppressMovable: true },
+      { colId: "id", field: "id", headerName: "#", minWidth: 70, maxWidth: 90, flex: 0.5, cellClass: "fd-cell-muted" },
+      { colId: "name", field: "name", headerName: "{{ _('customers_col_name') }}", minWidth: 180, flex: 1.6, cellRenderer: html(row => custName(row)) },
+      { colId: "phone", field: "phone", headerName: "{{ _('customers_col_phone') }}", minWidth: 140, flex: 1, cellRenderer: html(row => custPhones(row)), getQuickFilterText: p => (p.data.phone || "") + " " + (p.data.phone2 || "") },
+      { colId: "city", field: "city", headerName: "{{ _('customers_col_city') }}", minWidth: 100, flex: 0.8, cellRenderer: html((row, v) => F.dash(v)) },
+      { colId: "address", field: "address", headerName: "{{ _('customers_col_address') }}", minWidth: 160, flex: 1.4, tooltipField: "address", cellRenderer: html((row, v) => F.dash(v)) },
+      { colId: "orders_count", field: "orders_count", headerName: "الطلبات", minWidth: 90, flex: 0.6, cellRenderer: html((row, v) => '<b class="' + (v > 0 ? "fd-qty--ok" : "fd-muted") + '">' + F.num(v) + "</b>") },
+      { colId: "orders_total", field: "orders_total", headerName: "إجمالي المشتريات", minWidth: 130, flex: 1, cellClass: "fd-cell-amount", cellRenderer: html((row, v) => F.money(v)) },
+      { colId: "created_at", field: "created_at", headerName: "تاريخ الإضافة", minWidth: 120, flex: 0.9, cellClass: "fd-cell-muted", cellRenderer: html((row, v) => custDate(v)) },
+      { colId: "notes", field: "notes", headerName: "ملاحظات", hide: true },
+      { colId: "card", headerName: "الزبائن", flex: 1, minWidth: 220, hide: true, cellClass: "fd-card-cell", sortable: false, cellRenderer: html(row => custCard(row)), getQuickFilterText: () => "" },
+      { colId: "actions", headerName: "", width: 68, minWidth: 68, maxWidth: 68, sortable: false, resizable: false, cellClass: "fd-actions-cell", cellRenderer: html(row => custMore(row)), getQuickFilterText: () => "" }
+    ];
+    const gridOptions = custPage.gridOptions({
+      columnDefs,
+      rowData: allCustomers,
+      getRowId: p => String(p.data.id),
+      rowSelection: "multiple",
+      suppressRowClickSelection: true,
+      defaultColDef: { sortable: true, resizable: true, suppressHeaderMenuButton: true, minWidth: 60 },
+      overlayNoRowsTemplate: '<div style="padding:40px;color:#6b7280;font-weight:700">لا يوجد زبائن</div>',
+      isExternalFilterPresent: () => true,
+      doesExternalFilterPass: node => custPasses(node.data),
+      onFilterChanged: () => { updateCustomerTotals(); custPage.renderPager(); },
+      onGridReady: params => {
+        gridApi = params.api;
+        custPage.attach(gridApi);
+        updateCustomerTotals();
+      },
+      onRowClicked: event => {
+        const t = event.event && event.event.target;
+        if (t && t.closest && t.closest("button, a, .ag-selection-checkbox")) return;
+        openCustomerDetail(event.data.id);
+      }
+    });
+    custPage.fitHeight();
+    agGrid.createGrid(byId("customersTable"), gridOptions);
+  }
+
+  // ---- Detail panel ----
+  function findCustomer(id) {
+    return allCustomers.find(c => String(c.id) === String(id)) || null;
+  }
+
+  function waLink(phone) {
+    let digits = String(phone || "").replace(/\D/g, "");
+    if (digits.startsWith("0")) digits = "964" + digits.slice(1);
+    return digits ? "https://wa.me/" + digits : "";
+  }
+
+  async function openCustomerDetail(id) {
+    const c = findCustomer(id);
+    if (!c) return;
+    custDetailId = c.id;
+    byId("custDetailTitle").textContent = c.name || "—";
+    byId("custDetailSub").textContent = [c.phone, c.phone2].filter(v => !F.blank(v)).join(" · ");
+    const kv = (k, v) => '<div class="fd-kv-row"><span class="fd-kv-key">' + k + '</span><span class="fd-kv-val">' + v + "</span></div>";
+    const wa = waLink(c.phone);
+    byId("custDetailBody").innerHTML =
+      '<div class="fd-detail-status">' + (c.is_blacklisted ? '<span class="fd-pill fd-pill--red">في القائمة السوداء</span>' : '<span class="fd-pill fd-pill--green">نشط</span>') + "</div>" +
+      '<div class="fd-kv">' +
+        kv("الهاتف", '<span dir="ltr">' + F.dash(c.phone) + "</span>") +
+        (F.blank(c.phone2) ? "" : kv("الرقم الآخر", '<span dir="ltr">' + F.esc(c.phone2) + "</span>")) +
+        kv("المحافظة", F.dash(c.city)) +
+        kv("العنوان", F.dash(c.address)) +
+        kv("تاريخ الإضافة", custDate(c.created_at)) +
+        kv("عدد الطلبات", F.num(c.orders_count)) +
+        kv("إجمالي المشتريات", "<b>" + F.money(c.orders_total) + "</b>") +
+      "</div>" +
+      (F.blank(c.notes) ? "" : '<div class="fd-stock-line" style="font-weight:500">' + F.esc(c.notes) + "</div>") +
+      '<div class="fd-detail-actions">' +
+        (F.blank(c.phone) ? "" : '<a class="fd-btn fd-btn--sm" href="tel:' + F.esc(c.phone) + '">اتصال</a>') +
+        (wa ? '<a class="fd-btn fd-btn--sm" href="' + wa + '" target="_blank" rel="noopener">واتساب</a>' : "") +
+        '<button type="button" class="fd-btn fd-btn--sm" data-cust-delete="' + c.id + '" style="color:#dc2626 !important">حذف</button>' +
+      "</div>" +
+      '<div><div class="fd-section-title" style="margin-bottom:6px;">الطلبات</div><div id="custDetailOrders" class="fd-muted">جاري التحميل...</div></div>';
+    F.show(byId("custDetail"));
+    try {
+      const res = await fetch("/customers/orders/" + c.id);
+      const orders = await res.json();
+      if (custDetailId !== c.id) return;
+      const box = byId("custDetailOrders");
+      if (!Array.isArray(orders) || !orders.length) {
+        box.textContent = "{{ _('customers_no_orders') }}";
+        return;
+      }
+      box.className = "";
+      box.innerHTML = '<table class="fd-lines"><thead><tr><th>الطلب</th><th>المبلغ</th><th>الحالة</th><th>التاريخ</th></tr></thead><tbody>' +
+        orders.slice(0, 12).map(o => '<tr><td><a href="/orders/?open_details=' + o.id + '" style="font-weight:800;color:var(--fd-purple)">#' + o.id + "</a></td><td>" + F.money(o.total) +
+          "</td><td>" + F.esc(o.status || "—") + '</td><td><span dir="ltr">' + F.esc(o.date || "") + "</span></td></tr>").join("") +
+        "</tbody></table>" + (orders.length > 12 ? '<p class="fd-muted" style="margin:8px 0 0">+' + (orders.length - 12) + " طلب أقدم</p>" : "");
+    } catch (e) {
+      byId("custDetailOrders").textContent = "{{ _('customers_toast_orders_error') }}";
+    }
+  }
+
+  // ---- Row menu ----
+  let custMenuEl = null;
+  function closeCustMenu() { if (custMenuEl) custMenuEl.hidden = true; }
+
+  function openCustMenu(trigger) {
+    const id = Number(trigger.getAttribute("data-cust-menu"));
+    if (!custMenuEl) {
+      custMenuEl = document.createElement("div");
+      custMenuEl.className = "fd-pop fd-menu fd-row-menu";
+      custMenuEl.setAttribute("role", "menu");
+      byId("fdPage").appendChild(custMenuEl);
+    }
+    custMenuEl.innerHTML =
+      '<button type="button" class="fd-menu-item" data-cust-act="view">عرض التفاصيل والطلبات</button>' +
+      '<button type="button" class="fd-menu-item" data-cust-act="edit">{{ _('customers_action_edit') }}</button>' +
+      '<div class="fd-menu-sep"></div>' +
+      '<button type="button" class="fd-menu-item is-danger" data-cust-act="delete">{{ _('customers_action_delete') }}</button>';
+    custMenuEl.onclick = event => {
+      const btn = event.target.closest("[data-cust-act]");
+      if (!btn) return;
+      closeCustMenu();
+      const act = btn.getAttribute("data-cust-act");
+      if (act === "view") openCustomerDetail(id);
+      if (act === "edit") openCustomerDrawer(id);
+      if (act === "delete") deleteCustomer(id);
     };
-
-    toast.innerHTML = `
-    <span style="font-size: 18px;">${icons[type] || icons.info}</span>
-    <span style="flex: 1;font-size: 14px;line-height: 1.5;">${message}</span>
-  `;
-
-    container.appendChild(toast);
-
-    setTimeout(() => {
-      toast.classList.add('fade-out');
-      setTimeout(() => {
-        if (toast.parentNode) {
-          toast.parentNode.removeChild(toast);
-        }
-      }, 300);
-    }, 3000);
+    custMenuEl.hidden = false;
+    if (window.matchMedia("(max-width: 860px)").matches) {
+      custMenuEl.style.left = custMenuEl.style.top = "";
+      return;
+    }
+    const r = trigger.getBoundingClientRect();
+    const m = custMenuEl.getBoundingClientRect();
+    custMenuEl.style.left = Math.max(8, Math.min(r.left, innerWidth - m.width - 8)) + "px";
+    custMenuEl.style.top = (r.bottom + 6 + m.height > innerHeight - 8 ? Math.max(8, r.top - m.height - 6) : r.bottom + 6) + "px";
   }
 
-  // ==================== Loading Overlay ====================
-  function showLoading() {
-    const overlay = document.getElementById('loadingOverlay');
-    if (overlay) {
-      overlay.classList.add('show');
+  document.addEventListener("click", event => {
+    const trigger = event.target.closest ? event.target.closest("[data-cust-menu]") : null;
+    if (trigger) {
+      event.stopPropagation();
+      openCustMenu(trigger);
+      return;
+    }
+    if (custMenuEl && !custMenuEl.hidden && !custMenuEl.contains(event.target)) closeCustMenu();
+    const del = event.target.closest ? event.target.closest("[data-cust-delete]") : null;
+    if (del) deleteCustomer(Number(del.getAttribute("data-cust-delete")));
+    if (event.target.closest && event.target.closest("#custDetailEdit") && custDetailId) openCustomerDrawer(custDetailId);
+    const card = event.target.closest ? event.target.closest("[data-cust-quick]") : null;
+    if (card) {
+      custQuick = card.getAttribute("data-cust-quick");
+      refreshCustomerFilters();
+    }
+  }, true);
+  window.addEventListener("scroll", closeCustMenu, true);
+
+  // ---- Drawer ----
+  function setCustomerCity(value) {
+    const select = byId("cfCity");
+    const v = String(value || "").trim();
+    // same rule as before: anything that is not the primary province belongs to the group
+    select.value = (!v || v === CITY_PRIMARY) ? CITY_PRIMARY : CITY_GROUP;
+  }
+
+  function openCustomerDrawer(id) {
+    F.hide(byId("custDetail"));
+    F.closePop();
+    const c = id ? findCustomer(id) : null;
+    byId("custForm").reset();
+    byId("cfError").hidden = true;
+    byId("cfId").value = c ? c.id : "";
+    byId("cfName").value = c ? c.name : "";
+    byId("cfPhone").value = c ? c.phone : "";
+    byId("cfPhone2").value = c ? c.phone2 : "";
+    byId("cfAddress").value = c ? c.address : "";
+    byId("cfNotes").value = c ? c.notes : "";
+    setCustomerCity(c ? c.city : "");
+    byId("custDrawerTitle").textContent = c ? (c.name || "{{ _('customers_edit_modal_title') }}") : "{{ _('customers_add_modal_title') }}";
+    byId("cfSaveLabel").textContent = c ? "{{ _('customers_update_customer') }}" : "{{ _('customers_save_customer') }}";
+    byId("cfSaveAnother").hidden = !!c;
+    F.show(byId("custDrawer"));
+    setTimeout(() => byId("cfName").focus(), 40);
+  }
+
+  function closeCustomerDrawer() { F.hide(byId("custDrawer")); }
+
+  let custSaving = false;
+  async function saveCustomer(addAnother) {
+    if (custSaving) return;
+    const id = byId("cfId").value;
+    const data = {
+      name: byId("cfName").value.trim(),
+      phone: byId("cfPhone").value.trim(),
+      phone2: byId("cfPhone2").value.trim(),
+      city: byId("cfCity").value,
+      address: byId("cfAddress").value.trim(),
+      notes: byId("cfNotes").value.trim()
+    };
+    const err = byId("cfError");
+    if (!data.name || !data.phone) {
+      err.textContent = "الاسم ورقم الهاتف مطلوبان.";
+      err.hidden = false;
+      (data.name ? byId("cfPhone") : byId("cfName")).focus();
+      return;
+    }
+    custSaving = true;
+    byId("cfSave").disabled = true;
+    try {
+      const res = await fetch(id ? "/customers/update/" + id : "/customers/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok || !out.success) {
+        err.textContent = out.error || "{{ _('customers_toast_server_error') }}";
+        err.hidden = false;
+        return;
+      }
+      if (id) {
+        const row = findCustomer(id);
+        Object.assign(row, data);
+        gridApi.applyTransaction({ update: [row] }); updateCustomerKpis();
+        F.toast("{{ _('customers_toast_update_success') }}", "success");
+      } else {
+        const now = new Date();
+        const row = Object.assign({ id: out.id, is_blacklisted: false, orders_count: 0, orders_total: 0,
+          created_at: now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0") }, data);
+        allCustomers.unshift(row);
+        gridApi.applyTransaction({ add: [row], addIndex: 0 }); updateCustomerKpis();
+        F.toast("{{ _('customers_toast_add_success') }}", "success");
+      }
+      if (addAnother) openCustomerDrawer();
+      else {
+        closeCustomerDrawer();
+        openCustomerDetail(id || out.id);
+      }
+    } catch (e) {
+      err.textContent = "{{ _('customers_toast_server_error') }}";
+      err.hidden = false;
+    } finally {
+      custSaving = false;
+      byId("cfSave").disabled = false;
     }
   }
 
-  function hideLoading() {
-    const overlay = document.getElementById('loadingOverlay');
-    if (overlay) {
-      overlay.classList.remove('show');
+  async function deleteCustomer(id) {
+    const c = findCustomer(id);
+    if (!c) return;
+    if (!confirm(`{{ _('customers_confirm_delete') }}`.replace("{name}", c.name))) return;
+    try {
+      const res = await fetch("/customers/delete/" + id);
+      const out = await res.json().catch(() => ({}));
+      if (!out.success) {
+        F.toast(out.error || "{{ _('customers_toast_delete_error') }}", "error");
+        return;
+      }
+      allCustomers = allCustomers.filter(x => x.id !== c.id);
+      gridApi.applyTransaction({ remove: [c] }); updateCustomerKpis();
+      F.hide(byId("custDetail"));
+      F.toast("{{ _('customers_toast_delete_success') }}", "success");
+    } catch (e) {
+      F.toast("{{ _('customers_toast_server_error') }}", "error");
     }
   }
 
-  // ==================== Modal Management ====================
-  function openModal(content) {
-    const modal = document.getElementById('modal');
-    const modalContent = document.getElementById('modalContent');
-    if (modal && modalContent) {
-      modalContent.innerHTML = content;
-      modal.classList.add('show');
-      document.body.style.overflow = 'hidden';
+  async function addSelectedToBlacklist() {
+    const rows = gridApi ? gridApi.getSelectedRows() : [];
+    if (!rows.length) {
+      F.toast("{{ _('customers_blacklist_select_first') }}", "warning");
+      return;
     }
-  }
-
-  function closeModal() {
-    const modal = document.getElementById('modal');
-    if (modal) {
-      modal.classList.remove('show');
-      document.body.style.overflow = '';
+    const reason = window.prompt("{{ _('customers_blacklist_reason_prompt') }}", "");
+    if (reason === null) return;
+    try {
+      const res = await fetch("/customers/blacklist/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customer_ids: rows.map(r => r.id), reason: reason || "" })
+      });
+      const out = await res.json();
+      if (!out.success) {
+        F.toast(out.error || "{{ _('customers_toast_server_error') }}", "error");
+        return;
+      }
+      rows.forEach(r => { r.is_blacklisted = true; });
+      gridApi.applyTransaction({ update: rows }); updateCustomerKpis();
+      gridApi.deselectAll();
+      F.toast("{{ _('customers_blacklist_toast_added') }}", "success");
+    } catch (e) {
+      F.toast("{{ _('customers_toast_server_error') }}", "error");
     }
-  }
-
-  function exportCustomers() {
-    window.location.href = '/customers/export';
   }
 
   function triggerImportCustomers() {
-    const input = document.getElementById('customersImportInput');
-    if (input) {
-      input.value = '';
-      input.click();
-    }
+    const input = byId("customersImportInput");
+    input.value = "";
+    input.click();
   }
 
   async function handleImportCustomers(event) {
     const file = event.target.files && event.target.files[0];
     if (!file) return;
-
     const formData = new FormData();
-    formData.append('file', file);
-
-    showLoading();
+    formData.append("file", file);
     try {
-      const resp = await fetch('/customers/import', {
-        method: 'POST',
-        body: formData
-      });
-      let res = null;
-      try {
-        res = await resp.json();
-      } catch (e) {
-        res = { success: false, error: 'استجابة غير متوقعة من الخادم' };
-      }
-
-      if (res.success) {
-        showToast(res.message || 'تم الاستيراد بنجاح', 'success');
+      const res = await fetch("/customers/import", { method: "POST", body: formData });
+      const out = await res.json().catch(() => ({ success: false, error: "استجابة غير متوقعة من الخادم" }));
+      if (out.success) {
+        F.toast(out.message || "تم الاستيراد بنجاح", "success");
         setTimeout(() => location.reload(), 1200);
       } else {
-        showToast(res.error || 'تعذر استيراد الملف', 'error');
-      }
-    } catch (err) {
-      showToast('حدث خطأ أثناء الاستيراد', 'error');
-    } finally {
-      hideLoading();
-    }
-  }
-
-  function openAdd() {
-    const content = `
-      <div style="position: relative;">
-        <button class="modal-close" onclick="closeModal()">×</button>
-        <h3>👤 {{ _('customers_add_modal_title') }}</h3>
-        <form id="customerForm" onsubmit="submitCustomer(event)">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-            <div>
-              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_full_name') }}<span data-help="customers.name"></span></label>
-              <input type="text" id="cust_name" name="name" required placeholder="{{ _('customers_placeholder_full_name') }}">
-            </div>
-            <div>
-              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_phone') }}<span data-help="customers.phone"></span></label>
-              <input type="text" id="cust_phone" name="phone" required placeholder="{{ _('customers_placeholder_phone') }}">
-            </div>
-          </div>
-          
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-             <div>
-              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_phone2') }}</label>
-              <input type="text" id="cust_phone2" name="phone2" placeholder="{{ _('customers_placeholder_optional') }}">
-            </div>
-            <div>
-              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_city') }}</label>
-              <select id="cust_city" name="city">
-                <option value="{{ primary_province }}">{{ primary_province }}</option>
-                <option value="{{ provinces_group_label }}">{{ provinces_group_label }}</option>
-              </select>
-            </div>
-          </div>
-
-          <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_address') }}<span data-help="customers.address"></span></label>
-          <input type="text" id="cust_address" name="address" placeholder="{{ _('customers_placeholder_address') }}">
-
-          <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_notes') }}</label>
-          <textarea id="cust_notes" name="notes" placeholder="{{ _('customers_placeholder_notes') }}"></textarea>
-
-          <button type="submit" class="btn-submit">
-            <span>💾</span> {{ _('customers_save_customer') }}
-          </button>
-        </form>
-      </div>
-    `;
-    openModal(content);
-  }
-
-  async function submitCustomer(event) {
-    event.preventDefault();
-    const formData = new FormData(event.target);
-    const data = Object.fromEntries(formData.entries());
-
-    showLoading();
-    try {
-      const resp = await fetch('/customers/add', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      const res = await resp.json();
-      if (res.success) {
-        showToast("{{ _('customers_toast_add_success') }}", "success");
-        setTimeout(() => location.reload(), 1000);
-      } else {
-        showToast(res.error || "{{ _('customers_toast_add_error') }}", "error");
-      }
-    } catch (err) {
-      showToast("{{ _('customers_toast_server_error') }}", "error");
-    } finally {
-      hideLoading();
-    }
-  }
-
-  function editCustomer(id, name, phone, phone2, city, address, notes) {
-    const primaryCity = {{ primary_province|tojson }};
-    const groupCity = {{ provinces_group_label|tojson }};
-    const content = `
-      <div style="position: relative;">
-        <button class="modal-close" onclick="closeModal()">×</button>
-        <h3>✏️ {{ _('customers_edit_modal_title') }}</h3>
-        <form id="editForm" onsubmit="updateCustomer(event, ${id})">
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-            <div>
-              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_full_name') }}<span data-help="customers.name"></span></label>
-              <input type="text" name="name" value="${name}" required>
-            </div>
-            <div>
-              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_phone') }}<span data-help="customers.phone"></span></label>
-              <input type="text" name="phone" value="${phone}" required>
-            </div>
-          </div>
-
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-            <div>
-              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_phone2') }}</label>
-              <input type="text" name="phone2" value="${phone2}">
-            </div>
-            <div>
-              <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_city') }}</label>
-              <select name="city">
-                <option value="${primaryCity}" ${(!city || city === primaryCity) ? 'selected' : ''}>${primaryCity}</option>
-                <option value="${groupCity}" ${(city && city !== primaryCity) ? 'selected' : ''}>${groupCity}</option>
-              </select>
-            </div>
-          </div>
-
-          <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_address') }}<span data-help="customers.address"></span></label>
-          <input type="text" name="address" value="${address}">
-
-          <label style="display:block; margin-bottom:5px; font-size:13px; color:var(--cust-muted);">{{ _('customers_field_notes') }}</label>
-          <textarea name="notes">${notes}</textarea>
-
-          <button type="submit" class="btn-submit">
-            <span>🔄</span> {{ _('customers_update_customer') }}
-          </button>
-        </form>
-      </div>
-    `;
-    openModal(content);
-  }
-
-  async function updateCustomer(event, id) {
-    event.preventDefault();
-    const formData = new FormData(event.target);
-    const data = Object.fromEntries(formData.entries());
-
-    showLoading();
-    try {
-      const resp = await fetch(`/customers/update/${id}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-      });
-      const res = await resp.json();
-      if (res.success) {
-        showToast("{{ _('customers_toast_update_success') }}", "success");
-        setTimeout(() => location.reload(), 1000);
-      } else {
-        showToast(res.error || "{{ _('customers_toast_update_error') }}", "error");
-      }
-    } catch (err) {
-      showToast("{{ _('customers_toast_server_error') }}", "error");
-    } finally {
-      hideLoading();
-    }
-  }
-
-  async function deleteCustomer(id, name) {
-    if (!confirm(`{{ _('customers_confirm_delete') }}`.replace('{name}', name))) return;
-
-    showLoading();
-    try {
-      const resp = await fetch(`/customers/delete/${id}`);
-      const res = await resp.json();
-      if (res.success) {
-        showToast("{{ _('customers_toast_delete_success') }}", "success");
-        setTimeout(() => location.reload(), 1000);
-      } else {
-        showToast(res.error || "{{ _('customers_toast_delete_error') }}", "error");
-      }
-    } catch (err) {
-      showToast("{{ _('customers_toast_server_error') }}", "error");
-    } finally {
-      hideLoading();
-    }
-  }
-
-  async function viewOrders(id) {
-    showLoading();
-    try {
-      const resp = await fetch(`/customers/orders/${id}`);
-      const orders = await resp.json();
-
-      let totalAmount = 0;
-      let rowsHtml = '';
-
-      if (orders.length === 0) {
-        rowsHtml = '<tr><td colspan="5" style="padding:40px; color:var(--cust-muted)">{{ _("customers_no_orders") }}</td></tr>';
-      } else {
-        orders.forEach(o => {
-          totalAmount += o.total;
-          const statusClass = o.payment === 'paid' ? 'is-paid' : (o.status === 'returned' ? 'is-return' : 'is-other');
-          rowsHtml += `
-            <tr>
-              <td>#${o.id}</td>
-              <td class="orders-amount">${o.total.toLocaleString()}</td>
-              <td class="orders-status ${statusClass}">${o.status}</td>
-              <td class="orders-status ${o.payment === 'paid' ? 'is-paid' : ''}">${o.payment}</td>
-              <td class="orders-date">${o.date}</td>
-            </tr>
-          `;
-        });
-      }
-
-      const content = `
-        <div style="position: relative; padding-top: 5px;">
-          <button class="modal-close" onclick="closeModal()" title="{{ _('customers_close') }}">×</button>
-          <h3>📦 {{ _('customers_orders_title') }}</h3>
-          
-          <div class="orders-summary" style="display:flex; justify-content:space-between; align-items:center; background: var(--glass-bg); border: 1px solid var(--glass-border); padding: 15px; border-radius: 12px; margin-bottom: 20px; box-shadow: var(--shadow-sm);">
-             <span style="font-size: 14px; color: var(--cust-muted); font-weight: 500;">{{ _('customers_orders_total_withdrawals') }}</span>
-             <strong style="font-size:22px; color:var(--cust-success); font-weight: 900; letter-spacing: 0.5px;">${totalAmount.toLocaleString()} <small style="font-size: 12px; font-weight: 500;">{{ _('customers_currency_iqd') }}</small></strong>
-          </div>
-
-          <div class="orders-table-wrap">
-            <table class="orders-table">
-              <thead>
-                <tr>
-                  <th style="width: 80px;">{{ _('customers_orders_col_order') }}</th>
-                  <th>{{ _('customers_orders_col_amount') }}</th>
-                  <th>{{ _('customers_orders_col_status') }}</th>
-                  <th>{{ _('customers_orders_col_payment') }}</th>
-                  <th>{{ _('customers_orders_col_date') }}</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${rowsHtml}
-              </tbody>
-            </table>
-          </div>
-          
-          <button class="orders-close-btn" onclick="closeModal()">
-             <span>❌</span> {{ _('customers_close_window') }}
-          </button>
-        </div>
-      `;
-      openModal(content);
-    } catch (err) {
-      showToast("{{ _('customers_toast_orders_error') }}", "error");
-    } finally {
-      hideLoading();
-    }
-  }
-
-  async function addSelectedToBlacklist() {
-    if (!gridApi) return;
-    const rows = gridApi.getSelectedRows ? gridApi.getSelectedRows() : [];
-    if (!rows.length) {
-      showToast("{{ _('customers_blacklist_select_first') }}", "warning");
-      return;
-    }
-    const ids = rows.map(r => r.id).filter(Boolean);
-    if (!ids.length) return;
-    const reason = window.prompt("{{ _('customers_blacklist_reason_prompt') }}", "");
-    if (reason === null) return;
-    showLoading();
-    try {
-      const resp = await fetch("/customers/blacklist/add", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customer_ids: ids, reason: reason || "" })
-      });
-      const res = await resp.json();
-      if (res.success) {
-        showToast("{{ _('customers_blacklist_toast_added') }}", "success");
-        setTimeout(() => location.reload(), 800);
-      } else {
-        showToast(res.error || "{{ _('customers_toast_server_error') }}", "error");
+        F.toast(out.error || "تعذر استيراد الملف", "error");
       }
     } catch (e) {
-      showToast("{{ _('customers_toast_server_error') }}", "error");
-    } finally {
-      hideLoading();
+      F.toast("حدث خطأ أثناء الاستيراد", "error");
     }
   }
 
-  function escapeAttr(str) {
-    return String(str || '')
-      .replaceAll('&', '&amp;')
-      .replaceAll('"', '&quot;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;');
-  }
-
-  let custActionsMenuEl = null;
-  let custActionsActiveTrigger = null;
-
-  function ensureCustActionsMenu() {
-    if (custActionsMenuEl) return custActionsMenuEl;
-    custActionsMenuEl = document.createElement('div');
-    custActionsMenuEl.className = 'cust-actions-menu';
-    custActionsMenuEl.id = 'custActionsMenu';
-    custActionsMenuEl.setAttribute('role', 'menu');
-    custActionsMenuEl.hidden = true;
-    document.body.appendChild(custActionsMenuEl);
-    return custActionsMenuEl;
-  }
-
-  function closeCustActionsMenu() {
-    const menu = custActionsMenuEl || document.getElementById('custActionsMenu');
-    if (menu) menu.hidden = true;
-    if (custActionsActiveTrigger) {
-      custActionsActiveTrigger.setAttribute('aria-expanded', 'false');
-      custActionsActiveTrigger = null;
-    }
-  }
-
-  function positionCustActionsMenu(trigger) {
-    const menu = ensureCustActionsMenu();
-    const rect = trigger.getBoundingClientRect();
-    const gap = 6;
-    const viewportPad = 8;
-
-    menu.hidden = false;
-    menu.style.visibility = 'hidden';
-    menu.style.left = '0px';
-    menu.style.top = '0px';
-
-    const menuRect = menu.getBoundingClientRect();
-    let left = rect.right - menuRect.width;
-    let top = rect.bottom + gap;
-
-    if (left < viewportPad) left = viewportPad;
-    if (left + menuRect.width > window.innerWidth - viewportPad) {
-      left = Math.max(viewportPad, window.innerWidth - menuRect.width - viewportPad);
-    }
-
-    if (top + menuRect.height > window.innerHeight - viewportPad) {
-      top = rect.top - menuRect.height - gap;
-    }
-    if (top < viewportPad) top = viewportPad;
-
-    menu.style.left = Math.round(left) + 'px';
-    menu.style.top = Math.round(top) + 'px';
-    menu.style.visibility = '';
-  }
-
-  function openCustActionsMenu(trigger) {
-    const customerId = trigger.getAttribute('data-customer-id');
-    if (!customerId) return;
-
-    if (custActionsActiveTrigger === trigger && custActionsMenuEl && !custActionsMenuEl.hidden) {
-      closeCustActionsMenu();
-      return;
-    }
-
-    closeCustActionsMenu();
-    const menu = ensureCustActionsMenu();
-
-    menu.innerHTML = `
-      <button type="button" class="cust-actions-menu-item is-orders" role="menuitem" data-cust-action="orders">
-        <span>{{ _('customers_action_orders') }}</span>
-      </button>
-      <button type="button" class="cust-actions-menu-item is-edit" role="menuitem" data-cust-action="edit">
-        <span>{{ _('customers_action_edit') }}</span>
-      </button>
-      <button type="button" class="cust-actions-menu-item is-danger" role="menuitem" data-cust-action="delete">
-        <span>{{ _('customers_action_delete') }}</span>
-      </button>
-    `;
-
-    menu.onclick = function (event) {
-      const item = event.target.closest('[data-cust-action]');
-      if (!item || !menu.contains(item)) return;
-
-      const activeTrigger = custActionsActiveTrigger;
-      if (!activeTrigger) return;
-
-      const id = Number(activeTrigger.getAttribute('data-customer-id'));
-      const name = activeTrigger.getAttribute('data-customer-name') || '';
-      const phone = activeTrigger.getAttribute('data-phone') || '';
-      const phone2 = activeTrigger.getAttribute('data-phone2') || '';
-      const city = activeTrigger.getAttribute('data-city') || '';
-      const address = activeTrigger.getAttribute('data-address') || '';
-      const notes = activeTrigger.getAttribute('data-notes') || '';
-      const action = item.getAttribute('data-cust-action');
-
-      event.preventDefault();
-      closeCustActionsMenu();
-
-      if (action === 'orders') {
-        viewOrders(id);
-        return;
-      }
-      if (action === 'edit') {
-        editCustomer(id, name, phone, phone2, city, address, notes);
-        return;
-      }
-      if (action === 'delete') {
-        deleteCustomer(id, name);
-      }
-    };
-
-    custActionsActiveTrigger = trigger;
-    trigger.setAttribute('aria-expanded', 'true');
-    positionCustActionsMenu(trigger);
-  }
-
-  document.addEventListener('click', function (event) {
-    const trigger = event.target.closest ? event.target.closest('[data-cust-actions-trigger]') : null;
-    if (trigger) {
-      event.preventDefault();
-      event.stopPropagation();
-      openCustActionsMenu(trigger);
-      return;
-    }
-    if (custActionsMenuEl && !custActionsMenuEl.hidden) {
-      if (!custActionsMenuEl.contains(event.target)) closeCustActionsMenu();
-    }
-  }, true);
-
-  document.addEventListener('keydown', function (event) {
-    if (event.key === 'Escape') closeCustActionsMenu();
-  });
-
-  window.addEventListener('resize', closeCustActionsMenu);
-  window.addEventListener('scroll', closeCustActionsMenu, true);
-
-  // ==================== AG Grid Initialization ====================
-  let gridApi;
-
-  function initAgGrid() {
-    const customersDataElement = document.getElementById("customersData");
-    if (!customersDataElement) return;
-
-    let rowData = [];
-    try {
-      rowData = JSON.parse(customersDataElement.textContent.trim());
-    } catch (e) {
-      console.error("Error parsing customers data:", e);
-      return;
-    }
-
-    const columnDefs = [
-      {
-        headerName: "",
-        field: "_sel",
-        width: 52,
-        checkboxSelection: true,
-        headerCheckboxSelection: true,
-        pinned: "right",
-        sortable: false,
-        filter: false,
-        suppressMovable: true,
-      },
-      {
-        headerName: "{{ _('customers_col_actions') }}",
-        field: "actions",
-        width: 80,
-        minWidth: 70,
-        maxWidth: 90,
-        sortable: false,
-        filter: false,
-        suppressMovable: true,
-        cellClass: 'actions-col',
-        headerClass: 'actions-col',
-        cellRenderer: params => {
-          const c = params.data;
-
-          return `
-          <div class="cust-actions-grid">
-            <button
-              type="button"
-              class="cust-actions-trigger"
-              data-cust-actions-trigger="1"
-              data-customer-id="${c.id}"
-              data-customer-name="${escapeAttr(c.name)}"
-              data-phone="${escapeAttr(c.phone)}"
-              data-phone2="${escapeAttr(c.phone2)}"
-              data-city="${escapeAttr(c.city)}"
-              data-address="${escapeAttr(c.address)}"
-              data-notes="${escapeAttr(c.notes)}"
-              aria-haspopup="menu"
-              aria-expanded="false"
-              aria-label="{{ _('customers_col_actions') }}"
-              title="{{ _('customers_col_actions') }}"
-            >&#8942;</button>
-          </div>
-        `;
-        }
-      },
-      { headerName: "#", field: "id", width: 70, sortable: true },
-      {
-        headerName: "{{ _('customers_col_name') }}",
-        field: "name",
-        flex: 1,
-        minWidth: 150,
-        cellRenderer: params => {
-          const bl = params.data && params.data.is_blacklisted ? ' <span style="color:#f87171;font-size:11px;">🚫</span>' : '';
-          return `<strong>${params.value || ''}</strong>${bl}`;
-        }
-      },
-      { headerName: "{{ _('customers_col_phone') }}", field: "phone", width: 130 },
-      { headerName: "الرقم الآخر", field: "phone2", width: 140 },
-      { headerName: "{{ _('customers_col_city') }}", field: "city", width: 120 },
-      { headerName: "{{ _('customers_col_address') }}", field: "address", flex: 1, minWidth: 200 },
-      { headerName: "تاريخ الإضافة", field: "created_at", width: 170 }
-    ];
-
-    const gridOptions = {
-      columnDefs: columnDefs,
-      rowData: rowData,
-      rowSelection: "multiple",
-      suppressRowClickSelection: true,
-      rowHeight: 56,
-      headerHeight: 48,
-      suppressColumnMoveAnimation: false,
-      pagination: true,
-      paginationPageSize: 20,
-      paginationPageSizeSelector: [10, 20, 50, 100],
-      enableRtl: true,
-      animateRows: true,
-      defaultColDef: {
-        sortable: true,
-        filter: true,
-        resizable: true,
-        floatingFilter: true
-      },
-      onGridReady: (params) => {
-        gridApi = params.api;
-        updateSearchStats();
-      },
-      onFilterChanged: () => {
-        updateSearchStats();
-      },
-      isExternalFilterPresent: () => {
-        const cityFilter = document.getElementById('cityFilter').value;
-        return cityFilter !== '';
-      },
-      doesExternalFilterPass: (node) => {
-        const cityFilter = document.getElementById('cityFilter').value;
-        if (!cityFilter) return true;
-        const city = (node.data.city || '').trim();
-        const primary = {{ primary_province|tojson }};
-        const groupLabel = {{ provinces_group_label|tojson }};
-        const groupProvinces = {{ tenant_group_provinces|tojson }};
-        if (cityFilter === {{ province_filter_primary|tojson }}) return city === primary;
-        if (cityFilter === {{ province_filter_group|tojson }}) {
-          return city === groupLabel || groupProvinces.includes(city);
-        }
-        return city === cityFilter;
-      }
-    };
-
-    const eGridDiv = document.querySelector('#customersTable');
-    agGrid.createGrid(eGridDiv, gridOptions);
-  }
-
-  function updateSearchStats() {
-    if (!gridApi) return;
-    const visibleCount = gridApi.getDisplayedRowCount();
-
-    // Total raw count from original data
-    const customersDataElement = document.getElementById("customersData");
-    const totalRaw = customersDataElement ? JSON.parse(customersDataElement.textContent).length : 0;
-
-    const statsEl = document.getElementById('searchStats');
-    if (statsEl) {
-      statsEl.innerHTML = `
-      {{ _('customers_stats_show') }} <strong style="color:var(--cust-primary-light)">${visibleCount}</strong> {{ _('customers_stats_of') }} <strong>${totalRaw}</strong> {{ _('customers_stats_customers_word') }}
-    `;
-    }
-  }
-
-  function updateSearch() {
-    const searchQuery = document.getElementById('searchInput').value;
-    if (gridApi) {
-      gridApi.setGridOption('quickFilterText', searchQuery);
-    }
-  }
-
-  document.addEventListener('DOMContentLoaded', function () {
-    initAgGrid();
-
-    // Close modal on outside click
-    document.getElementById('modal').addEventListener('click', function (e) {
-      if (e.target.id === 'modal') {
-        closeModal();
-      }
-    });
-
-    // ESC to close modal
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') {
-        closeModal();
-      }
-
-      // Ctrl/Cmd + F to focus search
-      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+  document.addEventListener("DOMContentLoaded", () => {
+    if (typeof agGrid === "undefined") return;
+    initCustomersGrid();
+    byId("searchInput").addEventListener("input", e => gridApi && gridApi.setGridOption("quickFilterText", e.target.value));
+    ["cityFilter", "ordersFilter", "statusFilter", "addedFrom", "addedTo"].forEach(id => byId(id).addEventListener("change", refreshCustomerFilters));
+    byId("spentMin").addEventListener("input", refreshCustomerFilters);
+    byId("custForm").addEventListener("submit", e => { e.preventDefault(); saveCustomer(false); });
+    byId("cfSaveAnother").addEventListener("click", () => saveCustomer(true));
+    byId("custDrawer").addEventListener("click", e => { if (e.target === byId("custDrawer")) closeCustomerDrawer(); });
+    document.addEventListener("keydown", e => {
+      if (!byId("custDrawer").hidden && (e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
         e.preventDefault();
-        const searchInput = document.getElementById('searchInput');
-        if (searchInput) searchInput.focus();
+        saveCustomer(false);
       }
     });
   });
 </script>
-
 {% endblock %}

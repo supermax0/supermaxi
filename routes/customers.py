@@ -1,3 +1,4 @@
+from datetime import datetime
 from io import BytesIO
 from zipfile import ZipFile
 import xml.etree.ElementTree as ET
@@ -148,10 +149,32 @@ def customers():
         .order_by(Customer.city)
         .all()
     ]
+    # عدد الطلبات وإجمالي المشتريات لكل زبون (بدون الراجع والملغي في الإجمالي)
+    not_returned = ~or_(invoice_returned_condition(Invoice), Invoice.status.in_(list(CANCELED_STATUSES)))
+    order_stats = {
+        cid: (int(count or 0), int(spent or 0))
+        for cid, count, spent in db.session.query(
+            Invoice.customer_id,
+            func.count(Invoice.id),
+            func.coalesce(func.sum(case((not_returned, Invoice.total), else_=0)), 0),
+        )
+        .filter(Invoice.customer_id.isnot(None))
+        .group_by(Invoice.customer_id)
+        .all()
+    }
+    month_start = datetime.utcnow().replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    customer_kpis = {
+        "total": len(customers),
+        "with_orders": sum(1 for c in customers if order_stats.get(c.id, (0, 0))[0] > 0),
+        "new_this_month": sum(1 for c in customers if c.created_at and c.created_at >= month_start),
+        "blacklisted": sum(1 for c in customers if c.is_blacklisted),
+    }
     return render_template(
         "customers.html",
         customers=customers,
-        cities=cities
+        cities=cities,
+        order_stats=order_stats,
+        customer_kpis=customer_kpis,
     )
 
 # ==================================================
