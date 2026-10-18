@@ -1,155 +1,222 @@
-{% extends "base.html" %}
-{% from "payment_flow/_macros.html" import pf_topbar, pf_steps %}
+{% extends "public_flow/base.html" %}
+{% from "payment_flow/_macros.html" import pf_topbar, pf_steps with context %}
 {% block title %}إنشاء حساب — Finora{% endblock %}
-{% block page_title %}{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/payment-flow.css') }}">
-<div class="pf-page">
+{% set trial_days = free_trial_days or 14 %}
+<div class="pf-page pf-page--signup">
   {{ pf_topbar('/', 'العودة للرئيسية') }}
-  {{ pf_steps(1) }}
+  {{ pf_steps(2, ['اختيار الخطة', 'بيانات الحساب', 'تفعيل واتساب']) }}
 
-  <div class="pf-wrap">
+  <div class="pf-wrap pf-wrap--signup">
     {% if error %}
-    <div class="pf-alert-error"><i class="fas fa-exclamation-circle"></i> {{ error }}</div>
+    <div class="pf-alert-error" role="alert"><i class="fas fa-exclamation-circle"></i> {{ error }}</div>
     {% endif %}
 
-    <div class="pf-header">
-      <h1>اختر خطتك وأنشئ حسابك</h1>
-      <p>أدخل بريدك الحقيقي وتحقق منه برمز يُرسل إليك قبل إنشاء الحساب.</p>
-    </div>
-
-    <div style="text-align:center">
-      <div class="pf-billing" id="billingToggle">
-        <input type="radio" name="billing_ui" id="b_monthly" value="monthly" {% if billing != 'yearly' %}checked{% endif %}>
-        <label for="b_monthly">شهري</label>
-        <input type="radio" name="billing_ui" id="b_yearly" value="yearly" {% if billing == 'yearly' %}checked{% endif %}>
-        <label for="b_yearly"><span class="pf-save-badge">وفّر 17%</span> سنوي</label>
+    <div class="flow-signup-layout"><div>
+    <div class="pf-header pf-signup-intro">
+      <span class="pf-eyebrow"><i class="fas fa-bolt"></i> {{ 'وصلت إلى العرض الترحيبي' if welcome_offer_available else 'مساحة عمل جديدة' }}</span>
+      <h1>{{ 'ابدأ ' ~ trial_days ~ ' يوماً مجاناً مع فينورا' if welcome_offer_available else 'خطوتك الأولى لشغل أكثر ترتيباً.' }}</h1>
+      <p>{{ 'أنشئ حسابك الجديد الآن واحصل على ' ~ trial_days ~ ' يوماً من صفحات الخطة المجانية.' if welcome_offer_available else 'أدخل معلومات بسيطة، ثم أرسل طلب التفعيل من رقم واتساب المسجل.' }}</p>
+      <div class="pf-trust-row" aria-label="مزايا التسجيل">
+        <span><i class="fas fa-shield-halved"></i> معلومات شركتك</span>
+        <span><i class="fas fa-credit-card"></i> خطط تناسب نشاطك</span>
+        <span><i class="fas fa-headset"></i> دعم محلي</span>
       </div>
     </div>
+
+    {% if welcome_offer_available %}
+    <aside class="pf-welcome-promo" aria-label="عرض {{ trial_days }} يوماً مجاناً للمشتركين الجدد">
+      <div class="pf-welcome-promo-days" aria-hidden="true"><strong>{{ trial_days }}</strong><span>يوم</span></div>
+      <div class="pf-welcome-promo-copy">
+        <span class="pf-welcome-promo-label"><i></i> عرض ترحيبي</span>
+        <h2>{{ trial_days }} يوماً مجاناً للمشترك الجديد</h2>
+        <p>تعرّف على فينورا بميزات الخطة المجانية، وابدأ بعد مراجعة طلب التفعيل عبر واتساب.</p>
+      </div>
+      <div class="pf-welcome-promo-price"><strong>0</strong><span>د.ع لمدة {{ trial_days }} يوماً</span><small><i class="fas fa-circle-check"></i> التفعيل بعد مراجعة واتساب</small></div>
+    </aside>
+    {% endif %}
 
     {% set pd = plans_dict or {} %}
-    <div class="pf-plan-grid" id="planRow">
-      <div class="pf-plan-opt {% if selected_plan.key == 'free' %}selected{% endif %}" onclick="selectPlan('free', this)">
-        <div class="pf-plan-name">✨ المجانية</div>
-        <div class="pf-plan-price" id="p_free">{% set f = pd.get('free', {}) %}{% if f.get('original_price_monthly') and f.get('original_price_monthly') > f.get('price_monthly', 0) %}<span class="pf-strike">{{ "{:,.0f}".format(f.get('original_price_monthly')) }}</span> {% endif %}{{ "{:,.0f}".format(f.get('price_monthly', 0)) }} <small>د.ع/شهر</small></div>
-        <div class="pf-plan-note" id="pn_free">يُدفع شهرياً</div>
-        <ul class="pf-plan-feats"><li>تجربة بدون دفع</li><li>حتى 3 مستخدمين</li><li>حتى 500 طلب/شهر</li></ul>
+    <details class="pf-plan-picker {% if welcome_offer_available %}pf-plan-picker--welcome{% endif %}" id="planPicker" {% if welcome_offer_available %}open{% endif %}>
+      <summary>
+        <span class="pf-plan-picker-icon"><i class="fas fa-layer-group"></i></span>
+        <span class="pf-plan-picker-copy">
+          <small>الخطة المختارة</small>
+          <strong id="sum_plan">—</strong>
+          <span><b id="sum_billing">—</b><i>•</i><b id="sum_period">—</b></span>
+        </span>
+        <span class="pf-plan-picker-total">
+          <strong id="sum_total">0 د.ع</strong>
+          <span>تغيير الخطة <i class="fas fa-chevron-down"></i></span>
+        </span>
+      </summary>
+
+      <div class="pf-plan-picker-body">
+        <div class="pf-picker-heading">
+          <div>
+            <strong>اختر الخطة الأنسب لعملك</strong>
+            <span>يمكنك الترقية أو تغيير الخطة لاحقاً.</span>
+          </div>
+          <div class="pf-billing" id="billingToggle">
+            <input type="radio" name="billing_ui" id="b_monthly" value="monthly" {% if billing != 'yearly' %}checked{% endif %}>
+            <label for="b_monthly">شهري</label>
+            <input type="radio" name="billing_ui" id="b_yearly" value="yearly" {% if billing == 'yearly' %}checked{% endif %}>
+            <label for="b_yearly">سنوي</label>
+          </div>
+        </div>
+
+        <div class="pf-plan-grid" id="planRow" role="radiogroup" aria-label="خطط الاشتراك">
+          {% for key, item in pd.items() %}
+          <div class="pf-plan-opt {% if selected_plan.key == key %}selected{% endif %}" role="radio" tabindex="0" aria-checked="{{ 'true' if selected_plan.key == key else 'false' }}" data-plan="{{ key }}" onclick="selectPlan(this.dataset.plan, this)">
+            <div class="pf-plan-name">{{ item.name }}</div>
+            <div class="pf-plan-price" id="p_{{ key }}">{{ "{:,.0f}".format(item.get('price_yearly' if billing == 'yearly' else 'price_monthly', 0)) }} <small>د.ع</small></div>
+            <div class="pf-plan-note" id="pn_{{ key }}">{{ (trial_days|string ~ ' يوماً للتجربة') if key == 'free' else ('يُدفع سنوياً' if billing == 'yearly' else 'يُدفع شهرياً') }}</div>
+            <ul class="pf-plan-feats">
+              {% if item.get('max_users') %}<li>حتى {{ item.max_users }} مستخدمين</li>{% endif %}
+              {% if item.get('max_orders_monthly') %}<li>حتى {{ item.max_orders_monthly }} طلب / شهر</li>{% endif %}
+              {% if key == 'free' %}<li>ميزات الخطة المجانية لمدة {{ trial_days }} يوماً</li>{% endif %}
+            </ul>
+          </div>
+          {% endfor %}
+        </div>
       </div>
+    </details>
 
-      <div class="pf-plan-opt {% if selected_plan.key == 'basic' %}selected{% endif %}" onclick="selectPlan('basic', this)">
-        <div class="pf-plan-name">🟢 الأساسية</div>
-        <div class="pf-plan-price" id="p_basic">{% set b = pd.get('basic', {}) %}{% if b.get('original_price_monthly') and b.get('original_price_monthly') > b.get('price_monthly', 0) %}<span class="pf-strike">{{ "{:,.0f}".format(b.get('original_price_monthly')) }}</span> {% endif %}{{ "{:,.0f}".format(b.get('price_monthly', 25000)) }} <small>د.ع/شهر</small></div>
-        <div class="pf-plan-note" id="pn_basic">يُدفع شهرياً</div>
-        <ul class="pf-plan-feats"><li>5 مستخدمين</li><li>حتى 1,000 طلب/شهر</li><li>POS + مخزون + زبائن</li></ul>
-      </div>
-
-      <div class="pf-plan-opt {% if selected_plan.key == 'pro' %}selected{% endif %}" onclick="selectPlan('pro', this)">
-        <span class="pf-plan-hot">⭐ الأكثر طلباً</span>
-        <div class="pf-plan-name">🔵 المتقدمة</div>
-        <div class="pf-plan-price" id="p_pro">{% set pr = pd.get('pro', {}) %}{% if pr.get('original_price_monthly') and pr.get('original_price_monthly') > pr.get('price_monthly', 0) %}<span class="pf-strike">{{ "{:,.0f}".format(pr.get('original_price_monthly')) }}</span> {% endif %}{{ "{:,.0f}".format(pr.get('price_monthly', 45000)) }} <small>د.ع/شهر</small></div>
-        <div class="pf-plan-note" id="pn_pro">يُدفع شهرياً</div>
-        <ul class="pf-plan-feats"><li>15 مستخدم</li><li>حتى 10,000 طلب/شهر</li><li>تقارير + RBAC + موردين</li></ul>
-      </div>
-
-      <div class="pf-plan-opt {% if selected_plan.key == 'enterprise' %}selected{% endif %}" onclick="selectPlan('enterprise', this)">
-        <div class="pf-plan-name">🟣 الشركات</div>
-        <div class="pf-plan-price" id="p_enterprise">{% set e = pd.get('enterprise', {}) %}{% if e.get('original_price_monthly') and e.get('original_price_monthly') > e.get('price_monthly', 0) %}<span class="pf-strike">{{ "{:,.0f}".format(e.get('original_price_monthly')) }}</span> {% endif %}{{ "{:,.0f}".format(e.get('price_monthly', 90000)) }} <small>د.ع/شهر</small></div>
-        <div class="pf-plan-note" id="pn_enterprise">يُدفع شهرياً</div>
-        <ul class="pf-plan-feats"><li>غير محدود</li><li>طلبات غير محدودة</li><li>دعم أولوية + AI</li></ul>
-      </div>
-    </div>
-
-    <div class="pf-summary" id="summaryBar">
-      <div class="pf-summary-item">الخطة المختارة <strong id="sum_plan">-</strong></div>
-      <div class="pf-summary-item">نوع الاشتراك <strong id="sum_billing">-</strong></div>
-      <div class="pf-summary-item">المدة <strong id="sum_period">-</strong></div>
-      <div class="pf-summary-total" id="sum_total">0 د.ع</div>
-    </div>
-
-    <div class="pf-card">
-      <form method="post" action="/signup" onsubmit="return validateForm()" novalidate>
+    <div class="pf-card pf-signup-card">
+      <form method="post" action="/signup" class="pf-signup-form" onsubmit="return validateForm()" novalidate>
         <input type="hidden" name="plan_key" id="plan_key_input" value="{{ selected_plan.key }}">
         <input type="hidden" name="billing" id="billing_input" value="{{ billing or 'monthly' }}">
+        <input type="hidden" name="offer_key" id="offer_key_input" value="{{ offer_key or '' }}">
 
-        <div class="pf-form-grid">
-          <div class="pf-email-verify" id="emailVerifyBox">
-            <label style="display:block;font-weight:800;margin-bottom:10px;font-size:14px">
-              البريد الإلكتروني <span class="req">*</span>
-            </label>
-            <div class="pf-email-row">
-              <div class="pf-field">
-                <input type="email" id="email" name="email" placeholder="example@domain.com" required dir="ltr"
-                  value="{{ (form.email if form else '') | default('') }}" autocomplete="email">
-                <div class="pf-hint">سيُرسل رمز تحقق من 6 أرقام إلى هذا البريد</div>
-              </div>
-              <button type="button" class="pf-btn pf-btn-outline pf-btn-sm" id="btnSendCode">
-                <i class="fas fa-paper-plane"></i> إرسال الرمز
-              </button>
+        <section class="pf-form-section" aria-labelledby="accountSectionTitle">
+          <div class="pf-form-section-head">
+            <span class="pf-section-number">1</span>
+            <div>
+              <h2 id="accountSectionTitle">معلومات الشركة والدخول</h2>
+              <p>هذه المعلومات ستظهر داخل نظامك ويمكن تعديلها لاحقاً.</p>
             </div>
-            <div class="pf-code-row" id="codeRow">
-              <div class="pf-field">
-                <label for="email_verify_code">رمز التحقق</label>
-                <input type="text" id="email_verify_code" inputmode="numeric" pattern="[0-9]*" maxlength="6"
-                  placeholder="123456" dir="ltr" autocomplete="one-time-code">
-              </div>
-              <button type="button" class="pf-btn pf-btn-primary pf-btn-sm" id="btnVerifyCode">
-                <i class="fas fa-check"></i> تحقق
-              </button>
-            </div>
-            <div class="pf-verify-status" id="verifyStatus"></div>
           </div>
 
+          <details class="pf-help-details">
+            <summary><i class="fas fa-circle-question"></i> كيف أختار اسم المستخدم وكلمة المرور؟</summary>
+            <div>
+              <span>اكتب اسم مستخدم قصيراً بالإنجليزية مثل <bdi>admin</bdi> أو اسمك.</span>
+              <span>اختر كلمة مرور من 6 أحرف أو أكثر ولا تشاركها مع أحد.</span>
+              <span>أدخل رقم واتساب عراقي فعال بصيغة <bdi>07xxxxxxxxx</bdi> حتى تتمكن من إرسال طلب التفعيل.</span>
+            </div>
+          </details>
+
+          {% set selected_discovery_source = (form.discovery_source if form else '') | default('') %}
+          <div class="pf-form-grid">
           <div class="pf-field">
             <label for="company_name">اسم الشركة / المشروع <span class="req">*</span></label>
             <input type="text" id="company_name" name="company_name" placeholder="مثال: متجر النور" required value="{{ (form.company_name if form else '') | default('') }}" oninput="liveCheck(this,1)">
-            <div class="pf-hint">اسم نشاطك التجاري كما تريده يظهر في النظام</div>
             <div class="pf-field-error">يرجى إدخال اسم الشركة أو المشروع</div>
           </div>
 
           <div class="pf-field">
             <label for="contact_name">اسمك الكامل <span class="req">*</span></label>
             <input type="text" id="contact_name" name="contact_name" placeholder="مثال: محمد أحمد" required value="{{ (form.contact_name if form else '') | default('') }}" oninput="liveCheck(this,1)">
-            <div class="pf-hint">اسم صاحب الحساب (الأدمن)</div>
             <div class="pf-field-error">يرجى إدخال اسمك الكامل</div>
           </div>
 
           <div class="pf-field">
-            <label for="phone">رقم الهاتف</label>
-            <input type="text" id="phone" name="phone" placeholder="07xxxxxxxxx" value="{{ (form.phone if form else '') | default('') }}">
-            <div class="pf-hint">اختياري</div>
+            <label for="phone">رقم واتساب للتفعيل <span class="req">*</span></label>
+            <div class="pf-phone-wrap">
+              <input type="tel" id="phone" name="phone" inputmode="numeric" placeholder="07xxxxxxxxx"
+                value="{{ (form.phone if form else '') | default('') }}" dir="ltr" autocomplete="tel"
+                required maxlength="17" aria-describedby="phoneHint phoneError">
+              <i class="fas fa-mobile-screen-button" aria-hidden="true"></i>
+            </div>
+            <div class="pf-hint pf-phone-hint" id="phoneHint"><i class="fab fa-whatsapp"></i> يجب أن يكون الرقم مرتبطاً بواتساب لإكمال التفعيل</div>
+            <div class="pf-field-error" id="phoneError">أدخل رقم واتساب عراقيًا صحيحًا مثل 07712345678</div>
+          </div>
+
+          <div class="pf-field">
+            <label for="email">البريد الإلكتروني <small>(اختياري)</small></label>
+            <input type="email" id="email" name="email" placeholder="example@domain.com" dir="ltr"
+              value="{{ (form.email if form else '') | default('') }}" autocomplete="email">
+            <div class="pf-hint"><i class="fas fa-envelope"></i> لا نحتاجه لتفعيل الحساب</div>
+            <div class="pf-field-error">أدخل بريداً إلكترونياً صحيحاً أو اتركه فارغاً</div>
           </div>
 
           <div class="pf-field">
             <label for="username">اسم المستخدم <span class="req">*</span></label>
-            <input type="text" id="username" name="username" placeholder="مثال: admin" required value="{{ (form.username if form else '') | default('') }}" dir="ltr" oninput="liveCheck(this,3)">
-            <div class="pf-hint">ستستخدمه لتسجيل الدخول. 3 أحرف على الأقل.</div>
+            <input type="text" id="username" name="username" placeholder="مثال: admin" required value="{{ (form.username if form else '') | default('') }}" dir="ltr" oninput="liveCheck(this,3)" autocomplete="username">
             <div class="pf-field-error">يجب أن يكون 3 أحرف على الأقل</div>
+          </div>
+
+          <div class="pf-field pf-field--full pf-discovery-source">
+            <label for="discovery_source">من أين عرفت نظام Finora؟ <span class="req">*</span></label>
+            <select id="discovery_source" name="discovery_source" required aria-describedby="discoverySourceHint discoverySourceError">
+              <option value="" {% if not selected_discovery_source %}selected{% endif %} disabled>اختر المصدر</option>
+              <option value="chatgpt" {% if selected_discovery_source == 'chatgpt' %}selected{% endif %}>ChatGPT</option>
+              <option value="facebook" {% if selected_discovery_source == 'facebook' %}selected{% endif %}>فيسبوك</option>
+              <option value="instagram" {% if selected_discovery_source == 'instagram' %}selected{% endif %}>إنستغرام</option>
+              <option value="tiktok" {% if selected_discovery_source == 'tiktok' %}selected{% endif %}>تيك توك</option>
+              <option value="google_search" {% if selected_discovery_source == 'google_search' %}selected{% endif %}>بحث Google</option>
+              <option value="google_ads" {% if selected_discovery_source == 'google_ads' %}selected{% endif %}>إعلان Google</option>
+              <option value="youtube" {% if selected_discovery_source == 'youtube' %}selected{% endif %}>YouTube</option>
+              <option value="friend" {% if selected_discovery_source == 'friend' %}selected{% endif %}>صديق أو توصية</option>
+              <option value="other" {% if selected_discovery_source == 'other' %}selected{% endif %}>أخرى</option>
+            </select>
+            <div class="pf-hint" id="discoverySourceHint"><i class="fas fa-chart-line"></i> يساعدنا اختيارك على معرفة أفضل القنوات للوصول إليكم.</div>
+            <div class="pf-field-error" id="discoverySourceError">يرجى اختيار أحد المصادر</div>
+            <div class="pf-discovery-other" id="discoveryOtherWrap" {% if selected_discovery_source != 'other' %}hidden{% endif %}>
+              <label for="discovery_source_other">اكتب المصدر الآخر <span class="req">*</span></label>
+              <input type="text" id="discovery_source_other" name="discovery_source_other" maxlength="120"
+                placeholder="مثال: معرض، مؤتمر، موقع إلكتروني"
+                value="{{ (form.discovery_source_other if form else '') | default('') }}">
+              <div class="pf-field-error" id="discoveryOtherError">يرجى كتابة المصدر الآخر</div>
+            </div>
           </div>
 
           <div class="pf-field">
             <label for="password">كلمة المرور <span class="req">*</span></label>
-            <input type="password" id="password" name="password" placeholder="6 أحرف على الأقل" required dir="ltr" oninput="liveCheck(this,6);checkMatch()">
-            <div class="pf-hint">6 أحرف على الأقل</div>
+            <div class="pf-password-wrap">
+              <input type="password" id="password" name="password" placeholder="6 أحرف على الأقل" required dir="ltr" oninput="liveCheck(this,6);checkMatch()" autocomplete="new-password">
+              <button type="button" class="pf-password-toggle" data-password-toggle="password" aria-label="إظهار كلمة المرور"><i class="fas fa-eye"></i></button>
+            </div>
             <div class="pf-field-error">كلمة المرور يجب أن تكون 6 أحرف على الأقل</div>
           </div>
 
           <div class="pf-field">
             <label for="password2">تأكيد كلمة المرور <span class="req">*</span></label>
-            <input type="password" id="password2" name="password2" placeholder="أعد كتابة كلمة المرور" required dir="ltr" oninput="checkMatch()">
+            <div class="pf-password-wrap">
+              <input type="password" id="password2" name="password2" placeholder="أعد كتابة كلمة المرور" required dir="ltr" oninput="checkMatch()" autocomplete="new-password">
+              <button type="button" class="pf-password-toggle" data-password-toggle="password2" aria-label="إظهار كلمة المرور"><i class="fas fa-eye"></i></button>
+            </div>
             <div class="pf-field-error">كلمة المرور وتأكيدها غير متطابقتين</div>
           </div>
-        </div>
+          </div>
+        </section>
+
+        <section class="pf-form-section" aria-labelledby="whatsappSectionTitle">
+          <div class="pf-form-section-head">
+            <span class="pf-section-number">2</span>
+            <div>
+              <h2 id="whatsappSectionTitle">التفعيل يتم عبر واتساب</h2>
+              <p>استخدم رقماً مرتبطاً بواتساب؛ بعد التسجيل ستفتح لك رسالة تفعيل جاهزة.</p>
+            </div>
+            <span class="pf-section-state" id="whatsappStepState">مطلوب</span>
+          </div>
+          <label class="pf-optin" style="margin-top:16px">
+            <input type="checkbox" id="whatsapp_confirmed" name="whatsapp_confirmed" value="1" required>
+            <span><strong>أؤكد أن الرقم الذي أدخلته مرتبط بواتساب</strong><small>لن يتم تفعيل الحساب قبل إرسال رسالة الطلب من هذا الرقم.</small></span>
+          </label>
+        </section>
 
         <div class="pf-submit-wrap">
-          <label class="pf-optin" style="display:flex;align-items:flex-start;gap:8px;margin-bottom:14px;font-size:13px;color:#667085;cursor:pointer">
-            <input type="checkbox" name="marketing_opt_in" value="1" checked style="margin-top:3px">
-            <span>أوافق على استلام نشرة Finora الأسبوعية والعروض</span>
+          <label class="pf-optin">
+            <input type="checkbox" name="marketing_opt_in" value="1" {% if not form or form.get('marketing_opt_in') %}checked{% endif %}>
+            <span><strong>أرسلوا لي النصائح والعروض</strong><small>اختياري، ويمكن إلغاء الاشتراك في أي وقت.</small></span>
           </label>
           <button type="submit" class="pf-btn pf-btn-primary pf-btn-block" id="btnSignupSubmit" disabled>
-            <i class="fas fa-rocket"></i> إنشاء الحساب والدخول للنظام
+            <i class="fab fa-whatsapp"></i> حفظ الحساب والانتقال لتفعيل واتساب
           </button>
-          <p class="pf-hint" style="text-align:center;margin-top:10px" id="signupHint">تحقق من بريدك الإلكتروني أولاً لتفعيل زر التسجيل</p>
+          <p class="pf-submit-hint" id="signupHint"><i class="fas fa-lock"></i> أكد أن الرقم مرتبط بواتساب أولاً</p>
+          <p class="pf-legal-note">بإنشاء الحساب أنت توافق على <a href="/terms">شروط الاستخدام</a> و<a href="/privacy">سياسة الخصوصية</a>.</p>
         </div>
 
         <p class="pf-footer-links">
@@ -157,6 +224,7 @@
         </p>
       </form>
     </div>
+    </div><div class="flow-signup-aside">{% include 'public_flow/_story.html' %}</div></div>
   </div>
 </div>
 
@@ -164,6 +232,9 @@
   window.SIGNUP_CONFIG = {
     initialPlan: {{ selected_plan.key | tojson }},
     initialBilling: {{ (billing or 'monthly') | tojson }},
+    welcomeOfferAvailable: {{ (welcome_offer_available or false) | tojson }},
+    welcomeOfferKey: {{ (offer_key or '') | tojson }},
+    freeTrialDays: {{ trial_days | int }},
     prices: {
       {% for k, v in (plans_dict or {}).items() %}
       {{ k | tojson }}: {
@@ -176,14 +247,6 @@
       {% endfor %}
     }
   };
-  if (!Object.keys(window.SIGNUP_CONFIG.prices).length) {
-    window.SIGNUP_CONFIG.prices = {
-      free: { monthly: 0, yearly: 0, name: 'الخطة المجانية', original_monthly: 25000, original_yearly: 250000 },
-      basic: { monthly: 25000, yearly: 250000, name: 'الأساسية', original_monthly: null, original_yearly: null },
-      pro: { monthly: 45000, yearly: 450000, name: 'المتقدمة', original_monthly: null, original_yearly: null },
-      enterprise: { monthly: 90000, yearly: 900000, name: 'الشركات', original_monthly: null, original_yearly: null }
-    };
-  }
 </script>
-<script src="{{ url_for('static', filename='js/signup.js') }}"></script>
+<script src="{{ url_for('static', filename='js/signup.js', v='20261018-public-flow') }}"></script>
 {% endblock %}

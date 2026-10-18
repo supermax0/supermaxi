@@ -1,0 +1,24 @@
+{% extends "storefront_v2/base.html" %}
+{% block legacy_assets %}{% endblock %}
+{% block legacy_scripts %}{% endblock %}
+{% block body_class %} sm-native{% endblock %}
+{% block title %}الأقسام — {{ store_design.store_name }}{% endblock %}
+{% block content %}
+<section class="sm-shell sm-section">
+  <h1 class="sm-h1">الأقسام</h1>
+  {% if categories %}
+  <div class="sm-catgrid">
+    {% for cat in categories %}
+    <a class="sm-catcard" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, badge=cat.name) }}">
+      {% set img = cat.category_image and url_for('static', filename=cat.category_image) or (cat.preview.image_url if cat.preview else '') %}
+      <span class="sm-catcard__img">{% if img %}<img src="{{ img }}" alt="" width="160" height="120" loading="lazy" decoding="async">{% endif %}</span>
+      <strong>{{ cat.name }}</strong>
+      <span class="sm-muted">{{ cat.count }} منتج</span>
+    </a>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="sm-empty"><h3>لا توجد أقسام منشورة بعد</h3></div>
+  {% endif %}
+</section>
+{% endblock %}

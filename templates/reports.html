@@ -1,317 +1,1415 @@
 {% extends "base.html" %}
 {% block title %}{{ _('reports') }}{% endblock %}
-{% block page_title %}{{ _('reports_page_title') }}{% endblock %}
-
-{% macro amount(v) -%}{{ "{:,.0f}".format((v or 0)|float) }}{%- endmacro %}
+{% block page_title %}<i class="fas fa-chart-pie" aria-hidden="true"></i> {{ _('reports_page_title') }}{% endblock %}
 
 {% block content %}
-{% from "partials/fd_icons.html" import icon %}
-<link rel="stylesheet" href="/static/css/finora-ui.css?v=20261018e">
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<!-- Loading Overlay -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+</div>
+
 <style>
-  #fdPage .rep-title-cell { display: flex; flex-direction: column; gap: 3px; white-space: normal; }
-  #fdPage .rep-title-cell small { color: var(--fd-muted); font-size: 13px; font-weight: 500; }
-  #fdPage .rep-icon {
-    flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
-    width: 40px; height: 40px; border-radius: 12px; background: var(--fd-purple-soft); color: var(--fd-purple);
+  /* ======================================================
+   MODERN REPORTS UI - GLASSMORPHISM DESIGN
+   ====================================================== */
+
+  :root {
+    /* Color System */
+    --reports-primary: var(--primary);
+    --reports-primary-light: color-mix(in srgb, var(--primary) 70%, white 30%);
+    --reports-primary-dark: color-mix(in srgb, var(--primary) 78%, black 22%);
+    --reports-success: var(--success);
+    --reports-danger: var(--danger);
+    --reports-warning: var(--warning);
+    --reports-purple: var(--accent, #8b5cf6);
+    --reports-orange: var(--warning);
+
+    /* Dark Theme */
+    --reports-bg: var(--bg);
+    --reports-surface: var(--card);
+    --reports-surface-light: var(--card-alt);
+
+    /* Glass Effect */
+    --glass-bg: var(--card);
+    --glass-border: var(--border-light);
+    --glass-hover: rgba(59, 130, 246, 0.08);
+
+    /* Text Colors */
+    --reports-text: var(--text);
+    --reports-text-secondary: var(--text-muted);
+    --reports-muted: var(--text-muted);
+
+    /* Spacing System (8px base) */
+    --spacing-xs: 4px;
+    --spacing-sm: 8px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+
+    /* Border Radius */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 20px;
+    --radius-full: 9999px;
+
+    /* Shadows */
+    --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.4);
+    --shadow-glow: 0 0 20px rgba(99, 102, 241, 0.3);
   }
-  #fdPage .rep-icon--green { background: #dcf5e6; color: #16a34a; }
-  #fdPage .rep-icon--amber { background: #ffecc7; color: #d97706; }
-  #fdPage .rep-icon--red { background: #fde0e5; color: #e11d48; }
-  #fdPage .rep-icon--gray { background: #eef0f4; color: #4b5563; }
-  #fdPage .rep-name { display: flex; align-items: center; gap: 12px; }
-  #fdPage .rep-neg { color: #e11d48 !important; }
-  #fdPage .rep-pos { color: #16a34a !important; }
-  #fdPage .rep-open-btn { height: 38px !important; min-height: 38px !important; padding: 0 14px !important; font-size: 14px !important; }
-  #fdPage .rep-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
-  #fdPage table.fd-table .fd-col-actions.rep-col-actions { width: 220px; }
-  #fdPage .rep-period-label { color: var(--fd-muted); font-weight: 600; font-size: 13px; }
 
-  /* report viewer (wide drawer) */
-  #fdPage .rep-viewer .fd-drawer-panel { width: min(1120px, 100vw); }
-  #fdPage .rep-viewer .fd-drawer-body { gap: 14px; }
-  #fdPage .rep-viewer-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-  #fdPage .rep-viewer-tools .fd-search { flex: 1 1 260px; }
-  #fdPage .rep-viewer .fd-search input { padding-inline-start: 46px !important; padding-inline-end: 16px !important; }
-  #fdPage .rep-viewer-count { color: var(--fd-muted); font-size: 14px; font-weight: 600; }
-  #fdPage .rep-viewer .fd-table-card { flex: 0 0 auto; }
-  @media (min-width: 861px) { #fdPage .rep-viewer table.fd-table tbody td { height: 56px; } }
-  #fdPage .rep-viewer table.fd-table thead th[data-sort] { cursor: pointer; user-select: none; }
-  #fdPage .rep-viewer table.fd-table thead th[data-sort]:hover { color: var(--fd-purple) !important; }
-  #fdPage .rep-sort-mark { margin-inline-start: 4px; color: var(--fd-purple); font-size: 12px; }
-  #fdPage .rep-viewer table.fd-table tbody tr { cursor: default; }
-  #fdPage .rep-total-line b { font-size: 17px; }
-  #fdPage .rep-total-line.is-danger b { color: #e11d48; }
-  #fdPage .rep-total-line.is-success b { color: #16a34a; }
-  #fdPage .rep-viewer .fd-footer { padding: 0; }
-  #fdPage .rep-print-only { display: none; }
-  #fdPage .rep-viewer-foot-start { display: flex; gap: 8px; flex-wrap: wrap; }
-
-  /* catalog cards (phones, laptops with the sidebar open) */
-  @container (max-width: 780px) {
-    #fdPage table.fd-table .fd-col-actions.rep-col-actions { width: auto; }
-    #fdPage .rep-open-btn { display: none !important; }
-    #fdPage .rep-icon { display: none; }
-    #fdPage #repCatalog td.fd-col-opt2 { display: none !important; }
+  /* ================= PAGE LAYOUT ================= */
+  .reports-page {
+    display: grid;
+    gap: 28px;
+    width: 100%;
   }
 
-  @media print {
-    @page { size: A4 landscape; margin: 1cm; }
-    /* printing with the viewer open prints only the report */
-    body:has(#repViewer:not([hidden])) * { visibility: hidden; }
-    body:has(#repViewer:not([hidden])) #repViewer .fd-drawer-panel,
-    body:has(#repViewer:not([hidden])) #repViewer .fd-drawer-panel * { visibility: visible; }
-    #fdPage #repViewer { position: absolute; inset: 0; background: #fff; display: block; }
-    #fdPage #repViewer .fd-drawer-panel {
-      position: absolute; inset: 0; width: 100%; height: auto; box-shadow: none; border-radius: 0; animation: none;
+  .reports-section {
+    display: grid;
+    gap: 14px;
+  }
+
+  .reports-section-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    padding-inline: 2px;
+  }
+
+  .reports-section-head h2 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 800;
+    color: var(--reports-text);
+    letter-spacing: -0.01em;
+  }
+
+  .reports-section-head p {
+    margin: 4px 0 0;
+    font-size: 12px;
+    color: var(--reports-muted);
+    font-weight: 500;
+  }
+
+  /* ================= GRID ================= */
+  .reports-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  .reports-grid.is-hubs {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  /* ================= CARDS ================= */
+  .report-card {
+    background: var(--surface, var(--glass-bg));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.04);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+    border: 1px solid var(--border, var(--glass-border));
+    position: relative;
+    overflow: hidden;
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 148px;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .card-content {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .card-copy {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .report-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 10px 28px rgba(15, 23, 42, 0.1);
+    border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
+  }
+
+  .report-card .card-label {
+    font-size: 13px;
+    color: var(--reports-muted);
+    font-weight: 700;
+    display: block;
+    margin-bottom: 8px;
+    line-height: 1.35;
+  }
+
+  .report-card .card-value {
+    display: block;
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--reports-text);
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    word-break: break-word;
+  }
+
+  .report-card .card-value small,
+  .report-card .card-currency {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--reports-muted);
+    margin-inline-start: 4px;
+  }
+
+  .report-card .card-hint {
+    display: block;
+    margin-top: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--reports-muted);
+    line-height: 1.45;
+  }
+
+  .card-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+  }
+
+  .report-card:hover .card-icon {
+    transform: scale(1.06);
+  }
+
+  .report-card .view-more {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--reports-primary);
+    margin-top: auto;
+    opacity: 0.9;
+    transition: gap 0.2s ease, opacity 0.2s ease;
+  }
+
+  .report-card:hover .view-more {
+    opacity: 1;
+    gap: 8px;
+  }
+
+  .report-card .view-more.is-btn {
+    align-self: flex-start;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--primary) 12%, transparent);
+    border: 1px solid color-mix(in srgb, var(--primary) 22%, transparent);
+  }
+
+  /* ================= CARD THEMES ================= */
+  .report-card.blue .card-icon {
+    background: rgba(59, 130, 246, 0.12);
+    color: #2563eb;
+    border: 1px solid rgba(59, 130, 246, 0.18);
+  }
+
+  .report-card.blue:hover {
+    border-color: rgba(59, 130, 246, 0.35);
+  }
+
+  .report-card.blue .view-more {
+    color: #2563eb;
+  }
+
+  .report-card.green .card-icon {
+    background: rgba(16, 185, 129, 0.12);
+    color: #059669;
+    border: 1px solid rgba(16, 185, 129, 0.18);
+  }
+
+  .report-card.green:hover {
+    border-color: rgba(16, 185, 129, 0.35);
+  }
+
+  .report-card.green .view-more {
+    color: #059669;
+  }
+
+  .report-card.purple .card-icon {
+    background: rgba(139, 92, 246, 0.12);
+    color: #7c3aed;
+    border: 1px solid rgba(139, 92, 246, 0.18);
+  }
+
+  .report-card.purple:hover {
+    border-color: rgba(139, 92, 246, 0.35);
+  }
+
+  .report-card.purple .view-more {
+    color: #7c3aed;
+  }
+
+  .report-card.orange .card-icon {
+    background: rgba(245, 158, 11, 0.12);
+    color: #d97706;
+    border: 1px solid rgba(245, 158, 11, 0.18);
+  }
+
+  .report-card.orange:hover {
+    border-color: rgba(245, 158, 11, 0.35);
+  }
+
+  .report-card.orange .view-more {
+    color: #d97706;
+  }
+
+  .report-card.red .card-icon {
+    background: rgba(239, 68, 68, 0.12);
+    color: #dc2626;
+    border: 1px solid rgba(239, 68, 68, 0.18);
+  }
+
+  .report-card.red:hover {
+    border-color: rgba(239, 68, 68, 0.35);
+  }
+
+  .report-card.red .view-more {
+    color: #dc2626;
+  }
+
+  .report-card.gray .card-icon {
+    background: rgba(100, 116, 139, 0.12);
+    color: #64748b;
+    border: 1px solid rgba(100, 116, 139, 0.18);
+  }
+
+  .report-card.gray:hover {
+    border-color: rgba(100, 116, 139, 0.35);
+  }
+
+  .report-card.gray .view-more {
+    color: #64748b;
+  }
+
+  /* ================= FINANCIAL REPORT CARD ================= */
+  .report-card.comprehensive {
+    background: color-mix(in srgb, var(--primary) 8%, var(--surface, #fff));
+    border-color: color-mix(in srgb, var(--primary) 28%, var(--border));
+  }
+
+  .report-card.comprehensive .card-icon {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    box-shadow: 0 6px 14px color-mix(in srgb, var(--primary) 28%, transparent);
+  }
+
+  .report-card.comprehensive .card-label {
+    color: var(--primary);
+  }
+
+  .report-card.comprehensive .view-more.is-btn {
+    background: var(--primary);
+    color: #fff;
+    border-color: transparent;
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--primary) 25%, transparent);
+  }
+
+  .report-card.comprehensive:hover .view-more.is-btn {
+    filter: brightness(1.05);
+  }
+
+  .report-chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+
+  .report-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    color: #92400e;
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.2);
+  }
+
+  /* ================= MODAL ================= */
+  .modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    padding: var(--spacing-xl);
+    pointer-events: auto;
+    animation: fadeInModal 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .modal.show {
+    display: flex;
+  }
+
+  @keyframes fadeInModal {
+    from {
+      opacity: 0;
+      backdrop-filter: blur(0px);
     }
-    #fdPage #repViewer .fd-drawer-body { overflow: visible; padding: 0; }
-    #fdPage #repViewer .fd-drawer-head { padding: 0 0 12px; border-bottom: 2px solid #000; }
-    #fdPage #repViewer .fd-close-btn,
-    #fdPage #repViewer .fd-drawer-foot,
-    #fdPage #repViewer .rep-viewer-tools,
-    #fdPage #repViewer .fd-footer,
-    #fdPage #repViewer .fd-drawer-icon { display: none !important; }
-    #fdPage #repViewer .rep-print-only { display: block; }
-    #fdPage #repViewer .fd-table-scroll { overflow: visible; }
-    #fdPage #repViewer table.fd-table thead th { position: static; height: auto; padding: 8px !important; border: 1px solid #000 !important; background: #f0f0f0 !important; color: #000 !important; font-size: 12px; }
-    #fdPage #repViewer table.fd-table tbody td { height: auto; padding: 6px 8px !important; border: 1px solid #000 !important; color: #000 !important; font-size: 12px; }
-    #fdPage #repViewer .fd-table-card { border: 0; box-shadow: none; }
-    #fdPage .rep-print-date { margin-top: 16px; padding-top: 8px; border-top: 1px solid #ccc; font-size: 10px; color: #666; text-align: left; }
+
+    to {
+      opacity: 1;
+      backdrop-filter: blur(12px);
+    }
+  }
+
+  .modal-box {
+    background: linear-gradient(135deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+    width: 100%;
+    max-width: 1400px;
+    max-height: 85vh;
+    border-radius: var(--radius-xl);
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    animation: scaleUpModal 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    pointer-events: auto;
+    position: relative;
+    z-index: 10001;
+  }
+
+  @keyframes scaleUpModal {
+    from {
+      opacity: 0;
+      transform: translateY(20px) scale(0.97);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--spacing-lg) var(--spacing-xl);
+    background: rgba(255, 255, 255, 0.03);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    flex-shrink: 0;
+    pointer-events: auto;
+    position: relative;
+  }
+
+  /* Subtle top glow for the header */
+  .modal-header::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.5), transparent);
+  }
+
+  .modal-header h3 {
+    color: #f8fafc;
+    font-size: 22px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: 0.3px;
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+  }
+
+  .modal-header-actions {
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+  }
+
+  .close-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--reports-text-secondary);
+    font-size: 20px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    flex-shrink: 0;
+  }
+
+  .close-btn:hover {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--reports-danger);
+    border-color: rgba(239, 68, 68, 0.3);
+    transform: scale(1.05);
+  }
+
+  .close-btn:active {
+    transform: scale(0.95);
+  }
+
+  .print-btn {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--reports-success);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    pointer-events: auto;
+    flex-shrink: 0;
+    height: 36px;
+  }
+
+  .print-btn:hover {
+    background: var(--reports-success);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+  }
+
+  .print-btn:active {
+    transform: translateY(0);
+  }
+
+  /* ================= TABLE ================= */
+  .table-wrap {
+    flex: 1;
+    overflow: auto;
+    padding: var(--spacing-md) var(--spacing-xl) var(--spacing-xl);
+    background: transparent;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(99, 102, 241, 0.4) transparent;
+    position: relative;
+  }
+
+  /* Thin decorative line below header */
+  .table-wrap::before {
+    content: '';
+    position: sticky;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+    z-index: 11;
+  }
+
+  .table-wrap::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .table-wrap::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .table-wrap::-webkit-scrollbar-thumb {
+    background: rgba(99, 102, 241, 0.4);
+    border-radius: var(--radius-full);
+  }
+
+  .table-wrap::-webkit-scrollbar-thumb:hover {
+    background: rgba(99, 102, 241, 0.6);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 14px;
+    background: rgba(15, 23, 42, 0.6);
+    border-radius: var(--radius-lg);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    overflow: hidden;
+  }
+
+  th {
+    background: rgba(30, 41, 59, 0.85);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 16px 20px;
+    text-align: center;
+    color: #94a3b8;
+    font-weight: 600;
+    font-size: 13px;
+    border-bottom: 2px solid rgba(99, 102, 241, 0.2);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    white-space: nowrap;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  th:first-child {
+    border-top-right-radius: var(--radius-lg);
+  }
+
+  th:last-child {
+    border-top-left-radius: var(--radius-lg);
+  }
+
+  td {
+    padding: 14px 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    color: #e2e8f0;
+    text-align: center;
+    transition: all 0.2s ease;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  tbody tr {
+    transition: all 0.2s ease;
+  }
+
+  tbody tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.015);
+  }
+
+  tbody tr:last-child td {
+    border-bottom: none;
+  }
+
+  tbody tr:hover {
+    background: rgba(99, 102, 241, 0.05);
+  }
+
+  tbody tr:hover td {
+    color: #f8fafc;
+  }
+
+  /* ================= TOTAL ROW ================= */
+  .total-row {
+    background: rgba(99, 102, 241, 0.15) !important;
+    border-top: 2px solid rgba(99, 102, 241, 0.4) !important;
+    font-weight: 700 !important;
+  }
+
+  .total-row td {
+    border-bottom: none !important;
+    padding: 20px 24px !important;
+  }
+
+  .total-row-success {
+    background: rgba(16, 185, 129, 0.15) !important;
+    border-top-color: rgba(16, 185, 129, 0.5) !important;
+  }
+
+  .total-row-danger {
+    background: rgba(239, 68, 68, 0.15) !important;
+    border-top-color: rgba(239, 68, 68, 0.5) !important;
+  }
+
+  .total-label {
+    text-align: right !important;
+    font-size: 16px !important;
+    color: #cbd5e1 !important;
+    padding-right: 28px !important;
+  }
+
+  .total-amount {
+    font-size: 20px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.5px !important;
+  }
+
+  /* ================= LIGHT MODE OVERRIDES ================= */
+  :root[data-theme="light"] .modal-box {
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.95), rgba(248, 250, 252, 0.95));
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  }
+
+  :root[data-theme="light"] .modal-header {
+    background: rgba(0, 0, 0, 0.02);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  :root[data-theme="light"] .modal-header h3 {
+    color: var(--reports-text);
+  }
+
+  :root[data-theme="light"] .modal-header::after {
+    background: linear-gradient(90deg, transparent, rgba(99, 102, 241, 0.3), transparent);
+  }
+
+  :root[data-theme="light"] table {
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  :root[data-theme="light"] th {
+    background: rgba(241, 245, 249, 0.9);
+    color: #475569;
+    border-bottom: 2px solid rgba(99, 102, 241, 0.2);
+  }
+
+  :root[data-theme="light"] td {
+    color: #334155;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+  }
+
+  :root[data-theme="light"] tbody tr:nth-child(even) {
+    background: rgba(0, 0, 0, 0.015);
+  }
+
+  :root[data-theme="light"] tbody tr:hover {
+    background: rgba(99, 102, 241, 0.08);
+  }
+
+  :root[data-theme="light"] tbody tr:hover td {
+    color: var(--reports-text);
+  }
+
+  :root[data-theme="light"] .total-label {
+    color: #475569 !important;
+  }
+
+  :root[data-theme="light"] .summary-box {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), rgba(139, 92, 246, 0.08));
+    border: 1px solid rgba(139, 92, 246, 0.15);
+  }
+
+  :root[data-theme="light"] .summary-box p {
+    color: #475569;
+  }
+
+  :root[data-theme="light"] .summary-box::after {
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  }
+
+  :root[data-theme="light"] .close-btn {
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    background: rgba(0, 0, 0, 0.03);
+    color: #64748b;
+  }
+
+  :root[data-theme="light"] .close-btn:hover {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--reports-danger);
+    border-color: rgba(239, 68, 68, 0.2);
+  }
+
+  .total-amount-success {
+    color: var(--reports-success) !important;
+  }
+
+  .total-amount-danger {
+    color: var(--reports-danger) !important;
+  }
+
+  .report-profit-positive {
+    color: var(--reports-success);
+  }
+
+  .report-profit-negative {
+    color: var(--reports-danger);
+  }
+
+  .amount-cell {
+    font-weight: 600;
+  }
+
+  .amount-success {
+    color: var(--reports-success);
+  }
+
+  .amount-danger {
+    color: var(--reports-danger);
+  }
+
+  .amount-warning {
+    color: var(--reports-warning);
+  }
+
+  /* ================= LOADING & TOAST ================= */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    pointer-events: auto;
+  }
+
+  .loading-overlay.show {
+    display: flex;
+  }
+
+  .loading-spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(99, 102, 241, 0.2);
+    border-top-color: var(--reports-primary);
+    border-radius: var(--radius-full);
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  .toast-container {
+    position: fixed;
+    top: var(--spacing-lg);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10001;
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-md);
+    width: calc(100% - var(--spacing-xl));
+    max-width: 500px;
+    pointer-events: none;
+  }
+
+  .toast {
+    min-width: 280px;
+    max-width: 100%;
+    width: 100%;
+    padding: var(--spacing-md) var(--spacing-lg);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    animation: slideInDown 0.4s ease-out;
+    pointer-events: auto;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid var(--glass-border);
+  }
+
+  .toast.success {
+    background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
+    color: #fff;
+  }
+
+  .toast.error {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.95), rgba(220, 38, 38, 0.95));
+    color: #fff;
+  }
+
+  .toast.warning {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.95));
+    color: #fff;
+  }
+
+  .toast.info {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.95), rgba(79, 70, 229, 0.95));
+    color: #fff;
+  }
+
+  .toast.fade-out {
+    animation: fadeOutToast 0.3s ease-out forwards;
+  }
+
+  .toast-icon {
+    font-size: 18px;
+  }
+
+  .toast-text {
+    flex: 1;
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  @keyframes slideInDown {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(-20px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+  }
+
+  @keyframes fadeOutToast {
+    to {
+      opacity: 0;
+      transform: translateX(-50%) translateY(-20px);
+    }
+  }
+
+  /* ================= NO DATA ================= */
+  .no-data {
+    text-align: center;
+    padding: var(--spacing-xl);
+    color: var(--reports-muted);
+    font-size: 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--spacing-md);
+  }
+
+  .no-data::before {
+    content: "📊";
+    font-size: 64px;
+    opacity: 0.5;
+  }
+
+  .loading {
+    text-align: center;
+    padding: var(--spacing-xl);
+    color: var(--reports-muted);
+    font-size: 16px;
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.5;
+    }
+  }
+
+  /* ================= SUMMARY BOX ================= */
+  .summary-box {
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(139, 92, 246, 0.15));
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: var(--spacing-md) var(--spacing-xl);
+    border-radius: var(--radius-md);
+    margin-bottom: var(--spacing-lg);
+    border: 1px solid rgba(139, 92, 246, 0.2);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .summary-box::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-md);
+  }
+
+  .summary-box::before {
+    content: '📊';
+    font-size: 28px;
+    opacity: 0.9;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 8px;
+    border-radius: 12px;
+  }
+
+  .summary-box p {
+    margin: 0;
+    font-size: 16px;
+    color: #e2e8f0;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .summary-box p strong {
+    font-size: 22px;
+    color: var(--reports-primary-light);
+    font-weight: 800;
+  }
+
+  /* ================= PRINT STYLES ================= */
+  @media print {
+    @page {
+      size: A4 landscape;
+      margin: 1cm;
+    }
+
+    body * {
+      visibility: hidden;
+    }
+
+    .modal-box,
+    .modal-box * {
+      visibility: visible;
+    }
+
+    .modal-box {
+      position: absolute;
+      inset: 0;
+      box-shadow: none;
+      border: 2px solid #000;
+      background: white;
+      padding: 20px;
+      margin: 0;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    .close-btn,
+    .print-btn {
+      display: none !important;
+    }
+
+    .modal-header {
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #000;
+    }
+
+    .modal-header h3 {
+      color: #000 !important;
+      font-size: 24px;
+    }
+
+    th,
+    td {
+      border: 1px solid #000 !important;
+      color: #000 !important;
+      background: white !important;
+      padding: 10px 8px !important;
+      font-size: 12px !important;
+    }
+
+    th {
+      background: #f0f0f0 !important;
+      font-weight: bold;
+    }
+
+    .table-wrap {
+      border: 1px solid #000 !important;
+      max-height: none !important;
+      overflow: visible !important;
+      background: white !important;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+    }
+
+    table {
+      width: 100% !important;
+      border-collapse: collapse !important;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #f9f9f9 !important;
+    }
+
+    .modal-box::before {
+      content: "نظام المحاسبة - " attr(data-report-title);
+      display: block;
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #000;
+      color: #000;
+    }
+
+    .modal-box::after {
+      content: "تاريخ الطباعة: " attr(data-print-date);
+      display: block;
+      text-align: left;
+      font-size: 10px;
+      margin-top: 20px;
+      padding-top: 10px;
+      border-top: 1px solid #ccc;
+      color: #666;
+    }
+  }
+
+  /* ================= RESPONSIVE ================= */
+  @media (max-width: 1200px) {
+    .reports-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .reports-grid.is-hubs {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 768px) {
+    .reports-grid,
+    .reports-grid.is-hubs {
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+    }
+
+    .report-card {
+      padding: 14px;
+      min-height: 132px;
+    }
+
+    .report-card .card-value {
+      font-size: 18px;
+    }
+
+    .modal-box {
+      margin: var(--spacing-md);
+      max-height: 95vh;
+    }
+
+    .modal-header {
+      padding: var(--spacing-md) var(--spacing-lg);
+      flex-direction: column;
+      align-items: flex-start;
+      gap: var(--spacing-md);
+    }
+
+    .modal-header h3 {
+      font-size: 20px;
+    }
+
+    .modal-header-actions {
+      width: 100%;
+      justify-content: space-between;
+    }
+
+    .table-wrap {
+      padding: var(--spacing-md);
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      padding: var(--spacing-sm);
+      font-size: 12px;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .reports-grid,
+    .reports-grid.is-hubs {
+      grid-template-columns: 1fr;
+    }
+
+    .report-card .card-value {
+      font-size: 20px;
+    }
+
+    .modal-header h3 {
+      font-size: 18px;
+    }
+
+    .table-wrap {
+      font-size: 12px;
+    }
+
+    th,
+    td {
+      padding: var(--spacing-xs) var(--spacing-sm);
+    }
+
+    .toast-container {
+      top: var(--spacing-md);
+      left: var(--spacing-md);
+      right: var(--spacing-md);
+      width: auto;
+      max-width: none;
+      transform: none;
+    }
+
+    @keyframes slideInDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
   }
 </style>
 
-<div class="fd reports-page" id="fdPage">
-
-  <header class="fd-header no-print">
-    <div class="fd-header-main">
-      <span class="fd-header-icon" style="color: var(--fd-purple);">{{ icon('trend', 26) }}</span>
-      <div class="fd-header-text">
-        <h1 class="fd-title">{{ _('reports_page_title') }}</h1>
-        <p class="fd-subtitle">ملخص المبيعات والأرباح والمصاريف، والتقارير التفصيلية للطباعة والتصدير</p>
+<!-- ================= DASHBOARD ================= -->
+<div class="reports-page">
+  <section class="reports-section">
+    <div class="reports-section-head">
+      <div>
+        <h2>ملخص الأداء</h2>
+        <p>أرقام سريعة من النظام — اضغط أي بطاقة لعرض التفاصيل</p>
       </div>
     </div>
-  </header>
 
-  <nav class="fd-subnav no-print" aria-label="التقارير">
-    <a class="fd-subnav-link active" href="{{ url_for('reports.reports_dashboard') }}">التقارير</a>
-    <a class="fd-subnav-link" href="{{ url_for('reports.daily_report') }}">التقرير اليومي</a>
-    <a class="fd-subnav-link" href="{{ url_for('reports.monitors_hub') }}">المراقبة</a>
-  </nav>
-
-  <div class="fd-kpis">
-    <button type="button" class="fd-kpi fd-kpi--purple" data-rep-open="sales" title="{{ _('reports_view_details') }}">
-      <span class="fd-kpi-text">
-        <span class="fd-kpi-label">{{ _('reports_card_sales') }}</span>
-        <span><span class="fd-kpi-value fd-kpi-value--money">{{ amount(total_sales) }}</span><span class="fd-kpi-unit">{{ _('reports_currency_iqd') }}</span></span>
-      </span>
-      <span class="fd-kpi-icon">{{ icon('trend', 28) }}</span>
-    </button>
-    <button type="button" class="fd-kpi {{ 'fd-kpi--green' if (profit or 0) >= 0 else 'fd-kpi--red' }}" data-rep-open="profit" title="{{ _('reports_view_details') }}">
-      <span class="fd-kpi-text">
-        <span class="fd-kpi-label">{{ _('reports_card_profit') }}</span>
-        <span><span class="fd-kpi-value fd-kpi-value--money {{ 'rep-pos' if (profit or 0) >= 0 else 'rep-neg' }}" dir="ltr">{{ amount(profit) }}</span><span class="fd-kpi-unit">{{ _('reports_currency_iqd') }}</span></span>
-      </span>
-      <span class="fd-kpi-icon">{{ icon('wallet', 28) }}</span>
-    </button>
-    <button type="button" class="fd-kpi fd-kpi--amber" data-rep-open="expenses" title="{{ _('reports_view_details') }}">
-      <span class="fd-kpi-text">
-        <span class="fd-kpi-label">{{ _('reports_card_expenses') }}</span>
-        <span><span class="fd-kpi-value fd-kpi-value--money">{{ amount(total_expenses) }}</span><span class="fd-kpi-unit">{{ _('reports_currency_iqd') }}</span></span>
-      </span>
-      <span class="fd-kpi-icon">{{ icon('receipt', 28) }}</span>
-    </button>
-    <button type="button" class="fd-kpi fd-kpi--red" data-rep-open="returned" title="{{ _('reports_view_details') }}">
-      <span class="fd-kpi-text">
-        <span class="fd-kpi-label">{{ _('reports_card_returns') }}</span>
-        <span><span class="fd-kpi-value fd-kpi-value--money">{{ amount(returned_total) }}</span><span class="fd-kpi-unit">{{ _('reports_currency_iqd') }}</span></span>
-      </span>
-      <span class="fd-kpi-icon">{{ icon('ban', 28) }}</span>
-    </button>
-  </div>
-
-  <div class="fd-toolbar no-print">
-    <div class="fd-pop-wrap fd-tool--filter">
-      <button type="button" class="fd-btn" data-fd-pop="repPeriodPop" aria-expanded="false" aria-controls="repPeriodPop">
-        {{ icon('calendar', 18) }}
-        <span class="fd-btn-label">فترة التقرير المالي</span>
-        <span class="fd-chevron">{{ icon('chevron', 16) }}</span>
-      </button>
-      <form class="fd-pop fd-pop--start fd-filter-pop" id="repPeriodPop" role="dialog" aria-label="فترة التقرير المالي" method="get" action="{{ url_for('reports.financial_report') }}" hidden>
-        <div class="fd-pop-head">{{ _('reports_card_comprehensive') }}<span class="fd-pop-sub">اختر الفترة</span></div>
-        <div class="fd-form-grid">
-          <label class="fd-field fd-field--wide"><span>الفترة</span>
-            <select name="period_type" id="repPeriodType">
-              <option value="today">اليوم</option>
-              <option value="yesterday">أمس</option>
-              <option value="last_7_days">آخر 7 أيام</option>
-              <option value="this_week">هذا الأسبوع</option>
-              <option value="last_30_days">آخر 30 يوم</option>
-              <option value="this_month" selected>هذا الشهر</option>
-              <option value="last_month">الشهر الماضي</option>
-              <option value="this_year">هذه السنة</option>
-              <option value="last_year">السنة الماضية</option>
-              <option value="custom">مخصص</option>
-            </select>
-          </label>
-          <label class="fd-field"><span>من تاريخ</span><input type="date" name="date_from" id="repDateFrom" disabled></label>
-          <label class="fd-field"><span>إلى تاريخ</span><input type="date" name="date_to" id="repDateTo" disabled></label>
+    <div class="reports-grid">
+      <div class="report-card blue" onclick="loadReport('sales', reportsTitleSales)" role="button" tabindex="0">
+        <div class="card-content">
+          <div class="card-copy">
+            <span class="card-label">{{ _('reports_card_sales') }}</span>
+            <strong class="card-value">{{ "{:,}".format(total_sales or 0) }} <span class="card-currency">{{ _('reports_currency_iqd') }}</span></strong>
+          </div>
+          <div class="card-icon"><i class="fas fa-chart-line"></i></div>
         </div>
-        <div class="fd-pop-foot fd-pop-foot--split">
-          <span class="rep-period-label">يفتح التقرير المالي الشامل للطباعة / PDF</span>
-          <button type="submit" class="fd-btn fd-btn--accent fd-btn--apply">{{ _('reports_open_report') }}</button>
+        <div class="view-more">{{ _('reports_view_details') }} <i class="fas fa-arrow-left"></i></div>
+      </div>
+
+      <div class="report-card green" onclick="loadReport('profit', reportsTitleProfit)" role="button" tabindex="0">
+        <div class="card-content">
+          <div class="card-copy">
+            <span class="card-label">{{ _('reports_card_profit') }}</span>
+            <strong class="card-value {% if profit >= 0 %}report-profit-positive{% else %}report-profit-negative{% endif %}">
+              {{ "{:,}".format(profit or 0) }} <span class="card-currency">{{ _('reports_currency_iqd') }}</span>
+            </strong>
+          </div>
+          <div class="card-icon"><i class="fas fa-hand-holding-usd"></i></div>
         </div>
-      </form>
-    </div>
+        <div class="view-more">{{ _('reports_view_details') }} <i class="fas fa-arrow-left"></i></div>
+      </div>
 
-    <label class="fd-search fd-tool--search">
-      {{ icon('search', 18) }}
-      <input type="search" id="repSearch" autocomplete="off" placeholder="ابحث في التقارير...">
-    </label>
+      <div class="report-card purple" onclick="loadReport('expenses', reportsTitleExpenses)" role="button" tabindex="0">
+        <div class="card-content">
+          <div class="card-copy">
+            <span class="card-label">{{ _('reports_card_expenses') }}</span>
+            <strong class="card-value">{{ "{:,}".format(total_expenses or 0) }} <span class="card-currency">{{ _('reports_currency_iqd') }}</span></strong>
+          </div>
+          <div class="card-icon"><i class="fas fa-file-invoice-dollar"></i></div>
+        </div>
+        <div class="view-more">{{ _('reports_view_details') }} <i class="fas fa-arrow-left"></i></div>
+      </div>
 
-    <div class="fd-tools-row">
-      <a class="fd-btn fd-btn--primary" href="/reports/financial?period_type=this_month">
-        {{ icon('sheet', 18) }}
-        <span class="fd-btn-label">{{ _('reports_card_comprehensive') }}</span>
+      <div class="report-card orange" onclick="loadReport('inventory', reportsTitleInventory)" role="button" tabindex="0">
+        <div class="card-content">
+          <div class="card-copy">
+            <span class="card-label">{{ _('reports_card_inventory') }}</span>
+            <strong class="card-value">{{ "{:,}".format(inventory_value or 0) }} <span class="card-currency">{{ _('reports_currency_iqd') }}</span></strong>
+          </div>
+          <div class="card-icon"><i class="fas fa-box-open"></i></div>
+        </div>
+        <div class="view-more">{{ _('reports_view_details') }} <i class="fas fa-arrow-left"></i></div>
+      </div>
+
+      <div class="report-card red" onclick="loadReport('returned', reportsTitleReturned)" role="button" tabindex="0">
+        <div class="card-content">
+          <div class="card-copy">
+            <span class="card-label">{{ _('reports_card_returns') }}</span>
+            <strong class="card-value">{{ "{:,}".format(returned_total or 0) }} <span class="card-currency">{{ _('reports_currency_iqd') }}</span></strong>
+          </div>
+          <div class="card-icon"><i class="fas fa-undo-alt"></i></div>
+        </div>
+        <div class="view-more">{{ _('reports_view_details') }} <i class="fas fa-arrow-left"></i></div>
+      </div>
+
+      <div class="report-card gray" onclick="loadReport('suppliers', reportsTitleSuppliers)" role="button" tabindex="0">
+        <div class="card-content">
+          <div class="card-copy">
+            <span class="card-label">{{ _('reports_card_supplier_debts') }}</span>
+            <strong class="card-value">{{ "{:,}".format(supplier_debts or 0) }} <span class="card-currency">{{ _('reports_currency_iqd') }}</span></strong>
+          </div>
+          <div class="card-icon"><i class="fas fa-building"></i></div>
+        </div>
+        <div class="view-more">{{ _('reports_view_details') }} <i class="fas fa-arrow-left"></i></div>
+      </div>
+
+      <div class="report-card gray" onclick="loadReport('shipping', reportsTitleShipping)" role="button" tabindex="0">
+        <div class="card-content">
+          <div class="card-copy">
+            <span class="card-label">{{ _('reports_card_shipping') }}</span>
+            <strong class="card-value" style="font-size:18px;">{{ _('reports_card_receivables') }}</strong>
+            <span class="card-hint">مستحقات شركات النقل والذمم</span>
+          </div>
+          <div class="card-icon"><i class="fas fa-truck-fast"></i></div>
+        </div>
+        <div class="view-more">{{ _('reports_view_details') }} <i class="fas fa-arrow-left"></i></div>
+      </div>
+
+      <a href="/reports/daily" class="report-card blue">
+        <div class="card-content">
+          <div class="card-copy">
+            <span class="card-label">تقرير اليوم</span>
+            <strong class="card-value" style="font-size:17px;">وارد · صادر · بضاعة · تدقيق</strong>
+          </div>
+          <div class="card-icon"><i class="fas fa-clipboard-check"></i></div>
+        </div>
+        <div class="view-more is-btn">فتح التقرير اليومي <i class="fas fa-external-link-alt"></i></div>
       </a>
-      <div class="fd-pop-wrap">
-        <button type="button" class="fd-btn fd-btn--icon" data-fd-pop="repMorePop" aria-expanded="false" aria-controls="repMorePop" title="المزيد" aria-label="المزيد">{{ icon('dots', 20) }}</button>
-        <div class="fd-pop fd-pop--end fd-menu" id="repMorePop" role="menu" hidden>
-          <a class="fd-menu-item" role="menuitem" href="/reports/daily">{{ icon('calendar') }}<span>فتح التقرير اليومي</span></a>
-          <a class="fd-menu-item" role="menuitem" href="/reports/daily/archive">{{ icon('layers') }}<span>أرشيف التدقيق اليومي</span></a>
-          <a class="fd-menu-item" role="menuitem" href="/finance/rotating-savings/reports/summary">{{ icon('users') }}<span>الجمعيات والسلف الدوّارة</span></a>
-          <div class="fd-menu-sep" role="separator"></div>
-          <a class="fd-menu-item" role="menuitem" href="/reports/monitors">{{ icon('alert') }}<span>مركز المراقبة</span></a>
-          <a class="fd-menu-item" role="menuitem" href="/reports/monitors?tab=financial">{{ icon('wallet') }}<span>مراقبة مالية</span></a>
-          <a class="fd-menu-item" role="menuitem" href="/reports/monitors?tab=operational">{{ icon('truck') }}<span>مراقبة تشغيلية</span></a>
-          <a class="fd-menu-item" role="menuitem" href="/reports/monitors?tab=performance">{{ icon('users') }}<span>مراقبة الأداء</span></a>
-          <div class="fd-menu-sep" role="separator"></div>
-          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="window.print()">{{ icon('print') }}<span>طباعة الملخص</span></button>
-          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="exportSummaryCsv()">{{ icon('download') }}<span>تصدير الملخص CSV</span></button>
-        </div>
-      </div>
-    </div>
-  </div>
 
-  <section class="fd-table-card">
-    <div class="fd-table-scroll">
-      <table class="fd-table" id="repCatalog">
-        <thead>
-          <tr>
-            <th>التقرير</th>
-            <th class="fd-col-opt2">النوع</th>
-            <th>القيمة</th>
-            <th class="fd-col-actions rep-col-actions"></th>
-          </tr>
-        </thead>
-        <tbody id="repCatalogBody">
-          {% set detail_rows = [
-            ('sales', 'reports_title_sales', _('reports_card_sales'), 'كل الفواتير غير الملغاة مع الحالة والدفع', 'trend', '', total_sales),
-            ('profit', 'reports_title_profit', _('reports_card_profit'), 'ربح المنتجات: الكمية × (سعر البيع − التكلفة)', 'wallet', 'green', profit),
-            ('expenses', 'reports_title_expenses', _('reports_card_expenses'), 'تفاصيل المصاريف ونسبتها من المبيعات', 'receipt', 'amber', total_expenses),
-            ('inventory', 'reports_title_inventory', _('reports_card_inventory'), 'الكميات الحالية وقيمتها بسعر الشراء', 'boxes', 'amber', inventory_value),
-            ('returned', 'reports_title_returned', _('reports_card_returns'), 'الطلبات المرتجعة', 'ban', 'red', returned_total),
-            ('shipping', 'reports_title_shipping', _('reports_card_shipping'), 'عدد الطلبات والمستحق على كل شركة نقل', 'truck', 'gray', none),
-            ('suppliers', 'reports_title_suppliers', _('reports_card_supplier_debts'), 'الموردون الذين عليهم متبقي، الأكبر أولاً', 'users', 'gray', supplier_debts),
-          ] %}
-          {% for key, title_key, label, desc, ic, tone, value in detail_rows %}
-          <tr data-rep-row="{{ key }}" data-rep-search="{{ label }} {{ desc }}">
-            <td class="fd-td-title" data-label="التقرير">
-              <span class="rep-name">
-                <span class="rep-icon{% if tone %} rep-icon--{{ tone }}{% endif %}">{{ icon(ic, 20) }}</span>
-                <span class="rep-title-cell"><b>{{ label }}</b><small>{{ desc }}</small></span>
-              </span>
-            </td>
-            <td class="fd-col-opt2" data-label="النوع"><span class="fd-pill fd-pill--purple">جدول تفصيلي</span></td>
-            <td data-label="القيمة" class="fd-cell-amount">
-              {% if value is none %}<span class="fd-muted">{{ _('reports_card_receivables') }}</span>
-              {% else %}<b class="{{ 'rep-neg' if (value or 0) < 0 else '' }}" dir="ltr">{{ amount(value) }} {{ _('reports_currency_iqd') }}</b>{% endif %}
-            </td>
-            <td class="fd-col-actions rep-col-actions">
-              <span class="rep-actions">
-                <button type="button" class="fd-btn fd-btn--soft fd-btn--sm rep-open-btn" data-rep-open="{{ key }}">{{ _('reports_view_details') }}</button>
-                <button type="button" class="fd-more-btn" data-rep-menu="{{ key }}" aria-haspopup="menu" aria-label="إجراءات" title="إجراءات"></button>
-              </span>
-            </td>
-          </tr>
-          {% endfor %}
-          {% set link_rows = [
-            ('daily', '/reports/daily', 'تقرير اليوم', 'وارد · صادر · بضاعة · تدقيق', 'calendar', '', 'فتح التقرير اليومي'),
-            ('financial', '/reports/financial?period_type=this_month', _('reports_card_comprehensive'), 'تقرير رسمي للطباعة حسب الفترة', 'sheet', '', _('reports_open_report')),
-            ('monitors', '/reports/monitors', 'مركز المراقبة', 'مالي · تشغيلي · أداء', 'alert', 'amber', 'فتح المركز'),
-            ('rotating', '/finance/rotating-savings/reports/summary', 'الجمعيات والسلف الدوّارة', 'ملخص + رسوم', 'users', '', _('reports_view_details')),
-          ] %}
-          {% for key, href, label, desc, ic, tone, cta in link_rows %}
-          <tr data-rep-link="{{ href }}" data-rep-search="{{ label }} {{ desc }}">
-            <td class="fd-td-title" data-label="التقرير">
-              <span class="rep-name">
-                <span class="rep-icon{% if tone %} rep-icon--{{ tone }}{% endif %}">{{ icon(ic, 20) }}</span>
-                <span class="rep-title-cell"><b>{{ label }}</b><small>{{ desc }}</small></span>
-              </span>
-            </td>
-            <td class="fd-col-opt2" data-label="النوع"><span class="fd-pill fd-pill--sky">صفحة تقرير</span></td>
-            <td data-label="القيمة" class="fd-cell-muted fd-td-blank"><span class="fd-muted">—</span></td>
-            <td class="fd-col-actions rep-col-actions">
-              <span class="rep-actions">
-                <a class="fd-btn fd-btn--sm rep-open-btn" href="{{ href }}">{{ cta }}</a>
-                <button type="button" class="fd-more-btn" data-rep-link-menu="{{ key }}" data-href="{{ href }}" aria-haspopup="menu" aria-label="إجراءات" title="إجراءات"></button>
-              </span>
-            </td>
-          </tr>
-          {% endfor %}
-          <tr id="repCatalogEmpty" hidden><td colspan="4" class="fd-empty">لا توجد تقارير مطابقة.</td></tr>
-        </tbody>
-      </table>
+      <a href="/reports/daily-closing" class="report-card green">
+        <div class="card-content">
+          <div class="card-copy">
+            <span class="card-label">التقرير اليومي / إغلاق اليومية</span>
+            <strong class="card-value" style="font-size:17px;">صندوق · مبيعات · مخزون · جرد</strong>
+            <span class="card-hint">مراجعة واعتماد عمليات الفرع اليومية</span>
+          </div>
+          <div class="card-icon"><i class="fas fa-cash-register"></i></div>
+        </div>
+        <div class="view-more is-btn">فتح إغلاق اليومية <i class="fas fa-external-link-alt"></i></div>
+      </a>
     </div>
   </section>
 
-  <!-- Report viewer (replaces the old modal) -->
-  <div class="fd-drawer rep-viewer" id="repViewer" hidden>
-    <div class="fd-drawer-panel" role="dialog" aria-modal="true" aria-labelledby="modalTitle" id="repViewerPanel">
-      <div class="fd-drawer-head">
-        <span class="fd-drawer-icon">{{ icon('sheet', 24) }}</span>
-        <div class="fd-drawer-titles">
-          <p class="rep-print-only" id="repPrintBrand">نظام المحاسبة</p>
-          <h2 class="fd-drawer-title" id="modalTitle"></h2>
-          <p class="fd-drawer-hint" id="repViewerHint">Ctrl+P للطباعة · Esc للإغلاق</p>
-        </div>
-        <button type="button" class="fd-close-btn" onclick="closeModal()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+  <section class="reports-section">
+    <div class="reports-section-head">
+      <div>
+        <h2>التقارير التفصيلية</h2>
+        <p>اختيار المستخدم أو المندوب والفترة مع إجماليات قابلة للطباعة — الافتراضي اليوم</p>
       </div>
-      <div class="fd-drawer-body">
-        <div class="fd-stock-line rep-total-line" id="repSummary" hidden></div>
-        <div class="rep-viewer-tools">
-          <label class="fd-search">
-            {{ icon('search', 18) }}
-            <input type="search" id="repViewerSearch" autocomplete="off" placeholder="ابحث في التقرير...">
-          </label>
-          <span class="rep-viewer-count" id="repViewerCount"></span>
-        </div>
-        <section class="fd-table-card">
-          <div class="fd-table-scroll" id="modalContent">
-            <table class="fd-table" id="repTable">
-              <thead id="repTableHead"></thead>
-              <tbody id="repTableBody"></tbody>
-            </table>
+    </div>
+
+    <div class="reports-grid">
+      <a href="/reports/detailed/sales" class="report-card blue">
+        <div class="card-content"><div class="card-copy"><span class="card-label">تقرير المبيعات</span><strong class="card-value" style="font-size:17px;">فواتير حسب الموظف واليوم</strong><span class="card-hint">عدد الفواتير والمبلغ الكلي</span></div><div class="card-icon"><i class="fas fa-chart-line"></i></div></div>
+        <div class="view-more is-btn">فتح التقرير <i class="fas fa-arrow-left"></i></div>
+      </a>
+      <a href="/reports/detailed/materials" class="report-card purple">
+        <div class="card-content"><div class="card-copy"><span class="card-label">مبيعات المواد</span><strong class="card-value" style="font-size:17px;">الكميات والتكلفة والربح</strong><span class="card-hint">تصفية حسب المادة والنوع والتاريخ</span></div><div class="card-icon"><i class="fas fa-box-open"></i></div></div>
+        <div class="view-more is-btn">فتح التقرير <i class="fas fa-arrow-left"></i></div>
+      </a>
+      <a href="/reports/detailed/delivery" class="report-card green">
+        <div class="card-content"><div class="card-copy"><span class="card-label">تقرير مندوب التوصيل</span><strong class="card-value" style="font-size:17px;">طلبات حسب المندوب واليوم</strong><span class="card-hint">المبالغ وحالة التوصيل</span></div><div class="card-icon"><i class="fas fa-motorcycle"></i></div></div>
+        <div class="view-more is-btn">فتح التقرير <i class="fas fa-arrow-left"></i></div>
+      </a>
+      <a href="/reports/detailed/inventory" class="report-card orange">
+        <div class="card-content"><div class="card-copy"><span class="card-label">تقرير جرد المخزن</span><strong class="card-value" style="font-size:17px;">الداخل والخارج والرصيد</strong><span class="card-hint">جرد حسب الفرع والفترة</span></div><div class="card-icon"><i class="fas fa-boxes-stacked"></i></div></div>
+        <div class="view-more is-btn">فتح التقرير <i class="fas fa-arrow-left"></i></div>
+      </a>
+      <a href="/reports/detailed/suppliers" class="report-card gray">
+        <div class="card-content"><div class="card-copy"><span class="card-label">تقرير الموردين</span><strong class="card-value" style="font-size:17px;">فواتير الشراء والذمم</strong><span class="card-hint">المدفوع والمتبقي حسب المورد</span></div><div class="card-icon"><i class="fas fa-truck-field"></i></div></div>
+        <div class="view-more is-btn">فتح التقرير <i class="fas fa-arrow-left"></i></div>
+      </a>
+    </div>
+  </section>
+
+  <section class="reports-section">
+    <div class="reports-section-head">
+      <div>
+        <h2>مراكز وتقارير متقدمة</h2>
+        <p>تقارير شاملة ومراكز متابعة</p>
+      </div>
+    </div>
+
+    <div class="reports-grid is-hubs">
+      <a href="/reports/financial?period_type=this_month" class="report-card comprehensive">
+        <div class="card-content">
+          <div class="card-copy">
+            <span class="card-label">{{ _('reports_card_comprehensive') }}</span>
+            <strong class="card-value" style="font-size:16px;">تقرير مالي كامل للفترة الحالية</strong>
+            <span class="card-hint">مبيعات، مصاريف، مخزون، وأرباح في صفحة واحدةحدة</span>
           </div>
-        </section>
-        <div class="fd-stock-line rep-total-line" id="repTotal" hidden></div>
-        <footer class="fd-footer">
-          <div class="fd-footer-info"><span class="fd-range" id="repRange"></span></div>
-          <nav class="fd-pager" id="repPager" aria-label="الصفحات"></nav>
-        </footer>
-        <p class="rep-print-only rep-print-date" id="repPrintDate"></p>
-      </div>
-      <div class="fd-drawer-foot">
-        <div class="rep-viewer-foot-start">
-          <button type="button" class="fd-btn fd-btn--primary" onclick="printReport()">{{ icon('print', 18) }}<span>{{ _('reports_print') }}</span></button>
-          <button type="button" class="fd-btn" onclick="exportReportCsv()">{{ icon('download', 18) }}<span>تصدير CSV</span></button>
+          <div class="card-icon"><i class="fas fa-file-invoice"></i></div>
         </div>
-        <button type="button" class="fd-btn" onclick="closeModal()">إغلاق</button>
+        <div class="view-more is-btn">{{ _('reports_open_report') }} <i class="fas fa-external-link-alt"></i></div>
+      </a>
+
+      <a href="/reports/monitors" class="report-card orange">
+        <div class="card-content">
+          <div class="card-copy">
+            <span class="card-label">مركز المراقبة</span>
+            <strong class="card-value" style="font-size:16px;">متابعة لحظية للأداء</strong>
+            <div class="report-chip-row">
+              <span class="report-chip">مالي</span>
+              <span class="report-chip">تشغيلي</span>
+              <span class="report-chip">أداء</span>
+            </div>
+          </div>
+          <div class="card-icon"><i class="fas fa-tachometer-alt"></i></div>
+        </div>
+        <div class="view-more">فتح المركز <i class="fas fa-external-link-alt"></i></div>
+      </a>
+
+      <a href="/finance/rotating-savings/reports/summary" class="report-card purple">
+        <div class="card-content">
+          <div class="card-copy">
+            <span class="card-label">الجمعيات والسلف الدوّارة</span>
+            <strong class="card-value" style="font-size:16px;">ملخص + رسوم</strong>
+            <span class="card-hint">أرصدة مفتوحة وتحذيرات وتحصيل</span>
+          </div>
+          <div class="card-icon"><i class="fas fa-sync-alt"></i></div>
+        </div>
+        <div class="view-more">{{ _('reports_view_details') }} <i class="fas fa-arrow-left"></i></div>
+      </a>
+    </div>
+  </section>
+</div>
+
+<!-- ================= MODAL ================= -->
+<div class="modal" id="modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="modalTitle"></h3>
+      <div class="modal-header-actions">
+        <button class="print-btn" onclick="printReport()">
+          <i class="fa fa-print"></i> {{ _('reports_print') }}
+        </button>
+        <button class="close-btn" onclick="closeModal()">×</button>
       </div>
+    </div>
+    <div class="table-wrap">
+      <div id="modalContent"></div>
     </div>
   </div>
 </div>
 
-<script src="/static/js/finora-ui.js?v=20261018c"></script>
 <script>
   // Injected translations for report modals and messages
   const reportsTitleSales = "{{ _('reports_title_sales') }}";
@@ -329,339 +1427,179 @@
   const reportsTotalRemaining = "{{ _('reports_total_remaining_debts') }}";
   const reportsCurrency = "{{ _('reports_currency_iqd') }}";
 
-  const REPORT_TITLES = {
-    sales: reportsTitleSales, profit: reportsTitleProfit, expenses: reportsTitleExpenses,
-    inventory: reportsTitleInventory, returned: reportsTitleReturned, shipping: reportsTitleShipping,
-    suppliers: reportsTitleSuppliers
-  };
-  // column whose sum is shown under each report
-  const REPORT_TOTAL_COL = {
-    sales: "المبلغ", profit: "الربح الإجمالي", inventory: "القيمة الإجمالية",
-    returned: "المبلغ", shipping: "المستحق", suppliers: "المتبقي"
-  };
-  // the JSON endpoints return keys alphabetically; show columns in a reading order
-  const REPORT_COLS = {
-    sales: ["رقم الفاتورة", "الزبون", "المبلغ", "الحالة", "الدفع", "التاريخ"],
-    profit: ["المنتج", "الكمية", "سعر البيع", "سعر التكلفة", "الربح الإجمالي"],
-    expenses: ["العنوان", "الفئة", "المبلغ", "النسبة من المبيعات %", "التاريخ"],
-    inventory: ["المنتج", "الكمية", "سعر الشراء", "القيمة الإجمالية"],
-    returned: ["رقم الفاتورة", "الزبون", "المبلغ", "التاريخ"],
-    shipping: ["شركة النقل", "عدد الطلبات", "المستحق"],
-    suppliers: ["المورد", "الهاتف", "إجمالي الدين", "المدفوع", "المتبقي"]
-  };
-  const MONEY_COL = /(المبلغ|الربح|القيمة|سعر|المستحق|الدين|المدفوع|المتبقي)/;
-  const COUNT_COL = /(الكمية|عدد)/;
+  // ==================== UTILITY FUNCTIONS ====================
+  function showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
 
-  const F = window.FinoraUI;
-  const byId = id => document.getElementById(id);
-  const REP_PAGE_SIZE = 50;
-  let rep = { type: "", title: "", rows: [], cols: [], summary: null, sort: -1, asc: true, page: 0, all: false, seq: 0 };
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
 
-  // ---------- helpers ----------
-  function cellNumber(v) {
-    if (typeof v === "number") return v;
-    if (typeof v !== "string") return NaN;
-    const t = v.replace(/[,\s]|د\.ع/g, "");
-    return /^-?\d+(\.\d+)?$/.test(t) ? Number(t) : NaN;
+    const icons = {
+      success: '✅',
+      error: '❌',
+      warning: '⚠️',
+      info: 'ℹ️'
+    };
+
+    toast.innerHTML = `
+    <span class="toast-icon">${icons[type] || icons.info}</span>
+    <span class="toast-text">${message}</span>
+  `;
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+      toast.classList.add('fade-out');
+      setTimeout(() => {
+        if (toast.parentNode) {
+          toast.parentNode.removeChild(toast);
+        }
+      }, 300);
+    }, 3000);
   }
 
-  function statusPill(v) {
-    const s = String(v ?? "");
-    if (!s) return '<span class="fd-muted">—</span>';
-    let tone = "gray";
-    if (/(مسدد|واصل|تم التوصيل|مدفوع)/.test(s)) tone = "green";
-    else if (/(مرتجع|راجع|ملغي)/.test(s)) tone = "red";
-    else if (/(جزئي|غير مسدد|آجل)/.test(s)) tone = "amber";
-    else if (/(شحن|الطلب)/.test(s)) tone = "blue";
-    return `<span class="fd-pill fd-pill--${tone}">${F.esc(s)}</span>`;
-  }
-
-  function cellHtml(key, v) {
-    if (v === null || v === undefined || v === "") return '<span class="fd-muted">—</span>';
-    if (key === "الحالة" || key === "الدفع") return statusPill(v);
-    if (MONEY_COL.test(key)) {
-      const n = cellNumber(v);
-      if (!isNaN(n)) {
-        let cls = "";
-        if (key === "المتبقي") cls = "fd-qty--out";
-        else if (key === "المدفوع") cls = "fd-qty--ok";
-        else if (key === "إجمالي الدين") cls = "fd-qty--low";
-        else if (n < 0) cls = "rep-neg";
-        return `<b class="${cls}">${F.money(n)}</b>`;
-      }
-    }
-    if (typeof v === "number") return COUNT_COL.test(key) || Number.isInteger(v) ? F.num(v) : F.esc(v);
-    if (/^\d{4}-\d{2}-\d{2}/.test(String(v))) return `<span dir="ltr">${F.esc(v)}</span>`;
-    return F.esc(v);
-  }
-
-  function filteredRows() {
-    const q = byId("repViewerSearch").value.trim().toLowerCase();
-    let rows = rep.rows;
-    if (q) rows = rows.filter(r => rep.cols.some(c => String(r[c] ?? "").toLowerCase().includes(q)));
-    if (rep.sort >= 0) {
-      const c = rep.cols[rep.sort];
-      rows = rows.slice().sort((a, b) => {
-        const an = cellNumber(a[c]), bn = cellNumber(b[c]);
-        let d;
-        if (!isNaN(an) && !isNaN(bn)) d = an - bn;
-        else d = String(a[c] ?? "").localeCompare(String(b[c] ?? ""), "ar");
-        return rep.asc ? d : -d;
-      });
-    }
-    return rows;
-  }
-
-  // ---------- render ----------
-  function renderHead() {
-    byId("repTableHead").innerHTML = rep.cols.length ? "<tr>" + rep.cols.map((c, i) => {
-      const mark = rep.sort === i ? `<span class="rep-sort-mark">${rep.asc ? "▲" : "▼"}</span>` : "";
-      return `<th data-sort="${i}" title="ترتيب">${F.esc(c)}${mark}</th>`;
-    }).join("") + "</tr>" : "";
-  }
-
-  function renderReport() {
-    renderHead();
-    const body = byId("repTableBody");
-    const rows = filteredRows();
-    const cols = rep.cols;
-    const pages = Math.max(1, Math.ceil(rows.length / REP_PAGE_SIZE));
-    rep.page = Math.min(rep.page, pages - 1);
-    const view = rep.all ? rows : rows.slice(rep.page * REP_PAGE_SIZE, (rep.page + 1) * REP_PAGE_SIZE);
-
-    if (!rep.rows.length) {
-      body.innerHTML = `<tr><td colspan="${Math.max(cols.length, 1)}" class="fd-empty">${reportsNoData}</td></tr>`;
-    } else if (!rows.length) {
-      body.innerHTML = `<tr><td colspan="${cols.length}" class="fd-empty">لا توجد نتائج مطابقة.</td></tr>`;
-    } else {
-      body.innerHTML = view.map(r => "<tr>" + cols.map((c, i) => {
-        const v = r[c];
-        const blank = F.blank(v) && v !== 0;
-        const cls = [i === 0 ? "fd-td-title" : "", MONEY_COL.test(c) ? "fd-cell-amount" : "", blank && i ? "fd-td-blank" : ""].filter(Boolean).join(" ");
-        return `<td data-label="${F.esc(c)}" class="${cls}">${cellHtml(c, v)}</td>`;
-      }).join("") + "</tr>").join("");
-    }
-
-    byId("repViewerCount").textContent = rep.rows.length ? `${F.num(rows.length)} صف` : "";
-    const from = rows.length ? rep.page * REP_PAGE_SIZE + 1 : 0;
-    byId("repRange").innerHTML = rows.length > REP_PAGE_SIZE && !rep.all
-      ? `عرض ${F.num(from)}–${F.num(Math.min(rows.length, (rep.page + 1) * REP_PAGE_SIZE))} من <b>${F.num(rows.length)}</b>` : "";
-    byId("repPager").innerHTML = rows.length > REP_PAGE_SIZE && !rep.all ? F.pagerHtml(rep.page, pages, "data-rep-page") : "";
-
-    // total line (old modal: remaining debts for suppliers, otherwise a plain total)
-    const totalBox = byId("repTotal");
-    const col = REPORT_TOTAL_COL[rep.type];
-    let total = 0;
-    if (col && cols.includes(col)) rows.forEach(r => { const n = cellNumber(r[col]); if (!isNaN(n)) total += n; });
-    if (col && rows.length && total) {
-      const danger = rep.type === "suppliers";
-      totalBox.className = "fd-stock-line rep-total-line " + (danger ? "is-danger" : "is-success");
-      totalBox.innerHTML = `<span>${danger ? reportsTotalRemaining : reportsTotalLabel + " " + F.esc(col)}</span><b dir="ltr">${F.num(total)} ${reportsCurrency}</b>`;
-      totalBox.hidden = false;
-    } else {
-      totalBox.hidden = true;
+  function showLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+      overlay.classList.add('show');
     }
   }
 
-  function showViewerMessage(text) {
-    byId("repTableHead").innerHTML = "";
-    byId("repTableBody").innerHTML = `<tr><td class="fd-empty">${text}</td></tr>`;
-    byId("repTotal").hidden = true;
-    byId("repSummary").hidden = true;
-    byId("repViewerCount").textContent = "";
-    byId("repRange").innerHTML = "";
-    byId("repPager").innerHTML = "";
+  function hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+      overlay.classList.remove('show');
+    }
   }
 
-  // ---------- API (names kept from the old page) ----------
+  // ==================== REPORT FUNCTIONS ====================
   function loadReport(type, title) {
-    F.closePop();
-    F.closeRowMenu();
-    title = title || REPORT_TITLES[type] || "";
-    const seq = ++rep.seq;
-    rep = { type, title, rows: [], cols: [], summary: null, sort: -1, asc: true, page: 0, all: false, seq };
-    const panel = byId("repViewerPanel");
-    panel.setAttribute("data-report-type", type);
-    panel.setAttribute("data-report-title", title);
-    byId("modalTitle").innerText = title;
-    byId("repViewerSearch").value = "";
-    byId("repViewerHint").textContent = "Ctrl+P للطباعة · Esc للإغلاق";
-    showViewerMessage(reportsLoading);
-    F.show(byId("repViewer"));
+    const modal = document.getElementById('modal');
+    const modalContent = document.getElementById('modalContent');
+    const modalBox = document.querySelector('.modal-box');
 
-    return fetch(`/reports/${type}`)
+    // Show modal and loading
+    modal.classList.add('show');
+    modalContent.innerHTML = '<div class="loading">' + reportsLoading + '</div>';
+    showLoading();
+
+    // Store type for later use
+    modalBox.setAttribute('data-report-type', type);
+    document.getElementById('modalTitle').innerText = title;
+
+    fetch(`/reports/${type}`)
       .then(r => {
         if (!r.ok) throw new Error(`HTTP error! status: ${r.status}`);
         return r.json();
       })
       .then(data => {
-        if (seq !== rep.seq) return;
-        const printDate = new Date().toLocaleDateString("ar-IQ");
-        panel.setAttribute("data-print-date", printDate);
-        byId("repPrintDate").textContent = "تاريخ الطباعة: " + printDate;
-        byId("repPrintBrand").textContent = "نظام المحاسبة - " + title;
+        hideLoading();
+        let html = '';
 
-        const summary = byId("repSummary");
-        if (data && data["تفاصيل"]) {
-          summary.className = "fd-stock-line rep-total-line is-success";
-          summary.innerHTML = `<span>${reportsTotalLabel}</span><b dir="ltr">${F.num(data["إجمالي المصاريف"] || data["الإجمالي"] || 0)} ${reportsCurrency}</b>`;
-          summary.hidden = false;
-          data = data["تفاصيل"];
-        } else {
-          summary.hidden = true;
+        // Set print attributes
+        const printDate = new Date().toLocaleDateString('ar-IQ');
+        modalBox.setAttribute('data-report-title', title);
+        modalBox.setAttribute('data-print-date', printDate);
+
+        // Handle summary box for expenses
+        if (data['تفاصيل']) {
+          html += `<div class="summary-box">
+                   <p>${reportsTotalLabel} ${data['إجمالي المصاريف'] || data['الإجمالي'] || '0'} ${reportsCurrency}</p>
+                 </div>`;
+          data = data['تفاصيل'];
         }
-        rep.rows = Array.isArray(data) ? data : [];
-        const keys = rep.rows.length ? Object.keys(rep.rows[0]) : [];
-        const order = REPORT_COLS[type] || [];
-        rep.cols = order.filter(k => keys.includes(k)).concat(keys.filter(k => !order.includes(k)));
-        byId("repViewerHint").textContent = `${F.num(rep.rows.length)} صف · ${printDate}`;
-        renderReport();
+
+        if (!data || data.length === 0) {
+          html = '<div class="no-data">' + reportsNoData + '</div>';
+        } else {
+          html += '<table><thead><tr>';
+          Object.keys(data[0]).forEach(k => html += `<th>${k}</th>`);
+          html += '</tr></thead><tbody>';
+
+          let totalAmount = 0;
+
+          data.forEach((row, index) => {
+            html += '<tr>';
+            Object.entries(row).forEach(([key, v]) => {
+              // Check if value is a currency amount
+              if (typeof v === 'string' && v.includes('د.ع')) {
+                const amount = parseInt(v.replace(/[^0-9]/g, ''));
+                if (!isNaN(amount)) {
+                  // Only add to total if it's the "المتبقي" column
+                  if (key === 'المتبقي') {
+                    totalAmount += amount;
+                  }
+                }
+                // Color code: green for paid, red for debt, orange for remaining
+                let amountClass = 'amount-success'; // default green
+                if (key === 'المتبقي') {
+                  amountClass = 'amount-danger'; // red for remaining debt
+                } else if (key === 'المدفوع') {
+                  amountClass = 'amount-success'; // green for paid
+                } else if (key === 'إجمالي الدين') {
+                  amountClass = 'amount-warning'; // orange for total debt
+                }
+                html += `<td class="amount-cell ${amountClass}">${v}</td>`;
+              } else {
+                html += `<td>${v || '—'}</td>`;
+              }
+            });
+            html += '</tr>';
+          });
+
+          // Add total row if there are amounts
+          const reportType = modalBox.getAttribute('data-report-type');
+          if (totalAmount > 0 && reportType === 'suppliers') {
+            html += `<tr class="total-row total-row-danger">
+                     <td colspan="${Object.keys(data[0]).length - 1}" class="total-label">${reportsTotalRemaining}</td>
+                     <td class="total-amount total-amount-danger">${totalAmount.toLocaleString()} ${reportsCurrency}</td>
+                   </tr>`;
+          } else if (totalAmount > 0) {
+            html += `<tr class="total-row total-row-success">
+                     <td colspan="${Object.keys(data[0]).length - 1}" class="total-label">${reportsTotalLabel}</td>
+                     <td class="total-amount total-amount-success">${totalAmount.toLocaleString()} ${reportsCurrency}</td>
+                   </tr>`;
+          }
+
+          html += '</tbody></table>';
+        }
+
+        modalContent.innerHTML = html;
       })
       .catch(error => {
-        if (seq !== rep.seq) return;
-        console.error("Error loading report:", error);
-        showViewerMessage(`${reportsErrLoad} ${F.esc(error.message)}`);
-        F.toast(reportsToastErr, "error");
+        hideLoading();
+        console.error('Error loading report:', error);
+        modalContent.innerHTML = `<div class="no-data">${reportsErrLoad} ${error.message}</div>`;
+        showToast(reportsToastErr, 'error');
       });
   }
 
   function printReport() {
-    // print every row, not only the current page
-    rep.all = true;
-    renderReport();
     window.print();
   }
-  window.addEventListener("afterprint", () => {
-    if (rep.all) { rep.all = false; if (!byId("repViewer").hidden) renderReport(); }
-  });
 
   function closeModal() {
-    F.hide(byId("repViewer"));
+    const modal = document.getElementById('modal');
+    modal.classList.remove('show');
   }
 
-  function csvDownload(lines, name) {
-    const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = name;
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  }
-  const csvCell = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
-
-  function exportReportCsv() {
-    if (!rep.cols.length) { F.toast(reportsNoData, "warning"); return; }
-    const lines = [rep.cols.map(csvCell).join(",")];
-    filteredRows().forEach(r => lines.push(rep.cols.map(c => csvCell(r[c])).join(",")));
-    csvDownload(lines, `report_${rep.type || "data"}.csv`);
-  }
-
-  function exportSummaryCsv() {
-    const lines = [["البند", "القيمة"].map(csvCell).join(",")];
-    [
-      ["{{ _('reports_card_sales') }}", {{ (total_sales or 0)|float|int }}],
-      ["{{ _('reports_card_profit') }}", {{ (profit or 0)|float|int }}],
-      ["{{ _('reports_card_expenses') }}", {{ (total_expenses or 0)|float|int }}],
-      ["{{ _('reports_card_inventory') }}", {{ (inventory_value or 0)|float|int }}],
-      ["{{ _('reports_card_returns') }}", {{ (returned_total or 0)|float|int }}],
-      ["{{ _('reports_card_supplier_debts') }}", {{ (supplier_debts or 0)|float|int }}]
-    ].forEach(r => lines.push(r.map(csvCell).join(",")));
-    csvDownload(lines, "reports_summary.csv");
-  }
-
-  // ---------- catalog ----------
-  function filterCatalog() {
-    const q = byId("repSearch").value.trim().toLowerCase();
-    let shown = 0;
-    document.querySelectorAll("#repCatalogBody tr[data-rep-search]").forEach(tr => {
-      const ok = !q || tr.getAttribute("data-rep-search").toLowerCase().includes(q);
-      tr.hidden = !ok;
-      if (ok) shown++;
-    });
-    byId("repCatalogEmpty").hidden = shown > 0;
-  }
-
-  function openDetailMenu(trigger) {
-    const type = trigger.getAttribute("data-rep-menu");
-    F.rowMenu(trigger, [
-      { act: "view", label: "{{ _('reports_view_details') }}" },
-      { act: "print", label: "{{ _('reports_print') }}" },
-      { act: "csv", label: "تصدير CSV" }
-    ], act => {
-      const p = loadReport(type);
-      if (act === "print") p.then(() => { if (rep.type === type && rep.rows.length) printReport(); });
-      if (act === "csv") p.then(() => { if (rep.type === type) exportReportCsv(); });
-    });
-  }
-
-  function openLinkMenu(trigger) {
-    const key = trigger.getAttribute("data-rep-link-menu");
-    const href = trigger.getAttribute("data-href");
-    const items = [{ href, label: "فتح" }];
-    if (key === "monitors") {
-      items.push("sep",
-        { href: "/reports/monitors?tab=financial", label: "مالي" },
-        { href: "/reports/monitors?tab=operational", label: "تشغيلي" },
-        { href: "/reports/monitors?tab=performance", label: "أداء" });
-    } else if (key === "daily") {
-      items.push({ href: "/reports/daily/archive", label: "القديم (الأرشيف)" });
-    } else if (key === "financial") {
-      items.push("sep",
-        { href: "/reports/financial?period_type=today", label: "اليوم" },
-        { href: "/reports/financial?period_type=last_7_days", label: "آخر 7 أيام" },
-        { href: "/reports/financial?period_type=last_month", label: "الشهر الماضي" },
-        { href: "/reports/financial?period_type=this_year", label: "هذه السنة" });
+  // Close modal when clicking outside
+  document.getElementById('modal').addEventListener('click', function (e) {
+    if (e.target.id === 'modal') {
+      closeModal();
     }
-    items.push({ href, label: "فتح في نافذة جديدة", target: "_blank" });
-    F.rowMenu(trigger, items, () => {});
-  }
-
-  document.addEventListener("click", event => {
-    const t = event.target;
-    if (!t.closest) return;
-    const dm = t.closest("[data-rep-menu]");
-    if (dm) { openDetailMenu(dm); return; }
-    const lm = t.closest("[data-rep-link-menu]");
-    if (lm) { openLinkMenu(lm); return; }
-    const open = t.closest("[data-rep-open]");
-    if (open) { loadReport(open.getAttribute("data-rep-open")); return; }
-    const th = t.closest("#repTableHead th[data-sort]");
-    if (th) {
-      const i = Number(th.getAttribute("data-sort"));
-      if (rep.sort === i) rep.asc = !rep.asc; else { rep.sort = i; rep.asc = true; }
-      rep.page = 0;
-      renderReport();
-      return;
-    }
-    const pg = t.closest("[data-rep-page]");
-    if (pg && !pg.disabled) {
-      const v = pg.getAttribute("data-rep-page");
-      rep.page = v === "prev" ? rep.page - 1 : v === "next" ? rep.page + 1 : parseInt(v, 10) || 0;
-      renderReport();
-      byId("modalContent").scrollTop = 0;
-      return;
-    }
-    if (t.closest("a, button")) return;
-    const row = t.closest("#repCatalogBody tr[data-rep-row]");
-    if (row) { loadReport(row.getAttribute("data-rep-row")); return; }
-    const link = t.closest("#repCatalogBody tr[data-rep-link]");
-    if (link) window.location.href = link.getAttribute("data-rep-link");
   });
 
-  document.addEventListener("DOMContentLoaded", () => {
-    byId("repSearch").addEventListener("input", filterCatalog);
-    byId("repViewerSearch").addEventListener("input", () => { rep.page = 0; renderReport(); });
-    byId("repViewer").addEventListener("click", e => { if (e.target === byId("repViewer")) closeModal(); });
-    const period = byId("repPeriodType");
-    const syncPeriod = () => {
-      const custom = period.value === "custom";
-      byId("repDateFrom").disabled = !custom;
-      byId("repDateTo").disabled = !custom;
-      byId("repDateFrom").required = custom;
-      byId("repDateTo").required = custom;
-    };
-    period.addEventListener("change", syncPeriod);
-    syncPeriod();
+  // Close modal with Escape key
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') {
+      const modal = document.getElementById('modal');
+      if (modal.classList.contains('show')) {
+        closeModal();
+      }
+    }
   });
 </script>
+
 {% endblock %}

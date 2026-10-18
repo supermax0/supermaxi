@@ -1,0 +1,106 @@
+{% extends storefront_base|default("storefront/base.html") %}
+{% block title %}حسابي | {{ store_design.store_name }}{% endblock %}
+{% block content %}
+{% if not account %}
+<section class="store-account-auth">
+  <div class="store-account-auth__hero"><div class="store-shell">
+    <span>حساب واحد للمتجرين</span>
+    <h1>حساب النقد والأقساط في مكان واحد</h1>
+    <p>سجّل مرة واحدة، وسنربط طلبات الشراء النقدي وطلبات التقسيط بنفس ملف الزبون.</p>
+  </div></div>
+  <div class="store-shell store-account-auth__layout">
+    <article class="store-auth-card">
+      <div class="store-auth-tabs" role="tablist">
+        <button type="button" data-auth-tab="login" class="{{ 'is-active' if mode != 'register' }}">تسجيل الدخول</button>
+        <button type="button" data-auth-tab="register" class="{{ 'is-active' if mode == 'register' }}">إنشاء حساب</button>
+      </div>
+      {% if error %}<div class="store-auth-error" role="alert">{{ error }}</div>{% endif %}
+      <form class="store-auth-form {{ 'is-active' if mode != 'register' }}" data-auth-panel="login" method="post" action="{{ url_for('storefront.account_login', tenant_slug=shop_tenant_slug) }}">
+        <header><span>مرحباً بعودتك</span><h2>ادخل إلى حسابك</h2><p>استخدم نفس رقم الهاتف وكلمة المرور الخاصة بمتجر الأقساط.</p></header>
+        <label>رقم الهاتف<input name="phone" dir="ltr" inputmode="tel" autocomplete="tel" placeholder="07xxxxxxxxx" required></label>
+        <label>كلمة المرور<span class="store-password-field"><input name="password" type="password" autocomplete="current-password" minlength="8" required><button type="button" data-password-toggle>عرض</button></span></label>
+        <button class="store-auth-submit" type="submit">دخول إلى حسابي</button>
+      </form>
+      <form class="store-auth-form {{ 'is-active' if mode == 'register' }}" data-auth-panel="register" method="post" action="{{ url_for('storefront.account_register', tenant_slug=shop_tenant_slug) }}">
+        <header><span>حسابك الجديد</span><h2>أنشئ حساباً مجاناً</h2><p>هذا الحساب يعمل في متجري النقد والأقساط معاً.</p></header>
+        <label>الاسم الرباعي<input name="name" autocomplete="name" placeholder="الاسم الأول واسم الأب والجد واللقب" maxlength="150" required></label>
+        <label>رقم الهاتف<input name="phone" dir="ltr" inputmode="tel" autocomplete="tel" placeholder="07xxxxxxxxx" required></label>
+        <label>كلمة المرور<span class="store-password-field"><input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required><button type="button" data-password-toggle>عرض</button></span><small>8 أحرف على الأقل</small></label>
+        <button class="store-auth-submit" type="submit">إنشاء الحساب</button>
+      </form>
+    </article>
+    <aside class="store-auth-benefits">
+      <span class="store-auth-benefits__icon">✓</span><h2>كل طلباتك مرتبطة بحساب واحد</h2>
+      <p>بعد تسجيل الدخول، تملأ بياناتك تلقائياً عند إكمال الطلب.</p>
+      <ul>
+        <li><i>01</i><span><strong>طلبات النقد</strong><small>تابع الفاتورة وحالة التجهيز والتوصيل.</small></span></li>
+        <li><i>02</i><span><strong>طلبات الأقساط</strong><small>شاهد حالة المراجعة والموافقة من نفس الحساب.</small></span></li>
+        <li><i>03</i><span><strong>بيانات محفوظة</strong><small>الاسم والهاتف والعنوان جاهزة للطلب القادم.</small></span></li>
+      </ul>
+    </aside>
+  </div>
+</section>
+{% else %}
+<section class="store-account-page">
+  <div class="store-account-welcome"><div class="store-shell store-account-welcome__row">
+    <div><span>أهلاً بك</span><h1>{{ customer.name }}</h1><p>طلبات النقد والأقساط وبيانات التواصل في حساب واحد.</p></div>
+    <form method="post" action="{{ url_for('storefront.account_logout', tenant_slug=shop_tenant_slug) }}"><button type="submit">تسجيل الخروج</button></form>
+  </div></div>
+  <div class="store-shell store-account-content">
+    {% if request.args.get('welcome') %}<div class="store-account-success"><span>✓</span><div><strong>تم إنشاء حسابك بنجاح</strong><small>يمكنك الآن التسوق نقداً أو بالأقساط بنفس الحساب.</small></div></div>{% endif %}
+    <div class="store-account-stats">
+      <article><span>طلبات الشراء النقدي</span><strong>{{ cash_orders|length }}</strong><small>الطلبات المرتبطة برقمك</small></article>
+      <article><span>طلبات التقسيط</span><strong>{{ installment_orders|length }}</strong><small>طلبات الأقساط من نفس الحساب</small></article>
+      <article><span>إجمالي الشراء النقدي</span><strong>{{ cash_total|toLocaleString }} <i>د.ع</i></strong><small>قيمة طلبات المتجر النقدي</small></article>
+    </div>
+    <div class="store-account-grid">
+      <article class="store-account-orders">
+        <header><div><span>طلباتي</span><h2>طلبات الشراء النقدي</h2></div><a href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">تسوّق الآن</a></header>
+        <div class="store-order-list">
+        {% for order in cash_orders %}
+          <article class="store-account-order">
+            <div class="store-account-order__head"><div><small>رقم الطلب</small><strong dir="ltr">#{{ order.id }}</strong></div><span>{{ cash_status_labels.get(order.status, order.status or 'تم الطلب') }}</span></div>
+            <div class="store-account-order__products">{% for item in order.items %}<span>{{ item.product_name }} <b>× {{ item.quantity }}</b></span>{% endfor %}</div>
+            <dl><div><dt>تاريخ الطلب</dt><dd>{{ order.created_at.strftime('%Y/%m/%d') if order.created_at else '—' }}</dd></div><div><dt>المبلغ</dt><dd>{{ order.total|toLocaleString }} د.ع</dd></div><div><dt>الدفع</dt><dd>{{ order.payment_status or 'عند الاستلام' }}</dd></div></dl>
+          </article>
+        {% else %}
+          <div class="store-account-empty"><span>▤</span><h3>لا توجد طلبات نقدية بعد</h3><p>أضف المنتجات إلى السلة وأكمل الطلب، وسيظهر هنا تلقائياً.</p><a href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">استعرض المنتجات</a></div>
+        {% endfor %}
+        </div>
+        <header><div><span>الحساب المشترك</span><h2>طلبات التقسيط</h2></div><a href="{{ url_for('installments_store.store_index', tenant_slug=shop_tenant_slug) }}">متجر الأقساط</a></header>
+        <div class="store-order-list">
+        {% for application in installment_orders %}
+          <article class="store-account-order">
+            <div class="store-account-order__head"><div><small>رقم طلب التقسيط</small><strong dir="ltr">{{ application.application_number }}</strong></div><span class="is-{{ application.status }}">{{ installment_status_labels.get(application.status, application.status) }}</span></div>
+            <div class="store-account-order__products">{% for item in application.items %}<span>{{ item.product_name_snapshot or 'منتج أقساط' }} <b>× {{ item.quantity }}</b></span>{% endfor %}</div>
+            <dl><div><dt>تاريخ الطلب</dt><dd>{{ application.created_at.strftime('%Y/%m/%d') if application.created_at else '—' }}</dd></div><div><dt>المدينة</dt><dd>{{ application.city or '—' }}</dd></div></dl>
+          </article>
+        {% else %}
+          <div class="store-account-empty cash-account-empty-small"><span>◫</span><h3>لا توجد طلبات تقسيط</h3><p>أي طلب تقدمه في متجر الأقساط سيظهر هنا بنفس الحساب.</p></div>
+        {% endfor %}
+        </div>
+      </article>
+      <aside class="store-account-profile">
+        <header><span>بياناتي</span><h2>ملف الزبون</h2></header>
+        <div class="store-profile-avatar">{{ customer.name[:1] }}</div><h3>{{ customer.name }}</h3>
+        <dl><div><dt>رقم الهاتف</dt><dd dir="ltr">{{ account.phone }}</dd></div><div><dt>المحافظة</dt><dd>{{ customer.city or 'تُضاف عند أول طلب' }}</dd></div><div><dt>العنوان</dt><dd>{{ customer.address or 'يُضاف عند أول طلب' }}</dd></div></dl>
+        <p><span>i</span> الحساب نفسه يعمل أيضاً داخل متجر الأقساط، وأي تحديث للعنوان يظهر في طلبك القادم.</p>
+        <a href="{{ url_for('storefront.cart_page', tenant_slug=shop_tenant_slug) }}">الذهاب إلى السلة</a>
+      </aside>
+    </div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelectorAll('[data-auth-tab]').forEach(button => button.addEventListener('click', () => {
+  document.querySelectorAll('[data-auth-tab]').forEach(tab => tab.classList.toggle('is-active', tab === button));
+  document.querySelectorAll('[data-auth-panel]').forEach(panel => panel.classList.toggle('is-active', panel.dataset.authPanel === button.dataset.authTab));
+}));
+document.querySelectorAll('[data-password-toggle]').forEach(button => button.addEventListener('click', () => {
+  const input = button.parentElement.querySelector('input'); input.type = input.type === 'password' ? 'text' : 'password';
+  button.textContent = input.type === 'password' ? 'عرض' : 'إخفاء';
+}));
+</script>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% if product.has_colors and product.colors %}
+<fieldset class="sf-color-picker" data-sf-color-picker data-product-id="{{ product.id }}" data-base-image="{{ product.image_url or '' }}" data-product-name="{{ product.name }}" data-currency="{{ product.currency_label or 'د.ع' }}" data-reservation="{{ '1' if product.is_reservation else '0' }}">
+  <legend>خيارات المنتج <span data-sf-color-label aria-live="polite"></span></legend>
+  <details class="sf-option-help"><summary aria-label="شرح خيارات المنتج">?</summary><p>اختر الحجم أو المقاس أو اللون بالترتيب الذي يناسبك. تتغيّر الصورة والسعر والتوفّر حسب اختيارك. أكمل الصفات المطلوبة قبل الإضافة للسلة.</p></details>
+  {% if product.option_axes %}
+  <div class="sf-option-axes">
+    {% for axis in product.option_axes %}
+    <div class="sf-option-axis" data-sf-option-axis="{{ axis }}" data-value="">
+      <div class="sf-option-heading"><span>{{ axis }}</span><span data-sf-axis-value>اختر {{ axis }}</span></div>
+      <div class="sf-option-choices" role="radiogroup" aria-label="اختر {{ axis }}"></div>
+    </div>
+    {% endfor %}
+  </div>
+  <p data-sf-option-status role="status" aria-live="polite"></p>
+  {% endif %}
+  <div class="sf-color-options{% if product.option_axes %} sf-option-variants{% endif %}"{% if product.option_axes %} hidden{% endif %}>
+    {% for color in product.colors %}
+    {% if color.active|default(true) %}
+    {% set available = color.available_qty|default(color.qty) %}
+    <button class="sf-color-option" type="button" data-sf-color="{{ color.name }}" data-image="{{ color.image_url or '' }}" data-qty="{{ available }}" data-price="{{ color.sale_price|default(product.price) }}" data-attributes="{{ color.attributes|default({})|tojson|forceescape }}" aria-pressed="false" aria-label="{{ color.name }}{% if available <= 0 and not product.is_reservation %} — غير متوفر{% endif %}">
+      {% if color.image_url %}<img src="{{ color.image_url }}" alt="" loading="lazy">{% else %}<span class="sf-color-no-photo" aria-hidden="true">{{ color.name[:1] }}</span>{% endif %}
+      <span>{{ color.name }}{% if available <= 0 and not product.is_reservation %}<small>غير متوفر</small>{% endif %}</span>
+    </button>
+    {% endif %}
+    {% endfor %}
+  </div>
+</fieldset>
+{% endif %}

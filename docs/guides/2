@@ -1,0 +1,2770 @@
+هذا برومبت تطوير شامل تقدر تعطيه مباشرة لـ Codex / Claude Code / Cursor حتى يطور **FINORA Clinics** إلى نظام متعدد الاختصاصات مع **Dental Mode** متكامل، بدون تكرار الصفحات أو كسر النظام الحالي.
+
+# مهمة التطوير
+
+نريد تطوير نظام **FINORA Clinics** الحالي ليصبح نظام إدارة عيادات ومجمعات طبية متعدد الاختصاصات، بحيث يبقى النظام الأساسي Core موحداً لجميع العيادات، لكن تتغير واجهة الطبيب والحقول والخدمات والأدوات والتقارير تلقائياً حسب اختصاص الطبيب.
+
+حالياً النظام يحتوي على وظائف عامة للعيادات مثل:
+
+* المرضى
+* الأطباء
+* المواعيد
+* الزيارات
+* شاشة الانتظار
+* الخدمات
+* الفواتير
+* المدفوعات
+* المخزون
+* المشتريات
+* التقارير
+* الموظفين
+* الصلاحيات
+* الإعدادات
+* Doctor Workspace
+
+المطلوب عدم إنشاء نسخة منفصلة لكل اختصاص.
+
+ممنوع إنشاء نظام مستقل مثل:
+
+```text
+/dental/patients
+/dental/invoices
+/dental/inventory
+```
+
+أو تكرار صفحات النظام العامة.
+
+بدلاً من ذلك نريد إنشاء:
+
+```text
+FINORA Clinics Core
++
+Specialty Engine
++
+Specialty Modules
+```
+
+ويكون أول Specialty Module كامل هو:
+
+```text
+Dental
+```
+
+أي طب الأسنان.
+
+---
+
+# 1. الهدف المعماري
+
+اعتماد الهيكل التالي:
+
+```text
+FINORA CLINICS CORE
+│
+├── Dashboard
+├── Patients
+├── Doctors
+├── Appointments
+├── Visits
+├── Waiting Queue
+├── Calendar
+├── Services
+├── Billing
+├── Payments
+├── Inventory
+├── Purchases
+├── Accounting
+├── Reports
+├── Employees
+├── Permissions
+├── Settings
+│
+└── Specialty Engine
+      │
+      ├── General
+      │
+      ├── Dental
+      │
+      ├── Internal Medicine
+      │
+      ├── Urology
+      │
+      ├── Dermatology
+      │
+      ├── Pediatrics
+      │
+      └── Future Specialties
+```
+
+الـ Core يبقى واحداً.
+
+Specialty Module يضيف فقط الأدوات والواجهات والحقول الخاصة بالاختصاص.
+
+---
+
+# 2. الاختصاص يجب أن يكون مرتبطاً بالطبيب
+
+لا تعتمد فقط على اختصاص العيادة.
+
+لأن النظام يجب أن يدعم:
+
+```text
+مجمع طبي
+│
+├── طبيب أسنان
+├── طبيب جلدية
+├── طبيب باطنية
+└── طبيب أطفال
+```
+
+كل Doctor يجب أن يحتوي على:
+
+```text
+specialty_id
+specialty_code
+```
+
+مثال:
+
+```json
+{
+  "id": 14,
+  "name": "د. أحمد",
+  "specialty_id": 2,
+  "specialty_code": "dental"
+}
+```
+
+---
+
+# 3. إضافة Primary Specialty للعيادة
+
+أضف أيضاً:
+
+```text
+clinic.primary_specialty_id
+```
+
+حتى إذا كانت المنشأة عيادة اختصاص واحد مثل:
+
+```text
+Dental Clinic
+```
+
+يمكن للنظام أن يهيئ نفسه افتراضياً للأسنان.
+
+لكن ترتيب تحديد الاختصاص يجب أن يكون:
+
+```text
+Visit Specialty
+↓
+Doctor Specialty
+↓
+Clinic Primary Specialty
+↓
+General
+```
+
+استخدم Resolver مركزي.
+
+مثال:
+
+```js
+function resolveVisitSpecialty({
+  visit,
+  doctor,
+  clinic
+}) {
+  if (visit?.specialty_code) {
+    return visit.specialty_code;
+  }
+
+  if (doctor?.specialty_code) {
+    return doctor.specialty_code;
+  }
+
+  if (clinic?.primary_specialty_code) {
+    return clinic.primary_specialty_code;
+  }
+
+  return "general";
+}
+```
+
+لا تكرر منطق تحديد الاختصاص في عشرات الصفحات.
+
+---
+
+# 4. حفظ الاختصاص داخل الزيارة
+
+عند إنشاء Visit يجب أخذ Snapshot لاختصاص الطبيب.
+
+مثلاً:
+
+```text
+visit.specialty_id
+visit.specialty_code
+visit.workspace_type
+```
+
+السبب:
+
+إذا تغير اختصاص الطبيب لاحقاً يجب ألا تتغير الزيارات القديمة.
+
+مثال:
+
+```text
+Visit #985
+specialty_code = dental
+```
+
+تبقى Dental دائماً.
+
+---
+
+# 5. إنشاء جدول Specialties
+
+أضف جدول:
+
+```text
+specialties
+```
+
+الحقول المقترحة:
+
+```text
+id
+code
+name_ar
+name_en
+icon
+workspace_type
+is_active
+sort_order
+config_json
+created_at
+updated_at
+```
+
+أمثلة:
+
+```text
+general
+dental
+internal_medicine
+urology
+dermatology
+pediatrics
+gynecology
+ophthalmology
+orthopedics
+ent
+```
+
+---
+
+# 6. Specialty Registry
+
+أنشئ Registry مركزي.
+
+مثال:
+
+```js
+const SPECIALTIES = {
+  general: {
+    code: "general",
+    name: "عام",
+    workspace: "general",
+    features: {
+      vitals: true,
+      prescriptions: true,
+      labs: true,
+      radiology: true,
+      odontogram: false,
+      treatmentPlan: false,
+      dentalSessions: false
+    }
+  },
+
+  dental: {
+    code: "dental",
+    name: "طب الأسنان",
+    workspace: "dental",
+    features: {
+      vitals: false,
+      prescriptions: true,
+      labs: false,
+      radiology: true,
+      odontogram: true,
+      dentalChart: true,
+      dentalSessions: true,
+      treatmentPlan: true,
+      dentalImaging: true,
+      toothProcedures: true
+    }
+  },
+
+  internal_medicine: {
+    code: "internal_medicine",
+    name: "الباطنية",
+    workspace: "internal",
+    features: {
+      vitals: true,
+      prescriptions: true,
+      labs: true,
+      radiology: true,
+      odontogram: false
+    }
+  }
+};
+```
+
+مهم:
+
+يجب أن تعتمد الواجهة على Registry وليس على شروط موزعة عشوائياً.
+
+ممنوع:
+
+```js
+if (doctor.specialty === "dental")
+```
+
+في عشرات الملفات.
+
+يفضل:
+
+```js
+const specialty = getSpecialtyConfig(code);
+
+if (specialty.features.odontogram) {
+  // show odontogram
+}
+```
+
+---
+
+# 7. Specialty Context
+
+أنشئ Context أو Service مركزي مثلاً:
+
+```text
+SpecialtyContext
+```
+
+أو:
+
+```text
+useSpecialty()
+```
+
+يعيد:
+
+```js
+{
+  code,
+  name,
+  workspace,
+  features,
+  services,
+  navigation,
+  appointmentConfig,
+  reportModules
+}
+```
+
+حتى تستخدمه جميع الصفحات.
+
+---
+
+# 8. التحول التلقائي عند اختيار الطبيب
+
+في:
+
+```text
+إضافة موعد
+إضافة زيارة
+الاستقبال
+Doctor Workspace
+```
+
+بمجرد اختيار الطبيب:
+
+```text
+doctor_id
+```
+
+يجب جلب اختصاص الطبيب.
+
+مثلاً:
+
+```text
+GET /api/doctors/:id
+```
+
+يرجع:
+
+```json
+{
+  "id": 14,
+  "name": "د. أحمد",
+  "specialty": {
+    "id": 2,
+    "code": "dental",
+    "name": "طب الأسنان"
+  }
+}
+```
+
+إذا:
+
+```text
+code = dental
+```
+
+يجب تفعيل:
+
+```text
+Dental Mode
+```
+
+تلقائياً.
+
+---
+
+# 9. Doctor Workspace
+
+لا تنشئ Route منفصل مكرر بالكامل.
+
+حافظ على Route موحد مثل:
+
+```text
+/clinics/doctor/<visit_id>
+```
+
+وعند فتح الزيارة:
+
+```js
+const specialtyCode = resolveVisitSpecialty(...);
+```
+
+ثم:
+
+```text
+general → General Workspace
+dental → Dental Workspace
+urology → Urology Workspace
+...
+```
+
+يمكن استخدام:
+
+```js
+switch(workspaceType)
+```
+
+في Renderer مركزي فقط.
+
+---
+
+# 10. Dental Workspace
+
+أنشئ Dental Workspace احترافي.
+
+التصميم الأساسي:
+
+```text
+3 Columns
+```
+
+## العمود الأيمن
+
+Patient Sidebar.
+
+يحتوي:
+
+```text
+اسم المريض
+العمر
+الجنس
+الهاتف
+الحساسية
+الأمراض المزمنة
+آخر زيارة
+المبلغ المتبقي
+خطة العلاج الحالية
+الموعد القادم
+```
+
+لا تجعل هذا العمود أعرض من اللازم.
+
+يجب أن يكون Collapsible على الشاشات الأصغر.
+
+---
+
+# 11. العمود الأوسط
+
+هذا أهم جزء.
+
+يحتوي:
+
+```text
+Header
+Dental Chart
+Selected Tooth Panel
+Clinical Tabs
+Treatment Plan
+Sessions
+Images
+Prescription
+Notes
+```
+
+الـ Dental Chart يجب أن يأخذ أكبر مساحة.
+
+---
+
+# 12. العمود الأيسر
+
+Queue / Doctor Sidebar.
+
+يعرض:
+
+```text
+المريض الحالي
+وقت بدء الجلسة
+مدة الجلسة
+
+التالي
+
+قائمة الانتظار
+
+الحالة:
+Waiting
+Called
+In Progress
+Completed
+```
+
+مع Timer للجلسة الحالية.
+
+---
+
+# 13. Sticky Footer
+
+في أسفل Dental Workspace ضع شريط ثابت يحتوي على:
+
+```text
+حفظ
+
+إضافة علاج
+
+إضافة جلسة
+
+وصفة
+
+صورة / أشعة
+
+فاتورة
+
+موعد قادم
+
+إكمال الزيارة
+```
+
+يظل ظاهراً أثناء Scroll.
+
+---
+
+# 14. Autosave
+
+تطبيق Autosave في Dental Workspace.
+
+يجب أن يتم الحفظ تلقائياً عند تعديل:
+
+```text
+الملاحظات
+التشخيص
+اختيار الأسنان
+Treatment Plan
+Session Notes
+```
+
+اعرض حالة:
+
+```text
+جاري الحفظ...
+تم الحفظ
+فشل الحفظ
+```
+
+مع debounce مناسب.
+
+لا تنشئ عشرات الطلبات أثناء الكتابة.
+
+---
+
+# 15. Odontogram / Dental Chart
+
+إنشاء Dental Odontogram كامل.
+
+يجب دعم FDI بشكل افتراضي.
+
+الأسنان الدائمة:
+
+```text
+18 17 16 15 14 13 12 11
+21 22 23 24 25 26 27 28
+
+48 47 46 45 44 43 42 41
+31 32 33 34 35 36 37 38
+```
+
+يجب أن تكون الأسنان Interactive.
+
+عند الضغط على أي سن:
+
+```text
+Select Tooth
+```
+
+ثم فتح Panel أو Modal.
+
+مثلاً:
+
+```text
+Tooth 16
+```
+
+---
+
+# 16. Tooth Conditions
+
+دعم الحالات التالية على الأقل:
+
+```text
+Healthy
+Caries
+Missing
+Extracted
+Filled
+Fractured
+Root Canal
+Crown
+Bridge
+Implant
+Inflammation
+Impacted
+Mobility
+Temporary Filling
+Other
+```
+
+اعرض الاسم بالعربي مع Code داخلي ثابت.
+
+مثال:
+
+```json
+{
+  "code": "caries",
+  "name_ar": "تسوس"
+}
+```
+
+---
+
+# 17. Tooth Surfaces
+
+من البداية صمم قاعدة البيانات لتدعم Tooth Surfaces.
+
+مثل:
+
+```text
+Mesial
+Distal
+Occlusal
+Buccal
+Lingual
+Incisal
+```
+
+حتى لو لم تستخدم كلها في الإصدار الأول.
+
+لا تخزن الحالة كنص غير منظم فقط.
+
+---
+
+# 18. Dental Tooth Events
+
+لا تخزن فقط الحالة النهائية للسن.
+
+يجب الاحتفاظ بتاريخ كامل.
+
+أنشئ:
+
+```text
+dental_tooth_events
+```
+
+حقول مقترحة:
+
+```text
+id
+tenant_id
+clinic_id
+patient_id
+doctor_id
+visit_id
+tooth_number
+condition_code
+surface_code
+procedure_code
+notes
+event_type
+event_date
+created_by
+created_at
+updated_at
+```
+
+مثال تاريخ السن:
+
+```text
+16
+
+01/09
+Caries
+
+03/09
+Root Canal - Session 1
+
+05/09
+Root Canal - Session 2
+
+10/09
+Crown
+```
+
+---
+
+# 19. Dental Chart Snapshot
+
+يمكن أيضاً إنشاء:
+
+```text
+dental_charts
+```
+
+و:
+
+```text
+dental_teeth
+```
+
+لكن:
+
+```text
+dental_tooth_events
+```
+
+هو المصدر التاريخي الأساسي.
+
+يمكن تخزين Current State للسرعة، لكن لا تحذف التاريخ.
+
+---
+
+# 20. Tooth Selection
+
+يجب دعم:
+
+```text
+Single Tooth
+Multiple Teeth
+No Tooth
+```
+
+لأن بعض الخدمات:
+
+```text
+Cleaning
+Whitening
+Consultation
+X-Ray
+```
+
+لا ترتبط بسن واحد.
+
+---
+
+# 21. Dental Services
+
+اجعل الخدمات مرتبطة بـ:
+
+```text
+specialty_code
+```
+
+في جدول services.
+
+أمثلة Dental:
+
+```text
+كشفية أسنان
+تنظيف الأسنان
+حشوة
+حشوة تجميلية
+علاج عصب
+قلع
+قلع جراحي
+تاج
+جسر
+زراعة
+تركيب
+تقويم
+تبييض
+أشعة بانوراما
+متابعة
+```
+
+عندما تكون الزيارة Dental اعرض الخدمات Dental افتراضياً.
+
+لا تعرض خدمات باقي الاختصاصات إلا إذا سمحت الإعدادات بذلك.
+
+---
+
+# 22. Service Scope
+
+الخدمة يجب أن تحتوي على:
+
+```text
+specialty_id
+service_type
+default_duration
+requires_tooth
+allows_multiple_teeth
+requires_sessions
+default_sessions
+price
+active
+```
+
+مثلاً:
+
+```json
+{
+  "name": "علاج عصب",
+  "specialty_code": "dental",
+  "requires_tooth": true,
+  "requires_sessions": true,
+  "default_sessions": 3,
+  "default_duration": 45
+}
+```
+
+---
+
+# 23. Treatment Plan
+
+إنشاء نظام Dental Treatment Plans.
+
+جدول:
+
+```text
+dental_treatment_plans
+```
+
+حقول مقترحة:
+
+```text
+id
+tenant_id
+clinic_id
+patient_id
+doctor_id
+status
+subtotal
+discount_type
+discount_value
+discount_amount
+total_amount
+paid_amount
+remaining_amount
+currency
+notes
+created_at
+updated_at
+accepted_at
+completed_at
+```
+
+Statuses:
+
+```text
+draft
+proposed
+accepted
+in_progress
+completed
+cancelled
+```
+
+---
+
+# 24. Treatment Plan Items
+
+أنشئ:
+
+```text
+dental_treatment_plan_items
+```
+
+الحقول:
+
+```text
+id
+treatment_plan_id
+tooth_number
+service_id
+diagnosis_code
+procedure_code
+description
+quantity
+unit_price
+discount
+total
+sessions_required
+sessions_completed
+status
+priority
+sort_order
+notes
+```
+
+Statuses:
+
+```text
+planned
+approved
+in_progress
+completed
+cancelled
+```
+
+---
+
+# 25. Treatment Plan UI
+
+داخل Dental Workspace ضع Tab باسم:
+
+```text
+خطة العلاج
+```
+
+تعرض جدول مثل:
+
+```text
+السن | العلاج | الجلسات | السعر | المدفوع | الحالة
+```
+
+مثال:
+
+```text
+16 | علاج عصب | 2/3 | 150,000 | 75,000 | جاري
+15 | حشوة     | 0/1 | 50,000  | 0      | مخطط
+-  | تنظيف    | 0/1 | 40,000  | 0      | مخطط
+```
+
+أسفلها:
+
+```text
+الإجمالي
+الخصم
+الصافي
+المدفوع
+المتبقي
+```
+
+---
+
+# 26. Treatment Sessions
+
+إنشاء:
+
+```text
+dental_sessions
+```
+
+الحقول:
+
+```text
+id
+tenant_id
+clinic_id
+patient_id
+doctor_id
+treatment_plan_id
+treatment_item_id
+visit_id
+appointment_id
+session_number
+status
+scheduled_at
+started_at
+completed_at
+duration_minutes
+clinical_notes
+next_session_notes
+created_by
+created_at
+updated_at
+```
+
+Statuses:
+
+```text
+scheduled
+waiting
+in_progress
+completed
+cancelled
+no_show
+```
+
+---
+
+# 27. الجلسة لا تعني علاج جديد
+
+مهم جداً:
+
+جلسة علاج عصب رقم 2 يجب أن ترتبط بنفس:
+
+```text
+Treatment Plan
+Treatment Item
+```
+
+ولا تنشئ علاجاً جديداً كل مرة.
+
+مثال:
+
+```text
+Root Canal
+Tooth 16
+
+Session 1
+Session 2
+Session 3
+```
+
+كلها ضمن Treatment واحد.
+
+---
+
+# 28. المواعيد Dental Aware
+
+طور صفحة المواعيد لتدعم:
+
+```text
+Doctor
+Patient
+Specialty
+Appointment Type
+Treatment
+Tooth
+Session Number
+Duration
+Start Time
+End Time
+Status
+```
+
+عند اختيار Treatment موجود للمريض يمكن ربط الموعد به.
+
+مثال:
+
+```text
+محمد علي
+د. أحمد
+علاج عصب
+السن 16
+الجلسة الثانية
+45 دقيقة
+```
+
+---
+
+# 29. Appointment Duration
+
+كل Dental Service يمكن أن يحتوي على:
+
+```text
+default_duration_minutes
+```
+
+مثلاً:
+
+```text
+كشفية = 15
+حشوة = 30
+علاج عصب = 45
+زراعة = 60
+تنظيف = 30
+تقويم = 30
+```
+
+عند اختيار الخدمة يجب تعيين مدة الموعد تلقائياً مع إمكانية تعديلها.
+
+---
+
+# 30. Calendar
+
+طور Calendar ليعرض:
+
+```text
+اسم المريض
+اسم الطبيب
+نوع العلاج
+رقم الجلسة
+المدة
+الحالة
+```
+
+مع ألوان حسب Status وليس حسب بيانات حساسة.
+
+يدعم:
+
+```text
+Day
+Week
+Doctor View
+```
+
+---
+
+# 31. Dental Imaging
+
+إنشاء Module للصور والأشعة.
+
+جدول:
+
+```text
+dental_images
+```
+
+حقول:
+
+```text
+id
+tenant_id
+clinic_id
+patient_id
+doctor_id
+visit_id
+treatment_plan_id
+treatment_item_id
+tooth_number
+image_type
+file_url
+thumbnail_url
+title
+notes
+taken_at
+uploaded_by
+created_at
+```
+
+Image Types:
+
+```text
+panoramic
+opg
+periapical
+bitewing
+cbct
+cephalometric
+intraoral
+before
+after
+other
+```
+
+---
+
+# 32. Image Viewer
+
+داخل Dental Workspace أضف:
+
+```text
+Images
+```
+
+يدعم:
+
+```text
+Preview
+Zoom
+Rotate
+Fullscreen
+Download if permission allows
+Delete if permission allows
+```
+
+مع إمكانية فلترة حسب:
+
+```text
+Tooth
+Visit
+Treatment
+Date
+```
+
+---
+
+# 33. Prescriptions
+
+استمر باستخدام نظام الوصفات الحالي.
+
+لا تنشئ Prescription System منفصل للأسنان.
+
+لكن داخل Dental Workspace أضف Shortcut إلى:
+
+```text
+Prescription
+```
+
+وإذا احتاجت Dental Defaults يمكن ربطها بالاختصاص فقط.
+
+---
+
+# 34. Dental Patient Profile
+
+عندما يكون المريض ضمن Dental Context، أضف Tab:
+
+```text
+Dental
+```
+
+يحتوي:
+
+```text
+Dental Chart
+Active Treatment Plans
+Completed Treatments
+Dental Sessions
+Dental Images
+Upcoming Appointment
+Outstanding Balance
+```
+
+مع الحفاظ على باقي ملف المريض العام.
+
+---
+
+# 35. Dashboard Adaptation
+
+إذا:
+
+```text
+clinic.primary_specialty = dental
+```
+
+أو المستخدم يعمل ضمن Dental Context، اعرض Widgets إضافية.
+
+مثل:
+
+```text
+مرضى اليوم
+جلسات اليوم
+خطط العلاج النشطة
+العلاجات غير المكتملة
+المواعيد القادمة
+إجمالي قيمة خطط العلاج
+إجمالي المدفوع
+إجمالي المتبقي
+```
+
+يمكن أيضاً عرض:
+
+```text
+أكثر الخدمات
+أكثر الإجراءات
+عدد المرضى الجدد
+عدد المرضى العائدين
+```
+
+لا تحذف الـ Widgets المالية العامة المهمة.
+
+---
+
+# 36. Dental Reports
+
+أضف قسم تقارير خاص للأسنان.
+
+تقارير مطلوبة:
+
+```text
+Dental Overview
+Treatments Report
+Treatment Plans
+Sessions Report
+Pending Treatments
+Completed Treatments
+Revenue by Procedure
+Revenue by Doctor
+Outstanding Balances
+Appointments
+No Shows
+Dental Services Performance
+```
+
+---
+
+# 37. Pending Treatment Report
+
+مهم جداً.
+
+يعرض:
+
+```text
+Patient
+Doctor
+Treatment
+Tooth
+Sessions Completed
+Sessions Remaining
+Last Session
+Next Appointment
+Remaining Balance
+Status
+```
+
+مع Filters:
+
+```text
+Doctor
+Date
+Treatment
+Status
+Balance
+```
+
+---
+
+# 38. Sidebar Dynamic Navigation
+
+لا تعرض عناصر الأسنان للجميع.
+
+أنشئ Navigation Config.
+
+مثلاً:
+
+```js
+dental.navigation = [
+  "dental_chart",
+  "treatment_plans",
+  "dental_sessions",
+  "dental_images"
+]
+```
+
+إذا العيادة Dental:
+
+اعرض:
+
+```text
+لوحة التحكم
+المرضى
+المواعيد
+الانتظار
+الزيارات
+مخطط الأسنان
+خطط العلاج
+الجلسات
+الأشعة والصور
+الخدمات
+الفواتير
+المخزون
+المشتريات
+التقارير
+الموظفين
+الإعدادات
+```
+
+إذا ليست Dental:
+
+لا تظهر عناصر Dental إلا حسب الصلاحية والسياق.
+
+---
+
+# 39. Dental Settings
+
+داخل:
+
+```text
+Settings
+→ Clinics
+→ Dental
+```
+
+أضف:
+
+```text
+Enable Dental Module
+Tooth Numbering System
+Enable Primary Teeth
+Enable Treatment Plans
+Enable Dental Sessions
+Enable Dental Imaging
+Enable Tooth Surfaces
+Enable Treatment Payments
+Default Appointment Durations
+Default Treatment Sessions
+```
+
+Default Numbering:
+
+```text
+FDI
+```
+
+مع تصميم يسمح مستقبلاً بـ:
+
+```text
+Universal
+Palmer
+```
+
+---
+
+# 40. الصلاحيات
+
+أضف Permissions دقيقة:
+
+```text
+dental.view
+dental.chart.view
+dental.chart.edit
+
+dental.treatment_plan.view
+dental.treatment_plan.create
+dental.treatment_plan.edit
+dental.treatment_plan.delete
+dental.treatment_plan.approve
+
+dental.sessions.view
+dental.sessions.create
+dental.sessions.edit
+dental.sessions.complete
+
+dental.images.view
+dental.images.upload
+dental.images.delete
+
+dental.reports.view
+```
+
+لا تعتمد فقط على Role Names.
+
+استخدم RBAC الحالي.
+
+---
+
+# 41. Multi Tenant
+
+جميع الجداول الجديدة يجب أن تحترم Multi-Tenant Isolation.
+
+أي جدول Clinical أو Dental يجب أن يحتوي عند الحاجة:
+
+```text
+tenant_id
+clinic_id
+```
+
+ولا يسمح بأي Query بدون Tenant Scope.
+
+ممنوع الوصول لبيانات عيادة ثانية.
+
+---
+
+# 42. Audit Log
+
+التعديلات الطبية الحساسة يجب أن تسجل Audit Log.
+
+مثل:
+
+```text
+Tooth condition changed
+Treatment added
+Treatment removed
+Session completed
+Treatment price changed
+Treatment plan cancelled
+Image deleted
+```
+
+احفظ:
+
+```text
+user_id
+entity_type
+entity_id
+action
+old_values
+new_values
+timestamp
+```
+
+لا تعرض تفاصيل سريرية حساسة في logs غير الآمنة.
+
+---
+
+# 43. Billing Integration
+
+مهم جداً:
+
+لا تنشئ Billing مستقل للأسنان.
+
+اربط Dental Treatment Plans بنظام Finora Billing الحالي.
+
+يجب دعم:
+
+```text
+Full Payment
+Partial Payment
+Payment Per Session
+Multiple Payments
+Outstanding Balance
+Discount
+```
+
+---
+
+# 44. Treatment Billing
+
+Treatment Plan يحتوي على:
+
+```text
+Total
+Discount
+Net
+Paid
+Remaining
+```
+
+لكن المصدر المالي الحقيقي يجب أن يبقى:
+
+```text
+Invoices
+Payments
+Accounting
+```
+
+أي:
+
+لا تجعل:
+
+```text
+paid_amount
+```
+
+رقماً منفصلاً غير متطابق مع Payments.
+
+يفضل حسابه أو مزامنته من Payment Ledger.
+
+---
+
+# 45. إنشاء الفاتورة
+
+من Treatment Plan يستطيع المستخدم:
+
+```text
+Create Invoice
+```
+
+خيارات:
+
+```text
+Full Treatment Plan
+Selected Treatments
+Current Session
+Custom Amount
+```
+
+الفاتورة يجب أن تشير إلى:
+
+```text
+patient_id
+treatment_plan_id
+treatment_item_id
+visit_id
+```
+
+عند الحاجة.
+
+---
+
+# 46. الدفعات
+
+داخل Dental Workspace اعرض:
+
+```text
+Treatment Total
+Paid
+Remaining
+```
+
+مع زر:
+
+```text
+تسجيل دفعة
+```
+
+يفتح Payment Modal الموجود في النظام ولا تنشئ Modal مالي منفصل إن كان الحالي قابل لإعادة الاستخدام.
+
+---
+
+# 47. المخزون
+
+حافظ على Inventory الحالي.
+
+أضف إمكانية ربط Dental Service بمواد مخزون.
+
+مثلاً:
+
+```text
+Root Canal
+→ Gutta Percha
+→ Temporary Filling Material
+→ Anesthetic
+```
+
+أنشئ:
+
+```text
+service_inventory_items
+```
+
+أو reuse إن كان موجوداً.
+
+حقول:
+
+```text
+service_id
+inventory_item_id
+quantity
+unit_id
+auto_consume
+```
+
+---
+
+# 48. استهلاك المواد
+
+عند Complete Treatment أو Complete Session:
+
+إذا:
+
+```text
+auto_consume = true
+```
+
+يمكن إنشاء Inventory Consumption.
+
+لكن:
+
+يجب ألا تخصم المواد مرتين إذا أعيد فتح الجلسة.
+
+استخدم idempotency أو consumption_reference.
+
+مثلاً:
+
+```text
+reference_type = dental_session
+reference_id = 123
+```
+
+---
+
+# 49. Complete Visit
+
+عند الضغط:
+
+```text
+إكمال الزيارة
+```
+
+يجب التحقق من:
+
+```text
+Unsaved Changes
+Open Treatment
+Session Status
+Invoice if required
+Next Appointment if requested
+```
+
+لكن لا تجبر الطبيب دائماً على إنشاء فاتورة.
+
+بعد الإكمال:
+
+```text
+visit.status = completed
+```
+
+وتبقى Treatment Plan إذا لم تكتمل:
+
+```text
+in_progress
+```
+
+---
+
+# 50. Follow-up Workflow
+
+إذا العلاج يحتاج جلسة أخرى:
+
+اعرض بعد Complete Session:
+
+```text
+الجلسة التالية
+```
+
+خيارات:
+
+```text
+حجز الآن
+تحديد لاحقاً
+لا توجد جلسة أخرى
+```
+
+إذا اختار حجز الآن:
+
+افتح Appointment Modal prefilled:
+
+```text
+patient
+doctor
+treatment
+tooth
+next_session_number
+duration
+```
+
+---
+
+# 51. Dental Workflow الكامل
+
+السيناريو المطلوب:
+
+```text
+Reception
+↓
+Select Patient
+↓
+Select Doctor
+↓
+Doctor Specialty = Dental
+↓
+Appointment Specialty = Dental
+↓
+Patient Arrives
+↓
+Check-in
+↓
+Waiting Queue
+↓
+Create/Open Visit
+↓
+visit.specialty_code = dental
+↓
+Dental Workspace
+↓
+Select Tooth
+↓
+Diagnosis
+↓
+Treatment
+↓
+Treatment Plan
+↓
+Create Session
+↓
+Record Payment if needed
+↓
+Complete Session
+↓
+Book Next Session
+↓
+Complete Visit
+```
+
+---
+
+# 52. الزيارة الأولى
+
+مثال:
+
+```text
+Patient: محمد علي
+Doctor: د. أحمد
+Specialty: Dental
+
+Tooth: 16
+Condition: Caries
+
+Treatment:
+Root Canal
+
+Sessions Required:
+3
+
+Price:
+150,000 IQD
+```
+
+ينتج:
+
+```text
+Treatment Plan
+↓
+Treatment Item
+↓
+Session 1
+```
+
+---
+
+# 53. الزيارة الثانية
+
+عند عودة المريض:
+
+النظام يجب أن يعرف أن لديه:
+
+```text
+Active Treatment
+Root Canal
+Tooth 16
+Session 2/3
+```
+
+اعرض Shortcut:
+
+```text
+متابعة العلاج
+```
+
+ولا تجعل الطبيب يعيد إنشاء كل المعلومات من الصفر.
+
+---
+
+# 54. قائمة العلاجات النشطة للمريض
+
+عند فتح المريض:
+
+اعرض:
+
+```text
+Active Treatments
+
+Tooth 16
+Root Canal
+2/3 Sessions
+In Progress
+
+Tooth 15
+Filling
+Planned
+```
+
+زر:
+
+```text
+Continue
+```
+
+---
+
+# 55. البحث
+
+البحث العام في Clinics يجب أن يدعم:
+
+```text
+Patient
+Phone
+Doctor
+Invoice
+Treatment Plan
+```
+
+داخل Dental يمكن البحث أيضاً حسب:
+
+```text
+Tooth Number
+Treatment
+```
+
+إذا كان منطق البحث الحالي يسمح بذلك.
+
+---
+
+# 56. UI Design
+
+الحفاظ على هوية FINORA الحالية.
+
+المطلوب:
+
+```text
+Modern
+Professional
+Medical
+Clean
+Fast
+Minimal
+RTL First
+Responsive
+```
+
+تجنب:
+
+```text
+Huge Cards
+Excessive Gradients
+Too Many Modals
+Overcrowded Forms
+```
+
+استخدم:
+
+```text
+Cards
+Tabs
+Drawers
+Inline Editing
+Compact Tables
+Sticky Actions
+Clear Status Badges
+```
+
+---
+
+# 57. RTL
+
+جميع صفحات Dental الجديدة يجب أن تدعم العربية RTL بشكل كامل.
+
+خصوصاً:
+
+```text
+Odontogram
+Tables
+Tabs
+Forms
+Modals
+Sidebars
+Sticky Footer
+```
+
+لكن Tooth Numbers تبقى بالترتيب الطبي الصحيح.
+
+---
+
+# 58. Responsive
+
+Desktop هو الأولوية لواجهة الطبيب.
+
+لكن يجب دعم:
+
+```text
+Laptop
+Tablet
+Mobile
+```
+
+على الشاشات الصغيرة:
+
+```text
+3 columns
+```
+
+تتحول إلى:
+
+```text
+Main Content
++
+Collapsible Drawers
+```
+
+لا تضغط Odontogram لدرجة يصبح غير قابل للاستخدام.
+
+---
+
+# 59. Performance
+
+لا تحمل كل تاريخ الأسنان لكل المرضى.
+
+استخدم:
+
+```text
+Lazy Loading
+Pagination
+Scoped Queries
+```
+
+مثلاً:
+
+Dental Workspace يحمل:
+
+```text
+Current Patient
+Current Visit
+Current Dental Chart
+Active Treatment Plans
+Recent Images
+```
+
+أما History الطويل يتم تحميله عند فتح Tab.
+
+---
+
+# 60. API
+
+أنشئ API منظم.
+
+أمثلة:
+
+```text
+GET    /api/clinics/specialties
+GET    /api/doctors/:id/specialty
+
+GET    /api/patients/:id/dental-chart
+GET    /api/patients/:id/dental-treatments
+
+POST   /api/dental/tooth-events
+PATCH  /api/dental/tooth-events/:id
+
+GET    /api/dental/treatment-plans/:id
+POST   /api/dental/treatment-plans
+PATCH  /api/dental/treatment-plans/:id
+
+POST   /api/dental/treatment-plans/:id/items
+
+GET    /api/dental/sessions/:id
+POST   /api/dental/sessions
+PATCH  /api/dental/sessions/:id
+
+POST   /api/dental/images
+DELETE /api/dental/images/:id
+```
+
+التزم ببنية API الحالية في المشروع إذا تختلف أسماء Routes.
+
+لا تنشئ نمط معماري جديد يناقض المشروع الحالي.
+
+---
+
+# 61. Database Migrations
+
+جميع تعديلات DB يجب أن تكون عبر Migration.
+
+لا تعدل الجداول يدوياً.
+
+يجب دعم Rollback إذا المشروع يدعم ذلك.
+
+أضف Indexes على الأقل على:
+
+```text
+tenant_id
+clinic_id
+patient_id
+doctor_id
+visit_id
+treatment_plan_id
+tooth_number
+status
+scheduled_at
+```
+
+حسب الاستخدام.
+
+---
+
+# 62. البيانات الحالية
+
+المهم جداً:
+
+التطوير يجب ألا يكسر أي Clinic موجودة.
+
+إذا لم يوجد:
+
+```text
+specialty_code
+```
+
+يعتبر:
+
+```text
+general
+```
+
+جميع الزيارات القديمة يجب أن تستمر بالعمل.
+
+---
+
+# 63. Backward Compatibility
+
+أي Doctor قديم بدون Specialty:
+
+اعرض في الإدارة:
+
+```text
+غير محدد
+```
+
+لكن داخلياً:
+
+```text
+general
+```
+
+لا توقف حجز المواعيد القديمة.
+
+يمكن لاحقاً مطالبة Admin بتحديد اختصاص الطبيب.
+
+---
+
+# 64. Doctor Form
+
+طور:
+
+```text
+Add Doctor
+Edit Doctor
+```
+
+ليحتوي:
+
+```text
+اسم الطبيب
+الاختصاص
+الفرع
+الخدمات
+مدة الكشفية
+جدول الدوام
+حالة الطبيب
+```
+
+Specialty يكون Select searchable.
+
+---
+
+# 65. Clinic Settings
+
+داخل إعدادات العيادة:
+
+```text
+نوع المنشأة
+```
+
+خيارات مثل:
+
+```text
+Solo Clinic
+Medical Center
+Dental Clinic
+Specialty Clinic
+```
+
+و:
+
+```text
+Primary Specialty
+```
+
+لكن لا تجعل نوع المنشأة يفرض قيوداً صلبة على الأطباء.
+
+---
+
+# 66. Specialty Detection
+
+عند فتح أي Visit:
+
+يجب الاعتماد أولاً على:
+
+```text
+visit.specialty_code
+```
+
+وليس على Current Doctor فقط.
+
+مهم جداً للحفاظ على التاريخ.
+
+---
+
+# 67. Feature Flags
+
+Specialty Modules يجب أن يمكن تشغيلها وإيقافها.
+
+مثلاً:
+
+```text
+clinic_features
+```
+
+أو Settings JSON.
+
+Dental Module:
+
+```text
+enabled = true
+```
+
+إذا disabled:
+
+لا تعرض Dental Features حتى لو الاختصاص Dental، واظهر تنبيه للإدارة إذا كان هذا تعارضاً.
+
+---
+
+# 68. Error Handling
+
+يجب معالجة الحالات:
+
+```text
+Doctor has no specialty
+Visit specialty unknown
+Treatment service deleted
+Patient treatment references inactive doctor
+Image upload fails
+Payment fails
+Session already completed
+Duplicate session completion
+```
+
+اعرض رسائل مفهومة بالعربي.
+
+---
+
+# 69. Status Design
+
+استخدم Status Codes ثابتة بالإنجليزية داخلياً.
+
+مثلاً:
+
+```text
+draft
+planned
+in_progress
+completed
+cancelled
+```
+
+ولا تخزن النص العربي كـ business logic.
+
+الترجمة تكون UI Layer.
+
+---
+
+# 70. Soft Delete
+
+البيانات الطبية مثل:
+
+```text
+Treatment Plan
+Treatment Item
+Dental Image metadata
+Dental Session
+```
+
+يفضل ألا تحذف Hard Delete إذا كان ذلك متوافقاً مع معمارية المشروع.
+
+استخدم:
+
+```text
+deleted_at
+deleted_by
+```
+
+أو Status Cancelled.
+
+---
+
+# 71. Validation
+
+مثال:
+
+لا تسمح بـ Treatment يتطلب Tooth بدون تحديد السن.
+
+إذا:
+
+```text
+requires_tooth = true
+```
+
+يجب:
+
+```text
+tooth_number != null
+```
+
+إذا:
+
+```text
+requires_sessions = true
+```
+
+يجب:
+
+```text
+sessions_required >= 1
+```
+
+---
+
+# 72. Business Logic Layer
+
+لا تضع Dental Business Logic كلها داخل Controller أو UI.
+
+أنشئ Services مثل:
+
+```text
+SpecialtyService
+DentalChartService
+DentalTreatmentService
+DentalSessionService
+DentalBillingService
+```
+
+وفق النمط الموجود حالياً في المشروع.
+
+---
+
+# 73. Testing
+
+أضف Tests على الأقل للسيناريوهات التالية:
+
+### Test 1
+
+Doctor Dental:
+
+```text
+Create Appointment
+→ specialty = dental
+```
+
+### Test 2
+
+Create Visit:
+
+```text
+visit.specialty_code = dental
+```
+
+### Test 3
+
+Open Dental Visit:
+
+```text
+Dental Workspace renders
+```
+
+### Test 4
+
+General Doctor:
+
+```text
+General Workspace remains unchanged
+```
+
+### Test 5
+
+Create Treatment Plan:
+
+```text
+Treatment + Tooth + Price
+```
+
+### Test 6
+
+Create 3 Sessions:
+
+```text
+All tied to same Treatment Item
+```
+
+### Test 7
+
+Complete Session 1:
+
+```text
+Treatment stays in_progress
+```
+
+### Test 8
+
+Complete final session:
+
+```text
+Treatment may become completed
+```
+
+### Test 9
+
+Partial Payment:
+
+```text
+remaining amount correct
+```
+
+### Test 10
+
+Tenant Isolation:
+
+```text
+Clinic A cannot access Clinic B dental data
+```
+
+---
+
+# 74. عدم كسر النظام العام
+
+بعد التطوير يجب اختبار:
+
+```text
+General Clinic
+Internal Medicine Clinic
+Urology Clinic
+```
+
+حتى نضمن أن Dental Module لم يغير Behaviour الزيارات الأخرى.
+
+---
+
+# 75. Migration Strategy
+
+نفذ التطوير تدريجياً.
+
+## Phase 1
+
+Specialty Architecture:
+
+```text
+specialties table
+doctor specialty
+clinic primary specialty
+visit specialty snapshot
+Specialty Resolver
+Specialty Registry
+```
+
+## Phase 2
+
+Dental Core:
+
+```text
+Dental Workspace
+Odontogram
+Tooth Events
+```
+
+## Phase 3
+
+Treatment:
+
+```text
+Treatment Plans
+Treatment Items
+Sessions
+```
+
+## Phase 4
+
+Workflow:
+
+```text
+Appointments
+Calendar
+Queue
+Follow-up
+```
+
+## Phase 5
+
+Finance:
+
+```text
+Billing Integration
+Payments
+Outstanding Balance
+```
+
+## Phase 6
+
+Imaging:
+
+```text
+Dental Images
+Dental Imaging Viewer
+```
+
+## Phase 7
+
+Reports:
+
+```text
+Dental Dashboard
+Dental Reports
+Pending Treatments
+```
+
+## Phase 8
+
+Inventory:
+
+```text
+Service Materials
+Automatic Consumption
+```
+
+---
+
+# 76. ممنوعات التطوير
+
+ممنوع:
+
+```text
+إنشاء نسخة ثانية كاملة من Clinics
+```
+
+ممنوع:
+
+```text
+نسخ صفحة Patients للأسنان
+```
+
+ممنوع:
+
+```text
+نسخ Inventory للأسنان
+```
+
+ممنوع:
+
+```text
+نسخ Billing للأسنان
+```
+
+ممنوع وضع:
+
+```js
+if (specialty === "dental")
+```
+
+في عشرات الملفات بدون abstraction.
+
+ممنوع تخزين:
+
+```text
+Dental data داخل notes JSON واحد ضخم
+```
+
+ممنوع ربط النظام فقط بـ:
+
+```text
+clinic specialty
+```
+
+وتجاهل Doctor Specialty.
+
+ممنوع حذف أو كسر أي Visit قديمة.
+
+---
+
+# 77. النتيجة النهائية المطلوبة
+
+عندما يضيف Admin طبيباً:
+
+```text
+د. أحمد
+اختصاص: طب الأسنان
+```
+
+ثم الاستقبال ينشئ موعداً له.
+
+النظام يجب أن يعرف تلقائياً:
+
+```text
+specialty_code = dental
+```
+
+وعند إنشاء Visit:
+
+```text
+visit.specialty_code = dental
+```
+
+وعندما يفتح الطبيب المريض:
+
+بدلاً من General Workspace يظهر:
+
+```text
+Dental Workspace
+```
+
+ويتضمن:
+
+```text
+Dental Chart
+Odontogram
+Tooth Diagnosis
+Dental Treatments
+Treatment Plan
+Dental Sessions
+Dental Imaging
+Prescription
+Billing
+Next Appointment
+Patient Balance
+```
+
+مع بقاء:
+
+```text
+Patients
+Appointments
+Invoices
+Payments
+Inventory
+Purchases
+Accounting
+Employees
+Permissions
+Settings
+```
+
+مشتركة من FINORA Core.
+
+---
+
+# 78. تجربة المستخدم النهائية
+
+المطلوب أن يشعر مستخدم عيادة الأسنان أن FINORA هو:
+
+```text
+برنامج عيادات أسنان كامل
+```
+
+وليس مجرد نظام عيادات عام أضيف إليه حقل للأسنان.
+
+وفي نفس الوقت يجب أن تبقى المعمارية:
+
+```text
+Multi Specialty
+```
+
+بحيث نستطيع لاحقاً إضافة:
+
+```text
+Dermatology Module
+Gynecology Module
+Ophthalmology Module
+Pediatrics Module
+Orthopedics Module
+```
+
+بدون إعادة بناء Clinics.
+
+---
+
+# 79. قبل تنفيذ أي تغيير
+
+أولاً افحص الكود الحالي بالكامل المرتبط بـ:
+
+```text
+Clinics Routes
+Doctor Workspace
+Appointments
+Visits
+Doctors
+Patients
+Services
+Billing
+Inventory
+Permissions
+Settings
+Database Models
+Migrations
+```
+
+لا تفترض أسماء ملفات أو Framework أو ORM.
+
+حدد ما الموجود فعلياً.
+
+ثم استخدم المعمارية الحالية وأضف Specialty Engine فوقها.
+
+إذا توجد وظائف حالية يمكن إعادة استخدامها:
+
+```text
+reuse
+```
+
+ولا تنشئ Duplicate Implementation.
+
+---
+
+# 80. بعد التنفيذ
+
+أعطني تقريراً يحتوي:
+
+```text
+1. الملفات المعدلة
+2. الملفات الجديدة
+3. Database migrations
+4. الجداول الجديدة
+5. Routes الجديدة
+6. API الجديدة
+7. Permissions الجديدة
+8. Specialty Resolver
+9. Dental Workflow
+10. Tests المضافة
+11. أي نقاط لم تنفذ
+12. أي Migration أو Command مطلوب تشغيله
+```
+
+ثم اختبر السيناريو الكامل:
+
+```text
+Create Dental Doctor
+↓
+Create Patient
+↓
+Create Appointment
+↓
+Check-in
+↓
+Open Visit
+↓
+Dental Workspace
+↓
+Select Tooth
+↓
+Create Diagnosis
+↓
+Create Treatment Plan
+↓
+Add Sessions
+↓
+Record Payment
+↓
+Complete Session
+↓
+Book Next Session
+↓
+Complete Visit
+↓
+Reopen Patient
+↓
+Verify Dental History
+```
+
+الهدف النهائي:
+
+**تحويل FINORA Clinics من نظام عيادات عام إلى منصة Clinics متعددة الاختصاصات، يكون اختصاص الأسنان أول Specialty Module احترافي ومتكامل فيها، مع تغيير النظام تلقائياً حسب اختصاص الطبيب دون تكرار النظام الأساسي.**
+
+الأفضل تنطي هذا البرومبت للمبرمج كـ **Master Development Prompt**، وبعدها نخلي التطوير على مراحل، لأن قسم الأسنان وحده كبير. أول مرحلة أنصح تكون **Specialty Engine + Dental Workspace + مخطط الأسنان + خطة العلاج والجلسات**، وبعدها نربط المحاسبة والأشعة والمخزون.

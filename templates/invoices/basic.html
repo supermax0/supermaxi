@@ -429,7 +429,7 @@
                     {% for item in items %}
                     <tr>
                         <td>{{ loop.index }}</td>
-                        <td style="text-align: right;">{{ item.product_name or (item.product.name if item.product else 'منتج محذوف') }}</td>
+                        <td style="text-align: right;">{{ item.display_name }}</td>
                         <td>{{ "{:,.0f}".format(item.price) }} د.ع</td>
                         <td>{{ item.quantity }}</td>
                         <td>{{ "{:,.0f}".format(item.total) }} د.ع</td>

@@ -1,0 +1,133 @@
+{
+  "id": "appointment.checkin",
+  "version": 1,
+  "status": "verified",
+  "level": 2,
+  "title_ar": "تسجيل وصول مريض",
+  "description_ar": "تسجيل وصول مريض لديه موعد اليوم.",
+  "chip_ar": "الاستقبال",
+  "requires_permissions": [
+    "clinics_appointments",
+    "clinics_reception"
+  ],
+  "dependencies": [
+    {
+      "fact": {
+        "name": "appointments_scheduled_today",
+        "op": "gt",
+        "value": 0
+      },
+      "tutorial": "appointment.create",
+      "message_ar": "لتسجيل وصول مريض نحتاج موعداً لليوم لم يصل صاحبه بعد. نحجز موعداً أولاً ثم نرجع.",
+      "action_label_ar": "حجز موعد الآن"
+    }
+  ],
+  "next_lessons": ["queue.add"],
+  "curriculum": {"group": "operations", "order": 3},
+  "result": "appointment.checkin.done",
+  "completion_validator": "appointment.checked_in_since_start",
+  "steps": [
+    {
+      "id": "open-appointments-menu",
+      "type": "wait_click",
+      "target": {
+        "action": "nav.appointments"
+      },
+      "reveal": [
+        {
+          "action": "nav.menu.open"
+        },
+        {
+          "section": "nav.group.daily"
+        }
+      ],
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "page": "appointments"
+        }
+      },
+      "nav_message_ar": "جاري فتح المواعيد",
+      "message_ar": "نبدأ من المواعيد. اضغط «المواعيد»."
+    },
+    {
+      "id": "on-appointments-page",
+      "type": "navigate",
+      "route": "/clinics/appointments",
+      "page": "appointments",
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "page": "appointments"
+        }
+      },
+      "message_ar": "نفتح الآن صفحة المواعيد."
+    },
+    {
+      "id": "open-appointment",
+      "type": "wait_click",
+      "page": "appointments",
+      "target": {
+        "action": "appointment.open.scheduled"
+      },
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "action": "appointment.checkin"
+          }
+        }
+      },
+      "message_ar": "اضغط على موعد المريض الذي وصل (موعد لم يصل بعد) لتفتح تفاصيله."
+    },
+    {
+      "id": "drawer-open",
+      "type": "wait_modal",
+      "page": "appointments",
+      "target": {
+        "section": "appointment.drawer"
+      },
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "action": "appointment.checkin"
+          }
+        }
+      },
+      "message_ar": "ننتظر ظهور تفاصيل الموعد."
+    },
+    {
+      "id": "act",
+      "type": "wait_api_success",
+      "page": "appointments",
+      "allow_back": false,
+      "target": {
+        "action": "appointment.checkin"
+      },
+      "match": {
+        "method": "POST",
+        "url": "^/clinics/api/appointments/\\d+/status$"
+      },
+      "reconcile": {
+        "kind": "backend",
+        "validator": "appointment.checked_in_since_start"
+      },
+      "success_ar": "تم تسجيل الوصول.",
+      "message_ar": "اضغط «تسجيل وصول». هذا يعني أن المريض وصل إلى العيادة، وهو ليس في قائمة الانتظار بعد."
+    },
+    {
+      "id": "verify",
+      "type": "wait_state",
+      "allow_back": false,
+      "validator": "appointment.checked_in_since_start",
+      "message_ar": "نتأكد الآن من تسجيل الوصول في النظام…"
+    },
+    {
+      "id": "done",
+      "type": "complete",
+      "allow_back": false,
+      "message_ar": "تم تسجيل وصول المريض وتأكدنا من ذلك. تذكّر: «وصل» و«قائمة الانتظار» خطوتان منفصلتان."
+    }
+  ]
+}

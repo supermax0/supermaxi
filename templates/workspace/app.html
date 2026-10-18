@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <script src="/static/js/no-zoom.js"></script>
   <title>Finora AI Workspace — LEON</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='workspace/css/workspace.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='workspace/css/workspace.css') }}?v=20260816-2">
 </head>
 <body class="ws-body">
   <div id="workspace-root" class="ws-root">
@@ -33,53 +33,184 @@
     </header>
 
     <main id="ws-canvas" class="ws-canvas" aria-label="مساحة العمل">
+      <section class="ws-mobile-chat" aria-label="محادثة LEON">
+        <header class="ws-mobile-header">
+          <div class="ws-mobile-brand">
+            <span class="ws-mobile-avatar" aria-hidden="true"><i></i><i></i></span>
+            <div>
+              <strong>LEON</strong>
+              <span><i></i> متصل وجاهز للمساعدة</span>
+            </div>
+          </div>
+          <div class="ws-mobile-header-actions">
+            <button type="button" id="ws-mobile-workflow-button" class="ws-mobile-header-btn" title="طريقة العمل" aria-label="اختيار طريقة العمل">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M4 12h16M4 18h7m6-14v4m-2-2h4" /></svg>
+            </button>
+            <button type="button" id="ws-mobile-memory-button" class="ws-mobile-header-btn" title="ذاكرة LEON" aria-label="فتح ذاكرة المحادثات">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.3-5.7L4 8.6M4 4v4.6h4.6M12 8v5l3 2" /></svg>
+            </button>
+            <button type="button" id="ws-mobile-new-session" class="ws-mobile-header-btn" title="محادثة جديدة" aria-label="بدء محادثة جديدة">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+            </button>
+          </div>
+        </header>
+
+        <div id="ws-mobile-messages" class="ws-mobile-messages" role="log" aria-live="polite" aria-relevant="additions">
+          <div class="ws-mobile-day"><span>اليوم</span></div>
+          <article class="ws-mobile-message ws-mobile-message-assistant">
+            <span class="ws-mobile-message-avatar" aria-hidden="true">L</span>
+            <div class="ws-mobile-message-body">
+              <div class="ws-mobile-bubble">
+                <strong>مرحباً، أنا LEON</strong>
+                <p>مساعدك المالي الذكي داخل Finora. أقرأ بيانات النظام حسب صلاحياتك، أجهز Widgets وملخصات، وأنشئ لك ملفات Excel وPDF قابلة للتنزيل.</p>
+              </div>
+              <time>الآن</time>
+            </div>
+          </article>
+
+          <div class="ws-mobile-suggestions" aria-label="اقتراحات سريعة">
+            <button type="button" data-mobile-prompt="اعرض لي ملخص مبيعات اليوم">
+              <span class="ws-mobile-suggestion-icon ws-mobile-suggestion-sales">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V9m7 10V5m7 14v-7" /></svg>
+              </span>
+              <span><strong>ملخص مبيعات اليوم</strong><small>الأرقام والأداء بسرعة</small></span>
+              <i>‹</i>
+            </button>
+            <button type="button" data-mobile-prompt="اعرض لي ملخص المصاريف لهذا الشهر">
+              <span class="ws-mobile-suggestion-icon ws-mobile-suggestion-expenses">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10l3 3v15H4V3h3Zm3 5h6m-8 4h8m-8 4h5" /></svg>
+              </span>
+              <span><strong>مصاريف هذا الشهر</strong><small>ملخص وتحليل المصروفات</small></span>
+              <i>‹</i>
+            </button>
+            <button type="button" data-mobile-upload>
+              <span class="ws-mobile-suggestion-icon ws-mobile-suggestion-upload">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7 9m5-5 5 5M5 15v5h14v-5" /></svg>
+              </span>
+              <span><strong>تحليل مستند</strong><small>PDF أو صورة أو ملف Excel</small></span>
+              <i>‹</i>
+            </button>
+            <button type="button" data-mobile-prompt="اعرض لي نظرة مالية شاملة من النظام الآن">
+              <span class="ws-mobile-suggestion-icon ws-mobile-suggestion-finance">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16M6 16l4-4 3 2 5-7m0 0h-4m4 0v4" /></svg>
+              </span>
+              <span><strong>نظرة مالية شاملة</strong><small>السيولة والذمم والمخزون</small></span>
+              <i>‹</i>
+            </button>
+            <button type="button" data-mobile-prompt="اعرض المنتجات ذات المخزون المنخفض">
+              <span class="ws-mobile-suggestion-icon ws-mobile-suggestion-stock">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 7 8-4 8 4-8 4-8-4Zm0 0v10l8 4 8-4V7m-8 4v10" /></svg>
+              </span>
+              <span><strong>تنبيهات المخزون</strong><small>الأصناف التي تحتاج متابعة</small></span>
+              <i>‹</i>
+            </button>
+            <button type="button" data-mobile-prompt="اعرض أداء الموظفين لهذا الشهر">
+              <span class="ws-mobile-suggestion-icon ws-mobile-suggestion-team">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m7-10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm8 1v6m-3-3h6" /></svg>
+              </span>
+              <span><strong>أداء الموظفين</strong><small>الطلبات والمبيعات والتحصيل</small></span>
+              <i>‹</i>
+            </button>
+          </div>
+
+          <article id="ws-mobile-typing" class="ws-mobile-message ws-mobile-message-assistant ws-mobile-typing" hidden>
+            <span class="ws-mobile-message-avatar" aria-hidden="true">L</span>
+            <div class="ws-mobile-message-body">
+              <div class="ws-mobile-bubble"><span></span><span></span><span></span></div>
+            </div>
+          </article>
+        </div>
+
+        <button type="button" id="ws-mobile-sheet-backdrop" class="ws-mobile-sheet-backdrop" aria-label="إغلاق" hidden></button>
+
+        <aside id="ws-mobile-workflow-sheet" class="ws-mobile-sheet" aria-label="اختيار طريقة العمل" aria-modal="true" role="dialog" hidden>
+          <header>
+            <div><span>تحليل المستند</span><strong>اختر طريقة العمل</strong></div>
+            <button type="button" data-mobile-sheet-close aria-label="إغلاق">×</button>
+          </header>
+          <p>إذا اخترت التعرّف التلقائي، يقرأ LEON المستند ويقترح النوع قبل تشغيل التحليل.</p>
+          <div class="ws-mobile-workflow-options">
+            <button type="button" data-mobile-workflow="auto"><i class="is-auto">✦</i><span><strong>تعرّف تلقائي</strong><small>يحدد النوع من النص والجداول</small></span><b>‹</b></button>
+            <button type="button" data-mobile-workflow="purchase_invoice"><i class="is-purchase">▤</i><span><strong>مستند شراء</strong><small>فاتورة مورد وكميات وأسعار</small></span><b>‹</b></button>
+            <button type="button" data-mobile-workflow="courier_settlement"><i class="is-courier">✓</i><span><strong>كشف تسديد نقل</strong><small>تحصيل وأجور توصيل وصافي</small></span><b>‹</b></button>
+            <button type="button" data-mobile-workflow="return_statement"><i class="is-return">↩</i><span><strong>كشف راجع</strong><small>طلبات راجعة وإعادة مخزون</small></span><b>‹</b></button>
+          </div>
+        </aside>
+
+        <aside id="ws-mobile-memory-sheet" class="ws-mobile-sheet" aria-label="ذاكرة محادثات LEON" aria-modal="true" role="dialog" hidden>
+          <header>
+            <div><span>ذاكرة LEON</span><strong>محادثاتك المحفوظة</strong></div>
+            <button type="button" data-mobile-sheet-close aria-label="إغلاق">×</button>
+          </header>
+          <p>يحتفظ LEON بسياق كل محادثة، ويمكنك الرجوع إليها من أي جهاز بنفس الحساب.</p>
+          <div id="ws-mobile-memory-list" class="ws-mobile-memory-list"><span class="ws-mobile-memory-loading">جاري تحميل الذاكرة…</span></div>
+        </aside>
+      </section>
+
       <div id="ws-windows-layer" class="ws-windows-layer"></div>
       <div id="ws-avatar-layer" class="ws-avatar-layer"></div>
 
       <div class="ws-chatbar">
         <div class="ws-chatbar-inner">
-          <span class="ico">&#9000;</span>
-          <select id="ws-command-select" class="ws-command-select" title="اختيار إجراء">
-            <option value="upload">رفع مستند</option>
-            <option value="intelligence">فهم المستند</option>
-            <option value="courier">تحليل كشف التسديد قراءة فقط</option>
-            <option value="workflow">تشغيل Workflow</option>
-            <option value="select_workflow">اختيار نوع العمل</option>
-            <option value="mock">تشغيل تجربة</option>
-            <option value="cancel">إلغاء</option>
-          </select>
-          <button type="button" id="ws-command-run" class="ws-command-run" title="تنفيذ الإجراء">تنفيذ</button>
-          <input id="ws-chat-input" class="ws-chat-input" type="text" placeholder="اسأل LEON أو أعطه أمراً..." autocomplete="off" />
-          <button type="button" id="ws-chat-send" class="ws-chat-send" title="إرسال">&#127908;</button>
+          <div class="ws-command-group">
+            <select id="ws-command-select" class="ws-command-select" title="اختيار مهمة">
+              <option value="courier">تحليل كشف التسديد</option>
+              <option value="intelligence">فهم المستند</option>
+              <option value="select_workflow">اختيار نوع العمل</option>
+              <option value="workflow">تشغيل سير العمل</option>
+              <option value="cancel">إلغاء المهمة</option>
+            </select>
+            <button type="button" id="ws-command-run" class="ws-command-run" title="تشغيل المهمة">تشغيل</button>
+          </div>
+          <div class="ws-chat-input-wrap">
+            <input id="ws-chat-input" class="ws-chat-input" type="text" placeholder="اسأل LEON أو أعطه أمراً..." autocomplete="off" />
+            <button type="button" id="ws-chat-send" class="ws-chat-send" title="إرسال الرسالة" aria-label="إرسال الرسالة">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 12 20 4l-5 16-3.2-6.1L4 12Zm7.8 1.9L20 4" />
+              </svg>
+            </button>
+          </div>
+          <button type="button" id="ws-chat-attach" class="ws-chat-attach" title="رفع ملفات أو صور" aria-label="رفع ملفات أو صور">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M8.5 12.5 15 6a3 3 0 1 1 4.2 4.2l-8.5 8.5a5 5 0 0 1-7.1-7.1l8.2-8.2" />
+            </svg>
+            <span>رفع</span>
+          </button>
         </div>
       </div>
     </main>
   </div>
 
   <script src="{{ url_for('static', filename='workspace/js/session-store.js') }}"></script>
-  <script src="{{ url_for('static', filename='workspace/js/event-stream.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/event-stream.js') }}?v=20260801-1"></script>
   <script src="{{ url_for('static', filename='workspace/js/workspace-canvas.js') }}"></script>
   <script src="{{ url_for('static', filename='workspace/js/windows/live-report-window.js') }}"></script>
   <script src="{{ url_for('static', filename='workspace/js/windows/document-viewer-window.js') }}"></script>
-  <script src="{{ url_for('static', filename='workspace/js/windows/assistant-notes-window.js') }}"></script>
-  <script src="{{ url_for('static', filename='workspace/js/windows/approval-panel-window.js') }}"></script>
-  <script src="{{ url_for('static', filename='workspace/js/windows/workflow-selector-window.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/windows/assistant-notes-window.js') }}?v=20260801-1"></script>
+  <script src="{{ url_for('static', filename='workspace/js/windows/approval-panel-window.js') }}?v=20260801-1"></script>
+  <script src="{{ url_for('static', filename='workspace/js/windows/workflow-selector-window.js') }}?v=20260801-1"></script>
   <script src="{{ url_for('static', filename='workspace/js/windows/session-timeline-window.js') }}"></script>
   <script src="{{ url_for('static', filename='workspace/js/windows/document-intelligence-window.js') }}"></script>
   <script src="{{ url_for('static', filename='workspace/js/windows/raw-table-preview-window.js') }}"></script>
-  <script src="{{ url_for('static', filename='workspace/js/workspace-layout-director.js') }}"></script>
-  <script src="{{ url_for('static', filename='workspace/js/window-manager.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/windows/order-details-window.js') }}?v=20260731-1"></script>
+  <script src="{{ url_for('static', filename='workspace/js/windows/employee-performance-window.js') }}?v=20260801-1"></script>
+  <script src="{{ url_for('static', filename='workspace/js/workspace-layout-director.js') }}?v=20260801-1"></script>
+  <script src="{{ url_for('static', filename='workspace/js/window-manager.js') }}?v=20260816-1"></script>
   <script src="{{ url_for('static', filename='workspace/js/session-timeline.js') }}"></script>
-  <script src="{{ url_for('static', filename='workspace/js/workflow-client.js') }}"></script>
-  <script src="{{ url_for('static', filename='workspace/js/document-intelligence-client.js') }}"></script>
-  <script src="{{ url_for('static', filename='workspace/js/courier-analysis-client.js') }}"></script>
-  <script src="{{ url_for('static', filename='workspace/js/windows/courier-settlement-analysis-window.js') }}"></script>
-  <script src="{{ url_for('static', filename='workspace/js/windows/courier-rows-window.js') }}"></script>
-  <script src="{{ url_for('static', filename='workspace/js/windows/courier-issues-window.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/workflow-client.js') }}?v=20260810-2"></script>
+  <script src="{{ url_for('static', filename='workspace/js/document-intelligence-client.js') }}?v=20260731-2"></script>
+  <script src="{{ url_for('static', filename='workspace/js/courier-analysis-client.js') }}?v=20260801-1"></script>
+  <script src="{{ url_for('static', filename='workspace/js/windows/courier-settlement-analysis-window.js') }}?v=20260801-1"></script>
+  <script src="{{ url_for('static', filename='workspace/js/windows/courier-rows-window.js') }}?v=20260801-1"></script>
+  <script src="{{ url_for('static', filename='workspace/js/windows/courier-issues-window.js') }}?v=20260729-5"></script>
   <script src="{{ url_for('static', filename='workspace/js/windows/financial-preview-window.js') }}"></script>
-  <script src="{{ url_for('static', filename='workspace/js/leon-avatar.js') }}"></script>
+  <script src="{{ url_for('static', filename='workspace/js/windows/purchase-invoice-analysis-window.js') }}?v=20260816-2"></script>
+  <script src="{{ url_for('static', filename='workspace/js/purchase-analysis-client.js') }}?v=20260816-1"></script>
+  <script src="{{ url_for('static', filename='workspace/js/windows/inventory-forensics-window.js') }}?v=20260802-2"></script>
+  <script src="{{ url_for('static', filename='workspace/js/inventory-forensics-client.js') }}?v=20260802-1"></script>
+  <script src="{{ url_for('static', filename='workspace/js/leon-avatar.js') }}?v=20260731-5"></script>
   <script src="{{ url_for('static', filename='workspace/js/progress-panel.js') }}"></script>
   <script src="{{ url_for('static', filename='workspace/js/upload-manager.js') }}"></script>
-  <script src="{{ url_for('static', filename='workspace/js/workspace-app.js') }}"></script>
+<script src="{{ url_for('static', filename='workspace/js/workspace-app.js') }}?v=20260816-1"></script>
 </body>
 </html>

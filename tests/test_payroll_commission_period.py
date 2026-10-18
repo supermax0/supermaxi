@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-TENANT = "test_payroll_commission_period"
+TENANT = f"test_payroll_commission_period_{os.getpid()}"
 
 
 def _fresh_tenant_db(tenant=TENANT):
@@ -25,7 +25,7 @@ def _fresh_tenant_db(tenant=TENANT):
 def test_settle_commission_payment_filters_month():
     _fresh_tenant_db()
     from app import app
-    from flask import g
+    from flask import g, session
     from extensions import db
     from extensions_tenant import init_tenant_db
     from models.account_transaction import AccountTransaction
@@ -39,8 +39,9 @@ def test_settle_commission_payment_filters_month():
     from utils.payroll_service import settle_employee_commission_payment
     from utils.treasury_helpers import get_default_cash_account
     from utils.treasury_schema_guard import ensure_treasury_schema
+    from utils.treasury_calculations import calculate_treasury_balance
 
-    with app.app_context():
+    with app.test_request_context():
         g.tenant = TENANT
         init_tenant_db(TENANT)
         ensure_payroll_schema()
@@ -56,8 +57,12 @@ def test_settle_commission_payment_filters_month():
             commission_percent=100,
         )
         customer = Customer(name="Payroll Customer", phone="07710000000")
-        db.session.add_all([employee, customer])
+        admin = Employee(name="Payroll Admin", username="payroll-admin", password="test", role="admin", is_active=True)
+        db.session.add_all([employee, customer, admin])
         db.session.flush()
+        session.update(user_id=admin.id, role=admin.role)
+        from utils.branch_context import init_branch_context
+        init_branch_context()
 
         jan_invoice = Invoice(
             customer_id=customer.id,
@@ -114,9 +119,13 @@ def test_settle_commission_payment_filters_month():
         )
         db.session.commit()
 
+        cash_before = calculate_treasury_balance(cash.id)
+        # Funding plus the two paid cash invoices are already in the drawer.
+        assert cash_before == 4000
         result = settle_employee_commission_payment(
             employee.id,
             treasury_account_id=cash.id,
+            settled_by=admin.id,
             year=2026,
             month=1,
         )
@@ -130,7 +139,16 @@ def test_settle_commission_payment_filters_month():
         assert feb_line.status == "pending"
         assert EmployeePayment.query.count() == 1
         assert int(EmployeePayment.query.first().amount or 0) == 100
+        assert EmployeePayment.query.first().settled_by == admin.id
         assert int(Expense.query.first().amount or 0) == 100
+        assert calculate_treasury_balance(cash.id) == cash_before - 100
+        repeated = settle_employee_commission_payment(
+            employee.id, treasury_account_id=cash.id, settled_by=admin.id, year=2026, month=1,
+        )
+        assert repeated["ok"] is False
+        assert EmployeePayment.query.count() == Expense.query.count() == 1
+        assert calculate_treasury_balance(cash.id) == cash_before - 100
+        assert feb_line.status == "pending"
 
 
 def test_commission_backfill_includes_legacy_delivered_null_payment_status():

@@ -7,6 +7,7 @@ import pandas as pd
 from flask import Blueprint, render_template, request, jsonify, send_file
 from sqlalchemy import case, func, or_
 from extensions import db
+from utils.branch_scope import resolve_write_branch_id
 from models.customer import Customer
 from models.invoice import Invoice
 from utils.order_item_costs import exclude_delivery_fee_items
@@ -182,9 +183,11 @@ def customers():
 # ==================================================
 @customers_bp.route("/add", methods=["POST"])
 def add_customer():
-    data = request.json
+    data = request.json or {}
+    branch_id = resolve_write_branch_id(data)
 
     customer = Customer(
+        branch_id=branch_id,
         name=data.get("name"),
         phone=data.get("phone"),
         phone2=data.get("phone2"),
@@ -380,6 +383,7 @@ def export_customers():
 # ==================================================
 @customers_bp.route("/import", methods=["POST"])
 def import_customers():
+    branch_id = resolve_write_branch_id(request.form)
     if "file" not in request.files:
         return jsonify({"success": False, "error": "لم يتم اختيار ملف"})
 
@@ -480,6 +484,7 @@ def import_customers():
                     existing.created_at = parsed_date.to_pydatetime()
         else:
             customer = Customer(
+                branch_id=branch_id,
                 name=name,
                 phone=phone,
                 phone2=(item.get("phone2") or "").strip() or None,

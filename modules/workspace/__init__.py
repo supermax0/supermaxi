@@ -20,6 +20,8 @@ from modules.workspace.api.document_api import document_api_bp  # noqa: E402
 from modules.workspace.api.workflow_api import workflow_api_bp  # noqa: E402
 from modules.workspace.api.document_intelligence_api import document_intelligence_api_bp  # noqa: E402
 from modules.workspace.api.courier_analysis_api import courier_analysis_api_bp  # noqa: E402
+from modules.workspace.api.purchase_analysis_api import purchase_analysis_api_bp  # noqa: E402
+from modules.workspace.api.inventory_forensics_api import inventory_forensics_api_bp  # noqa: E402
 from modules.workspace.routes import workspace_html_bp  # noqa: E402
 
 workspace_bp.register_blueprint(session_api_bp, url_prefix="/api")
@@ -28,6 +30,8 @@ workspace_bp.register_blueprint(document_api_bp, url_prefix="/api")
 workspace_bp.register_blueprint(workflow_api_bp, url_prefix="/api")
 workspace_bp.register_blueprint(document_intelligence_api_bp, url_prefix="/api")
 workspace_bp.register_blueprint(courier_analysis_api_bp, url_prefix="/api")
+workspace_bp.register_blueprint(purchase_analysis_api_bp, url_prefix="/api")
+workspace_bp.register_blueprint(inventory_forensics_api_bp, url_prefix="/api")
 workspace_bp.register_blueprint(workspace_html_bp)
 
 _tenant_context_ready: set = set()
@@ -38,6 +42,13 @@ def _ensure_workspace_request_context():
     slug = session.get("tenant_slug") or getattr(g, "tenant", None)
     if slug:
         g.tenant = slug
+        # Workspace matching loads the shared Invoice model. Older tenant
+        # databases may not have the nullable wholesale extension columns yet,
+        # because their schema guard previously ran only on /wholesale routes.
+        # The wholesale guard is idempotent and caches successful tenant syncs.
+        from modules.wholesale.schema_guard import ensure_wholesale_schema
+
+        ensure_wholesale_schema()
         if slug not in _tenant_context_ready:
             from modules.workspace.services.schema_guard import ensure_workspace_schema_for_tenant
 

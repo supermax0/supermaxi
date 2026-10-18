@@ -6,6 +6,57 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 
+def test_normalize_keeps_only_active_courier_analysis_windows_without_app():
+    from modules.workspace.services.window_orchestrator import WindowOrchestrator
+
+    class FakeSession:
+        workflow_type = "courier_settlement"
+        status = "completed"
+
+        def __init__(self):
+            self.windows = [
+                {
+                    "id": "old-financial",
+                    "type": "financial_preview",
+                    "props": {"analysisId": "OLD"},
+                },
+                {
+                    "id": "current-financial",
+                    "type": "financial_preview",
+                    "props": {"analysisId": "CURRENT"},
+                },
+                {
+                    "id": "old-rows",
+                    "type": "courier_rows",
+                    "props": {"analysisId": "OLD"},
+                },
+                {
+                    "id": "current-rows",
+                    "type": "courier_rows",
+                    "props": {"analysisId": "CURRENT"},
+                },
+            ]
+
+        def get_windows(self):
+            return self.windows
+
+        def set_windows(self, windows):
+            self.windows = windows
+
+        def get_metadata(self):
+            return {
+                "last_courier_analysis": {"analysis_id": "CURRENT"},
+            }
+
+    session = FakeSession()
+    result = WindowOrchestrator.normalize_windows(session)
+
+    assert {item["id"] for item in result} == {
+        "current-financial",
+        "current-rows",
+    }
+
+
 def test_normalize_dedups_and_drops_stale_approval():
     from app import app as flask_app
 

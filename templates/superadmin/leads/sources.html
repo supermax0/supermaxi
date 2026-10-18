@@ -1,0 +1,34 @@
+{% extends 'superadmin/leads/_base.html' %}
+{% from 'superadmin/leads/_macros.html' import empty_state %}
+{% set page_title = 'المصادر' %}
+{% set page_subtitle = 'مصادر العملاء المحتملين وعدد العملاء من كل مصدر' %}
+{% block header_actions %}
+<a href="{{ url_for('superadmin_leads.reports_page') }}" class="sa-btn sa-btn-secondary"><i class="fas fa-chart-pie"></i> التقارير</a>
+{% endblock %}
+{% block leads_content %}
+<section class="lc-card">
+    <header class="lc-card-header"><div><h2><i class="fas fa-link lc-card-icon"></i> مصادر العملاء</h2></div></header>
+    <div class="lc-card-body" style="padding:0;">
+        <div class="lc-table-wrap" style="border:none;box-shadow:none;border-radius:0;">
+            <table class="lc-table">
+                <thead><tr><th>المصدر</th><th>العدد</th><th>الحصة</th></tr></thead>
+                <tbody>
+                    {% set total = sources|sum(attribute='count') if sources else 0 %}
+                    {% for s in sources %}
+                    <tr>
+                        <td><strong>{{ s.source or '—' }}</strong></td>
+                        <td>{{ s.count }}</td>
+                        <td>
+                            <div class="lc-funnel-bar" style="max-width:120px;display:inline-block;vertical-align:middle;"><span style="width: {{ (s.count / total * 100) if total else 0 }}%"></span></div>
+                            {% if total %}{{ '%.0f'|format(s.count / total * 100) }}%{% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="3">{{ empty_state('لا توجد بيانات مصادر', 'fa-link') }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}

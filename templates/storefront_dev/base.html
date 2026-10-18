@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <script src="/static/js/no-zoom.js"></script>
   <title>{% block title %}{{ store_design.store_name }}{% endblock %}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/store.css') }}?v=20260703-full-ad-banner">
+  <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/store.css') }}?v=20261010-color-photos">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/help-system.css') }}">
   <style>
     :root {
@@ -72,7 +72,8 @@
   </script>
   <script id="finora-help-fields" type="application/json">{{ help_fields_json|safe }}</script>
   <script src="{{ url_for('static', filename='js/help-system.js') }}" defer></script>
-  <script src="{{ url_for('static', filename='storefront/js/store.js') }}"></script>
+  <script type="application/json" id="sfSaleProductsData">{{ (store_sale_products or [])|tojson }}</script>
+  <script src="{{ url_for('static', filename='storefront/js/store.js') }}?v=20261010-color-photos"></script>
   {% block scripts %}{% endblock %}
 </body>
 </html>

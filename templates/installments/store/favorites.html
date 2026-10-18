@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>المفضلة | {{ settings.store_name if settings else 'Finora' }}</title>
+  <meta name="description" content="المنتجات المحفوظة في المفضلة">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installments.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installment_store.css', v='20260812-full-width-2') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/store-card-image-loader.css', v='20260814-1') }}">
+</head>
+<body class="store-body store-favorites-page">
+  {% include 'installments/store/_header.html' %}
+
+  <main class="store-shell store-favorites">
+    <nav class="store-breadcrumb" aria-label="مسار الصفحة">
+      <a href="{{ url_for('installments_store.store_index', tenant_slug=tenant_slug) }}">الرئيسية</a><span>‹</span>
+      <strong>المفضلة</strong>
+    </nav>
+    <header class="store-checkout-heading">
+      <div>
+        <span>محفوظاتك</span>
+        <h1>المفضلة</h1>
+        <p>احفظ المنتجات التي تعجبك ثم ارجع لها في أي وقت قبل طلب التقسيط.</p>
+      </div>
+      {% if cards %}<b>{{ cards|length }} منتجات محفوظة</b>{% endif %}
+    </header>
+
+    {% if cards %}
+      <div class="store-product-grid">
+        {% for card in cards %}
+          {% include 'installments/store/_product_card.html' %}
+        {% endfor %}
+      </div>
+    {% else %}
+      <section class="store-cart-empty">
+        <span class="store-cart-empty__icon">♡</span>
+        <h1>لا توجد منتجات في المفضلة</h1>
+        <p>اضغط أيقونة القلب على أي منتج لحفظه هنا والرجوع إليه لاحقاً.</p>
+        <a href="{{ url_for('installments_store.store_index', tenant_slug=tenant_slug) }}">تصفّح المنتجات</a>
+      </section>
+    {% endif %}
+  </main>
+
+  {% include 'installments/store/_footer.html' %}
+</body>
+</html>

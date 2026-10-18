@@ -604,6 +604,45 @@
   border-top: 1px solid var(--border-light);
 }
 
+.cc-mcard__head-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.cc-btn-sm {
+  padding: 6px 10px;
+  font-size: 0.78rem;
+  border-radius: 10px;
+}
+
+.cc-plan-edit {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-light);
+}
+
+.cc-plan-edit__fields {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.cc-plan-edit__actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+@media (max-width: 640px) {
+  .cc-plan-edit__fields {
+    grid-template-columns: 1fr;
+  }
+}
+
 .cc-mcard__action {
   width: 100%;
   justify-content: center;

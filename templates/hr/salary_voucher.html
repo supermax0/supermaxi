@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>مستند راتب {{ payment.voucher_code or payment.id }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/hr.css') }}?v=20260826e">
+  <style>
+    body{margin:0;background:#eef2ff;font-family:"Cairo","Tajawal",sans-serif;color:#101828}
+    .voucher-wrap{max-width:820px;margin:28px auto;padding:18px}
+    .voucher-toolbar{display:flex;gap:10px;justify-content:flex-end;margin-bottom:14px}
+    .voucher{background:#fff;border:1px solid #e4e7ec;border-radius:18px;padding:28px 30px;box-shadow:0 16px 40px rgba(16,24,40,.08)}
+    .voucher-head{display:flex;justify-content:space-between;gap:18px;padding-bottom:18px;border-bottom:1px dashed #d0d5dd}
+    .voucher-head h1{margin:6px 0 4px;font-size:26px}
+    .voucher-head p,.meta small{margin:0;color:#667085;font-size:12px}
+    .voucher-code{display:inline-flex;padding:8px 12px;border-radius:10px;background:#eef2ff;color:#4338ca;font-weight:800;font-size:13px}
+    .voucher-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:18px;margin-top:18px}
+    .voucher-box{border:1px solid #eaecf0;border-radius:14px;padding:16px}
+    .voucher-box h2{margin:0 0 10px;font-size:14px}
+    .voucher-box p{margin:0 0 8px;font-size:13px;display:flex;justify-content:space-between;gap:12px}
+    .voucher-box p span{color:#667085}
+    .voucher-box p strong{font-weight:800}
+    .amount-hero{margin-top:18px;padding:18px;border-radius:16px;background:linear-gradient(135deg,#312e81,#4f46e5);color:#fff;display:flex;justify-content:space-between;align-items:center}
+    .amount-hero small{opacity:.8;font-size:12px}
+    .amount-hero strong{display:block;font-size:28px;margin-top:4px}
+    .lines{width:100%;border-collapse:collapse;margin-top:10px}
+    .lines th,.lines td{padding:10px 8px;border-bottom:1px solid #f0f2f5;font-size:12px;text-align:right}
+    .lines th{color:#667085;font-size:11px}
+    .sign-row{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:34px}
+    .sign{border-top:1px dashed #d0d5dd;padding-top:10px;text-align:center;font-size:12px;color:#667085;min-height:64px}
+    @media print{
+      body{background:#fff}
+      .voucher-toolbar,.sidebar,.topbar{display:none!important}
+      .voucher-wrap{margin:0;padding:0;max-width:none}
+      .voucher{box-shadow:none;border:0;border-radius:0;padding:0}
+    }
+  </style>
+</head>
+<body>
+  <div class="voucher-wrap">
+    <div class="voucher-toolbar">
+      <a class="hr-btn hr-btn-dark" href="{{ url_for('hr.payroll', year=year, month=month) }}"><i class="fa-solid fa-arrow-right"></i> رجوع</a>
+      <button class="hr-btn hr-btn-primary" type="button" onclick="window.print()"><i class="fa-solid fa-print"></i> طباعة المستند</button>
+    </div>
+    <article class="voucher">
+      <header class="voucher-head">
+        <div>
+          <small>{{ company_name }}</small>
+          <h1>مستند صرف راتب</h1>
+          <p>فترة {{ "%02d"|format(month) }}/{{ year }} · {{ method_label }}</p>
+        </div>
+        <div class="meta" style="text-align:left">
+          <span class="voucher-code">{{ payment.voucher_code or ('#' ~ payment.id) }}</span>
+          <p style="margin-top:10px">تاريخ الصرف: {{ payment.paid_at.strftime('%Y-%m-%d %H:%M') if payment.paid_at else '—' }}</p>
+        </div>
+      </header>
+
+      <div class="voucher-grid">
+        <div class="voucher-box">
+          <h2>بيانات الموظف</h2>
+          <p><span>الاسم</span><strong>{{ employee.name }}</strong></p>
+          <p><span>الكود</span><strong>{{ profile.employee_code if profile and profile.employee_code else '—' }}</strong></p>
+          <p><span>المسمى</span><strong>{{ profile.job_title if profile and profile.job_title else '—' }}</strong></p>
+          <p><span>القسم</span><strong>{{ profile.department.name if profile and profile.department else '—' }}</strong></p>
+          {% if profile and (profile.bank_name or profile.bank_account) %}
+          <p><span>البنك</span><strong>{{ profile.bank_name or '—' }} / {{ profile.bank_account or '—' }}</strong></p>
+          {% endif %}
+        </div>
+        <div class="voucher-box">
+          <h2>بيانات الصرف</h2>
+          <p><span>الطريقة</span><strong>{{ method_label }}</strong></p>
+          <p><span>الحساب</span><strong>{{ treasury.name if treasury else '—' }}</strong></p>
+          <p><span>العملة</span><strong>{{ currency }}</strong></p>
+          <p><span>رقم الحركة</span><strong>#{{ payment.id }}</strong></p>
+        </div>
+      </div>
+
+      <div class="amount-hero">
+        <div><small>صافي المبلغ المصروف</small><strong>{{ "{:,}".format(payment.amount or 0) }} {{ currency }}</strong></div>
+        <div style="text-align:left"><small>الأساسي {{ "{:,}".format(basic) }}</small></div>
+      </div>
+
+      <div class="voucher-box" style="margin-top:18px">
+        <h2>تفصيل الاستحقاق</h2>
+        <table class="lines">
+          <thead><tr><th>البند</th><th>النوع</th><th>المبلغ</th></tr></thead>
+          <tbody>
+            <tr><td>الراتب الأساسي</td><td>أساسي</td><td>{{ "{:,}".format(basic) }}</td></tr>
+            {% for item in adjustments %}
+            <tr>
+              <td>{{ item.title }}</td>
+              <td>{{ 'بدل' if item.adjustment_type == 'allowance' else 'استقطاع' }}</td>
+              <td>{{ '+' if item.adjustment_type == 'allowance' else '-' }}{{ "{:,}".format(item.amount or 0) }}</td>
+            </tr>
+            {% endfor %}
+            <tr><td colspan="2"><strong>الصافي</strong></td><td><strong>{{ "{:,}".format(payment.amount or 0) }}</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="sign-row">
+        <div class="sign">توقيع المحاسب</div>
+        <div class="sign">توقيع الموارد البشرية</div>
+        <div class="sign">توقيع المستلم<br><small>{{ employee.name }}</small></div>
+      </div>
+    </article>
+  </div>
+</body>
+</html>

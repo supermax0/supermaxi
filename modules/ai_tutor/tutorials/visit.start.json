@@ -1,0 +1,134 @@
+{
+  "id": "visit.start",
+  "version": 1,
+  "status": "verified",
+  "level": 2,
+  "title_ar": "بدء زيارة",
+  "description_ar": "إدخال مريض من قائمة الانتظار إلى الطبيب وفتح زيارته.",
+  "chip_ar": "الاستقبال",
+  "requires_permissions": [
+    "clinics_appointments",
+    "clinics_reception",
+    "clinics_visits"
+  ],
+  "dependencies": [
+    {
+      "fact": {
+        "name": "appointments_waiting_today",
+        "op": "gt",
+        "value": 0
+      },
+      "tutorial": "queue.add",
+      "message_ar": "لبدء زيارة يجب أن يكون المريض في قائمة الانتظار. نضيف مريضاً للانتظار ثم نرجع.",
+      "action_label_ar": "إضافة للانتظار الآن"
+    }
+  ],
+  "next_lessons": ["treatment_plan.create"],
+  "curriculum": {"group": "operations", "order": 5},
+  "result": "visit.start.done",
+  "completion_validator": "visit.started_since_start",
+  "steps": [
+    {
+      "id": "open-appointments-menu",
+      "type": "wait_click",
+      "target": {
+        "action": "nav.appointments"
+      },
+      "reveal": [
+        {
+          "action": "nav.menu.open"
+        },
+        {
+          "section": "nav.group.daily"
+        }
+      ],
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "page": "appointments"
+        }
+      },
+      "nav_message_ar": "جاري فتح المواعيد",
+      "message_ar": "نبدأ من المواعيد. اضغط «المواعيد»."
+    },
+    {
+      "id": "on-appointments-page",
+      "type": "navigate",
+      "route": "/clinics/appointments",
+      "page": "appointments",
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "page": "appointments"
+        }
+      },
+      "message_ar": "نفتح الآن صفحة المواعيد."
+    },
+    {
+      "id": "open-appointment",
+      "type": "wait_click",
+      "page": "appointments",
+      "target": {
+        "action": "appointment.open.waiting"
+      },
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "action": "visit.start"
+          }
+        }
+      },
+      "message_ar": "اضغط على موعد المريض الذي ينتظر (حالته «ينتظر») لتفتح تفاصيله."
+    },
+    {
+      "id": "drawer-open",
+      "type": "wait_modal",
+      "page": "appointments",
+      "target": {
+        "section": "appointment.drawer"
+      },
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "action": "visit.start"
+          }
+        }
+      },
+      "message_ar": "ننتظر ظهور تفاصيل الموعد."
+    },
+    {
+      "id": "act",
+      "type": "wait_api_success",
+      "page": "appointments",
+      "allow_back": false,
+      "target": {
+        "action": "visit.start"
+      },
+      "match": {
+        "method": "POST",
+        "url": "^/clinics/api/visits$"
+      },
+      "reconcile": {
+        "kind": "backend",
+        "validator": "visit.started_since_start"
+      },
+      "success_ar": "تم فتح الزيارة.",
+      "message_ar": "اضغط «إدخال للطبيب». هذا يفتح زيارة جديدة للمريض ويبدأ العمل الطبي."
+    },
+    {
+      "id": "verify",
+      "type": "wait_state",
+      "allow_back": false,
+      "validator": "visit.started_since_start",
+      "message_ar": "نتأكد الآن من فتح الزيارة في النظام…"
+    },
+    {
+      "id": "done",
+      "type": "complete",
+      "allow_back": false,
+      "message_ar": "تم فتح زيارة المريض وتأكدنا من ذلك داخل النظام."
+    }
+  ]
+}

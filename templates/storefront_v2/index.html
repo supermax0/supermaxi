@@ -1,0 +1,191 @@
+{% extends "storefront_v2/base.html" %}
+{% block legacy_assets %}{% endblock %}
+{% block legacy_scripts %}{% endblock %}
+{% block body_class %} sm-native{% endblock %}
+{% block title %}{% if filters.q %}{{ filters.q }} — {% elif filters.badge %}{{ filters.badge }} — {% endif %}{{ store_design.store_name }}{% endblock %}
+{% block description %}{% if filters.badge %}{{ filters.badge }} في {{ store_design.store_name }}: {{ total_products }} منتج بأسعار واضحة، التوفر الحالي، وتوصيل لكل المحافظات.{% else %}{{ store_design.store_name }} — أجهزة كهربائية وإلكترونيات بأسعار واضحة وتوصيل لكل المحافظات.{% endif %}{% endblock %}
+{% block meta %}
+{# Indexable: the home page and each category (with its pages). Searches, price ranges, sorting and availability
+   filters are endless combinations of the same products: followed, not indexed. #}
+{% set page_no = pagination.page if pagination and pagination.page and pagination.page > 1 else None %}
+{% if filters.q or filters.min_price or filters.max_price or filters.availability != 'all' or filters.sort != 'latest' %}
+<meta name="robots" content="noindex, follow">
+{% else %}
+<link rel="canonical" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, badge=filters.badge or None, page=page_no, _external=True) }}">
+{% endif %}
+{% if not filters.badge and not filters.q %}
+<script type="application/ld+json">{{ {"@context": "https://schema.org", "@type": "WebSite", "name": store_design.store_name,
+  "url": url_for('storefront.store_index', tenant_slug=shop_tenant_slug, _external=True),
+  "potentialAction": {"@type": "SearchAction", "query-input": "required name=q",
+                      "target": url_for('storefront.store_index', tenant_slug=shop_tenant_slug, _external=True) ~ "?q={q}"}}|tojson }}</script>
+{% endif %}
+{% endblock %}
+
+{% macro url_without(key) -%}
+  {%- set params = {} -%}
+  {%- for k, v in filters.items() if v and k != key and not (k == 'availability' and v == 'all') and not (k == 'sort' and v == 'latest') -%}
+    {%- set _ = params.update({k: v}) -%}
+  {%- endfor -%}
+  {{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, **params) }}
+{%- endmacro %}
+
+{% block content %}
+{% set filtering = filters.q or filters.badge or filters.min_price or filters.max_price or filters.availability != 'all' or filters.sort != 'latest' %}
+
+{% if not filtering %}
+  {% if badges %}
+  <section class="sm-shell sm-quickcats" aria-label="الأقسام الرئيسية">
+    {% for badge in badges[:10] %}
+    {% set preview = category_previews.get(badge) %}
+    {% set art = category_art.get(badge) %}
+    <a class="sm-quickcat" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, badge=badge) }}">
+      <span class="sm-quickcat__img">
+        {% if art %}<img src="{{ url_for('static', filename=art) }}" alt="" width="72" height="72" loading="lazy" decoding="async">
+        {% elif preview and preview.image_url %}<img src="{{ preview.image_url }}" alt="" width="72" height="72" loading="lazy" decoding="async">
+        {% else %}<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8"/></svg>{% endif %}
+      </span>
+      <span>{{ badge }}</span>
+    </a>
+    {% endfor %}
+  </section>
+  {% endif %}
+
+  {% set banner = (hero_slides or [])|selectattr('spotlight')|selectattr('spotlight.image_url')|first %}
+  {% set spotlight = hero_products[0] if hero_products else None %}
+  {% set banner_img = banner.spotlight.image_url if banner else (spotlight.image_url if spotlight else '') %}
+  {% if banner_img %}
+  <section class="sm-shell">
+    <a class="sm-banner" href="{{ (banner.cta_href if banner and banner.cta_href and not banner.cta_href.startswith('#') else '') or (spotlight.url if spotlight else '#smAll') }}">
+      <div class="sm-banner__copy">
+        <p class="sm-eyebrow">{{ (banner.kicker if banner else spotlight.category) or 'مختارات المتجر' }}</p>
+        <h1>{{ banner.title if banner else spotlight.name }}</h1>
+        {% if banner and banner.subtitle %}<p class="sm-banner__sub">{{ banner.subtitle }}</p>{% endif %}
+        {% if not banner and spotlight.price %}<p class="sm-banner__price">{{ spotlight.price|toLocaleString }} <small>د.ع</small></p>{% endif %}
+        <span class="sm-btn sm-btn--primary">{{ (banner.cta_text if banner and banner.cta_text else 'تسوّق الآن') }}</span>
+      </div>
+      <img class="sm-banner__img" src="{{ banner_img }}" alt="" width="520" height="360" fetchpriority="high" decoding="async">
+    </a>
+  </section>
+  {% endif %}
+
+  {% set why_url = url_for('storefront.personalization_page', tenant_slug=shop_tenant_slug) %}
+  {% for key, title, rows in [('for-you', 'مقترح لك' ~ (' في ' ~ personal.for_you_category if personal.for_you_category else ''), v2_sections.for_you or []), ('after-purchase', 'مكمّلات لمشترياتك', v2_sections.after_purchase or [])] if rows %}
+  <section class="sm-shell sm-section" aria-labelledby="sm-{{ key }}" data-sm-rec="{{ key }}">
+    <div class="sm-section__head"><h2 class="sm-h2" id="sm-{{ key }}">{{ title }}</h2><a class="sm-link" href="{{ why_url }}">لماذا أرى هذا؟</a></div>
+    <div class="sm-rail">{% for product in rows %}{% include "storefront_v2/partials/product_card.html" %}{% endfor %}</div>
+  </section>
+  {% endfor %}
+
+  {% if personalize_enabled %}
+  <section class="sm-shell" data-sm-recent hidden aria-label="أكمل بحثك السابق">
+    <h2 class="sm-h2">أكمل بحثك السابق</h2>
+    <div class="sm-chips" data-sm-recent-list></div>
+  </section>
+  {% endif %}
+
+  {% for key, title, rows in [('best', 'الأكثر طلباً والمتوفر', v2_sections.best_sellers or []), ('offers', 'العروض الحالية', v2_sections.offers or [])] if rows %}
+  <section class="sm-shell sm-section" aria-labelledby="sm-{{ key }}">
+    <div class="sm-section__head"><h2 class="sm-h2" id="sm-{{ key }}">{{ title }}</h2></div>
+    <div class="sm-rail">{% for product in rows %}{% include "storefront_v2/partials/product_card.html" %}{% endfor %}</div>
+  </section>
+  {% endfor %}
+
+  {% for bundle in v2_sections.bundles or [] %}{% include "storefront_v2/partials/bundle.html" %}{% endfor %}
+
+  {% if v2_sections.budget %}
+  <section class="sm-shell sm-section" aria-labelledby="sm-my-budget" data-sm-rec="budget">
+    <div class="sm-section__head"><h2 class="sm-h2" id="sm-my-budget">ضمن ميزانيتك (حتى {{ personal.budget_limit|toLocaleString }} د.ع)</h2><a class="sm-link" href="{{ why_url }}">لماذا أرى هذا؟</a></div>
+    <div class="sm-rail">{% for product in v2_sections.budget %}{% include "storefront_v2/partials/product_card.html" %}{% endfor %}</div>
+  </section>
+  {% endif %}
+
+  <section class="sm-shell sm-section" aria-labelledby="sm-budget">
+    <h2 class="sm-h2" id="sm-budget">{{ 'تسوّق بميزانية أخرى' if v2_sections.budget else 'منتجات ضمن ميزانيتك' }}</h2>
+    <div class="sm-chips">
+      {% for limit, label in [(250000, 'حتى 250 ألف'), (500000, 'حتى 500 ألف'), (1000000, 'حتى مليون'), (2000000, 'حتى مليونين')] %}
+      <a class="sm-chip" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, max_price=limit, sort='price_desc') }}">{{ label }}</a>
+      {% endfor %}
+    </div>
+  </section>
+
+  {% if v2_sections.newest %}
+  <section class="sm-shell sm-section" aria-labelledby="sm-new">
+    <div class="sm-section__head"><h2 class="sm-h2" id="sm-new">أُضيفت حديثاً</h2></div>
+    <div class="sm-rail">{% for product in v2_sections.newest %}{% include "storefront_v2/partials/product_card.html" %}{% endfor %}</div>
+  </section>
+  {% endif %}
+{% endif %}
+
+<section class="sm-shell sm-section" id="products" aria-labelledby="smAllTitle">
+  <div class="sm-results-head">
+    <h2 class="sm-h2" id="smAllTitle">{% if filters.q %}نتائج «{{ filters.q }}»{% elif filters.badge %}{{ filters.badge }}{% else %}كل المنتجات{% endif %}</h2>
+    <p class="sm-muted"><b>{{ total_products }}</b> منتج</p>
+  </div>
+
+  <form class="sm-filters" method="get" action="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">
+    {% if filters.q %}<input type="hidden" name="q" value="{{ filters.q }}">{% endif %}
+    <details class="sm-filters__sheet" {% if filtering %}open{% endif %}>
+      <summary class="sm-chip">الفلاتر والترتيب</summary>
+      <div class="sm-filters__grid">
+        <label class="sm-field"><span>القسم</span>
+          <select name="badge"><option value="">كل الأقسام</option>{% for badge in badges %}<option value="{{ badge }}" {{ 'selected' if filters.badge == badge }}>{{ badge }}</option>{% endfor %}</select>
+        </label>
+        <label class="sm-field"><span>الترتيب</span>
+          <select name="sort">
+            {% for value, label in [('latest', 'المقترح'), ('price_asc', 'السعر: الأقل أولاً'), ('price_desc', 'السعر: الأعلى أولاً'), ('name_asc', 'الاسم')] %}
+            <option value="{{ value }}" {{ 'selected' if filters.sort == value }}>{{ label }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="sm-field"><span>التوفر</span>
+          <select name="availability">
+            {% for value, label in [('all', 'الكل'), ('in_stock', 'المتوفر فقط')] %}
+            <option value="{{ value }}" {{ 'selected' if filters.availability == value }}>{{ label }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="sm-field"><span>من سعر</span><input name="min_price" inputmode="numeric" value="{{ filters.min_price }}" placeholder="0"></label>
+        <label class="sm-field"><span>إلى سعر</span><input name="max_price" inputmode="numeric" value="{{ filters.max_price }}" placeholder="بلا حد"></label>
+        <button class="sm-btn sm-btn--primary" type="submit">تطبيق</button>
+      </div>
+    </details>
+  </form>
+
+  {% if search_info and search_info.understood %}
+  <p class="sm-understood">فهمنا طلبك: {% for part in search_info.understood %}<span class="sm-chip">{{ part }}</span>{% endfor %}
+    {% if search_info.relaxed %}<small class="sm-muted">— لا توجد نتائج مطابقة تماماً، فوسّعنا: {{ search_info.relaxed|join('، ') }}</small>{% endif %}</p>
+  {% endif %}
+  {% if filtering %}
+  <div class="sm-chips sm-active-filters" aria-label="الفلاتر المفعّلة">
+    {% if filters.q %}<a class="sm-chip is-on" href="{{ url_without('q') }}">بحث: {{ filters.q }} ✕</a>{% endif %}
+    {% if filters.badge %}<a class="sm-chip is-on" href="{{ url_without('badge') }}">{{ filters.badge }} ✕</a>{% endif %}
+    {% if filters.min_price %}<a class="sm-chip is-on" href="{{ url_without('min_price') }}">من {{ filters.min_price }} ✕</a>{% endif %}
+    {% if filters.max_price %}<a class="sm-chip is-on" href="{{ url_without('max_price') }}">حتى {{ filters.max_price }} ✕</a>{% endif %}
+    {% if filters.availability != 'all' %}<a class="sm-chip is-on" href="{{ url_without('availability') }}">المتوفر فقط ✕</a>{% endif %}
+    <a class="sm-chip" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">مسح الكل</a>
+  </div>
+  {% endif %}
+
+  {% if page_products %}
+  <div class="sm-grid" id="smAll">
+    {% for product in page_products %}{% set card_eager = filtering and loop.index <= 2 %}{% include "storefront_v2/partials/product_card.html" %}{% endfor %}
+  </div>
+  {% else %}
+  <div class="sm-empty">
+    <h3>لا توجد منتجات مطابقة</h3>
+    <p>جرّب كلمة أخرى أو رقم الموديل، أو تصفّح أحد الأقسام:</p>
+    <div class="sm-chips">{% for badge in badges[:8] %}<a class="sm-chip" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, badge=badge) }}">{{ badge }}</a>{% endfor %}</div>
+  </div>
+  {% endif %}
+
+  {% if pagination.pages > 1 %}
+  <nav class="sm-pager" aria-label="صفحات المنتجات">
+    {% if pagination.has_prev %}<a href="{{ pagination.prev_href }}" rel="prev">السابق</a>{% endif %}
+    {% for item in pagination.window %}
+      {% if item.ellipsis %}<span aria-hidden="true">…</span>
+      {% elif item.current %}<span aria-current="page">{{ item.page }}</span>
+      {% else %}<a href="{{ item.href }}">{{ item.page }}</a>{% endif %}
+    {% endfor %}
+    {% if pagination.has_next %}<a href="{{ pagination.next_href }}" rel="next">التالي</a>{% endif %}
+  </nav>
+  {% endif %}
+</section>
+{% endblock %}

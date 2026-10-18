@@ -68,7 +68,7 @@ def tail_logs() -> None:
 def deploy() -> None:
     """
     دبلوي آمن:
-    1) git fetch/reset على origin/main
+    1) git fetch ثم fast-forward بدون حذف تعديلات السيرفر
     2) تحديث حزم Python (إن وجدت requirements.txt)
     3) npm install + npm run build لواجهة الـ AI Agent
     4) health-check سريع على app.py
@@ -85,7 +85,8 @@ def deploy() -> None:
         # 1) Git: جلب آخر كود
         log("Pull latest code from origin/main…")
         run(["git", "fetch", "origin"])
-        run(["git", "reset", "--hard", "origin/main"])
+        from scripts.safe_git_update import safe_git_update
+        safe_git_update(REPO_DIR)
 
         # 2) pip install
         req = REPO_DIR / "requirements.txt"
@@ -122,9 +123,11 @@ def deploy() -> None:
     except subprocess.CalledProcessError as exc:
         log(f"❌ فشل تنفيذ الأمر: {exc}")
         log("تم إيقاف الدبلوي مبكراً؛ لم يتم إعادة تشغيل الخدمة حتى لا يتعطل الإنتاج.")
+        raise SystemExit(1)
     except Exception as exc:
         log(f"❌ خطأ غير متوقع أثناء الدبلوي: {exc}")
         log("تم إيقاف الدبلوي؛ راجع الرسالة أعلاه.")
+        raise SystemExit(1)
 
 
 def main() -> None:

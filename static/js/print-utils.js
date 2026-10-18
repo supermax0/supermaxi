@@ -2,6 +2,7 @@
  * Finora print helpers — opens the browser print dialog without a new tab.
  * Mobile: uses a full-size print surface (0×0 iframes produce blank/broken pages).
  * Batch/self-print: opens a real window so nested invoices are not clipped.
+ * Never prints login / session-expired pages (common iframe auth failure).
  */
 (function (global) {
   const FRAME_ID = "finora-print-frame";
@@ -17,8 +18,10 @@
 
   let activeTimers = [];
   let afterPrintCleanup = null;
+  let batchReadyCleanup = null;
 
   function isMobileHost() {
+    if ((global.innerWidth || 0) >= 900) return false;
     try {
       if (global.navigator && global.navigator.userAgentData && global.navigator.userAgentData.mobile) {
         return true;
@@ -66,23 +69,129 @@
     }
   }
 
+  function cleanPrintUrl(url) {
+    try {
+      const u = new URL(url, global.location.origin);
+      u.searchParams.delete("finora_embed");
+      u.searchParams.delete("_print_ts");
+      return u.pathname + u.search + u.hash;
+    } catch (e) {
+      return String(url || "")
+        .replace(/([?&])finora_embed=1&?/g, "$1")
+        .replace(/([?&])_print_ts=\d+&?/g, "$1")
+        .replace(/[?&]$/, "");
+    }
+  }
+
+  function notifyUser(message) {
+    try {
+      if (typeof global.showToast === "function") {
+        global.showToast(message, "warning");
+        return;
+      }
+    } catch (e) { /* ignore */ }
+    try {
+      alert(message);
+    } catch (e2) { /* ignore */ }
+  }
+
+  function openFallbackWindow(url) {
+    const clean = cleanPrintUrl(url);
+    try {
+      const w = global.open(clean, "_blank");
+      if (!w) {
+        notifyUser("تعذّر فتح الفاتورة. اسمح بالنوافذ المنبثقة ثم أعد الطباعة.");
+        return false;
+      }
+      try { w.opener = null; } catch (e) { /* ignore */ }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /** Login / session pages must never be sent to the printer. */
+  function getPrintBlockReason(doc, win) {
+    if (!doc) return "empty";
+    try {
+      if (doc.querySelector("[data-finora-print-blocked]")) return "blocked";
+      const path = String((win && win.location && win.location.pathname) || "");
+      if (/\/login(?:\/|$)/i.test(path) || /\/pos\/login/i.test(path)) return "login";
+      if (/\/pricing/i.test(path)) return "pricing";
+      if (doc.querySelector(".login-page, .login-box, .login-card, .login-form, form.login-form")) {
+        return "login";
+      }
+      const title = String(doc.title || "");
+      if (/تسجيل الدخول|login/i.test(title) && doc.querySelector("input[type='password']")) {
+        return "login";
+      }
+    } catch (e) {
+      return "blocked";
+    }
+    return null;
+  }
+
+  function isPrintableDoc(doc) {
+    if (!doc || !doc.body) return false;
+    return !!(
+      doc.getElementById("thermalReceipt") ||
+      doc.getElementById("thermalPrintOverrides") ||
+      doc.querySelector(
+        ".invoice, .invoice-container, .receipt, .paper, .page-shell, #receipt, " +
+        ".invoice-sheet, [data-finora-print-ready], .print-document, main.receipt"
+      )
+    );
+  }
+
+  function isThermalPrintDoc(doc) {
+    if (!doc) return false;
+    if (doc.getElementById("thermalReceipt") || doc.getElementById("thermalPrintOverrides")) {
+      return true;
+    }
+    try {
+      const body = doc.body;
+      if (body && body.getAttribute("data-paper") === "thermal") return true;
+      if (
+        doc.querySelector("main.receipt, #receipt.receipt") &&
+        !doc.querySelector(".invoice, .invoice-container, .page-shell")
+      ) {
+        return true;
+      }
+    } catch (e) { /* ignore */ }
+    return false;
+  }
+
   function injectPrintFixes(doc) {
     if (!doc || doc.getElementById("finora-print-fix")) return;
+    const thermal = isThermalPrintDoc(doc);
     const style = doc.createElement("style");
     style.id = "finora-print-fix";
-    style.textContent = [
-      "@media print{",
-      "html,body{height:auto!important;min-height:0!important;overflow:visible!important;",
-      "background:#fff!important;margin:0!important;padding:0!important;}",
-      ".no-print,.invoice-actions,.actions,.toolbar,.load-status{",
-      "display:none!important;}",
-      ".invoice,.invoice-container,.page-shell{",
-      "box-shadow:none!important;margin:0!important;max-width:100%!important;",
-      "width:100%!important;border-radius:0!important;}",
-      ".invoice-footer,.codes{page-break-inside:avoid!important;page-break-before:avoid!important;}",
-      "@page{size:auto;margin:8mm;}",
-      "}"
-    ].join("");
+    style.textContent = thermal
+      ? [
+          "@page{size:80mm auto;margin:0;}",
+          "@media print{",
+          "html,body{width:80mm!important;height:auto!important;min-height:0!important;",
+          "overflow:visible!important;background:#fff!important;margin:0!important;padding:0!important;}",
+          ".no-print,.invoice-actions,.actions,.toolbar,.load-status{",
+          "display:none!important;}",
+          ".receipt,#thermalReceipt,#receipt{",
+          "width:80mm!important;max-width:80mm!important;margin:0!important;",
+          "box-shadow:none!important;border:0!important;}",
+          "}"
+        ].join("")
+      : [
+          "@media print{",
+          "html,body{height:auto!important;min-height:0!important;overflow:visible!important;",
+          "background:#fff!important;margin:0!important;padding:0!important;}",
+          ".no-print,.invoice-actions,.actions,.toolbar,.load-status{",
+          "display:none!important;}",
+          ".invoice,.invoice-container,.page-shell{",
+          "box-shadow:none!important;margin:0!important;max-width:100%!important;",
+          "width:100%!important;border-radius:0!important;}",
+          ".invoice-footer,.codes{page-break-inside:avoid!important;page-break-before:avoid!important;}",
+          "@page{size:auto;margin:8mm;}",
+          "}"
+        ].join("");
     (doc.head || doc.documentElement).appendChild(style);
   }
 
@@ -117,22 +226,47 @@
     try {
       const u = new URL(url, global.location.origin);
       u.searchParams.set("finora_embed", "1");
+      u.searchParams.set("_print_ts", String(Date.now()));
       return u.pathname + u.search + u.hash;
     } catch (e) {
       const sep = url.indexOf("?") >= 0 ? "&" : "?";
-      return url + sep + "finora_embed=1";
+      return url + sep + "finora_embed=1&_print_ts=" + Date.now();
     }
   }
 
-  function triggerPrint(frame, printedRef) {
+  function abortBadPrint(frame, printedRef, sourceUrl, reason) {
+    printedRef.done = true;
+    clearTimers();
+    resetFrame(frame);
+    const isLogin = reason === "login" || reason === "blocked" || reason === "session";
+    notifyUser(
+      isLogin
+        ? "تعذّرت الطباعة: انتهت الجلسة أو يلزم تسجيل الدخول. سيتم فتح المستند في نافذة جديدة."
+        : "تعذّر تحميل مستند الطباعة. سيتم فتحه في نافذة جديدة."
+    );
+    openFallbackWindow(sourceUrl);
+  }
+
+  function triggerPrint(frame, printedRef, selfPrint, sourceUrl) {
     if (printedRef.done) return;
     try {
       const win = frame.contentWindow;
       if (!win || !win.document) return;
       if (win.document.readyState === "loading") return;
+
+      const blockReason = getPrintBlockReason(win.document, win);
+      if (blockReason) {
+        abortBadPrint(frame, printedRef, sourceUrl, blockReason);
+        return;
+      }
+      if (!isPrintableDoc(win.document)) {
+        /* Fallback timer may fire before content is ready — keep waiting. */
+        return;
+      }
+
       printedRef.done = true;
       injectPrintFixes(win.document);
-      prepareFrameSurface(frame, false);
+      prepareFrameSurface(frame, !!selfPrint);
       bindAfterPrint(frame);
       const delay = isMobileHost() ? 250 : 50;
       const timer = setTimeout(function () {
@@ -145,9 +279,9 @@
     } catch (e) { /* ignore */ }
   }
 
-  function schedulePrint(frame, delay, printedRef) {
+  function schedulePrint(frame, delay, printedRef, selfPrint, sourceUrl) {
     const timer = setTimeout(function () {
-      triggerPrint(frame, printedRef);
+      triggerPrint(frame, printedRef, selfPrint, sourceUrl);
     }, delay);
     activeTimers.push(timer);
   }
@@ -173,30 +307,63 @@
     if (afterPrintCleanup) {
       try { afterPrintCleanup(); } catch (e) { /* ignore */ }
     }
+    if (batchReadyCleanup) {
+      try { batchReadyCleanup(); } catch (e) { /* ignore */ }
+      batchReadyCleanup = null;
+    }
 
     const finalUrl = appendEmbedParam(url);
     const selfPrint = isSelfPrintingUrl(finalUrl);
-
-    // Batch / multi-page print must not run inside a fixed-height hidden iframe
-    if (selfPrint && openSelfPrintWindow(finalUrl)) {
-      return true;
-    }
 
     const frame = getFrame();
     const printedRef = { done: false };
 
     prepareFrameSurface(frame, selfPrint);
 
+    if (selfPrint) {
+      const onBatchReady = function (event) {
+        if (
+          event.source !== frame.contentWindow ||
+          !event.data ||
+          event.data.type !== "finora-batch-ready"
+        ) {
+          return;
+        }
+        global.removeEventListener("message", onBatchReady);
+        batchReadyCleanup = null;
+        triggerPrint(frame, printedRef, true, finalUrl);
+      };
+      global.addEventListener("message", onBatchReady);
+      batchReadyCleanup = function () {
+        global.removeEventListener("message", onBatchReady);
+      };
+    }
+
     const onLoad = function () {
       frame.removeEventListener("load", onLoad);
+      try {
+        const win = frame.contentWindow;
+        const doc = win && win.document;
+        const blockReason = getPrintBlockReason(doc, win);
+        if (blockReason) {
+          abortBadPrint(frame, printedRef, finalUrl, blockReason);
+          return;
+        }
+      } catch (e) {
+        abortBadPrint(frame, printedRef, finalUrl, "blocked");
+        return;
+      }
       if (!selfPrint) {
         try {
           injectPrintFixes(frame.contentWindow && frame.contentWindow.document);
         } catch (e) { /* ignore */ }
-        schedulePrint(frame, options.delay != null ? options.delay : (isMobileHost() ? 900 : 600), printedRef);
-      } else {
-        // Page prints itself after its invoices finish loading
-        bindAfterPrint(frame);
+        schedulePrint(
+          frame,
+          options.delay != null ? options.delay : (isMobileHost() ? 900 : 600),
+          printedRef,
+          false,
+          finalUrl
+        );
       }
     };
 
@@ -204,7 +371,33 @@
     frame.src = finalUrl;
 
     if (!selfPrint) {
-      schedulePrint(frame, options.fallbackDelay != null ? options.fallbackDelay : 5000, printedRef);
+      /* Last resort: if still not printable, open a real tab — never print login. */
+      const failSafe = setTimeout(function () {
+        if (printedRef.done) return;
+        try {
+          const win = frame.contentWindow;
+          const doc = win && win.document;
+          const blockReason = getPrintBlockReason(doc, win);
+          if (blockReason) {
+            abortBadPrint(frame, printedRef, finalUrl, blockReason);
+            return;
+          }
+          if (isPrintableDoc(doc)) {
+            triggerPrint(frame, printedRef, false, finalUrl);
+            return;
+          }
+        } catch (e) { /* ignore */ }
+        abortBadPrint(frame, printedRef, finalUrl, "empty");
+      }, options.fallbackDelay != null ? options.fallbackDelay : 5000);
+      activeTimers.push(failSafe);
+    } else {
+      schedulePrint(
+        frame,
+        options.fallbackDelay != null ? options.fallbackDelay : 30000,
+        printedRef,
+        true,
+        finalUrl
+      );
     }
     return true;
   }
@@ -226,7 +419,13 @@
     doc.close();
 
     injectPrintFixes(doc);
-    schedulePrint(frame, options.delay != null ? options.delay : (isMobileHost() ? 500 : 300), printedRef);
+    schedulePrint(
+      frame,
+      options.delay != null ? options.delay : (isMobileHost() ? 500 : 300),
+      printedRef,
+      false,
+      ""
+    );
     return true;
   }
 

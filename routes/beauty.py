@@ -19,8 +19,112 @@ from models.tenant import Tenant as TenantModel
 from utils.beauty_accounting import beauty_daily_revenue_points, beauty_summary, payment_status, sync_beauty_cash_transaction
 from utils.beauty_schema_guard import ensure_beauty_schema
 from utils.product_schema_guard import ensure_product_schema
+from utils.branch_scope import resolve_write_branch_id
 
 beauty_bp = Blueprint("beauty", __name__, url_prefix="/beauty")
+
+
+def _beauty_stock_branch_id() -> int | None:
+    from utils.branch_context import current_branch_id
+    from utils.branch_migration import get_default_branch
+
+    branch_id = current_branch_id()
+    if branch_id:
+        return int(branch_id)
+    branch = get_default_branch()
+    return int(branch.id) if branch else None
+
+
+def _consume_beauty_material(appointment, mapping, branch_id: int | None) -> bool:
+    from models.stock_movement import StockMovement
+    from utils.branch_stock_service import deduct_stock
+    from utils.stock_movement_guard import claim_stock_movement
+
+    product = mapping.product
+    qty = int(mapping.amount_used or 0)
+    if not product or qty <= 0:
+        return False
+    lifecycle = (
+        StockMovement.query.filter_by(
+            source_type="beauty_appointment",
+            source_id=int(appointment.id),
+            source_line_id=int(mapping.id),
+        )
+        .filter(StockMovement.movement_type.in_({"beauty_consume", "beauty_restore"}))
+        .order_by(StockMovement.id.asc())
+        .all()
+    )
+    if lifecycle and lifecycle[-1].direction == "out":
+        return False
+    version = 1 + sum(1 for row in lifecycle if row.movement_type == "beauty_consume")
+    key = f"beauty:appointment:{appointment.id}:mapping:{mapping.id}:consume:v{version}"
+    claim = claim_stock_movement(
+        key,
+        movement_type="beauty_consume",
+        direction="out",
+        product_id=product.id,
+        branch_id=branch_id,
+        quantity=qty,
+        unit_cost=int(product.buy_price or 0),
+        source_type="beauty_appointment",
+        source_id=appointment.id,
+        source_line_id=mapping.id,
+    )
+    if not claim.applied:
+        return False
+    if branch_id:
+        deduct_stock(branch_id, product.id, qty)
+    else:
+        updated = Product.query.filter(Product.id == product.id, Product.quantity >= qty).update(
+            {Product.quantity: Product.quantity - qty}, synchronize_session=False
+        )
+        if updated != 1:
+            raise ValueError(f"المخزون غير كافي للمنتج: {product.name}")
+    return True
+
+
+def _restore_beauty_material(appointment, mapping) -> bool:
+    from models.stock_movement import StockMovement
+    from utils.branch_stock_service import receive_stock
+    from utils.stock_movement_guard import claim_stock_movement
+
+    product = mapping.product
+    if not product:
+        return False
+    latest = (
+        StockMovement.query.filter_by(
+            source_type="beauty_appointment",
+            source_id=int(appointment.id),
+            source_line_id=int(mapping.id),
+        )
+        .filter(StockMovement.movement_type.in_({"beauty_consume", "beauty_restore"}))
+        .order_by(StockMovement.id.desc())
+        .first()
+    )
+    if not latest or latest.direction != "out":
+        return False
+    qty = int(latest.quantity or 0)
+    restore_key = f"{latest.movement_key}:restore"
+    claim = claim_stock_movement(
+        restore_key,
+        movement_type="beauty_restore",
+        direction="in",
+        product_id=product.id,
+        branch_id=latest.branch_id,
+        quantity=qty,
+        unit_cost=int(latest.unit_cost or 0),
+        source_type="beauty_appointment",
+        source_id=appointment.id,
+        source_line_id=mapping.id,
+        reversal_of_key=latest.movement_key,
+    )
+    if not claim.applied:
+        return False
+    if latest.branch_id:
+        receive_stock(int(latest.branch_id), product.id, qty)
+    else:
+        product.quantity = int(product.quantity or 0) + qty
+    return True
 
 
 def _current_employee():
@@ -197,7 +301,12 @@ def appointments():
             return redirect(url_for("beauty.appointments"))
         customer = Customer.query.filter_by(phone=phone).first()
         if not customer:
-            customer = Customer(name=customer_name, phone=phone, city=request.form.get("city") or None)
+            customer = Customer(
+                name=customer_name,
+                phone=phone,
+                city=request.form.get("city") or None,
+                branch_id=resolve_write_branch_id(request.form),
+            )
             db.session.add(customer)
             db.session.flush()
         else:
@@ -238,17 +347,28 @@ def update_appointment_status(appointment_id):
     if new_status == "done":
         _sync_appointment_money(appointment, request.form)
     if new_status == "done" and not was_done:
+        branch_id = _beauty_stock_branch_id()
         used = []
         for mapping in appointment.service.product_mappings:
             product = mapping.product
             amount = mapping.amount_used or 0
-            if product and (product.quantity or 0) < amount:
+            if branch_id:
+                from utils.branch_stock_service import get_branch_stock
+
+                available = get_branch_stock(branch_id, product.id) if product else 0
+            else:
+                available = int(product.quantity or 0) if product else 0
+            if product and available < amount:
                 flash(f"المخزون غير كافي للمنتج: {product.name}", "error")
                 return redirect(url_for("beauty.appointments"))
             used.append({"product": product.name if product else "", "amount": amount})
-        for mapping in appointment.service.product_mappings:
-            if mapping.product:
-                mapping.product.quantity = (mapping.product.quantity or 0) - (mapping.amount_used or 0)
+        try:
+            for mapping in appointment.service.product_mappings:
+                _consume_beauty_material(appointment, mapping, branch_id)
+        except Exception as exc:
+            db.session.rollback()
+            flash(str(exc), "error")
+            return redirect(url_for("beauty.appointments"))
         appointment.completed_at = datetime.utcnow()
         note_text = (request.form.get("session_note") or appointment.notes or "").strip()
         db.session.add(
@@ -260,6 +380,14 @@ def update_appointment_status(appointment_id):
             )
         )
     if new_status == "done":
+        sync_beauty_cash_transaction(appointment)
+    elif was_done:
+        for mapping in appointment.service.product_mappings:
+            _restore_beauty_material(appointment, mapping)
+        appointment.completed_at = None
+        appointment.paid_amount = 0
+        appointment.payment_status = "ملغي" if new_status == "cancelled" else "غير مسدد"
+        appointment.paid_at = None
         sync_beauty_cash_transaction(appointment)
     appointment.status = new_status
     db.session.commit()

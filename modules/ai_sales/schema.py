@@ -46,10 +46,40 @@ TABLES = (
 )
 
 
+_DEDUPE_INDEX_DONE: set[str] = set()
+
+
+def _ensure_message_dedupe_index(bind) -> None:
+    """Database-level guarantee that a provider message id is stored once per channel (Meta retries / races).
+
+    Created once per database. If legacy duplicates already exist the index cannot be built; that database keeps the
+    application-level check and the condition is logged once instead of failing the request.
+    """
+    key = str(bind.url)
+    if key in _DEDUPE_INDEX_DONE:
+        return
+    _DEDUPE_INDEX_DONE.add(key)
+    try:
+        with bind.begin() as conn:
+            conn.execute(
+                text(
+                    "CREATE UNIQUE INDEX IF NOT EXISTS uq_ai_sales_message_channel_external "
+                    "ON ai_sales_message (channel_account_id, external_message_id)"
+                )
+            )
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "ai_sales_message dedupe index not created (legacy duplicates?) for %s", bind.url.database
+        )
+
+
 def ensure_ai_sales_schema() -> None:
     bind = db.session.get_bind()
     for table in TABLES:
         table.create(bind=bind, checkfirst=True)
+    _ensure_message_dedupe_index(bind)
     inspector = inspect(bind)
     changed = False
     channel_columns = {column["name"] for column in inspector.get_columns("ai_sales_channel_account")}
@@ -70,6 +100,9 @@ def ensure_ai_sales_schema() -> None:
         "calling_status": "VARCHAR(30) NOT NULL DEFAULT 'unknown'",
         "calling_settings_json": "TEXT",
         "calling_last_checked_at": "TIMESTAMP",
+        "tiktok_app_id": "VARCHAR(100)",
+        "tiktok_refresh_token_encrypted": "TEXT",
+        "tiktok_token_expires_at": "TIMESTAMP",
     }
     for name, definition in additive_columns.items():
         if name not in channel_columns:
@@ -97,6 +130,7 @@ def ensure_ai_sales_schema() -> None:
         "voice_instructions": "TEXT",
         "max_context_messages": "INTEGER NOT NULL DEFAULT 18",
         "max_audio_size_mb": "INTEGER NOT NULL DEFAULT 25",
+        "max_video_seconds": "INTEGER NOT NULL DEFAULT 60",
         "human_takeover_minutes": "INTEGER NOT NULL DEFAULT 30",
         "ai_response_delay_ms": "INTEGER NOT NULL DEFAULT 0",
         "auto_escalation": "BOOLEAN NOT NULL DEFAULT TRUE",

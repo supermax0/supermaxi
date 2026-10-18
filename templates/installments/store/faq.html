@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>الأسئلة الشائعة | {{ settings.store_name if settings else 'Finora' }}</title>
+  <meta name="description" content="إجابات سريعة عن التقسيط والطلبات والحساب في متجر {{ settings.store_name if settings else 'Finora' }}.">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installments.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installment_store.css', v='20260812-full-width-2') }}">
+</head>
+<body class="store-body">
+  {% include 'installments/store/_header.html' %}
+
+  <main class="store-info-page">
+    <section class="store-info-hero">
+      <div class="store-shell">
+        <nav class="store-info-crumb" aria-label="مسار الصفحة">
+          <a href="{{ url_for('installments_store.store_index', tenant_slug=tenant_slug) }}">الرئيسية</a>
+          <span>/</span>
+          <strong>الأسئلة الشائعة</strong>
+        </nav>
+        <span>مساعدة سريعة</span>
+        <h1>الأسئلة الشائعة</h1>
+        <p>إجابات مختصرة لأكثر الاستفسارات تكراراً حول التقسيط، الطلبات، والحساب.</p>
+      </div>
+    </section>
+
+    <div class="store-shell store-info-body">
+      <section class="store-faq-list" aria-label="قائمة الأسئلة">
+        <details open>
+          <summary>كيف أشتري بالتقسيط؟</summary>
+          <p>اختر المنتج، حدد مدة الخطة المناسبة، أضفه إلى السلة، ثم أرسل الطلب ببياناتك. بعد المراجعة يتم إبلاغك بالموافقة أو بأي ملاحظات.</p>
+        </details>
+        <details>
+          <summary>هل أستطيع معرفة القسط قبل إرسال الطلب؟</summary>
+          <p>نعم. في صفحة كل منتج تظهر الدفعة الأولى والقسط الشهري والإجمالي حسب الخطة التي تختارها قبل التقديم.</p>
+        </details>
+        <details>
+          <summary>ما المدة المتاحة للتقسيط؟</summary>
+          <p>{% if max_months %}تختلف المدة حسب المنتج والخطة، وقد تصل حتى {{ max_months }} شهراً على المنتجات المتاحة.{% else %}تختلف المدة حسب المنتج والخطة المعروضة في صفحة التفاصيل.{% endif %}</p>
+        </details>
+        <details>
+          <summary>هل أحتاج حساباً لمتابعة الطلب؟</summary>
+          <p>الحساب يسهّل متابعة كل طلباتك وعقودك من مكان واحد. يمكنك أيضاً تتبع طلب فردي عبر صفحة التتبع باستخدام رقم الطلب ورقم الهاتف.</p>
+        </details>
+        <details>
+          <summary>ماذا يحدث بعد إرسال الطلب؟</summary>
+          <p>يدخل الطلب مرحلة المراجعة. عند الموافقة يتم تجهيز التسليم وإنشاء العقد وفق الخطة المعتمدة. وفي حال الرفض ستظهر الملاحظة المرتبطة بالحالة.</p>
+        </details>
+        <details>
+          <summary>هل يمكن تعديل العنوان لاحقاً؟</summary>
+          <p>يُفضّل إدخال العنوان الصحيح عند الطلب. كما يمكن تحديث المحافظة والعنوان عند إرسال طلب جديد ليرتبط بملفك.</p>
+        </details>
+        <details>
+          <summary>كيف أتواصل مع الدعم؟</summary>
+          <p>من صفحة اتصل بنا يمكنك التواصل عبر الهاتف أو واتساب حسب البيانات المتاحة للمتجر، مع ذكر رقم الطلب إن وجد.</p>
+        </details>
+      </section>
+
+      <section class="store-info-cta">
+        <div>
+          <span>لم تجد إجابتك؟</span>
+          <h2>تواصل مع فريق المتجر</h2>
+          <p>سنساعدك في استفسارات المنتجات أو حالة الطلب أو الحساب.</p>
+        </div>
+        <div class="store-info-cta__actions">
+          <a class="is-primary" href="{{ url_for('installments_store.contact_page', tenant_slug=tenant_slug) }}">اتصل بنا</a>
+          <a href="{{ url_for('installments_store.how_it_works_page', tenant_slug=tenant_slug) }}">كيف يعمل التقسيط؟</a>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  {% include 'installments/store/_footer.html' %}
+</body>
+</html>

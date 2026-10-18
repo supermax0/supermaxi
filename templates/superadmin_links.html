@@ -7,13 +7,31 @@
 {% block extra_style %}
 <style>
     .links-intro {
-        margin-bottom: 40px;
-        padding: 24px 30px;
+        margin-bottom: 28px;
+        padding: 20px 24px;
         line-height: 1.8;
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .links-intro > i {
+        color: var(--primary);
+        margin-top: 4px;
+        flex-shrink: 0;
+    }
+
+    .links-intro-text { flex: 1; }
+
+    .links-intro-note {
+        display: block;
+        font-size: 13px;
+        margin-top: 8px;
+        color: var(--text-muted);
     }
 
     .search-section {
-        margin-bottom: 48px;
+        margin-bottom: 36px;
         display: flex;
         justify-content: center;
     }
@@ -35,91 +53,255 @@
 
     .premium-search {
         width: 100%;
-        padding: 16px 54px 16px 24px;
-        background: rgba(255, 255, 255, 0.03);
+        padding: 14px 54px 14px 24px;
+        background: var(--surface);
         border: 1px solid var(--border-color);
-        border-radius: 20px;
+        border-radius: 16px;
         color: var(--text-main);
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 600;
-        font-family: 'Cairo', sans-serif;
+        font-family: 'Cairo', 'Tajawal', sans-serif;
         transition: var(--transition);
-        backdrop-filter: blur(10px);
+        box-shadow: var(--shadow-card);
     }
 
     .premium-search:focus {
         outline: none;
         border-color: var(--primary);
-        background: rgba(255, 255, 255, 0.06);
-        box-shadow: 0 10px 30px rgba(99, 102, 241, 0.15);
+        box-shadow: 0 0 0 3px var(--primary-glow), var(--shadow-card);
     }
 
     .guide-section {
-        margin-bottom: 48px;
+        margin-bottom: 40px;
     }
 
     .section-header {
         display: flex;
         align-items: center;
-        gap: 15px;
-        margin-bottom: 24px;
-        padding-right: 10px;
+        gap: 12px;
+        margin-bottom: 18px;
+        padding-right: 4px;
     }
 
     .section-header i {
-        width: 36px;
-        height: 36px;
-        background: rgba(99, 102, 241, 0.1);
+        width: 34px;
+        height: 34px;
+        background: var(--primary-soft);
         color: var(--primary);
         border-radius: 10px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 16px;
+        font-size: 14px;
     }
 
     .section-header h2 {
-        font-size: 18px;
+        margin: 0;
+        font-size: 17px;
         font-weight: 800;
         color: var(--text-main);
-        letter-spacing: 0.5px;
     }
 
     .link-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-        gap: 20px;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 18px;
     }
 
     .link-card {
-        padding: 24px;
+        padding: 0;
         display: flex;
         flex-direction: column;
-        gap: 12px;
         text-decoration: none;
         position: relative;
         overflow: hidden;
         transition: var(--transition);
         border: 1px solid var(--border-color);
+        border-radius: var(--radius-lg);
+        background: var(--surface);
+        box-shadow: var(--shadow-card);
+        color: inherit;
     }
 
     .link-card:hover {
-        transform: translateY(-5px);
-        border-color: var(--primary);
-        background: rgba(99, 102, 241, 0.03);
-        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+        transform: translateY(-4px);
+        border-color: #C7D7F5;
+        box-shadow: var(--shadow-hover);
+    }
+
+    /* Mini browser preview */
+    .link-preview {
+        position: relative;
+        background: linear-gradient(180deg, #EEF2F8 0%, #E4EAF2 100%);
+        border-bottom: 1px solid var(--border-color);
+        overflow: hidden;
+    }
+
+    .link-preview-chrome {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 10px 6px;
+        background: rgba(255, 255, 255, 0.72);
+        border-bottom: 1px solid rgba(228, 234, 242, 0.9);
+        position: relative;
+        z-index: 2;
+    }
+
+    .link-preview-dots {
+        display: flex;
+        gap: 4px;
+        flex-shrink: 0;
+    }
+
+    .link-preview-dots span {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #D0D5DD;
+    }
+
+    .link-preview-dots span:nth-child(1) { background: #F97066; }
+    .link-preview-dots span:nth-child(2) { background: #FDB022; }
+    .link-preview-dots span:nth-child(3) { background: #32D583; }
+
+    .link-preview-urlbar {
+        flex: 1;
+        min-width: 0;
+        height: 18px;
+        border-radius: 6px;
+        background: #F8FAFC;
+        border: 1px solid var(--border-color);
+        color: var(--text-soft);
+        font-size: 9px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        display: flex;
+        align-items: center;
+        padding: 0 8px;
+        direction: ltr;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+    }
+
+    .link-preview-stage {
+        position: relative;
+        height: 118px;
+        overflow: hidden;
+        background:
+            linear-gradient(135deg, rgba(37, 99, 235, 0.06), rgba(79, 70, 229, 0.04)),
+            repeating-linear-gradient(
+                -12deg,
+                transparent,
+                transparent 10px,
+                rgba(255, 255, 255, 0.35) 10px,
+                rgba(255, 255, 255, 0.35) 11px
+            );
+    }
+
+    .link-preview-frame {
+        position: absolute;
+        inset: 0;
+        width: 400%;
+        height: 400%;
+        border: 0;
+        transform: scale(0.25);
+        transform-origin: top right;
+        pointer-events: none;
+        background: #fff;
+        opacity: 0;
+        transition: opacity 0.35s ease;
+    }
+
+    .link-preview-frame.is-loaded {
+        opacity: 1;
+    }
+
+    .link-preview-fallback {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 16px;
+        z-index: 1;
+        transition: opacity 0.3s ease;
+    }
+
+    .link-card.is-preview-ready .link-preview-fallback {
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .link-preview-mock {
+        width: 78%;
+        max-width: 180px;
+        background: rgba(255, 255, 255, 0.92);
+        border: 1px solid rgba(228, 234, 242, 0.95);
+        border-radius: 10px;
+        padding: 10px;
+        box-shadow: 0 8px 20px rgba(16, 24, 40, 0.08);
+    }
+
+    .link-preview-mock-bar {
+        height: 8px;
+        width: 42%;
+        border-radius: 999px;
+        background: linear-gradient(90deg, var(--primary), #4F46E5);
+        margin-bottom: 10px;
+    }
+
+    .link-preview-mock-lines {
+        display: grid;
+        gap: 6px;
+    }
+
+    .link-preview-mock-lines span {
+        display: block;
+        height: 5px;
+        border-radius: 999px;
+        background: #E4EAF2;
+    }
+
+    .link-preview-mock-lines span:nth-child(1) { width: 92%; }
+    .link-preview-mock-lines span:nth-child(2) { width: 74%; }
+    .link-preview-mock-lines span:nth-child(3) { width: 84%; }
+
+    .link-preview-icon {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        background: var(--primary-soft);
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 15px;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+    }
+
+    .link-card-body {
+        padding: 14px 16px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        flex: 1;
     }
 
     .link-card-header {
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: flex-start;
+        gap: 10px;
     }
 
     .link-label {
-        font-size: 15px;
+        font-size: 14px;
         font-weight: 800;
         color: var(--text-main);
+        line-height: 1.45;
         transition: var(--transition);
     }
 
@@ -128,50 +310,85 @@
     }
 
     .link-template {
-        font-size: 11px;
+        flex-shrink: 0;
+        font-size: 10px;
         font-weight: 700;
         color: var(--text-muted);
-        background: rgba(255, 255, 255, 0.05);
-        padding: 4px 10px;
+        background: var(--surface-soft);
+        border: 1px solid var(--border-color);
+        padding: 3px 8px;
         border-radius: 6px;
-        font-family: monospace;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        direction: ltr;
+        max-width: 42%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .link-card-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-top: auto;
     }
 
     .link-url {
-        font-size: 12px;
+        font-size: 11px;
         color: var(--text-muted);
-        font-family: monospace;
-        letter-spacing: 0.5px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        letter-spacing: 0.2px;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+        direction: ltr;
+        text-align: left;
+        flex: 1;
+        min-width: 0;
     }
 
     .link-arrow {
-        position: absolute;
-        bottom: 24px;
-        left: 24px;
-        color: var(--text-muted);
-        font-size: 14px;
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--text-soft);
+        background: var(--surface-soft);
+        font-size: 12px;
         transition: var(--transition);
-        opacity: 0.3;
+        flex-shrink: 0;
     }
 
     .link-card:hover .link-arrow {
-        color: var(--primary);
-        opacity: 1;
-        transform: translateX(-5px);
+        color: #fff;
+        background: var(--primary);
+        transform: translateX(-2px);
+    }
+
+    @media (max-width: 640px) {
+        .link-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .link-preview-stage {
+            height: 108px;
+        }
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="premium-card glass links-intro">
-    <i class="fas fa-info-circle" style="color: var(--primary); margin-left: 10px;"></i>
-    من هنا يمكنك استعراض كافة واجهات النظام والقوالب المتاحة. استخدم البحث السريع للوصول الفوري.
-    <span style="display: block; font-size: 13px; margin-top: 8px; color: var(--text-muted);">
-        * ملاحظة: بعض الصفحات تتطلب صلاحيات وصول محددة أو بيانات تجريبية.
-    </span>
+    <i class="fas fa-info-circle"></i>
+    <div class="links-intro-text">
+        من هنا يمكنك استعراض كافة واجهات النظام والقوالب المتاحة. كل بطاقة تعرض معاينة مصغّرة للصفحة.
+        <span class="links-intro-note">
+            * ملاحظة: بعض الصفحات تتطلب صلاحيات وصول محددة أو بيانات تجريبية، وقد تظهر صفحة الدخول في المعاينة.
+        </span>
+    </div>
 </div>
 
 <div class="search-section">
@@ -190,14 +407,44 @@
     </div>
     <div class="link-grid">
         {% for url, label, template in group.links %}
-        <a href="{{ url }}" target="_blank" rel="noopener" class="premium-card link-card" data-label="{{ label }}"
-            data-url="{{ url }}" data-template="{{ template }}">
-            <div class="link-card-header">
-                <span class="link-label">{{ label }}</span>
-                <span class="link-template">{{ template }}</span>
+        {% set can_preview = '<' not in url %}
+        <a href="{{ url }}" target="_blank" rel="noopener" class="premium-card link-card"
+            data-label="{{ label }}"
+            data-url="{{ url }}"
+            data-template="{{ template }}"
+            {% if can_preview %}data-preview-url="{{ url }}"{% endif %}>
+            <div class="link-preview" aria-hidden="true">
+                <div class="link-preview-chrome">
+                    <div class="link-preview-dots"><span></span><span></span><span></span></div>
+                    <div class="link-preview-urlbar">{{ url }}</div>
+                </div>
+                <div class="link-preview-stage">
+                    <div class="link-preview-fallback">
+                        <div class="link-preview-mock">
+                            <div class="link-preview-mock-bar"></div>
+                            <div class="link-preview-mock-lines">
+                                <span></span><span></span><span></span>
+                            </div>
+                        </div>
+                        <div class="link-preview-icon">
+                            <i class="fas {{ group.icon }}"></i>
+                        </div>
+                    </div>
+                    {% if can_preview %}
+                    <iframe class="link-preview-frame" title="معاينة {{ label }}" loading="lazy" tabindex="-1"></iframe>
+                    {% endif %}
+                </div>
             </div>
-            <div class="link-url">{{ url }}</div>
-            <i class="fas fa-arrow-left link-arrow"></i>
+            <div class="link-card-body">
+                <div class="link-card-header">
+                    <span class="link-label">{{ label }}</span>
+                    <span class="link-template" title="{{ template }}">{{ template }}</span>
+                </div>
+                <div class="link-card-footer">
+                    <div class="link-url">{{ url }}</div>
+                    <span class="link-arrow"><i class="fas fa-arrow-left"></i></span>
+                </div>
+            </div>
         </a>
         {% endfor %}
     </div>
@@ -210,7 +457,6 @@
     document.addEventListener('DOMContentLoaded', function () {
         const searchInput = document.getElementById('linkSearch');
         const sections = document.querySelectorAll('.guide-section');
-        const cards = document.querySelectorAll('.link-card');
 
         searchInput.addEventListener('input', function () {
             const query = this.value.toLowerCase().trim();
@@ -232,6 +478,41 @@
                 section.style.display = sectionHasMatch ? 'block' : 'none';
             });
         });
+
+        const previewCards = document.querySelectorAll('.link-card[data-preview-url]');
+        if (!('IntersectionObserver' in window) || !previewCards.length) return;
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (!entry.isIntersecting) return;
+                const card = entry.target;
+                observer.unobserve(card);
+
+                const frame = card.querySelector('.link-preview-frame');
+                const previewUrl = card.dataset.previewUrl;
+                if (!frame || !previewUrl || frame.dataset.srcApplied) return;
+
+                frame.dataset.srcApplied = '1';
+                frame.addEventListener('load', function () {
+                    frame.classList.add('is-loaded');
+                    card.classList.add('is-preview-ready');
+                }, { once: true });
+
+                // Soft timeout: keep wireframe if embed is blocked / slow
+                window.setTimeout(function () {
+                    if (!frame.classList.contains('is-loaded')) {
+                        frame.removeAttribute('src');
+                    }
+                }, 8000);
+
+                frame.src = previewUrl;
+            });
+        }, {
+            rootMargin: '180px 0px',
+            threshold: 0.12
+        });
+
+        previewCards.forEach(card => observer.observe(card));
     });
 </script>
 {% endblock %}

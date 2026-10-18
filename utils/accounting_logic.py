@@ -38,27 +38,45 @@ ACCOUNT_CODES = {
     "COGS": "5001",  # تكلفة البضاعة المباعة
     "EXPENSES": "6001",  # المصاريف
     "ACCOUNTS_PAYABLE": "2001",  # ديون الموردين
+    # Clinic accounting.  The existing retail/POS accounts above deliberately
+    # keep their meaning; clinic revenue and expenses are reported separately.
+    "BANK": "1002",
+    "CARD_CLEARING": "1003",
+    "DOCTOR_PAYABLE": "2101",
+    "MEDICAL_REVENUE": "4101",
+    "MEDICAL_RETURNS": "4111",
+    "DOCTOR_COMMISSION_EXPENSE": "6101",
+    "CLINIC_OPERATING_EXPENSE": "6201",
+    "PAYMENT_PROCESSING_FEES": "6301",
 }
 
 # ======================================================
 # دوال إنشاء الحسابات (إذا لم تكن موجودة)
 # ======================================================
 
-_INITIALIZED_ACCOUNT_BINDS: set[str] = set()
+_INITIALIZED_ACCOUNT_BINDS: set[tuple[str, int]] = set()
 
 
-def _accounts_bind_key() -> str:
+def _accounts_bind_key() -> tuple[str, int]:
+    slug = "__core__"
     try:
         from flask import g, has_request_context
 
         if has_request_context():
-            return getattr(g, "tenant", None) or "__core__"
+            slug = getattr(g, "tenant", None) or "__core__"
     except Exception:
         pass
-    return "__core__"
+    # Tests and tenant routing can replace the active engine while retaining
+    # the same slug.  Engine identity prevents a stale cache from suppressing
+    # account creation in the new physical database.
+    try:
+        engine_id = id(db.session.get_bind())
+    except Exception:
+        engine_id = 0
+    return str(slug), engine_id
 
 
-def get_or_create_account(code, name, account_type, description=None):
+def get_or_create_account(code, name, account_type, description=None, *, commit=True):
     """
     الحصول على حساب محاسبي أو إنشاؤه إذا لم يكن موجوداً
     
@@ -83,11 +101,14 @@ def get_or_create_account(code, name, account_type, description=None):
             is_active=True
         )
         db.session.add(account)
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
     
     return account
 
-def initialize_accounts():
+def initialize_accounts(*, commit=True):
     """
     تهيئة الحسابات المحاسبية الأساسية
     يتم استدعاؤها عند بداية النظام
@@ -101,19 +122,29 @@ def initialize_accounts():
         (ACCOUNT_CODES["CASH"], "النقدية / الصندوق", "asset", "حساب النقدية - جميع التحصيلات النقدية تُضاف وجميع المدفوعات تُخصم"),
         (ACCOUNT_CODES["INVENTORY"], "المخزون", "asset", "حساب المخزون - قيمة المنتجات الموجودة في المخزون"),
         (ACCOUNT_CODES["ACCOUNTS_RECEIVABLE"], "الذمم المدينة", "asset", "حساب الذمم المدينة - ديون الزبائن"),
+        (ACCOUNT_CODES["BANK"], "البنك", "asset", "حساب التحويلات والأرصدة البنكية"),
+        (ACCOUNT_CODES["CARD_CLEARING"], "تسوية مدفوعات البطاقة", "asset", "مبالغ البطاقة بانتظار الإيداع البنكي"),
         
         # الخصوم (Liabilities)
         (ACCOUNT_CODES["ACCOUNTS_PAYABLE"], "ديون الموردين", "liability", "حساب ديون الموردين"),
+        (ACCOUNT_CODES["DOCTOR_PAYABLE"], "مستحقات الأطباء", "liability", "حصص الأطباء المستحقة وغير المدفوعة"),
         
         # حقوق الملكية (Equity)
         (ACCOUNT_CODES["CAPITAL"], "رأس المال", "equity", "حساب رأس المال - حقوق المالك"),
         
         # الإيرادات (Revenue)
         (ACCOUNT_CODES["REVENUE_SALES"], "إيراد المبيعات", "revenue", "حساب إيراد المبيعات"),
+        (ACCOUNT_CODES["MEDICAL_REVENUE"], "إيرادات الخدمات الطبية", "revenue", "إيرادات فواتير وخدمات العيادة"),
+        # The engine has no contra-revenue type; an expense keeps the normal
+        # debit balance without changing the established balance algorithm.
+        (ACCOUNT_CODES["MEDICAL_RETURNS"], "مردودات وتخفيضات الخدمات الطبية", "expense", "حساب مقابل لإيرادات الخدمات الطبية"),
         
         # المصاريف (Expenses)
         (ACCOUNT_CODES["COGS"], "تكلفة البضاعة المباعة", "expense", "حساب تكلفة البضاعة المباعة (COGS)"),
         (ACCOUNT_CODES["EXPENSES"], "المصاريف التشغيلية", "expense", "حساب المصاريف التشغيلية"),
+        (ACCOUNT_CODES["DOCTOR_COMMISSION_EXPENSE"], "مصروف عمولات الأطباء", "expense", "استحقاقات الأطباء عن الخدمات الطبية"),
+        (ACCOUNT_CODES["CLINIC_OPERATING_EXPENSE"], "مصاريف تشغيل العيادة", "expense", "المصاريف التشغيلية الخاصة بالعيادة"),
+        (ACCOUNT_CODES["PAYMENT_PROCESSING_FEES"], "رسوم بوابات الدفع", "expense", "رسوم البطاقات وبوابات الدفع"),
     ]
 
     codes = [code for code, *_ in accounts]
@@ -126,16 +157,28 @@ def initialize_accounts():
         return
 
     for code, name, account_type, description in accounts:
-        get_or_create_account(code, name, account_type, description)
+        get_or_create_account(code, name, account_type, description, commit=False)
     
-    db.session.commit()
-    _INITIALIZED_ACCOUNT_BINDS.add(bind_key)
+    if commit:
+        db.session.commit()
+        _INITIALIZED_ACCOUNT_BINDS.add(bind_key)
+    else:
+        db.session.flush()
 
 # ======================================================
 # دوال إنشاء القيود المحاسبية
 # ======================================================
 
-def create_journal_entry(debit_account_code, credit_account_code, amount, description, reference_type=None, reference_id=None, created_by=None):
+def create_journal_entry(
+    debit_account_code,
+    credit_account_code,
+    amount,
+    description,
+    reference_type=None,
+    reference_id=None,
+    created_by=None,
+    entry_date=None,
+):
     """
     إنشاء قيد محاسبي (Double Entry)
     
@@ -184,7 +227,7 @@ def create_journal_entry(debit_account_code, credit_account_code, amount, descri
         debit_account_id=debit_account.id,
         credit_account_id=credit_account.id,
         amount=amount,
-        entry_date=datetime.utcnow(),
+        entry_date=entry_date or datetime.utcnow(),
         created_by=created_by
     )
     

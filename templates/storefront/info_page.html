@@ -1,0 +1,56 @@
+{% extends storefront_base|default("storefront/base.html") %}
+{% set titles = {'benefits':'مزايا التسوق','about':'عن المتجر','contact':'اتصل بنا','faq':'الأسئلة الشائعة','terms':'الشروط وسياسة الطلب'} %}
+{% set page_title = titles.get(page_key, 'معلومات المتجر') %}
+{% block title %}{{ page_title }} | {{ store_design.store_name }}{% endblock %}
+{% block content %}
+<section class="store-info-page">
+  <div class="store-info-hero"><div class="store-shell">
+    <nav class="store-info-crumb"><a href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">الرئيسية</a><span>/</span><strong>{{ page_title }}</strong></nav>
+    {% if page_key == 'benefits' %}<span>شراء أسهل</span><h1>مزايا التسوق النقدي</h1><p>سعر واضح، منتجات أصلية، طلب سريع، ودفع نقدي آمن عند الاستلام.</p>
+    {% elif page_key == 'about' %}<span>قصتنا</span><h1>متجر نقد موثوق ومنظم</h1><p>{{ store_design.store_name }} يجمع منتجات الأقساط والبيع النقدي في كتالوج واحد، حتى تحصل دائماً على المنتج والسعر الصحيح.</p>
+    {% elif page_key == 'contact' %}<span>نحن هنا لمساعدتك</span><h1>تواصل معنا بسهولة</h1><p>للاستفسار عن منتج أو طلب أو حساب، اختر وسيلة التواصل الأنسب لك.</p>
+    {% elif page_key == 'faq' %}<span>مساعدة سريعة</span><h1>الأسئلة الشائعة</h1><p>إجابات واضحة عن الطلب، الدفع، التوصيل، الحساب والمفضلة.</p>
+    {% else %}<span>وضوح وثقة</span><h1>الشروط وسياسة الطلب</h1><p>المعلومات الأساسية التي تحتاج معرفتها قبل تأكيد طلب الشراء النقدي.</p>{% endif %}
+  </div></div>
+
+  <div class="store-shell store-info-body">
+  {% if page_key == 'benefits' %}
+    <section class="store-info-panel"><div class="store-info-panel__intro"><span>لماذا تتسوق معنا؟</span><h2>رحلة شراء واضحة من الاختيار حتى الاستلام</h2><p>كل منتج مرتبط بكتالوج موحد، لذلك تظهر الصور والمواصفات والسعر النقدي بصورة متناسقة في المتجرين.</p></div>
+      <div class="store-info-stats"><article><b>نقداً</b><span>الدفع عند الاستلام</span></article><article><b>سريع</b><span>إرسال الطلب بخطوات قليلة</span></article><article><b>موحّد</b><span>نفس المنتجات والأسعار</span></article></div>
+    </section>
+    <section class="store-info-grid store-info-grid--four"><article><i>01</i><h3>أسعار واضحة</h3><p>السعر النقدي ظاهر قبل إضافة المنتج إلى السلة، من دون رسوم مخفية.</p></article><article><i>02</i><h3>مواصفات كاملة</h3><p>راجع وصف المنتج وصوره ومواصفاته قبل اتخاذ قرار الشراء.</p></article><article><i>03</i><h3>حساب موحد</h3><p>نفس الحساب يعرض طلبات النقد والأقساط ويربطها برقم هاتفك.</p></article><article><i>04</i><h3>تتبع الطلب</h3><p>استخدم رقم الطلب ورقم الهاتف لمعرفة آخر حالة مسجلة.</p></article></section>
+  {% elif page_key == 'about' %}
+    <section class="store-info-panel"><div class="store-info-panel__intro"><span>هوية المتجر</span><h2>نسهّل عليك الشراء بالطريقة التي تناسبك</h2><p>أنشأنا متجراً نقدياً مرتبطاً مباشرة بمتجر الأقساط. عند إضافة منتج أو تحديث سعره وصوره ومواصفاته، ينعكس ذلك في المتجر النقدي تلقائياً.</p></div><div class="store-info-stats"><article><b>أصلي</b><span>منتجات من الكتالوج المعتمد</span></article><article><b>واضح</b><span>السعر والتوفر قبل الطلب</span></article><article><b>محلي</b><span>خدمة مهيأة للسوق العراقي</span></article></div></section>
+    <section class="store-info-grid"><article><i>01</i><h3>كتالوج واحد</h3><p>بيانات المنتج تُدار مرة واحدة وتظهر بصورة متناسقة في النقد والأقساط.</p></article><article><i>02</i><h3>طلب نقدي مبسط</h3><p>أضف للسلة، أدخل عنوانك، ثم ادفع نقداً عند الاستلام.</p></article><article><i>03</i><h3>دعم ومتابعة</h3><p>صفحات الحساب والتتبع والتواصل تبقي كل معلوماتك في مكان واحد.</p></article></section>
+  {% elif page_key == 'contact' %}
+    <section class="store-contact-layout"><article class="store-contact-card"><header><span>قنوات التواصل</span><h2>بيانات الاتصال</h2><p>يفضّل ذكر رقم الطلب أو اسم المنتج لتسريع الرد.</p></header>
+      <ul class="store-contact-channels">
+        {% if store_design.whatsapp %}<li><i>◉</i><div><strong>واتساب</strong><a dir="ltr" href="https://wa.me/{{ store_design.whatsapp|replace('+','')|replace(' ','') }}" target="_blank" rel="noopener">{{ store_design.whatsapp }}</a></div></li>{% endif %}
+        <li><i>⌕</i><div><strong>تتبع الطلب</strong><a href="{{ url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug) }}">أدخل رقم الطلب ورقم الهاتف</a></div></li>
+        <li><i>◎</i><div><strong>حساب الزبون</strong><a href="{{ url_for('storefront.account_page', tenant_slug=shop_tenant_slug) }}">شاهد كل طلباتك المرتبطة بحسابك</a></div></li>
+      </ul><div class="store-contact-actions">{% if store_design.whatsapp %}<a class="is-primary" href="https://wa.me/{{ store_design.whatsapp|replace('+','')|replace(' ','') }}" target="_blank" rel="noopener">مراسلة واتساب</a>{% endif %}<a href="{{ url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug) }}">تتبع طلبي</a></div>
+    </article><aside class="store-contact-aside"><div><span>خدمة العملاء</span><h3>سنساعدك في أسرع وقت</h3><p>أرسل اسم المنتج أو رقم الطلب مع شرح مختصر لما تحتاجه.</p></div><ul><li><strong>استفسارات المنتجات</strong><small>المواصفات والسعر والتوفر</small></li><li><strong>حالة الطلب</strong><small>التجهيز والتوصيل والدفع</small></li><li><strong>الحساب والسلة</strong><small>الدخول، المفضلة، وإكمال الطلب</small></li></ul><a href="{{ url_for('storefront.faq_page', tenant_slug=shop_tenant_slug) }}">راجع الأسئلة الشائعة</a></aside></section>
+  {% elif page_key == 'faq' %}
+    <section class="store-faq-list">
+      <details open><summary>هل المنتجات والأسعار نفسها في متجر الأقساط؟</summary><p>نعم. المتجر النقدي مرتبط بنفس كتالوج منتجات الأقساط. السعر المعروض هنا هو السعر النقدي المسجل للمنتج، وأي تحديث ينعكس تلقائياً.</p></details>
+      <details><summary>كيف أطلب منتجاً نقداً؟</summary><p>اختر المنتج، أضفه إلى السلة، راجع الكمية، ثم أدخل بيانات التوصيل وأكد الطلب. يكون الدفع نقداً عند الاستلام.</p></details>
+      <details><summary>هل حسابي في متجر الأقساط يعمل هنا؟</summary><p>نعم. الحساب موحّد بين المتجرين، ويمكنك استخدام نفس رقم الهاتف وكلمة المرور.</p></details>
+      <details><summary>كيف أحفظ منتجاً في المفضلة؟</summary><p>اضغط علامة القلب الموجودة على بطاقة المنتج، وستجده لاحقاً في صفحة المفضلة.</p></details>
+      <details><summary>كيف أتابع حالة طلبي؟</summary><p>افتح صفحة تتبع الطلب وأدخل رقم الطلب ورقم الهاتف، أو سجّل الدخول إلى حسابك لرؤية طلباتك.</p></details>
+      <details><summary>ماذا لو نفد مخزون المنتج؟</summary><p>إذا كان المنتج منشوراً في المتجر فيمكنك إضافته للسلة واختيار الكمية المطلوبة، وسنتواصل معك لتأكيد موعد التجهيز.</p></details>
+      <details><summary>هل أستطيع تعديل الكمية أو حذف منتج؟</summary><p>نعم، من صفحة السلة يمكنك زيادة الكمية أو تقليلها أو حذف المنتج قبل إكمال الطلب.</p></details>
+    </section>
+  {% else %}
+    <section class="store-terms-panel">
+      <article><h2>1. السعر والتوفر</h2><p>السعر الظاهر هو السعر النقدي الحالي بالدينار العراقي. يعتمد قبول الطلب على توفر الكمية عند المراجعة النهائية.</p></article>
+      <article><h2>2. تأكيد الطلب</h2><p>إرسال الطلب لا يعني اكتمال البيع فوراً؛ تتم مراجعة بيانات العميل والمخزون ثم تجهيز الطلب للتوصيل.</p></article>
+      <article><h2>3. الدفع</h2><p>الدفع نقداً عند الاستلام ما لم يتم الاتفاق بوضوح على وسيلة أخرى عبر قنوات المتجر الرسمية.</p></article>
+      <article><h2>4. التوصيل</h2><p>يجب إدخال رقم هاتف وعنوان صحيحين. مدة التوصيل تعتمد على المحافظة وتوفر المنتج وخطة التوزيع.</p></article>
+      <article><h2>5. الفحص والاستبدال</h2><p>افحص المنتج عند الاستلام قدر الإمكان. تخضع حالات العيب أو الاستبدال لشروط ضمان المنتج وتعليمات المتجر.</p></article>
+      <article><h2>6. الخصوصية</h2><p>تُستخدم بيانات الاسم والهاتف والعنوان لإدارة الطلب والتوصيل وربط المشتريات بحساب الزبون.</p></article>
+    </section>
+  {% endif %}
+    <section class="store-info-cta"><div><span>خطوتك التالية</span><h2>{{ 'هل تحتاج مساعدة إضافية؟' if page_key in ['faq','terms','contact'] else 'ابدأ التسوق الآن' }}</h2><p>استعرض المنتجات أو تواصل معنا إذا كان لديك استفسار.</p></div><div class="store-info-cta__actions"><a class="is-primary" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">تسوّق الآن</a><a href="{{ url_for('storefront.contact_page', tenant_slug=shop_tenant_slug) }}">اتصل بنا</a></div></section>
+  </div>
+</section>
+{% endblock %}

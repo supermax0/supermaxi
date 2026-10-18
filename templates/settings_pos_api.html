@@ -1,0 +1,124 @@
+{% extends "settings_base.html" %}
+
+{% block title %}مفتاح API للمساعد{% endblock %}
+
+{% block settings_content %}
+<div class="settings-page-header">
+  <h1><i class="fas fa-key"></i> مفتاح API للمساعد</h1>
+  <p>مفتاح دائم تضعه في المساعد الصوتي (Core) للتحكم بنقطة البيع والطلبات. لا ينتهي مثل توكن تسجيل الدخول.</p>
+</div>
+
+<div class="settings-section-card">
+  <div class="settings-section-header">
+    <h2><i class="fas fa-plug"></i> بيانات الربط</h2>
+    <p>انسخ هذه القيم إلى إعدادات المساعد.</p>
+  </div>
+  <div class="settings-status-grid">
+    <div class="settings-status-item">
+      <label>API Base</label>
+      <span id="posApiBase">{{ pos_api_base }}</span>
+    </div>
+    <div class="settings-status-item">
+      <label>X-Tenant-Slug</label>
+      <span id="posApiTenant">{{ tenant_slug or "—" }}</span>
+    </div>
+  </div>
+  <pre class="settings-field-help" id="posApiSnippet" style="margin-top:14px;white-space:pre-wrap;direction:ltr;text-align:left;background:rgba(0,0,0,.04);padding:12px;border-radius:10px;">Authorization: Bearer &lt;API_KEY&gt;
+X-Tenant-Slug: {{ tenant_slug }}</pre>
+</div>
+
+<div class="settings-section-card" style="margin-top:16px;">
+  <div class="settings-section-header">
+    <h2><i class="fas fa-plus-circle"></i> إنشاء مفتاح</h2>
+    <p>يظهر المفتاح كاملاً مرة واحدة فقط. احفظه في المساعد فوراً.</p>
+  </div>
+  <div class="settings-grid">
+    <div class="settings-field">
+      <label class="settings-field-label" for="posApiKeyName">اسم المفتاح</label>
+      <input id="posApiKeyName" class="settings-input" value="Core Assistant">
+    </div>
+  </div>
+  <button type="button" class="settings-btn settings-btn-primary" id="posApiCreateBtn">
+    <i class="fas fa-key"></i> توليد مفتاح جديد
+  </button>
+  <div id="posApiNewKeyBox" hidden style="margin-top:14px;">
+    <label class="settings-field-label">المفتاح (انسخه الآن)</label>
+    <textarea id="posApiNewKey" class="settings-input" rows="3" readonly style="direction:ltr;text-align:left;font-family:monospace;"></textarea>
+    <button type="button" class="settings-btn settings-btn-secondary" id="posApiCopyBtn" style="margin-top:8px;">
+      <i class="fas fa-copy"></i> نسخ المفتاح
+    </button>
+  </div>
+  <p id="posApiNotice" class="settings-field-help" style="margin-top:10px;"></p>
+</div>
+
+<div class="settings-section-card" style="margin-top:16px;">
+  <div class="settings-section-header">
+    <h2><i class="fas fa-list"></i> المفاتيح الحالية</h2>
+  </div>
+  <div id="posApiKeyList">
+    {% if pos_api_keys %}
+      {% for key in pos_api_keys %}
+      <div class="settings-status-item" data-key-id="{{ key.id }}" style="margin-bottom:10px;">
+        <label>{{ key.name or "مفتاح" }} — {{ key.token_prefix }}</label>
+        <span>
+          <button type="button" class="settings-btn settings-btn-secondary pos-api-revoke" data-id="{{ key.id }}">إلغاء</button>
+        </span>
+      </div>
+      {% endfor %}
+    {% else %}
+      <p class="settings-field-help">لا يوجد مفتاح بعد. ولّد واحداً من الزر أعلاه.</p>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block settings_extra_script %}
+<script>
+(() => {
+  const notice = document.getElementById("posApiNotice");
+  const box = document.getElementById("posApiNewKeyBox");
+  const field = document.getElementById("posApiNewKey");
+  function say(text) { if (notice) notice.textContent = text || ""; }
+  document.getElementById("posApiCreateBtn")?.addEventListener("click", async () => {
+    say("جاري التوليد...");
+    const res = await fetch("/settings/pos-api/keys", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: document.getElementById("posApiKeyName")?.value || "Core Assistant" }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      say(data.error || "تعذر إنشاء المفتاح");
+      return;
+    }
+    box.hidden = false;
+    field.value = data.api_key;
+    field.focus();
+    field.select();
+    say("انسخ المفتاح الآن وضعه في المساعد. لن يظهر كاملاً بعد مغادرة الصفحة.");
+  });
+  document.getElementById("posApiCopyBtn")?.addEventListener("click", async () => {
+    try {
+      await navigator.clipboard.writeText(field.value);
+      say("تم نسخ المفتاح.");
+    } catch (err) {
+      field.select();
+      say("انسخ المفتاح يدوياً.");
+    }
+  });
+  document.getElementById("posApiKeyList")?.addEventListener("click", async (event) => {
+    const btn = event.target.closest(".pos-api-revoke");
+    if (!btn) return;
+    if (!confirm("إلغاء هذا المفتاح؟ المساعد سيتوقف عن العمل حتى تولّد مفتاحاً جديداً.")) return;
+    const res = await fetch(`/settings/pos-api/keys/${btn.dataset.id}`, { method: "DELETE" });
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      say(data.error || "تعذر الإلغاء");
+      return;
+    }
+    btn.closest("[data-key-id]")?.remove();
+    say("تم إلغاء المفتاح.");
+  });
+})();
+</script>
+{% endblock %}

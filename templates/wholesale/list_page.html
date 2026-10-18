@@ -1,0 +1,189 @@
+{% extends "wholesale/base.html" %}
+{% block title %}{{ page_title }} — جملة{% endblock %}
+{% block page_title %}{{ page_title }}{% endblock %}
+
+{% block ws_content %}
+{% set icons = {
+  'sales': 'fa-file-invoice-dollar',
+  'purchases': 'fa-cart-plus',
+  'customers': 'fa-users',
+  'suppliers': 'fa-industry',
+  'products': 'fa-box',
+  'accounts': 'fa-vault',
+  'expenses': 'fa-receipt'
+} %}
+{% set descs = {
+  'sales': 'فواتير بيع الجملة — نقدي وآجل ومسودات',
+  'purchases': 'فواتير الشراء من الموردين مع المتبقي',
+  'customers': 'عملاء الجملة وأرصدتهم الجارية',
+  'suppliers': 'موردو الجملة وأرصدة الذمم',
+  'products': 'أصناف الجملة مع الأسعار والكميات المتاحة',
+  'accounts': 'الصناديق والحسابات النقدية المستخدمة في العمليات',
+  'expenses': 'مصروفات نشاط الجملة'
+} %}
+{% set ctas = {
+  'sales': {'href': '/wholesale/ops?op=sale', 'label': 'فاتورة بيع جديدة', 'icon': 'fa-plus'},
+  'purchases': {'href': '/wholesale/ops?op=purchase', 'label': 'فاتورة شراء', 'icon': 'fa-plus'},
+  'customers': {'href': '/wholesale/ops?op=sale', 'label': 'بيع لعميل', 'icon': 'fa-file-invoice-dollar'},
+  'suppliers': {'href': '/wholesale/ops?op=purchase', 'label': 'شراء من مورد', 'icon': 'fa-cart-plus'},
+  'products': {'href': '/wholesale/ops', 'label': 'مركز العمليات', 'icon': 'fa-layer-group'},
+  'accounts': {'href': '/wholesale/ops?op=receipt', 'label': 'قبض', 'icon': 'fa-hand-holding-usd'},
+  'expenses': {'href': '/wholesale/ops', 'label': 'مركز العمليات', 'icon': 'fa-layer-group'}
+} %}
+{% set cta = ctas.get(page_key) %}
+
+<div class="ws-ops">
+  <header class="ws-page-head">
+    <div class="ws-page-head__identity">
+      <span class="ws-page-head__icon"><i class="fa {{ icons.get(page_key, 'fa-list') }}"></i></span>
+      <div>
+        <span class="ws-page-kicker">تجارة الجملة</span>
+        <h1>{{ page_title }}</h1>
+        <p>{{ descs.get(page_key, 'عرض بيانات تجارة الجملة') }}</p>
+      </div>
+    </div>
+    <div class="ws-page-head__actions">
+      {% if cta %}
+      <a class="ws-btn primary" href="{{ cta.href }}"><i class="fa {{ cta.icon }}"></i> {{ cta.label }}</a>
+      {% endif %}
+      <a class="ws-btn" href="/wholesale/ops"><i class="fa fa-layer-group"></i> العمليات</a>
+    </div>
+  </header>
+
+  <div class="ws-toolbar">
+    <div class="ws-search">
+      <i class="fa fa-search"></i>
+      <input type="search" id="wsListFilter" placeholder="بحث سريع في الجدول..." autocomplete="off">
+    </div>
+    <span class="ws-list-count" id="wsListCount">—</span>
+  </div>
+
+  <div class="ws-panel" style="padding:0;overflow:hidden">
+    <div class="ws-table-wrap" style="margin:0;border:0;border-radius:0">
+      <table class="ws-table" id="wsListTable">
+        <thead><tr id="wsListHead"></tr></thead>
+        <tbody id="wsListBody"><tr><td colspan="8"><div class="ws-empty"><i class="fa fa-spinner fa-spin"></i><b>جاري التحميل...</b></div></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(async function(){
+  const key = {{ page_key|tojson }};
+  const money = n => Number(n||0).toLocaleString('en-US');
+  const body = document.getElementById('wsListBody');
+  const head = document.getElementById('wsListHead');
+  const countEl = document.getElementById('wsListCount');
+  const filterEl = document.getElementById('wsListFilter');
+  const empty = (msg) => `<tr><td colspan="8"><div class="ws-empty"><i class="fa fa-inbox"></i><b>${msg}</b><span>لا توجد سجلات حالياً</span></div></td></tr>`;
+  const badge = (text, cls) => `<span class="ws-badge ${cls||''}">${text}</span>`;
+
+  function bindFilter() {
+    if (!filterEl) return;
+    filterEl.addEventListener('input', () => {
+      const q = filterEl.value.trim().toLowerCase();
+      let shown = 0;
+      body.querySelectorAll('tr').forEach(tr => {
+        if (tr.querySelector('.ws-empty')) return;
+        const hit = !q || tr.textContent.toLowerCase().includes(q);
+        tr.style.display = hit ? '' : 'none';
+        if (hit) shown++;
+      });
+      const rows = [...body.querySelectorAll('tr')].filter(tr => !tr.querySelector('.ws-empty'));
+      countEl.textContent = q ? `${shown} من ${rows.length}` : `${rows.length} سجل`;
+    });
+  }
+
+  function setCount(n) {
+    countEl.textContent = `${n} سجل`;
+  }
+
+  try {
+    if (key === 'sales') {
+      head.innerHTML = '<th>الرقم</th><th>العميل</th><th>الإجمالي</th><th>المدفوع</th><th>الحالة</th>';
+      const rows = await (await fetch('/api/wholesale/sales')).json();
+      const data = rows.data || [];
+      body.innerHTML = data.map(r => `<tr>
+        <td><b>${r.invoice_no||r.id}</b></td>
+        <td>${r.customer_name||'—'}</td>
+        <td>${money(r.total)}</td>
+        <td>${money(r.paid_amount)}</td>
+        <td>${r.is_draft ? badge('مسودة','warn') : badge(r.status||'معتمدة','ok')}</td>
+      </tr>`).join('') || empty('لا توجد مبيعات');
+      setCount(data.length);
+    } else if (key === 'purchases') {
+      head.innerHTML = '<th>الرقم</th><th>المورد</th><th>الإجمالي</th><th>المتبقي</th><th>الحالة</th>';
+      const rows = await (await fetch('/api/wholesale/purchases')).json();
+      const data = rows.data || [];
+      body.innerHTML = data.map(r => `<tr>
+        <td><b>${r.invoice_no||r.id}</b></td>
+        <td>${r.supplier_name||r.supplier_id||'—'}</td>
+        <td>${money(r.grand_total)}</td>
+        <td>${money(r.remaining_total)}</td>
+        <td>${badge(r.status||'—')}</td>
+      </tr>`).join('') || empty('لا توجد مشتريات');
+      setCount(data.length);
+    } else if (key === 'customers') {
+      head.innerHTML = '<th>الاسم</th><th>الهاتف</th><th>الرصيد</th><th></th>';
+      const rows = await (await fetch('/api/wholesale/customers/search?q=')).json();
+      const data = rows.data || [];
+      body.innerHTML = data.map(r => `<tr>
+        <td><b>${r.name}</b></td>
+        <td>${r.phone||'—'}</td>
+        <td>${money(r.balance)}</td>
+        <td><a class="ws-btn ghost" style="padding:6px 10px;font-size:12px" href="/wholesale/statement">كشف حساب</a></td>
+      </tr>`).join('') || empty('لا يوجد عملاء');
+      setCount(data.length);
+    } else if (key === 'suppliers') {
+      head.innerHTML = '<th>الاسم</th><th>الرصيد</th><th></th>';
+      const rows = await (await fetch('/api/wholesale/suppliers/search?q=')).json();
+      const data = rows.data || [];
+      body.innerHTML = data.map(r => `<tr>
+        <td><b>${r.name}</b></td>
+        <td>${money(r.balance)}</td>
+        <td><a class="ws-btn ghost" style="padding:6px 10px;font-size:12px" href="/wholesale/statement">كشف حساب</a></td>
+      </tr>`).join('') || empty('لا يوجد موردون');
+      setCount(data.length);
+    } else if (key === 'products') {
+      head.innerHTML = '<th>المنتج</th><th>الباركود</th><th>سعر البيع</th><th>المتاح</th>';
+      const rows = await (await fetch('/api/wholesale/products/search?q=')).json();
+      const data = rows.data || [];
+      body.innerHTML = data.map(r => `<tr>
+        <td><b>${r.name}</b></td>
+        <td>${r.barcode||'—'}</td>
+        <td>${money(r.sale_price)}</td>
+        <td>${r.available_qty ?? '—'}</td>
+      </tr>`).join('') || empty('لا توجد منتجات');
+      setCount(data.length);
+    } else if (key === 'accounts') {
+      head.innerHTML = '<th>الحساب / الصندوق</th>';
+      const ctx = await (await fetch('/api/wholesale/context')).json();
+      const data = ctx.data?.treasury_accounts || [];
+      body.innerHTML = data.map(t => `<tr><td><b>${t.name}</b></td></tr>`).join('') || empty('لا توجد حسابات');
+      setCount(data.length);
+    } else if (key === 'expenses') {
+      head.innerHTML = '<th>المصروفات</th>';
+      body.innerHTML = `<tr><td>
+        <div class="ws-empty">
+          <i class="fa fa-receipt"></i>
+          <b>سجّل المصروف من شريط الأدوات</b>
+          <span>اضغط زر + مصروف في الهيدر، أو استخدم مركز العمليات للحركات اليومية</span>
+          <div style="margin-top:14px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+            <button type="button" class="ws-btn primary" onclick="FinoraTopbar&&FinoraTopbar.run('expense')"><i class="fa fa-plus"></i> إضافة مصروف</button>
+            <a class="ws-btn" href="/wholesale/ops"><i class="fa fa-layer-group"></i> مركز العمليات</a>
+          </div>
+        </div>
+      </td></tr>`;
+      setCount(0);
+    }
+  } catch (e) {
+    body.innerHTML = empty(e.message || 'خطأ في التحميل');
+    setCount(0);
+  }
+  bindFilter();
+})();
+</script>
+{% endblock %}

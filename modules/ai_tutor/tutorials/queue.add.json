@@ -1,0 +1,133 @@
+{
+  "id": "queue.add",
+  "version": 1,
+  "status": "verified",
+  "level": 2,
+  "title_ar": "إضافة مريض لقائمة الانتظار",
+  "description_ar": "نقل مريض وصل إلى قائمة الانتظار لينتظر دوره عند الطبيب.",
+  "chip_ar": "الاستقبال",
+  "requires_permissions": [
+    "clinics_appointments",
+    "clinics_reception"
+  ],
+  "dependencies": [
+    {
+      "fact": {
+        "name": "appointments_arrived_today",
+        "op": "gt",
+        "value": 0
+      },
+      "tutorial": "appointment.checkin",
+      "message_ar": "لإضافة مريض للانتظار يجب أن يكون قد وصل أولاً (تسجيل وصول). نسجّل وصول مريض ثم نرجع.",
+      "action_label_ar": "تسجيل وصول الآن"
+    }
+  ],
+  "next_lessons": ["visit.start"],
+  "curriculum": {"group": "operations", "order": 4},
+  "result": "queue.add.done",
+  "completion_validator": "appointment.queued_since_start",
+  "steps": [
+    {
+      "id": "open-appointments-menu",
+      "type": "wait_click",
+      "target": {
+        "action": "nav.appointments"
+      },
+      "reveal": [
+        {
+          "action": "nav.menu.open"
+        },
+        {
+          "section": "nav.group.daily"
+        }
+      ],
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "page": "appointments"
+        }
+      },
+      "nav_message_ar": "جاري فتح المواعيد",
+      "message_ar": "نبدأ من المواعيد. اضغط «المواعيد»."
+    },
+    {
+      "id": "on-appointments-page",
+      "type": "navigate",
+      "route": "/clinics/appointments",
+      "page": "appointments",
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "page": "appointments"
+        }
+      },
+      "message_ar": "نفتح الآن صفحة المواعيد."
+    },
+    {
+      "id": "open-appointment",
+      "type": "wait_click",
+      "page": "appointments",
+      "target": {
+        "action": "appointment.open.arrived"
+      },
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "action": "queue.add"
+          }
+        }
+      },
+      "message_ar": "اضغط على موعد المريض الذي وصل (حالته «وصل») لتفتح تفاصيله."
+    },
+    {
+      "id": "drawer-open",
+      "type": "wait_modal",
+      "page": "appointments",
+      "target": {
+        "section": "appointment.drawer"
+      },
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "action": "queue.add"
+          }
+        }
+      },
+      "message_ar": "ننتظر ظهور تفاصيل الموعد."
+    },
+    {
+      "id": "act",
+      "type": "wait_api_success",
+      "page": "appointments",
+      "allow_back": false,
+      "target": {
+        "action": "queue.add"
+      },
+      "match": {
+        "method": "POST",
+        "url": "^/clinics/api/appointments/\\d+/status$"
+      },
+      "reconcile": {
+        "kind": "backend",
+        "validator": "appointment.queued_since_start"
+      },
+      "success_ar": "تمت الإضافة لقائمة الانتظار.",
+      "message_ar": "اضغط «إضافة للانتظار». هذا ينقل المريض الذي وصل إلى قائمة الانتظار لينتظر دوره."
+    },
+    {
+      "id": "verify",
+      "type": "wait_state",
+      "allow_back": false,
+      "validator": "appointment.queued_since_start",
+      "message_ar": "نتأكد الآن من وجود المريض في قائمة الانتظار…"
+    },
+    {
+      "id": "done",
+      "type": "complete",
+      "allow_back": false,
+      "message_ar": "المريض الآن في قائمة الانتظار وتأكدنا من ذلك داخل النظام."
+    }
+  ]
+}

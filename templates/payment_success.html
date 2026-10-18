@@ -1,45 +1,43 @@
-{% extends "base.html" %}
-{% from "payment_flow/_macros.html" import pf_topbar, pf_steps %}
+{% extends "public_flow/base.html" %}
+{% from "payment_flow/_macros.html" import pf_topbar, pf_steps with context %}
 {% block title %}تم استلام الطلب — Finora{% endblock %}
-{% block page_title %}{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/payment-flow.css') }}">
-<div class="pf-page">
+<div class="pf-page pf-page--status">
   {{ pf_topbar('/', 'العودة للرئيسية') }}
   {{ pf_steps(3) }}
 
   <div class="pf-wrap-narrow">
     <div class="pf-card pf-status">
       <div class="pf-status-icon success"><i class="fas fa-check"></i></div>
-      <h2>تم استلام طلبك بنجاح!</h2>
-      <p>
-        شكراً لاختيارك Finora. لقد تم استلام طلب الاشتراك وصورة الإيصال بنجاح.
-        سيقوم فريق الإدارة بمراجعة الطلب وتفعيل النظام الخاص بك في أقرب وقت.
-      </p>
+      <span class="pf-eyebrow"><i class="fas fa-receipt"></i> تم حفظ الوصل</span>
+      <h1>وصلنا طلب التفعيل بنجاح</h1>
+      <p>لا تحتاج إلى إعادة التحويل. سنطابق الوصل مع العملية ثم نفعّل اشتراكك ونبلغك عند اكتمال المراجعة.</p>
+
+      <div class="pf-status-timeline" aria-label="حالة طلب التفعيل">
+        <div class="pf-status-stage done"><i class="fas fa-check-circle"></i> استلام الطلب</div>
+        <div class="pf-status-stage active"><i class="fas fa-magnifying-glass"></i> مراجعة التحويل</div>
+        <div class="pf-status-stage"><i class="fas fa-bolt"></i> تفعيل الاشتراك</div>
+      </div>
 
       <div class="pf-info-card">
         <div class="pf-info-row">
-          <span class="pf-info-label">تاريخ الطلب:</span>
+          <span class="pf-info-label">تاريخ الطلب</span>
           <strong id="pf-request-date">—</strong>
         </div>
         <div class="pf-info-row">
-          <span class="pf-info-label">حالة الطلب:</span>
+          <span class="pf-info-label">الحالة الحالية</span>
           <strong style="color:var(--pf-warning)">قيد المراجعة</strong>
         </div>
       </div>
 
-      <a href="/" class="pf-btn pf-btn-primary">
-        <i class="fas fa-home"></i> العودة للموقع
-      </a>
-      <p class="pf-footer-links" style="margin-top:16px">
-        <a href="/login">تسجيل الدخول بعد التفعيل</a>
-      </p>
+      <a href="/" class="pf-btn pf-btn-primary pf-btn-block"><i class="fas fa-home"></i> العودة إلى النظام</a>
+      <p class="pf-footer-links">تحتاج مساعدة؟ <a href="/landing#contact">تواصل معنا</a></p>
     </div>
   </div>
 </div>
 <script>
-  var d = document.getElementById('pf-request-date');
-  if (d) d.textContent = new Date().toLocaleDateString('ar-IQ');
+  var requestDate = document.getElementById('pf-request-date');
+  if (requestDate) requestDate.textContent = new Date().toLocaleDateString('ar-IQ');
 </script>
 {% endblock %}

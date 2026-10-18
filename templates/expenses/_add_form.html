@@ -1,0 +1,53 @@
+<form method="post" class="exp-form expense-add-form">
+  <input name="title" class="exp-f-full" placeholder="{{ _('expenses_field_title_placeholder') }}" required>
+  <select name="category" class="expense-category-select exp-f-full" required>
+    <option value="">{{ _('expenses_field_category_placeholder') }}</option>
+    {% for cat in expense_categories %}
+    <option value="{{ cat.key }}">{{ cat.icon }} {{ cat.label }}</option>
+    {% endfor %}
+  </select>
+  <select name="treasury_account_id" class="exp-f-full" required>
+    {% for acc in treasury_choices|default([]) %}
+    <option value="{{ acc.id }}">{{ _('pay_from_account') }}: {{ acc.branch_name }} — {{ acc.name }}</option>
+    {% endfor %}
+  </select>
+  <div class="exp-f-row">
+    <input name="amount" type="number" step="0.01" min="0" placeholder="{{ _('expenses_field_amount_placeholder') }}" required>
+    <input name="expense_date" type="date" value="{{ default_date }}" required>
+  </div>
+  <label class="exp-time-field">
+    <span>ساعة الصرف <small>(اختياري)</small></span>
+    <input name="expense_time" type="time" value="" placeholder="22:00">
+    <small class="exp-time-hint">مثال: 22:00 لخصم 100,000 كل يوم الساعة 10 مساءً — اتركها فارغة للصرف من بداية اليوم</small>
+  </label>
+  <div class="exp-repeat-box">
+    <label class="exp-repeat-toggle">
+      <input type="checkbox" name="repeat_enabled" value="1">
+      <span class="exp-repeat-label">
+        <strong>تكرار المصروف</strong>
+        <small>المستحق فقط يُخصم عند حلول التاريخ والساعة</small>
+      </span>
+    </label>
+    <div class="exp-repeat-fields">
+      <label class="exp-repeat-field">
+        <span>كل</span>
+        <input name="repeat_interval" type="number" min="1" max="365" value="1" placeholder="الفاصل">
+      </label>
+      <label class="exp-repeat-field">
+        <span>الوحدة</span>
+        <select name="repeat_unit">
+          <option value="days">يومي</option>
+          <option value="weeks">أسبوعي</option>
+          <option value="months" selected>شهري</option>
+          <option value="years">سنوي</option>
+        </select>
+      </label>
+      <label class="exp-repeat-field exp-f-full">
+        <span>عدد مرات التكرار</span>
+        <input name="repeat_count" type="number" min="1" max="366" value="12" placeholder="عدد التكرار">
+      </label>
+    </div>
+  </div>
+  <textarea name="note" rows="2" placeholder="{{ _('expenses_field_note_placeholder') }}"></textarea>
+  <button type="submit" class="exp-btn-primary">💾 {{ _('expenses_save_button') }}</button>
+</form>

@@ -1,0 +1,56 @@
+{% macro status_badge(code, label) -%}
+<span class="lc-status" data-status="{{ code }}">{{ label }}</span>
+{%- endmacro %}
+
+{% macro priority_badge(code, label) -%}
+<span class="lc-priority" data-priority="{{ code }}">{{ label }}</span>
+{%- endmacro %}
+
+{% macro kpi_card(label, value, icon='fa-chart-line', variant='') -%}
+<div class="lc-kpi-card {{ variant }}">
+    <div class="lc-kpi-icon"><i class="fas {{ icon }}"></i></div>
+    <div class="lc-kpi-body">
+        <span class="lc-kpi-label">{{ label }}</span>
+        <strong class="lc-kpi-value">{{ value }}</strong>
+    </div>
+</div>
+{%- endmacro %}
+
+{% macro section_card(title, subtitle='', icon='') -%}
+<section class="lc-card">
+    <header class="lc-card-header">
+        <div>
+            {% if icon %}<i class="fas {{ icon }} lc-card-icon"></i>{% endif %}
+            <h2>{{ title }}</h2>
+            {% if subtitle %}<p>{{ subtitle }}</p>{% endif %}
+        </div>
+        {{ caller() if caller is defined else '' }}
+    </header>
+    <div class="lc-card-body">
+{%- endmacro %}
+
+{% macro end_section_card() -%}
+    </div>
+</section>
+{%- endmacro %}
+
+{% macro empty_state(message, icon='fa-inbox', action_url='', action_label='') -%}
+<div class="lc-empty-state">
+    <div class="lc-empty-icon"><i class="fas {{ icon }}"></i></div>
+    <p>{{ message }}</p>
+    {% if action_url and action_label %}
+    <a href="{{ action_url }}" class="sa-btn sa-btn-primary">{{ action_label }}</a>
+    {% endif %}
+</div>
+{%- endmacro %}
+
+{% macro table_link(url, label, sub='') -%}
+<a href="{{ url }}" class="lc-cell-link">
+    <strong>{{ label }}</strong>
+    {% if sub %}<small>{{ sub }}</small>{% endif %}
+</a>
+{%- endmacro %}
+
+{% macro import_status_badge(status) -%}
+<span class="lc-import-status" data-import-status="{{ status }}">{{ import_status_labels.get(status, status) if import_status_labels is defined else status }}</span>
+{%- endmacro %}

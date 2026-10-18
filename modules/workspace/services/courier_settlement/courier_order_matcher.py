@@ -8,6 +8,9 @@ from typing import Any, Dict, List, Optional, Tuple
 from modules.workspace.services.courier_settlement.invoice_snapshot_adapter import (
     InvoiceSnapshotAdapter,
 )
+from modules.workspace.services.courier_settlement.courier_price_adjustment_policy import (
+    CourierPriceAdjustmentPolicy,
+)
 from modules.workspace.services.document_intelligence.document_normalization_service import (
     DocumentNormalizationService,
 )
@@ -17,7 +20,7 @@ AMOUNT_TOLERANCE_PCT = 0.01
 DATE_TOLERANCE_DAYS = 7
 
 MATCHED_THRESHOLD = 75
-REVIEW_THRESHOLD = 50
+REVIEW_THRESHOLD = 45
 
 
 class CourierOrderMatcher:
@@ -85,6 +88,14 @@ class CourierOrderMatcher:
         if status == "review":
             warnings.append("مطابقة بثقة متوسطة — تحتاج مراجعة")
 
+        snapshot = self._adapter.from_invoice(best_inv) if best_inv else None
+        if snapshot:
+            snapshot["price_adjustment_plan"] = CourierPriceAdjustmentPolicy.build_plan(
+                snapshot,
+                row_amount,
+                norm_order,
+            )
+
         return {
             "matched_invoice_id": best_inv.id if status in ("matched", "review") else None,
             "score": round(best_score, 1),
@@ -92,7 +103,7 @@ class CourierOrderMatcher:
             "reasons": best_reasons,
             "warnings": warnings,
             "top_candidates": top_candidates,
-            "invoice_snapshot": self._adapter.from_invoice(best_inv) if best_inv else None,
+            "invoice_snapshot": snapshot,
         }
 
     def _score_invoice(
@@ -109,22 +120,46 @@ class CourierOrderMatcher:
         reasons: List[str] = []
         adapter = self._adapter
 
-        inv_order = adapter.get_order_number(invoice)
-        inv_order_norm = DocumentNormalizationService.normalize_order_number(str(inv_order)).get("normalized", "")
+        invoice_order_numbers = {
+            DocumentNormalizationService.normalize_order_number(str(value)).get(
+                "normalized", ""
+            )
+            for value in adapter.get_order_numbers(invoice)
+            if value not in (None, "")
+        }
+        invoice_order_numbers.discard("")
 
         if norm_order:
-            if norm_order == inv_order_norm or norm_order == str(invoice.id):
+            if norm_order in invoice_order_numbers:
                 score += 55
                 reasons.append("order_number_exact")
-            elif norm_order == str(invoice.id):
-                score += 45
-                reasons.append("invoice_id_numeric_match")
+            elif any(
+                CourierOrderMatcher._single_extra_digit_match(
+                    norm_order, expected
+                )
+                for expected in invoice_order_numbers
+            ):
+                # Courier barcodes in photographed statements can acquire one
+                # spurious digit from a barcode guard/line. Supporting evidence
+                # (phone, amount, name or date) is still required to reach the
+                # automatic-match threshold.
+                score += 50
+                reasons.append("order_number_single_extra_digit")
 
-        inv_phone = adapter.get_customer_phone(invoice) or ""
-        if row_phone and inv_phone:
-            if CourierOrderMatcher._phone_tail_match(row_phone, inv_phone):
+        inv_phones = adapter.get_customer_phones(invoice)
+        if row_phone and inv_phones:
+            if any(
+                CourierOrderMatcher._phone_tail_match(row_phone, inv_phone)
+                for inv_phone in inv_phones
+            ):
                 score += 20
                 reasons.append("phone_last8_match")
+            else:
+                # A visually plausible barcode must not outweigh a clearly
+                # different customer phone. This is common when OCR shifts one
+                # row's barcode onto the next row.
+                score -= 25
+                reasons.append("phone_mismatch_hint")
 
         inv_name = DocumentNormalizationService.normalize_text(adapter.get_customer_name(invoice))
         if row_name and inv_name:
@@ -139,10 +174,40 @@ class CourierOrderMatcher:
 
         inv_total = adapter.get_total_amount(invoice)
         if row_amount is not None and inv_total:
-            if CourierOrderMatcher._amount_close(row_amount, inv_total):
+            paid_amount = adapter.get_paid_amount(invoice)
+            remaining_amount = max(inv_total - paid_amount, 0)
+            is_partial = 0 < paid_amount < inv_total
+            is_settled = paid_amount >= inv_total
+            expected_amount = remaining_amount if paid_amount > 0 else inv_total
+            shipping_barcodes = {
+                DocumentNormalizationService.normalize_order_number(value).get(
+                    "normalized", ""
+                )
+                for value in adapter.get_shipping_barcodes(invoice)
+            }
+            shipping_barcodes.discard("")
+            is_piece_barcode = bool(
+                len(shipping_barcodes) > 1
+                and norm_order
+                and norm_order in shipping_barcodes
+            )
+            piece_amount_valid = bool(
+                is_piece_barcode
+                and int(row_amount) > 0
+                and int(row_amount) <= int(expected_amount)
+            )
+            if piece_amount_valid:
                 score += 20
-                reasons.append("amount_matches")
-            elif abs(row_amount - inv_total) > AMOUNT_TOLERANCE_IQD:
+                reasons.append("piece_barcode_partial_amount")
+            elif CourierOrderMatcher._amount_close(row_amount, expected_amount):
+                score += 20
+                if is_settled:
+                    reasons.append("amount_matches_settled_balance")
+                elif is_partial:
+                    reasons.append("amount_matches_remaining")
+                else:
+                    reasons.append("amount_matches")
+            elif abs(row_amount - expected_amount) > AMOUNT_TOLERANCE_IQD:
                 reasons.append("amount_mismatch_hint")
 
         if row_date and adapter.get_created_at(invoice):
@@ -172,6 +237,14 @@ class CourierOrderMatcher:
         if invoice_total:
             return diff / invoice_total <= AMOUNT_TOLERANCE_PCT
         return False
+
+    @staticmethod
+    def _single_extra_digit_match(observed: str, expected: str) -> bool:
+        left = re.sub(r"\D", "", str(observed or ""))
+        right = re.sub(r"\D", "", str(expected or ""))
+        if not left or not right or len(left) != len(right) + 1:
+            return False
+        return any(left[:index] + left[index + 1 :] == right for index in range(len(left)))
 
     @staticmethod
     def _date_close(row_iso: str, inv_iso: str) -> bool:

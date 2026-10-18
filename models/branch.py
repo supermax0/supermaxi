@@ -112,8 +112,11 @@ class StockTransferLine(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     transfer_id = db.Column(db.Integer, db.ForeignKey("stock_transfer.id"), nullable=False, index=True)
     product_id = db.Column(db.Integer, db.ForeignKey("product.id"), nullable=False)
+    destination_product_id = db.Column(db.Integer, db.ForeignKey("product.id"), nullable=True)
+    variant_color = db.Column(db.String(80), nullable=True)
     quantity = db.Column(db.Integer, nullable=False, default=0)
     quantity_received = db.Column(db.Integer, nullable=True)
 
     transfer = db.relationship("StockTransfer", back_populates="lines")
-    product = db.relationship("Product", lazy=True)
+    product = db.relationship("Product", foreign_keys=[product_id], lazy=True)
+    destination_product = db.relationship("Product", foreign_keys=[destination_product_id], lazy=True)

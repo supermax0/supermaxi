@@ -195,6 +195,11 @@ class RotatingSavingPayment(db.Model):
         }
         return labels.get(self.status, self.status)
 
+    @property
+    def effective_amount(self):
+        """Amount that still affects balances after reversal."""
+        return 0 if self.status == "reversed" else int(self.amount or 0)
+
 
 class RotatingSavingReceipt(db.Model):
     __tablename__ = "rotating_saving_receipts"

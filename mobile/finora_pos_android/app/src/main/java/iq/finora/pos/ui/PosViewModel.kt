@@ -23,12 +23,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 data class CartLine(
+    val lineKey: String,
     val productId: Long,
     val name: String,
     val unitPrice: Double,
     var qty: Int,
     val maxStock: Int,
-    val imageUrl: String? = ""
+    val imageUrl: String? = "",
+    val color: String = "",
+    val saleMode: String = "normal"
 )
 
 @OptIn(FlowPreview::class)
@@ -120,7 +123,11 @@ class PosViewModel(private val repository: PosRepository) : ViewModel() {
                     price = it.salePrice,
                     quantity = it.quantity,
                     imageUrl = it.imageUrl,
-                    isBarcode = false
+                    isBarcode = false,
+                    hasColors = it.hasColors,
+                    colors = it.colors,
+                    exchangeSalePrice = it.exchangeSalePrice,
+                    hasExchangeSale = it.hasExchangeSale
                 )
             }
     }
@@ -164,14 +171,46 @@ class PosViewModel(private val repository: PosRepository) : ViewModel() {
     }
 
     fun addProductFromCatalog(p: ProductRow) {
-        addOrIncrement(p.id, p.name, p.salePrice, p.quantity, p.imageUrl)
+        addConfiguredProduct(p, "", "normal")
         _message.value = null
     }
 
     fun addProductFromSearch(p: SearchProductItem) {
-        addOrIncrement(p.id, p.name, p.price, p.quantity, p.imageUrl)
+        addConfiguredProduct(
+            ProductRow(
+                p.id, p.name, p.price, p.quantity, p.imageUrl,
+                p.hasColors, p.colors, p.exchangeSalePrice, p.hasExchangeSale
+            ),
+            "",
+            "normal"
+        )
         _searchHits.value = emptyList()
         _productQuery.value = ""
+    }
+
+    fun addConfiguredProduct(
+        product: ProductRow,
+        color: String,
+        saleMode: String
+    ) {
+        if (product.hasColors && color.isBlank()) {
+            _message.value = "يجب اختيار لون للمنتج"
+            return
+        }
+        if (saleMode == "exchange" && !product.hasExchangeSale) {
+            _message.value = "ميزة الاستبدال غير متاحة لهذا المنتج"
+            return
+        }
+        val selectedPrice = if (saleMode == "exchange") {
+            product.exchangeSalePrice ?: product.salePrice
+        } else product.salePrice
+        val stock = if (color.isNotBlank()) {
+            product.colors.firstOrNull { it.name == color }?.let { it.quantity ?: it.qty } ?: 0
+        } else product.quantity
+        addOrIncrement(
+            product.id, product.name, selectedPrice, stock, product.imageUrl,
+            color, saleMode
+        )
     }
 
     private fun addOrIncrement(
@@ -179,40 +218,58 @@ class PosViewModel(private val repository: PosRepository) : ViewModel() {
         name: String,
         price: Double,
         stock: Int,
-        imageUrl: String?
+        imageUrl: String?,
+        color: String,
+        saleMode: String
     ) {
+        val lineKey = "$productId::$color::$saleMode"
         _cart.update { lines ->
-            val i = lines.indexOfFirst { it.productId == productId }
+            val i = lines.indexOfFirst { it.lineKey == lineKey }
+            val physicalUsed = lines
+                .filter { it.productId == productId && it.color == color }
+                .sumOf { it.qty }
             if (i >= 0) {
                 val cur = lines[i]
-                if (cur.qty >= cur.maxStock) {
+                if (physicalUsed >= stock) {
                     _message.value = "لا يمكن تجاوز المخزون المتاح"
                     return@update lines
                 }
                 lines.toMutableList().apply { this[i] = cur.copy(qty = cur.qty + 1) }
             } else {
-                if (stock <= 0) {
+                if (stock <= physicalUsed) {
                     _message.value = "الكمية غير متوفرة لهذا المنتج"
                     return@update lines
                 }
-                lines + CartLine(productId, name, price, qty = 1, maxStock = stock, imageUrl = imageUrl)
+                lines + CartLine(
+                    lineKey, productId, name, price, qty = 1, maxStock = stock,
+                    imageUrl = imageUrl, color = color, saleMode = saleMode
+                )
             }
         }
     }
 
-    fun setQty(productId: Long, qty: Int) {
+    fun setQty(lineKey: String, qty: Int) {
         _cart.update { lines ->
+            val target = lines.firstOrNull { it.lineKey == lineKey } ?: return@update lines
+            val usedByOtherModes = lines
+                .filter {
+                    it.lineKey != lineKey &&
+                        it.productId == target.productId &&
+                        it.color == target.color
+                }
+                .sumOf { it.qty }
+            val allowedForLine = (target.maxStock - usedByOtherModes).coerceAtLeast(1)
             lines.map {
-                if (it.productId == productId) {
-                    val q = qty.coerceIn(1, it.maxStock)
+                if (it.lineKey == lineKey) {
+                    val q = qty.coerceIn(1, allowedForLine)
                     it.copy(qty = q)
                 } else it
             }
         }
     }
 
-    fun removeLine(productId: Long) {
-        _cart.update { it.filter { line -> line.productId != productId } }
+    fun removeLine(lineKey: String) {
+        _cart.update { it.filter { line -> line.lineKey != lineKey } }
     }
 
     fun setNote(s: String) {
@@ -227,11 +284,11 @@ class PosViewModel(private val repository: PosRepository) : ViewModel() {
         _scheduledDate.value = s
     }
 
-    fun setUnitPrice(productId: Long, price: Double) {
+    fun setUnitPrice(lineKey: String, price: Double) {
         if (price <= 0) return
         _cart.update { lines ->
             lines.map {
-                if (it.productId == productId) it.copy(unitPrice = price) else it
+                if (it.lineKey == lineKey) it.copy(unitPrice = price) else it
             }
         }
     }
@@ -285,7 +342,9 @@ class PosViewModel(private val repository: PosRepository) : ViewModel() {
                 CreateOrderItem(
                     productId = it.productId,
                     qty = it.qty,
-                    price = it.unitPrice
+                    price = it.unitPrice,
+                    color = it.color.ifBlank { null },
+                    saleMode = it.saleMode
                 )
             }
             val r = withContext(Dispatchers.IO) {

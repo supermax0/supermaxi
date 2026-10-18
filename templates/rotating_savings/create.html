@@ -110,13 +110,14 @@
       <div class="rs-grid-2">
         <div class="rs-field">
           <label>عدد الدفعات السابقة</label>
-          <input type="number" name="prior_payments_count" min="0" value="0" inputmode="numeric">
+          <input type="number" name="prior_payments_count" min="0" value="0" inputmode="numeric" id="priorPaymentsCount" oninput="calcPriorTotal()">
         </div>
         <div class="rs-field">
           <label>مبلغ كل دفعة</label>
-          <input type="number" name="prior_payment_amount" min="0" placeholder="يُستخدم القسط الشهري إن تُرك فارغاً" inputmode="numeric">
+          <input type="number" name="prior_payment_amount" min="0" placeholder="يُستخدم القسط الشهري إن تُرك فارغاً" inputmode="numeric" id="priorPaymentAmount" oninput="calcPriorTotal()">
         </div>
       </div>
+      <p id="priorTotalPreview" class="rs-prior-preview">لا توجد دفعات سابقة</p>
       <div class="rs-grid-2">
         <div class="rs-field">
           <label>تاريخ أول دفعة</label>
@@ -145,11 +146,31 @@ function calcExpected() {
   const m = parseInt(document.getElementById('monthlyAmount').value) || 0;
   const n = parseInt(document.getElementById('totalMonths').value) || 0;
   document.getElementById('expectedReceive').value = m * n || '';
+  const countInput = document.getElementById('priorPaymentsCount');
+  if (countInput) countInput.max = n || 0;
+  calcPriorTotal();
+}
+function calcPriorTotal() {
+  const monthly = parseInt(document.getElementById('monthlyAmount').value) || 0;
+  const months = parseInt(document.getElementById('totalMonths').value) || 0;
+  const count = parseInt(document.getElementById('priorPaymentsCount').value) || 0;
+  const enteredAmount = parseInt(document.getElementById('priorPaymentAmount').value);
+  const amount = Number.isFinite(enteredAmount) ? enteredAmount : monthly;
+  const preview = document.getElementById('priorTotalPreview');
+  if (!preview) return;
+  const invalid = count > months;
+  preview.classList.toggle('is-error', invalid);
+  preview.textContent = invalid
+    ? `تنبيه: عدد الدفعات (${count.toLocaleString('en-US')}) أكبر من عدد الأشهر (${months.toLocaleString('en-US')})`
+    : count
+      ? `المجموع السابق: ${(count * amount).toLocaleString('en-US')} د.ع (${count} × ${amount.toLocaleString('en-US')})`
+      : 'لا توجد دفعات سابقة';
 }
 function toggleTypeFields() {
   const t = document.getElementById('savingType').value;
   document.getElementById('employeeField').style.display = t === 'employee' ? 'block' : 'none';
 }
 toggleTypeFields();
+calcExpected();
 </script>
 {% endblock %}

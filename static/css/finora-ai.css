@@ -1,0 +1,127 @@
+.finora-ai-fab {
+  position: fixed; left: 24px; bottom: max(24px, env(safe-area-inset-bottom)); z-index: 1100;
+  width: 56px; height: 56px; border: 0; border-radius: 18px; cursor: pointer;
+  color: #fff; font-size: 25px; background: linear-gradient(135deg, #2563eb, #7c3aed);
+  box-shadow: 0 14px 40px rgba(37, 99, 235, .35); transition: transform .2s ease, box-shadow .2s ease;
+}
+.finora-ai-fab:hover { transform: translateY(-3px) scale(1.03); box-shadow: 0 18px 45px rgba(37, 99, 235, .44); }
+.finora-ai-panel {
+  position: fixed; left: 24px; bottom: 92px; z-index: 1099; width: min(410px, calc(100vw - 32px));
+  height: min(680px, calc(100dvh - 120px)); display: grid; grid-template-rows: auto 1fr auto auto;
+  color: var(--text, #f8fafc); background: color-mix(in srgb, var(--card, #111827) 94%, transparent);
+  border: 1px solid var(--border, rgba(255,255,255,.1)); border-radius: 22px;
+  box-shadow: 0 26px 80px rgba(0,0,0,.42); backdrop-filter: blur(24px); overflow: hidden;
+  opacity: 0; visibility: hidden; transform: translateY(18px) scale(.97); transform-origin: left bottom;
+  transition: opacity .2s ease, transform .2s ease, visibility .2s;
+}
+.finora-ai-panel.is-open { opacity: 1; visibility: visible; transform: none; }
+.finora-ai-panel{width:min(480px,calc(100vw - 32px));height:min(750px,calc(100dvh - 120px));grid-template-rows:auto minmax(0,1fr) auto auto;box-shadow:0 28px 90px rgba(15,23,42,.22)}
+.finora-ai-panel.is-expanded{width:min(800px,calc(100vw - 48px))}
+.finora-ai-panel [hidden]{display:none!important}
+.finora-ai-header{background:linear-gradient(120deg,rgba(37,99,235,.035),rgba(124,58,237,.055))}
+.finora-ai-prompts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:24px}
+.finora-ai-prompts button{padding:13px 10px;border:1px solid var(--border,#e2e8f0);border-radius:12px;background:var(--card,#fff);color:var(--text,#17243b);font:inherit;font-size:12px;cursor:pointer;text-align:start}
+.finora-ai-prompts button:hover{border-color:#818cf8;background:rgba(99,102,241,.06)}
+.finora-ai-message.assistant{max-width:100%;background:transparent;border:0;border-radius:0;padding:10px 2px 18px;line-height:1.95;white-space:normal}
+.finora-ai-message.assistant:before{content:'✦  FINORA';display:block;margin-bottom:9px;font-size:10px;letter-spacing:1px;font-weight:800;color:#6977d7}
+.finora-ai-message.user{max-width:85%;padding:13px 16px;border-radius:16px 16px 4px 16px}
+.finora-ai-message.assistant.error{color:#dc5858;background:rgba(239,68,68,.06);padding:12px;border-radius:12px}
+.finora-ai-reply-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:13px;padding-top:10px;border-top:1px solid var(--border,#e2e8f0)}
+.finora-ai-reply-actions button,.finora-ai-retry{padding:6px 9px;border:1px solid var(--border,#e2e8f0);border-radius:8px;background:transparent;color:inherit;opacity:.7;font:inherit;font-size:10px;cursor:pointer}
+.finora-ai-reply-actions button:hover{opacity:1;color:#5364d9}
+.finora-ai-message table{display:block;overflow-x:auto;border-radius:10px;background:rgba(148,163,184,.05)}
+.finora-ai-message table tr:first-child{font-weight:700;background:rgba(99,102,241,.06)}
+.finora-ai-message table td{padding:10px;white-space:normal;min-width:80px}
+.finora-ai-header { min-height: 70px; padding: 14px 17px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border, rgba(255,255,255,.1)); }
+.finora-ai-header > div:first-child { display: grid; grid-template-columns: 30px 1fr; align-items: center; column-gap: 8px; }
+.finora-ai-header strong { font-size: 16px; }
+.finora-ai-header small { grid-column: 2; color: var(--text-muted, #94a3b8); font-size: 11px; }
+.finora-ai-mark { grid-row: 1 / 3; width: 30px; height: 30px; display: grid; place-items: center; border-radius: 10px; color: #fff; background: linear-gradient(135deg,#2563eb,#7c3aed); }
+.finora-ai-header-actions { display: flex; gap: 5px; }
+.finora-ai-history { position:absolute; top:72px; left:12px; right:12px; max-height:260px; overflow:auto; padding:8px; border:1px solid var(--border,#94a3b8); border-radius:12px; background:var(--bg,#111827); z-index:2; }
+.finora-ai-history button { display:block; width:100%; text-align:start; border:0; background:none; color:inherit; cursor:pointer; padding:10px; border-radius:8px; }
+.finora-ai-history button:hover { background:rgba(148,163,184,.15); }
+.finora-ai-header-actions button { width: 34px; height: 34px; border: 0; border-radius: 10px; color: inherit; background: transparent; cursor: pointer; }
+.finora-ai-header-actions button:hover { background: rgba(148,163,184,.15); }
+.finora-ai-messages { padding: 18px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.finora-ai-welcome { min-height: 100%; display: grid; place-content: center; text-align: center; color: var(--text-muted,#94a3b8); }
+.finora-ai-welcome > span { color: #7c3aed; font-size: 34px; }.finora-ai-welcome h3 { margin: 8px 0 2px; color: var(--text,#fff); }.finora-ai-welcome p { margin: 0; font-size: 13px; }
+.finora-ai-message { max-width: 88%; margin: 0 0 13px; padding: 11px 13px; border-radius: 16px; line-height: 1.65; font-size: 14px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.finora-ai-message.user { margin-right: auto; color: #fff; background: linear-gradient(135deg,#2563eb,#4f46e5); border-bottom-left-radius: 5px; }
+.finora-ai-message.assistant { margin-left: auto; background: rgba(148,163,184,.12); border: 1px solid rgba(148,163,184,.14); border-bottom-right-radius: 5px; }
+.finora-ai-message.error { color: #fecaca; background: rgba(239,68,68,.13); border-color: rgba(239,68,68,.25); }
+.finora-ai-message code { direction: ltr; display: inline-block; font-family: Consolas, monospace; font-size: 12px; }
+.finora-ai-message table { width:100%; border-collapse:collapse; font-size:12px; margin:8px 0; }
+.finora-ai-message td { border:1px solid var(--border,#94a3b8); padding:5px; }
+.finora-ai-message pre { overflow:auto; white-space:pre; direction:ltr; text-align:left; font:12px Consolas,monospace; }
+.finora-ai-status { padding: 8px 18px; color: var(--text-muted,#94a3b8); font-size: 12px; border-top: 1px solid var(--border,rgba(255,255,255,.08)); }
+.finora-ai-status::before { content: ''; display: inline-block; width: 7px; height: 7px; margin-left: 7px; border-radius: 50%; background: #8b5cf6; animation: finora-ai-pulse 1s infinite alternate; }
+@keyframes finora-ai-pulse { to { opacity: .25; transform: scale(.7); } }
+.finora-ai-composer { margin: 12px; padding: 7px; display: flex; align-items: end; gap: 7px; border: 1px solid var(--border,rgba(255,255,255,.12)); border-radius: 16px; background: rgba(15,23,42,.25); }
+.finora-ai-composer:focus-within { border-color: rgba(59,130,246,.7); box-shadow: 0 0 0 3px rgba(59,130,246,.1); }
+.finora-ai-composer textarea { flex: 1; min-height: 38px; max-height: 120px; padding: 8px; resize: none; border: 0; outline: 0; color: inherit; background: transparent; line-height: 1.45; }
+.finora-ai-composer button { flex: 0 0 38px; width: 38px; height: 38px; border: 0; border-radius: 12px; cursor: pointer; color: #fff; }
+.finora-ai-send { background: linear-gradient(135deg,#2563eb,#7c3aed); }.finora-ai-stop { background: #ef4444; }
+.finora-ai-composer button:disabled { opacity: .5; cursor: wait; }
+:root[data-theme="light"] .finora-ai-panel { background: rgba(255,255,255,.96); box-shadow: 0 25px 65px rgba(15,23,42,.2); }
+:root[data-theme="light"] .finora-ai-message.assistant { background: transparent; border-color: #e2e8f0; }
+:root[data-theme="light"] .finora-ai-composer { background: #fff; }
+@media (max-width: 600px) {
+  .finora-ai-fab { left: 14px; bottom: max(14px, env(safe-area-inset-bottom)); }
+  .finora-ai-panel,.finora-ai-panel.is-expanded { inset: 0; width: 100vw; height: 100dvh; max-width: none; border-radius: 0; transform: translateY(100%); }
+  .finora-ai-panel.is-open { transform: none; }
+  .finora-ai-header { padding-top: max(14px, env(safe-area-inset-top)); }
+  .finora-ai-composer { margin-bottom: max(12px, env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-motion: reduce) { .finora-ai-fab,.finora-ai-panel { transition: none; } .finora-ai-status::before { animation: none; } }
+.finora-ai-message.assistant{background:transparent;border:0}
+
+/* Self-contained palette: clinic pages do not load the accounting theme styles. */
+.finora-ai-panel {
+  --text:#172b3a;--text-muted:#617487;--card:#fff;--border:#e2e9f0;--bg:#f4f7fa;
+  bottom:calc(var(--finora-assistant-bottom,24px) + var(--finora-assistant-keyboard-inset,0px));
+  height:min(750px,calc(var(--finora-assistant-viewport-height,100dvh) - var(--finora-assistant-bottom,24px) - 24px));
+  background:var(--card);color:var(--text);direction:rtl;
+  font-family:"IBM Plex Sans Arabic",system-ui,sans-serif;
+}
+:root[data-theme="dark"] .finora-ai-panel {
+  --text:#e8f0f6;--text-muted:#a0b3c3;--card:#13212c;--border:#2b3e4c;--bg:#0b141b;
+  background:var(--card);
+}
+:root[data-theme] body.clinics-app-mode .finora-ai-panel {
+  --text:var(--cx-ink);--text-muted:var(--cx-muted);--card:var(--cx-surface);--border:var(--cx-line);--bg:var(--cx-bg);
+  background:var(--card);
+}
+.finora-ai-panel :where(button,textarea,h3,p,strong,small) {font-family:inherit}
+.finora-ai-header {
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;
+  min-height:76px;align-items:start;
+}
+.finora-ai-header > div:first-child {min-width:0;grid-template-columns:30px minmax(0,1fr)}
+.finora-ai-header strong {min-width:0;line-height:1.5;color:var(--text)}
+.finora-ai-header small {min-width:0;line-height:1.6;overflow-wrap:anywhere}
+.finora-ai-header-actions {flex-shrink:0;align-items:center}
+.finora-ai-header-actions :is(button,a) {display:grid;place-items:center;width:34px;height:34px;flex:none;color:var(--text)}
+.finora-ai-messages {min-width:0;min-height:0;padding:18px 16px}
+.finora-ai-welcome {min-height:100%;width:100%;max-width:100%;padding:12px 0;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:8px}
+.finora-ai-welcome h3 {color:var(--text);font-size:19px;line-height:1.5}
+.finora-ai-welcome p {color:var(--text-muted);line-height:1.8;max-width:100%;margin:0}
+.finora-ai-prompts {width:100%;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+.finora-ai-prompts button {min-width:0;min-height:44px;padding:12px;background:var(--bg);color:var(--text);border-color:var(--border);text-align:center;line-height:1.6}
+.finora-ai-composer {flex-shrink:0;min-width:0;margin:10px 12px 12px;padding:8px;background:var(--card);border-color:var(--border);align-items:flex-end}
+.finora-ai-composer textarea {min-width:0;width:0;flex:1 1 0;font-size:16px;color:var(--text);background:transparent;border:0;box-shadow:none;border-radius:0}
+.finora-ai-composer textarea::placeholder {color:var(--text-muted);opacity:1}
+.finora-ai-composer :is(.finora-ai-send,.finora-ai-stop) {display:grid;place-items:center;flex:0 0 42px;width:42px;height:42px}
+.finora-ai-panel :is(button,textarea,a):focus-visible {outline:2px solid #6366f1;outline-offset:2px}
+.finora-ai-panel .finora-ai-composer textarea:focus-visible {outline:none;box-shadow:none}
+@media(max-width:600px) {
+  .finora-ai-panel,.finora-ai-panel.is-expanded {
+    top:var(--finora-assistant-viewport-top,0px);right:0;left:0;bottom:auto;
+    width:100%;height:var(--finora-assistant-viewport-height,100dvh);max-height:none;
+    border-radius:0;border:0;
+  }
+  .finora-ai-header {gap:8px;padding: max(12px,env(safe-area-inset-top,0px)) 12px 12px}
+  .finora-ai-header-actions {gap:2px}
+  .finora-ai-header-actions :is(button,a) {width:30px;height:34px}
+  .finora-ai-composer {margin-bottom:max(12px,env(safe-area-inset-bottom,0px))}
+}

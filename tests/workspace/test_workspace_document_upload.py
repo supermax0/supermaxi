@@ -175,6 +175,73 @@ def test_list_session_documents():
         print("test_list_session_documents ok")
 
 
+def test_multiple_documents_are_exposed_to_the_viewer():
+    app, tenant = _app_ctx("test_workspace_multi_upload")
+    with app.app_context():
+        from flask import g
+
+        g.tenant = tenant
+        from extensions_tenant import init_tenant_db
+
+        init_tenant_db(tenant)
+        from modules.workspace.services.schema_guard import ensure_workspace_schema
+
+        ensure_workspace_schema()
+
+        from modules.workspace.services.document_storage_service import DocumentStorageService
+        from modules.workspace.services.session_service import SessionService
+
+        ws = SessionService.create_session(user_id=15, tenant_slug=tenant)
+        first = DocumentStorageService.upload_to_session(
+            ws, _FakeFile("page-1.png", _png_bytes(), "image/png"), user_id=15
+        )
+        second = DocumentStorageService.upload_to_session(
+            ws, _FakeFile("page-2.png", _png_bytes() + b"page-2", "image/png"), user_id=15
+        )
+        payload = DocumentStorageService.enrich_session_dict(ws)
+        viewer = next(
+            item for item in payload["windows"] if item["type"] == "document_viewer"
+        )
+
+        assert payload["metadata"]["active_document_id"] == second.id
+        assert viewer["props"]["documentCount"] == 2
+        assert [item["documentId"] for item in viewer["props"]["documents"]] == [
+            first.id,
+            second.id,
+        ]
+        print("test_multiple_documents_are_exposed_to_the_viewer ok")
+
+
+def test_duplicate_document_content_is_not_stored_twice():
+    app, tenant = _app_ctx("test_workspace_duplicate_upload")
+    with app.app_context():
+        from flask import g
+
+        g.tenant = tenant
+        from extensions_tenant import init_tenant_db
+
+        init_tenant_db(tenant)
+        from modules.workspace.services.schema_guard import ensure_workspace_schema
+
+        ensure_workspace_schema()
+
+        from modules.workspace.services.document_storage_service import DocumentStorageService
+        from modules.workspace.services.session_service import SessionService
+
+        ws = SessionService.create_session(user_id=16, tenant_slug=tenant)
+        first = DocumentStorageService.upload_to_session(
+            ws, _FakeFile("same-1.png", _png_bytes(), "image/png"), user_id=16
+        )
+        duplicate = DocumentStorageService.upload_to_session(
+            ws, _FakeFile("same-2.png", _png_bytes(), "image/png"), user_id=16
+        )
+
+        docs = DocumentStorageService.list_session_documents(ws.id)
+        assert duplicate.id == first.id
+        assert len(docs) == 1
+        print("test_duplicate_document_content_is_not_stored_twice ok")
+
+
 def test_preview_access_control():
     app, tenant = _app_ctx()
     with app.app_context():
@@ -210,5 +277,7 @@ if __name__ == "__main__":
     test_reject_oversize()
     test_upload_emits_audit_event()
     test_list_session_documents()
+    test_multiple_documents_are_exposed_to_the_viewer()
+    test_duplicate_document_content_is_not_stored_twice()
     test_preview_access_control()
     print("all phase 2 document tests passed")

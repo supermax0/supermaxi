@@ -53,6 +53,50 @@ def test_safe_to_post_excludes_blocked():
     print("test_safe_to_post_excludes_blocked ok")
 
 
+def test_profit_preview_uses_invoice_revenue_cogs_and_statement_fee(monkeypatch):
+    from modules.workspace.services.courier_settlement.courier_profit_preview_service import (
+        CourierProfitPreviewService,
+    )
+
+    rows = [
+        SimpleNamespace(
+            id="r1",
+            match_status="matched",
+            matched_invoice_id=101,
+            delivery_fee=10000,
+        ),
+        SimpleNamespace(
+            id="r2",
+            match_status="matched",
+            matched_invoice_id=102,
+            delivery_fee=15000,
+        ),
+        SimpleNamespace(
+            id="r3",
+            match_status="unmatched",
+            matched_invoice_id=None,
+            delivery_fee=5000,
+        ),
+    ]
+    monkeypatch.setattr(
+        CourierProfitPreviewService,
+        "_invoice_financials",
+        staticmethod(lambda ids: {
+            101: {"revenue": 145000, "cogs": 90000, "item_count": 1},
+            102: {"revenue": 100000, "cogs": 110000, "item_count": 1},
+        }),
+    )
+
+    result = CourierProfitPreviewService.compute(rows)
+    assert result["total_profit"] == 45000
+    assert result["total_loss"] == 25000
+    assert result["net_profit"] == 20000
+    assert result["avg_profit"] == 10000
+    assert result["eligible_rows"] == 2
+    assert result["skipped_rows"] == 1
+    print("test_profit_preview_uses_invoice_revenue_cogs_and_statement_fee ok")
+
+
 if __name__ == "__main__":
     test_financial_preview_totals()
     test_safe_to_post_excludes_blocked()

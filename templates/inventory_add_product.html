@@ -228,6 +228,18 @@
       gap: 10px;
       align-items: center;
     }
+    .inv-color-row {
+      grid-template-columns: minmax(120px, 1fr) minmax(80px, .7fr) minmax(100px, .9fr) minmax(100px, .9fr) auto;
+    }
+    .inv-color-row.is-dual {
+      grid-template-columns: minmax(110px, 1fr) minmax(70px, .6fr) minmax(90px, .8fr) minmax(90px, .8fr) minmax(90px, .8fr) auto;
+    }
+    .inv-color-gov-price { display: none; }
+    .inv-color-row.is-dual .inv-color-gov-price { display: block; }
+    body.dual-region-on #salePriceLabelSingle { display: none; }
+    body.dual-region-on #salePriceLabelBaghdad { display: inline; }
+    body:not(.dual-region-on) #salePriceLabelBaghdad { display: none; }
+    body:not(.dual-region-on) #governorateSaleField { display: none !important; }
     .inv-spec-remove {
       width: 42px;
       height: 42px;
@@ -371,6 +383,7 @@
     </div>
 
     <!-- قسم 2: خيارات ومخزون -->
+    {% include "inventory/_product_options_editor.html" %}
     <div class="inv-add-card">
       <h3><span>📦</span> {{ _('inventory_section_stock') }}</h3>
       {% if not is_beauty_center %}
@@ -396,24 +409,37 @@
         <label class="inv-check">
           <input type="checkbox" name="has_colors" value="1" id="hasColorsCheck"
             {% if m.get('has_colors') or product_color_rows %}checked{% endif %}>
-          <span>المنتج له ألوان (مخزون منفصل لكل لون)</span>
+          <span>المنتج له ألوان (مخزون وسعر منفصل لكل لون)</span>
+        </label>
+      </div>
+      <div class="inv-check-row" style="margin-top:8px;">
+        <label class="inv-check">
+          <input type="checkbox" name="dual_region_pricing" value="1" id="dualRegionPricingCheck"
+            {% if m.get('dual_region_pricing') %}checked{% endif %}>
+          <span>سعر مختلف لبغداد والمحافظات</span>
         </label>
       </div>
       <div id="colorVariantsBlock" style="margin-top:12px;{% if not m.get('has_colors') and not product_color_rows %}display:none;{% endif %}">
-        <p class="inv-hint">أضف اسم كل لون والكمية الافتتاحية له. المجموع يُحسب تلقائياً كمخزون المنتج.</p>
+        <p class="inv-hint">أضف اسم كل لون والكمية وسعر الشراء/البيع الخاص به. المجموع يُحسب تلقائياً كمخزون المنتج.</p>
         <div id="colorVariantRows">
           {% if product_color_rows %}
             {% for row in product_color_rows %}
-            <div class="inv-spec-row inv-color-row">
+            <div class="inv-spec-row inv-color-row{% if m.get('dual_region_pricing') %} is-dual{% endif %}">
               <input name="color_name[]" placeholder="اسم اللون" value="{{ row.name }}">
               <input name="color_qty[]" type="number" min="0" placeholder="الكمية" value="{{ row.qty }}">
+              <input name="color_buy_price[]" type="number" min="0" placeholder="سعر الشراء" value="{{ row.buy_price if row.buy_price is not none else '' }}">
+              <input name="color_sale_price[]" type="number" min="0" placeholder="{% if m.get('dual_region_pricing') %}سعر بغداد{% else %}سعر البيع{% endif %}" value="{{ row.sale_price if row.sale_price is not none else '' }}">
+              <input name="color_gov_sale_price[]" class="inv-color-gov-price" type="number" min="0" placeholder="سعر المحافظات" value="{{ row.governorate_sale_price if row.governorate_sale_price is not none else '' }}">
               <button type="button" class="inv-spec-remove" onclick="removeColorRow(this)">✕</button>
             </div>
             {% endfor %}
           {% else %}
-            <div class="inv-spec-row inv-color-row">
+            <div class="inv-spec-row inv-color-row{% if m.get('dual_region_pricing') %} is-dual{% endif %}">
               <input name="color_name[]" placeholder="اسم اللون" value="">
               <input name="color_qty[]" type="number" min="0" placeholder="الكمية" value="0">
+              <input name="color_buy_price[]" type="number" min="0" placeholder="سعر الشراء" value="">
+              <input name="color_sale_price[]" type="number" min="0" placeholder="{% if m.get('dual_region_pricing') %}سعر بغداد{% else %}سعر البيع{% endif %}" value="">
+              <input name="color_gov_sale_price[]" class="inv-color-gov-price" type="number" min="0" placeholder="سعر المحافظات" value="">
               <button type="button" class="inv-spec-remove" onclick="removeColorRow(this)">✕</button>
             </div>
           {% endif %}
@@ -675,10 +701,30 @@
         </div>
         {% endif %}
         <div class="inv-field">
-          <label>{% if is_beauty_center %}سعر البيع للزبون{% else %}{{ _('inventory_field_sale_price') }} <span style="color:#f87171">*</span>{% endif %}<span data-help="inventory.price"></span></label>
+          <label>
+            <span id="salePriceLabelSingle">{% if is_beauty_center %}سعر البيع للزبون{% else %}{{ _('inventory_field_sale_price') }} <span style="color:#f87171">*</span>{% endif %}</span>
+            <span id="salePriceLabelBaghdad">سعر بغداد <span style="color:#f87171">*</span></span>
+            <span data-help="inventory.price"></span>
+          </label>
           <input name="sale_price" id="sale_price" type="number" min="0" {% if not is_beauty_center %}required{% endif %} placeholder="0" value="{{ edit_product.sale_price if edit_product else '' }}">
           {% if is_beauty_center %}<p class="inv-hint">إذا المادة للجلسات فقط، يمكن تركه بنفس الكلفة أو صفر حسب طريقة عملك.</p>{% endif %}
         </div>
+        <div class="inv-field" id="governorateSaleField">
+          <label>سعر المحافظات <span style="color:#f87171">*</span></label>
+          <input name="governorate_sale_price" id="governorate_sale_price" type="number" min="0"
+            placeholder="سعر باقي المحافظات"
+            value="{{ edit_product.governorate_sale_price if edit_product and edit_product.governorate_sale_price else '' }}">
+          <p class="inv-hint">يُطبَّق تلقائياً عند اختيار محافظة غير بغداد للزبون.</p>
+        </div>
+        {% if not is_beauty_center and business_allows('trade_in_sales') %}
+        <div class="inv-field">
+          <label>سعر الاستبدال</label>
+          <input name="exchange_sale_price" id="exchange_sale_price" type="number" min="0"
+            placeholder="اتركه فارغاً لتعطيل الاستبدال"
+            value="{{ edit_product.exchange_sale_price if edit_product and edit_product.exchange_sale_price else '' }}">
+          <p class="inv-hint">كل وحدة مستلمة تُضاف تلقائياً إلى المنتج النظامي «استبدال». البيع والاستبدال يخصمان من نفس المخزون.</p>
+        </div>
+        {% endif %}
         <div class="inv-field">
           <label>{{ _('inventory_product_image') }}</label>
           <input type="file" name="product_image" accept="image/jpeg,image/png,image/webp,image/gif">
@@ -827,14 +873,46 @@
   var openingStockField = document.getElementById('openingStockField');
   var stockQtyInput = document.getElementById('opening_stock') || document.getElementById('current_stock');
   var colorStockTotal = document.getElementById('colorStockTotal');
+  var dualRegionCheck = document.getElementById('dualRegionPricingCheck');
+  var governorateSaleInput = document.getElementById('governorate_sale_price');
 
-  window.addColorRow = function (name, qty) {
+  function dualRegionEnabled() {
+    return !!(dualRegionCheck && dualRegionCheck.checked);
+  }
+
+  function syncDualRegionUi() {
+    var on = dualRegionEnabled();
+    document.body.classList.toggle('dual-region-on', on);
+    if (governorateSaleInput) {
+      if (on) governorateSaleInput.setAttribute('required', 'required');
+      else governorateSaleInput.removeAttribute('required');
+    }
     if (!colorVariantRows) return;
+    var salePlaceholder = on ? 'سعر بغداد' : 'سعر البيع';
+    colorVariantRows.querySelectorAll('.inv-color-row').forEach(function (row) {
+      row.classList.toggle('is-dual', on);
+      var saleInput = row.querySelector('input[name="color_sale_price[]"]');
+      if (saleInput) saleInput.placeholder = salePlaceholder;
+    });
+  }
+
+  window.addColorRow = function (name, qty, buyPrice, salePrice, govSalePrice) {
+    if (!colorVariantRows) return;
+    var buyEl = document.getElementById('buy_price');
+    var saleEl = document.getElementById('sale_price');
+    var govEl = document.getElementById('governorate_sale_price');
+    var defaultBuy = buyPrice != null && buyPrice !== '' ? buyPrice : (buyEl && buyEl.value ? buyEl.value : '');
+    var defaultSale = salePrice != null && salePrice !== '' ? salePrice : (saleEl && saleEl.value ? saleEl.value : '');
+    var defaultGov = govSalePrice != null && govSalePrice !== '' ? govSalePrice : (govEl && govEl.value ? govEl.value : '');
+    var dual = dualRegionEnabled();
     var row = document.createElement('div');
-    row.className = 'inv-spec-row inv-color-row';
+    row.className = 'inv-spec-row inv-color-row' + (dual ? ' is-dual' : '');
     row.innerHTML =
       '<input name="color_name[]" placeholder="اسم اللون" value="' + escapeAttr(name || '') + '">' +
       '<input name="color_qty[]" type="number" min="0" placeholder="الكمية" value="' + escapeAttr(qty == null ? '0' : qty) + '">' +
+      '<input name="color_buy_price[]" type="number" min="0" placeholder="سعر الشراء" value="' + escapeAttr(defaultBuy) + '">' +
+      '<input name="color_sale_price[]" type="number" min="0" placeholder="' + (dual ? 'سعر بغداد' : 'سعر البيع') + '" value="' + escapeAttr(defaultSale) + '">' +
+      '<input name="color_gov_sale_price[]" class="inv-color-gov-price" type="number" min="0" placeholder="سعر المحافظات" value="' + escapeAttr(defaultGov) + '">' +
       '<button type="button" class="inv-spec-remove" onclick="removeColorRow(this)">✕</button>';
     colorVariantRows.appendChild(row);
     row.querySelectorAll('input').forEach(function (input) {
@@ -880,6 +958,10 @@
     hasColorsCheck.addEventListener('change', toggleColorMode);
     toggleColorMode();
   }
+  if (dualRegionCheck) {
+    dualRegionCheck.addEventListener('change', syncDualRegionUi);
+  }
+  syncDualRegionUi();
   if (colorVariantRows) {
     colorVariantRows.querySelectorAll('input').forEach(function (input) {
       input.addEventListener('input', syncColorStockTotal);

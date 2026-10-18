@@ -365,6 +365,21 @@
             margin-bottom: 6px;
         }
 
+        .policy p {
+            margin: 0 0 8px;
+        }
+
+        .policy .rich-text h4 {
+            margin: 0 0 8px;
+            color: var(--text-main);
+            font-size: 14px;
+        }
+
+        .policy .rich-text strong {
+            color: var(--text-main);
+            font-weight: 800;
+        }
+
         .address-phone {
             direction: ltr;
             unicode-bidi: embed;
@@ -585,7 +600,7 @@
                             <td>
                                 <div class="product-cell">
                                     <div class="product-img-placeholder">IMG</div>
-                                    <div class="product-name">{{ item.product_name or (item.product.name if item.product else 'منتج غير متوفر') }}</div>
+                                    <div class="product-name">{{ item.display_name }}</div>
                                 </div>
                             </td>
                             <td class="price-cell">{{ "{:,.0f}".format(item.price) }}</td>
@@ -605,13 +620,7 @@
                     {% if settings and settings.warranty_notes %}
                     <div class="warranty-block">
                         <h4>الضمان والصيانة</h4>
-                        <ul>
-                            {% for line in settings.warranty_notes.split('\n') %}
-                            {% if line.strip() %}
-                            <li>{{ line.strip() }}</li>
-                            {% endif %}
-                            {% endfor %}
-                        </ul>
+                        <div class="rich-text">{{ settings.warranty_notes|invoice_rich_text }}</div>
                     </div>
                     {% endif %}
 

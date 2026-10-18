@@ -1,0 +1,146 @@
+{
+  "id": "appointment.create",
+  "version": 1,
+  "status": "verified",
+  "level": 2,
+  "title_ar": "حجز موعد",
+  "description_ar": "حجز موعد لمريض مع طبيب في وقت محدد.",
+  "chip_ar": "المواعيد",
+  "requires_permissions": ["clinics_appointments"],
+  "dependencies": [
+    {
+      "fact": {"name": "patients_count", "op": "gt", "value": 0},
+      "tutorial": "patient.create",
+      "message_ar": "لحجز موعد نحتاج مريضاً مسجلاً في النظام. نسجّل مريضاً أولاً ثم نرجع للموعد.",
+      "action_label_ar": "إضافة مريض الآن"
+    },
+    {
+      "fact": {"name": "doctors_count", "op": "gt", "value": 0},
+      "tutorial": "doctor.create",
+      "message_ar": "لحجز موعد نحتاج طبيباً مسجلاً. نضيف طبيباً أولاً ثم نرجع للموعد.",
+      "action_label_ar": "إضافة طبيب الآن"
+    }
+  ],
+  "next_lessons": ["appointment.checkin"],
+  "curriculum": {"group": "operations", "order": 2},
+  "result": "appointment.created",
+  "completion_validator": "appointment.created_since_start",
+  "steps": [
+    {
+      "id": "open-appointments-menu",
+      "type": "wait_click",
+      "target": {"action": "nav.appointments"},
+      "reveal": [{"action": "nav.menu.open"}, {"section": "nav.group.daily"}],
+      "reconcile": {"kind": "ui", "when": {"page": "appointments"}},
+      "nav_message_ar": "جاري فتح المواعيد",
+      "message_ar": "المواعيد كلها هنا. اضغط «المواعيد»."
+    },
+    {
+      "id": "on-appointments-page",
+      "type": "navigate",
+      "route": "/clinics/appointments",
+      "page": "appointments",
+      "reconcile": {"kind": "ui", "when": {"page": "appointments"}},
+      "message_ar": "نفتح الآن صفحة المواعيد."
+    },
+    {
+      "id": "click-new-appointment",
+      "type": "wait_click",
+      "page": "appointments",
+      "target": {"action": "appointment.create"},
+      "reconcile": {"kind": "ui", "when": {"visible": {"section": "appointment.form"}}},
+      "message_ar": "اضغط «موعد جديد» لفتح نموذج الحجز."
+    },
+    {
+      "id": "form-open",
+      "type": "wait_modal",
+      "page": "appointments",
+      "target": {"section": "appointment.form"},
+      "reconcile": {"kind": "ui", "when": {"visible": {"section": "appointment.form"}}},
+      "message_ar": "ننتظر ظهور نموذج الموعد."
+    },
+    {
+      "id": "patient-search",
+      "type": "wait_input",
+      "page": "appointments",
+      "target": {"field": "appointment.patient_search"},
+      "condition": {"min_length": 2},
+      "message_ar": "ابحث عن المريض: اكتب اسمه أو رقم هاتفه أو رقم ملفه."
+    },
+    {
+      "id": "check-patient-picked",
+      "type": "branch",
+      "page": "appointments",
+      "if": {"exists": {"section": "appointment.patient_picked"}},
+      "then": "specialty",
+      "else": "patient-pick"
+    },
+    {
+      "id": "patient-pick",
+      "type": "wait_click",
+      "page": "appointments",
+      "target": {"action": "appointment.patient_pick"},
+      "message_ar": "اضغط على المريض الصحيح من نتائج البحث."
+    },
+    {
+      "id": "specialty",
+      "type": "highlight",
+      "page": "appointments",
+      "target": {"field": "appointment.specialty"},
+      "message_ar": "الاختصاص يُحدَّد تلقائياً عند اختيار الطبيب، أو اختره أولاً ليظهر لك أطباؤه فقط. اضغط «فهمت»."
+    },
+    {
+      "id": "doctor",
+      "type": "wait_input",
+      "page": "appointments",
+      "target": {"field": "appointment.doctor"},
+      "condition": {"min_length": 1},
+      "message_ar": "اختر الطبيب من القائمة."
+    },
+    {
+      "id": "service",
+      "type": "highlight",
+      "page": "appointments",
+      "target": {"field": "appointment.service"},
+      "message_ar": "الخدمة اختيارية. عند اختيارها تظهر مدتها وسعرها وتُحدَّد مدة الموعد. اضغط «فهمت»."
+    },
+    {
+      "id": "date",
+      "type": "highlight",
+      "page": "appointments",
+      "target": {"field": "appointment.date"},
+      "message_ar": "تأكد من تاريخ الموعد (الافتراضي هو اليوم المعروض) وعدّله إن لزم، ثم اضغط «فهمت»."
+    },
+    {
+      "id": "time",
+      "type": "highlight",
+      "page": "appointments",
+      "target": {"field": "appointment.time"},
+      "message_ar": "حدد وقت الموعد. اختر وقتاً يطابق فترات الجدول (مثل 09:00 أو 09:30) ليظهر الموعد في شبكة اليوم. إذا كان الوقت خارج دوام الطبيب أو محجوزاً سيرفضه النظام وتكدر تعدله."
+    },
+    {
+      "id": "save",
+      "type": "wait_api_success",
+      "page": "appointments",
+      "allow_back": false,
+      "target": {"action": "appointment.save"},
+      "match": {"method": "POST", "url": "^/clinics/api/appointments$"},
+      "reconcile": {"kind": "backend", "validator": "appointment.created_since_start"},
+      "success_ar": "تم حجز الموعد.",
+      "message_ar": "راجع البيانات ثم اضغط «حفظ»."
+    },
+    {
+      "id": "verify",
+      "type": "wait_state",
+      "allow_back": false,
+      "validator": "appointment.created_since_start",
+      "message_ar": "نتأكد الآن من حجز الموعد في النظام…"
+    },
+    {
+      "id": "done",
+      "type": "complete",
+      "allow_back": false,
+      "message_ar": "تم حجز الموعد وتأكدنا من ذلك داخل النظام."
+    }
+  ]
+}

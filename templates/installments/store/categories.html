@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>الأقسام | {{ settings.store_name if settings else 'Finora' }}</title>
+  <meta name="description" content="تصفّح أقسام منتجات التقسيط في متجر {{ settings.store_name if settings else 'Finora' }}.">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installments.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installment_store.css', v='20260815-category-mosaic') }}">
+</head>
+<body class="store-body">
+  {% include 'installments/store/_header.html' %}
+
+  <main class="store-category-showcase-page">
+    <h1 class="store-visually-hidden">أقسام {{ settings.store_name if settings else 'Finora' }}</h1>
+    <div class="store-shell store-category-showcase-shell">
+      <section class="store-category-page-grid{% if category_cards|length >= 4 %} is-mosaic{% endif %}" aria-label="قائمة الأقسام">
+        {% for row in category_cards %}
+          <a class="store-category-page-card" href="{{ url_for('installments_store.store_index', tenant_slug=tenant_slug, category=row.name) }}" aria-label="{{ row.name }} — {{ row.count }} منتج">
+            <div class="store-category-page-card__media">
+              {% if row.category_image %}
+                <img src="{{ url_for('static', filename=row.category_image, v='20260815-category-art') }}" alt="{{ row.name }}" loading="{{ 'eager' if loop.first else 'lazy' }}" decoding="async"{% if loop.first %} fetchpriority="high"{% endif %}>
+              {% elif row.preview and row.preview.main_media %}
+                <img src="{{ url_for('static', filename=row.preview.main_media.file_path, v=row.preview.main_media.size_bytes) }}" alt="{{ row.name }}">
+              {% elif row.preview and row.preview.item.product.image_url %}
+                <img src="{{ row.preview.item.product.image_url }}" alt="{{ row.name }}">
+              {% else %}
+                <span>{{ row.name[:1] }}</span>
+              {% endif %}
+            </div>
+            <div class="store-category-page-card__body">
+              <strong>{{ row.name }}</strong>
+              <small>{{ row.count }} منتج</small>
+            </div>
+          </a>
+        {% else %}
+          <div class="store-empty">
+            <span>⌕</span>
+            <h3>لا توجد أقسام منشورة حالياً</h3>
+            <p>ستظهر الأقسام هنا فور نشر المنتجات في المتجر.</p>
+            <a href="{{ url_for('installments_store.store_index', tenant_slug=tenant_slug) }}">العودة للرئيسية</a>
+          </div>
+        {% endfor %}
+      </section>
+    </div>
+  </main>
+
+  {% include 'installments/store/_footer.html' %}
+</body>
+</html>

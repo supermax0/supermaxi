@@ -1,0 +1,43 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>{{ form.title }} | {{ company }}</title>
+<style>
+:root{color-scheme:light;font-family:Tahoma,Arial,sans-serif;color:#24213f}*{box-sizing:border-box}body{margin:0;background:linear-gradient(125deg,#f9f9ff,#f2ecff);min-height:100vh;padding:28px 16px}main{max-width:720px;margin:auto;background:#fff;border:1px solid #ece5ff;border-radius:24px;padding:28px;box-shadow:0 12px 50px #3920710a}header{border-bottom:1px solid #eee7fb;margin-bottom:24px;padding-bottom:20px}.brand{color:#861543;letter-spacing:3px;font-weight:bold}h1{font-size:24px;line-height:1.7}h2{font-size:18px}.hint{font-size:12px;color:#777193;line-height:1.8}.fields{display:grid;gap:20px}.field>label{display:block;font-size:14px;margin-bottom:9px}input,textarea,select{font:inherit;background:#fff;color:inherit;border:1px solid #e3dcf7;border-radius:12px;padding:12px;width:100%}input:focus,textarea:focus,select:focus{outline:3px solid #8249ff22;border-color:#8656fb}textarea{min-height:100px;resize:vertical}input[type=checkbox],input[type=radio]{width:auto;accent-color:#7742f4}.choices{display:flex;gap:16px;flex-wrap:wrap}button{font:inherit;background:#841742;color:white;border:0;border-radius:12px;padding:14px 22px;cursor:pointer}button:disabled{opacity:.5}.required,#error{color:#c62855}#error{font-size:13px;line-height:1.8}.honeypot{position:absolute;left:-10000px;width:1px;height:1px;overflow:hidden}.success{padding:28px;background:#eaf9ef;color:#00833c;border-radius:16px;text-align:center}@media(max-width:480px){main{padding:20px}body{padding:14px 10px}}
+</style></head><body><main><header><span class="brand">FINORA</span><p class="hint">{{ company }}</p><h1>{{ form.title }}</h1></header>
+<div id="content">{% if pin_required %}<form id="unlock" class="fields"><label for="pin">رمز الدخول للاستـمارة</label><input id="pin" type="password" minlength="4" maxlength="50" required autocomplete="off"><button>فتح الاستمارة</button></form>{% else %}{% include 'hr/recruit_fields.html' %}{% endif %}</div><p id="error" role="alert"></p>
+</main><script>
+(() => {
+  const newSubmissionId = () => {
+    if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] & 15) | 64; bytes[8] = (bytes[8] & 63) | 128;
+    const hex = Array.from(bytes, b => b.toString(16).padStart(2, "0")).join("");
+    return `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20)}`;
+  };
+  let pin = "", submissionId = newSubmissionId();
+  const error = document.getElementById("error"), content = document.getElementById("content");
+  function fileValue(file) { return new Promise((resolve,reject) => {const reader = new FileReader();reader.onload=()=>resolve({filename:file.name,mime:file.type,content:String(reader.result).split(",")[1]});reader.onerror=()=>reject(new Error("تعذّرت قراءة المرفق"));reader.readAsDataURL(file);}); }
+  document.addEventListener("submit", async event => {
+    if (!['application','unlock'].includes(event.target.id)) return;
+    event.preventDefault(); const form = event.target, button = form.querySelector('button'); button.disabled=true; error.textContent="";
+    try {
+      let body;
+      if (form.id === 'unlock') {pin=document.getElementById('pin').value;body={action:'unlock',pin};}
+      else {
+        const answers = {};
+        for (const field of form.querySelectorAll('[data-key]')) {
+          const key=field.dataset.key, kind=field.dataset.kind, input=field.querySelector('input,textarea,select');
+          if (kind==='multiple') answers[key]=Array.from(field.querySelectorAll('input:checked')).map(x=>x.value);
+          else if (kind==='single') answers[key]=field.querySelector('input:checked')?.value || '';
+          else if (kind==='consent') answers[key]=input.checked;
+          else if (kind==='file'||kind==='image') {if(input.files[0]) {if(input.files[0].size>Number(input.dataset.maxKb)*1024) throw new Error('حجم المرفق يتجاوز الحد المسموح');answers[key]=await fileValue(input.files[0]);}}
+          else answers[key]=kind==='number' && input.value!=='' ? Number(input.value) : input.value;
+        }
+        body={id:submissionId,pin,answers,website:form.elements.website.value};
+      }
+      const response=await fetch(location.pathname,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+      const result=await response.json();if(!response.ok) throw new Error(result.error || 'تعذّر الإرسال');
+      if(form.id==='unlock') content.innerHTML=result.html;
+      else {content.replaceChildren();const message=document.createElement('div');message.className='success';message.textContent='تم استلام طلبك بنجاح. ستراجعه الشركة وتتواصل معك عند الحاجة.';content.append(message);}
+    } catch (failure) {error.textContent=failure.message || 'تعذّر الاتصال؛ بياناتك محفوظة في الاستمارة، أعد المحاولة.';button.disabled=false;}
+  });
+})();
+</script></body></html>

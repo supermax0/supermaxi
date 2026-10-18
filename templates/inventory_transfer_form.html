@@ -108,7 +108,7 @@
   }
   .trf-lines-table {
     width: 100%;
-    min-width: 980px;
+    min-width: 1080px;
     border-collapse: collapse;
   }
   .trf-lines-table th,
@@ -137,7 +137,47 @@
     align-items: flex-end;
     margin-top: 16px;
   }
-  .trf-add-bar .trf-field { flex: 1 1 280px; min-width: 0; }
+  .trf-add-bar .trf-field { flex: 1 1 280px; min-width: 0; position: relative; }
+  .trf-product-suggest {
+    position: absolute;
+    top: calc(100% + 4px);
+    right: 0;
+    left: 0;
+    z-index: 30;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    max-height: 260px;
+    overflow: auto;
+    display: none;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  }
+  .trf-product-suggest.open { display: block; }
+  .trf-product-suggest button {
+    width: 100%;
+    text-align: right;
+    border: none;
+    background: transparent;
+    color: var(--text);
+    padding: 10px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--border);
+    font: inherit;
+  }
+  .trf-product-suggest button:last-child { border-bottom: none; }
+  .trf-product-suggest button:hover,
+  .trf-product-suggest button.active { background: rgba(59, 130, 246, 0.1); }
+  .trf-product-suggest small {
+    color: var(--text-muted);
+    display: block;
+    margin-top: 2px;
+    font-size: 12px;
+  }
+  .trf-product-suggest .trf-suggest-empty {
+    padding: 10px 12px;
+    color: var(--text-muted);
+    font-size: 13px;
+  }
   .trf-qty-input {
     width: 90px !important;
     min-width: 90px;
@@ -227,6 +267,7 @@
           <tr>
             <th>#</th>
             <th>المنتج</th>
+            <th>اللون</th>
             <th>SKU</th>
             <th>باركود</th>
             <th>سعر الشراء</th>
@@ -242,6 +283,7 @@
           <tr>
             <td>{{ loop.index }}</td>
             <td>{{ line.product_name }}</td>
+            <td>{{ line.variant_color or '—' }}</td>
             <td>{{ line.sku or '—' }}</td>
             <td>{{ line.barcode or '—' }}</td>
             <td class="trf-num">{{ "{:,}".format(line.buy_price) }}</td>
@@ -252,13 +294,13 @@
             <td class="trf-num">{{ line.quantity_received if line.quantity_received is not none else '—' }}</td>
           </tr>
           {% else %}
-          <tr><td colspan="10" class="trf-empty">لا توجد بنود.</td></tr>
+          <tr><td colspan="11" class="trf-empty">لا توجد بنود.</td></tr>
           {% endfor %}
         </tbody>
         {% if lines %}
         <tfoot>
           <tr>
-            <td colspan="7">الإجماليات</td>
+            <td colspan="8">الإجماليات</td>
             <td class="trf-num">{{ totals.total_qty }}</td>
             <td class="trf-num">{{ "{:,}".format(totals.total_cost) }} د.ع</td>
             <td></td>
@@ -323,12 +365,15 @@
 
     <div class="trf-add-bar">
       <div class="trf-field">
-        <label for="productPicker">إضافة منتج</label>
-        <select id="productPicker">
-          <option value="">اختر منتجاً...</option>
-          {% for p in products %}
-          <option value="{{ p.id }}">{{ p.name }}{% if p.sku %} — {{ p.sku }}{% endif %}</option>
-          {% endfor %}
+        <label for="productSearch">بحث منتج</label>
+        <input type="text" id="productSearch" placeholder="اسم المنتج / باركود / SKU" autocomplete="off">
+        <input type="hidden" id="selectedProductId" value="">
+        <div class="trf-product-suggest" id="productSuggest" role="listbox"></div>
+      </div>
+      <div class="trf-field" id="colorField" style="flex:0 0 180px;display:none;">
+        <label for="addColor">اللون</label>
+        <select id="addColor">
+          <option value="">اختر اللون</option>
         </select>
       </div>
       <div class="trf-field" style="flex:0 0 120px;">
@@ -346,6 +391,7 @@
           <tr>
             <th>#</th>
             <th>المنتج</th>
+            <th>اللون</th>
             <th>SKU</th>
             <th>باركود</th>
             <th>سعر الشراء</th>
@@ -357,11 +403,11 @@
           </tr>
         </thead>
         <tbody id="linesBody">
-          <tr id="emptyRow"><td colspan="10" class="trf-empty">لم تُضف بنود بعد. اختر منتجاً وأضفه للجدول.</td></tr>
+          <tr id="emptyRow"><td colspan="11" class="trf-empty">لم تُضف بنود بعد. ابحث عن منتج وأضفه للجدول.</td></tr>
         </tbody>
         <tfoot id="linesFoot" style="display:none;">
           <tr>
-            <td colspan="7">الإجماليات (<span id="itemsCount">0</span> صنف)</td>
+            <td colspan="8">الإجماليات (<span id="itemsCount">0</span> صنف)</td>
             <td class="trf-num" id="totalQty">0</td>
             <td class="trf-num" id="totalCost">0</td>
             <td></td>
@@ -385,6 +431,7 @@
   (function () {
     const PRODUCTS = {{ products_json|safe }};
     const BRANCH_STOCKS = {{ branch_stocks_json|safe }};
+    const INDEPENDENT_BRANCHES = {{ independent_branches_enabled|tojson }};
     const productMap = Object.fromEntries(PRODUCTS.map(p => [String(p.id), p]));
     const lines = [];
     const linesBody = document.getElementById('linesBody');
@@ -392,23 +439,192 @@
     const linesFoot = document.getElementById('linesFoot');
     const hiddenInputs = document.getElementById('hiddenInputs');
     const fromBranch = document.getElementById('from_branch_id');
+    const productSearch = document.getElementById('productSearch');
+    const selectedProductId = document.getElementById('selectedProductId');
+    const productSuggest = document.getElementById('productSuggest');
+    const colorField = document.getElementById('colorField');
+    const addColor = document.getElementById('addColor');
+    let searchTimer = null;
+    let activeSuggestIdx = -1;
 
     function fmt(n) {
       return Number(n || 0).toLocaleString('en-US');
     }
 
-    function getAvailable(productId) {
+    function escapeHtml(s) {
+      return String(s || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function productHasColors(p) {
+      return !!(p && p.has_colors && Array.isArray(p.colors) && p.colors.length);
+    }
+
+    function selectedColor() {
+      return String(addColor.value || '').trim();
+    }
+
+    function getBranchAvailable(productId) {
       const branchId = fromBranch.value;
       if (!branchId) return 0;
       const stocks = BRANCH_STOCKS[branchId] || {};
       return Number(stocks[String(productId)] || stocks[productId] || 0);
     }
 
+    function getColorQty(product, colorName) {
+      if (!product || !colorName) return null;
+      const branchId = String(fromBranch.value || '');
+      const branchColors = branchId && product.branch_color_stocks
+        ? product.branch_color_stocks[branchId]
+        : null;
+      if (branchColors && Object.prototype.hasOwnProperty.call(branchColors, String(colorName))) {
+        return Number(branchColors[String(colorName)] || 0);
+      }
+      const row = (product.colors || []).find(c => String(c.name) === String(colorName));
+      return row ? Number(row.qty || 0) : 0;
+    }
+
+    function getAvailable(productId, colorName) {
+      const branchQty = getBranchAvailable(productId);
+      const p = productMap[String(productId)];
+      if (!productHasColors(p)) return branchQty;
+      const color = String(colorName || '').trim();
+      if (!color) return branchQty;
+      const colorQty = getColorQty(p, color);
+      return Math.max(0, Math.min(branchQty, colorQty == null ? 0 : colorQty));
+    }
+
+    function resetColorField() {
+      addColor.innerHTML = '<option value="">اختر اللون</option>';
+      colorField.style.display = 'none';
+    }
+
+    function populateColorField(p) {
+      if (!productHasColors(p)) {
+        resetColorField();
+        return;
+      }
+      const branchQty = fromBranch.value ? getBranchAvailable(p.id) : null;
+      addColor.innerHTML = '<option value="">اختر اللون</option>' + p.colors.map(c => {
+        const colorAvail = fromBranch.value
+          ? Math.max(0, Math.min(Number(branchQty || 0), Number(c.qty || 0)))
+          : Number(c.qty || 0);
+        return `<option value="${escapeHtml(c.name)}">${escapeHtml(c.name)} (متوفر: ${colorAvail})</option>`;
+      }).join('');
+      colorField.style.display = '';
+    }
+
     function syncHiddenInputs() {
       hiddenInputs.innerHTML = lines.map(line =>
         `<input type="hidden" name="product_id" value="${line.product_id}">` +
-        `<input type="hidden" name="quantity" value="${line.quantity}">`
+        `<input type="hidden" name="quantity" value="${line.quantity}">` +
+        `<input type="hidden" name="variant_color" value="${escapeHtml(line.variant_color || '')}">`
       ).join('');
+    }
+
+    function closeSuggest() {
+      productSuggest.classList.remove('open');
+      activeSuggestIdx = -1;
+    }
+
+    function selectProduct(p) {
+      if (!p) return;
+      if (!fromBranch.value || (INDEPENDENT_BRANCHES && String(p.branch_id || '') !== String(fromBranch.value))) {
+        selectedProductId.value = '';
+        productSearch.value = '';
+        resetColorField();
+        closeSuggest();
+        alert('اختر منتجاً من فرع المصدر فقط.');
+        return;
+      }
+      selectedProductId.value = String(p.id);
+      productSearch.value = p.name || '';
+      populateColorField(p);
+      closeSuggest();
+      if (productHasColors(p)) {
+        addColor.focus();
+      } else {
+        document.getElementById('addQty').focus();
+        document.getElementById('addQty').select();
+      }
+    }
+
+    function runProductSearch(q) {
+      const query = String(q || '').trim().toLowerCase();
+      if (!query) {
+        closeSuggest();
+        return;
+      }
+      const sourceBranchId = String(fromBranch.value || '');
+      if (!sourceBranchId) {
+        productSuggest.innerHTML = '<div class="trf-suggest-empty">اختر فرع المصدر أولاً</div>';
+        productSuggest.classList.add('open');
+        activeSuggestIdx = -1;
+        return;
+      }
+      const matches = PRODUCTS.filter(p => {
+        if (INDEPENDENT_BRANCHES && String(p.branch_id || '') !== sourceBranchId) return false;
+        if (!INDEPENDENT_BRANCHES && getBranchAvailable(p.id) <= 0) return false;
+        const name = String(p.name || '').toLowerCase();
+        const sku = String(p.sku || '').toLowerCase();
+        const barcode = String(p.barcode || '').toLowerCase();
+        return name.includes(query) || sku.includes(query) || barcode.includes(query);
+      });
+
+      // Shared mode can contain one local row per branch for the same
+      // catalogue item.  Show one suggestion and prefer that branch's row;
+      // the server still resolves the source row before saving.
+      const uniqueMatches = INDEPENDENT_BRANCHES ? matches : Array.from(
+        matches.reduce((groups, product) => {
+          const key = String(product.catalog_group_id || product.id);
+          const current = groups.get(key);
+          if (!current || String(product.branch_id || '') === sourceBranchId) {
+            groups.set(key, product);
+          }
+          return groups;
+        }, new Map()).values()
+      ).slice(0, 20);
+
+      if (!uniqueMatches.length) {
+        productSuggest.innerHTML = '<div class="trf-suggest-empty">لا توجد نتائج</div>';
+        productSuggest.classList.add('open');
+        activeSuggestIdx = -1;
+        return;
+      }
+
+      productSuggest.innerHTML = uniqueMatches.map((p, idx) => {
+        const available = fromBranch.value ? getBranchAvailable(p.id) : null;
+        const meta = [
+          p.sku ? ('SKU: ' + escapeHtml(p.sku)) : '',
+          p.barcode ? ('باركود: ' + escapeHtml(p.barcode)) : '',
+          available !== null ? ('متوفر: ' + available) : '',
+          productHasColors(p) ? ('ألوان: ' + p.colors.length) : '',
+        ].filter(Boolean).join(' · ');
+        return `<button type="button" role="option" data-pid="${p.id}" data-idx="${idx}">
+          ${escapeHtml(p.name)}
+          ${meta ? `<small>${meta}</small>` : ''}
+        </button>`;
+      }).join('');
+
+      productSuggest.querySelectorAll('button[data-pid]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const row = productMap[String(btn.dataset.pid)];
+          if (row) selectProduct(row);
+        });
+      });
+      productSuggest.classList.add('open');
+      activeSuggestIdx = -1;
+    }
+
+    function highlightSuggest(delta) {
+      const buttons = Array.from(productSuggest.querySelectorAll('button[data-pid]'));
+      if (!buttons.length) return;
+      activeSuggestIdx = (activeSuggestIdx + delta + buttons.length) % buttons.length;
+      buttons.forEach((btn, i) => btn.classList.toggle('active', i === activeSuggestIdx));
+      buttons[activeSuggestIdx].scrollIntoView({ block: 'nearest' });
     }
 
     function render() {
@@ -424,14 +640,15 @@
       let totalQty = 0;
       let totalCost = 0;
       linesBody.innerHTML = lines.map((line, idx) => {
-        const available = getAvailable(line.product_id);
+        const available = getAvailable(line.product_id, line.variant_color);
         totalQty += line.quantity;
         totalCost += line.buy_price * line.quantity;
         return `<tr data-idx="${idx}">
           <td>${idx + 1}</td>
-          <td>${line.name}</td>
-          <td>${line.sku || '—'}</td>
-          <td>${line.barcode || '—'}</td>
+          <td>${escapeHtml(line.name)}</td>
+          <td>${escapeHtml(line.variant_color) || '—'}</td>
+          <td>${escapeHtml(line.sku) || '—'}</td>
+          <td>${escapeHtml(line.barcode) || '—'}</td>
           <td class="trf-num">${fmt(line.buy_price)}</td>
           <td class="trf-num">${fmt(line.sale_price)}</td>
           <td class="trf-num available-cell">${available}</td>
@@ -448,28 +665,34 @@
     }
 
     function addProduct() {
-      const picker = document.getElementById('productPicker');
       const qtyInput = document.getElementById('addQty');
-      const productId = Number(picker.value || 0);
+      const productId = Number(selectedProductId.value || 0);
       const qty = Math.max(1, Number(qtyInput.value || 1));
       if (!fromBranch.value) {
         alert('اختر فرع المصدر أولاً.');
         return;
       }
       if (!productId || !productMap[String(productId)]) {
-        alert('اختر منتجاً صالحاً.');
+        alert('ابحث واختر منتجاً من النتائج أولاً.');
+        productSearch.focus();
         return;
       }
-      if (lines.some(l => l.product_id === productId)) {
-        alert('هذا المنتج مضاف مسبقاً. عدّل الكمية من الجدول.');
+      const p = productMap[String(productId)];
+      const color = selectedColor();
+      if (productHasColors(p) && !color) {
+        alert('يجب اختيار لون للمنتج.');
+        addColor.focus();
         return;
       }
-      const available = getAvailable(productId);
+      if (lines.some(l => l.product_id === productId && String(l.variant_color || '') === color)) {
+        alert('هذا المنتج بنفس اللون مضاف مسبقاً. عدّل الكمية من الجدول.');
+        return;
+      }
+      const available = getAvailable(productId, color);
       if (qty > available) {
         alert(`الكمية المطلوبة (${qty}) أكبر من المتوفر (${available}).`);
         return;
       }
-      const p = productMap[String(productId)];
       lines.push({
         product_id: productId,
         name: p.name,
@@ -477,12 +700,63 @@
         barcode: p.barcode,
         buy_price: p.buy_price,
         sale_price: p.sale_price,
+        variant_color: color,
         quantity: qty,
       });
-      picker.value = '';
+      selectedProductId.value = '';
+      productSearch.value = '';
       qtyInput.value = '1';
+      resetColorField();
+      closeSuggest();
       render();
+      productSearch.focus();
     }
+
+    productSearch.addEventListener('input', function () {
+      selectedProductId.value = '';
+      resetColorField();
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => runProductSearch(productSearch.value), 150);
+    });
+
+    productSearch.addEventListener('keydown', function (e) {
+      const open = productSuggest.classList.contains('open');
+      if (e.key === 'ArrowDown' && open) {
+        e.preventDefault();
+        highlightSuggest(1);
+        return;
+      }
+      if (e.key === 'ArrowUp' && open) {
+        e.preventDefault();
+        highlightSuggest(-1);
+        return;
+      }
+      if (e.key === 'Escape') {
+        closeSuggest();
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const buttons = productSuggest.querySelectorAll('button[data-pid]');
+        if (open && buttons.length) {
+          const btn = buttons[activeSuggestIdx >= 0 ? activeSuggestIdx : 0];
+          if (btn) btn.click();
+          return;
+        }
+        addProduct();
+      }
+    });
+
+    addColor.addEventListener('change', function () {
+      document.getElementById('addQty').focus();
+      document.getElementById('addQty').select();
+    });
+
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('#productSearch') && !e.target.closest('#productSuggest')) {
+        closeSuggest();
+      }
+    });
 
     document.getElementById('addLineBtn').addEventListener('click', addProduct);
 
@@ -498,7 +772,7 @@
       if (!input) return;
       const idx = Number(input.dataset.idx);
       let qty = Math.max(1, Number(input.value || 1));
-      const available = getAvailable(lines[idx].product_id);
+      const available = getAvailable(lines[idx].product_id, lines[idx].variant_color);
       if (qty > available) {
         qty = available;
         input.value = qty;
@@ -515,10 +789,11 @@
     });
 
     fromBranch.addEventListener('change', function () {
-      lines.forEach(line => {
-        const available = getAvailable(line.product_id);
-        if (line.quantity > available) line.quantity = Math.max(1, available);
-      });
+      selectedProductId.value = '';
+      productSearch.value = '';
+      resetColorField();
+      closeSuggest();
+      lines.splice(0, lines.length);
       render();
     });
 
@@ -537,6 +812,14 @@
         e.preventDefault();
         alert('فرع المصدر والوجهة يجب أن يكونا مختلفين.');
         return;
+      }
+      for (const line of lines) {
+        const p = productMap[String(line.product_id)];
+        if (productHasColors(p) && !String(line.variant_color || '').trim()) {
+          e.preventDefault();
+          alert('يجب اختيار لون لكل منتج يدعم الألوان.');
+          return;
+        }
       }
       syncHiddenInputs();
     });

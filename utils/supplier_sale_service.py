@@ -22,6 +22,10 @@ from utils.product_color_service import (
     deduct_color_stock,
     receive_color_stock,
 )
+from utils.supplier_payment_allocation import (
+    allocate_supplier_payment_fifo,
+    backfill_supplier_payment_allocations,
+)
 
 
 class SupplierSaleError(Exception):
@@ -37,7 +41,9 @@ def _safe_int(value, default: int = 0) -> int:
 
 def ensure_supplier_sale_schema() -> None:
     """Create supplier_sale tables and extend supplier_payment if needed."""
-    bind = db.session.get_bind()
+    # Keep schema inspection on the caller's transaction; an Engine-level
+    # inspection can roll back a pending synchronization receipt on SQLite.
+    bind = db.session.connection()
     insp = inspect(bind)
     tables = set(insp.get_table_names())
 
@@ -48,15 +54,24 @@ def ensure_supplier_sale_schema() -> None:
 
     if "supplier_payment" in tables:
         cols = {c["name"] for c in insp.get_columns("supplier_payment")}
+        altered = False
         if "payment_method" not in cols:
             db.session.execute(
                 text("ALTER TABLE supplier_payment ADD COLUMN payment_method VARCHAR(20) DEFAULT 'cash'")
             )
+            altered = True
         if "supplier_sale_id" not in cols:
             db.session.execute(
                 text("ALTER TABLE supplier_payment ADD COLUMN supplier_sale_id INTEGER")
             )
-        db.session.commit()
+            altered = True
+        if "document_number" not in cols:
+            db.session.execute(
+                text("ALTER TABLE supplier_payment ADD COLUMN document_number VARCHAR(100)")
+            )
+            altered = True
+        if altered:
+            db.session.commit()
 
 
 def _next_supplier_sale_invoice_no() -> str:
@@ -104,7 +119,7 @@ def _deduct_sale_item_stock(
     color = (variant_color or "").strip()
     if color:
         try:
-            deduct_color_stock(product.id, color, qty)
+            deduct_color_stock(product.id, color, qty, branch_id=branch_id)
         except ProductColorError as exc:
             raise SupplierSaleError(str(exc)) from exc
 
@@ -128,7 +143,7 @@ def _restore_sale_item_stock(item: SupplierSaleItem) -> None:
     color = (item.variant_color or "").strip()
     if color:
         try:
-            receive_color_stock(product.id, color, qty)
+            receive_color_stock(product.id, color, qty, branch_id=branch_id)
         except ProductColorError as exc:
             raise SupplierSaleError(str(exc)) from exc
 
@@ -165,6 +180,7 @@ def create_supplier_sale(
     employee: Employee | None = None,
 ) -> SupplierSale:
     ensure_supplier_sale_schema()
+    backfill_supplier_payment_allocations(supplier.id)
 
     if not items_payload:
         raise SupplierSaleError("أضف منتجاً واحداً على الأقل")
@@ -231,16 +247,19 @@ def create_supplier_sale(
         )
 
     supplier.total_paid = _safe_int(supplier.total_paid) + grand_total
-    db.session.add(
-        SupplierPayment(
-            supplier_id=supplier.id,
-            amount=grand_total,
-            note=f"بيع للمورد — {sale.invoice_no}" + (f" — {note.strip()}" if note and note.strip() else ""),
-            treasury_account_id=None,
-            payment_method="offset",
-            supplier_sale_id=sale.id,
-        )
+    payment = SupplierPayment(
+        branch_id=branch_id,
+        supplier_id=supplier.id,
+        amount=grand_total,
+        note=f"بيع للمورد — {sale.invoice_no}" + (f" — {note.strip()}" if note and note.strip() else ""),
+        document_number=sale.invoice_no,
+        treasury_account_id=None,
+        payment_method="offset",
+        supplier_sale_id=sale.id,
     )
+    db.session.add(payment)
+    db.session.flush()
+    allocate_supplier_payment_fifo(payment, supplier=supplier)
 
     return sale
 

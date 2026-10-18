@@ -1,0 +1,89 @@
+{% extends 'superadmin/leads/_base.html' %}
+{% from 'superadmin/leads/_macros.html' import status_badge, priority_badge, empty_state %}
+{% set page_title = 'جميع العملاء المحتملين' %}
+{% set page_subtitle = 'بحث، تصفية، وإدارة قاعدة العملاء المحتملين' %}
+{% block header_actions %}
+<a href="{{ url_for('superadmin_leads.new_lead') }}" class="sa-btn sa-btn-primary"><i class="fas fa-plus"></i> عميل جديد</a>
+<a href="{{ url_for('superadmin_leads.export_leads', q=filters.get('q', ''), activity_id=filters.get('activity_id', ''), governorate=filters.get('governorate', ''), status=filters.get('status', '')) }}" class="sa-btn sa-btn-secondary"><i class="fas fa-file-export"></i> تصدير Excel</a>
+{% endblock %}
+{% block leads_content %}
+<form class="lc-filters" method="get">
+    <div class="lc-filter-group lc-filter-search">
+        <label for="q">بحث</label>
+        <input type="search" id="q" name="q" value="{{ filters.get('q', '') }}" placeholder="اسم، هاتف، منطقة...">
+    </div>
+    <div class="lc-filter-group">
+        <label for="activity_id">النشاط</label>
+        <select id="activity_id" name="activity_id">
+            <option value="">كل الأنشطة</option>
+            {% for a in activities %}<option value="{{ a.id }}" {% if filters.get('activity_id', '')|int == a.id %}selected{% endif %}>{{ a.name_ar }}</option>{% endfor %}
+        </select>
+    </div>
+    <div class="lc-filter-group">
+        <label for="governorate">المحافظة</label>
+        <select id="governorate" name="governorate">
+            <option value="">كل المحافظات</option>
+            {% for gov in governorates %}<option value="{{ gov }}" {% if filters.get('governorate') == gov %}selected{% endif %}>{{ gov }}</option>{% endfor %}
+        </select>
+    </div>
+    <div class="lc-filter-group">
+        <label for="status">الحالة</label>
+        <select id="status" name="status">
+            <option value="">كل الحالات</option>
+            {% for s in statuses %}<option value="{{ s.code }}" {% if filters.get('status') == s.code %}selected{% endif %}>{{ s.label_ar }}</option>{% endfor %}
+        </select>
+    </div>
+    <div class="lc-filter-group">
+        <label for="priority">الأولوية</label>
+        <select id="priority" name="priority">
+            <option value="">كل الأولويات</option>
+            {% for code, label in priorities %}<option value="{{ code }}" {% if filters.get('priority') == code %}selected{% endif %}>{{ label }}</option>{% endfor %}
+        </select>
+    </div>
+    <button type="submit" class="sa-btn sa-btn-primary"><i class="fas fa-search"></i> تصفية</button>
+</form>
+
+<div class="lc-table-wrap">
+    <table class="lc-table">
+        <thead>
+            <tr>
+                <th>الشركة</th><th>النشاط</th><th>الهاتف</th><th>المحافظة</th><th>الحالة</th>
+                <th>الأولوية</th><th>آخر تواصل</th><th>المتابعة</th><th>المصدر</th><th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for lead in leads_data.leads %}
+            <tr>
+                <td>
+                    <button type="button" class="lc-cell-link lc-cell-btn" data-lc-open-lead="{{ lead.id }}">
+                        <strong>{{ lead.business_name }}</strong>
+                    </button>
+                </td>
+                <td>{{ lead.activity_name }}</td>
+                <td>{{ lead.primary_phone or '—' }}</td>
+                <td>{{ lead.governorate or '—' }}</td>
+                <td>{{ status_badge(lead.status, status_labels.get(lead.status, lead.status)) }}</td>
+                <td>{{ priority_badge(lead.priority, priority_labels.get(lead.priority, lead.priority)) }}</td>
+                <td>{{ lead.last_contact_at[:10] if lead.last_contact_at else '—' }}</td>
+                <td>{{ lead.next_follow_up_at[:10] if lead.next_follow_up_at else '—' }}</td>
+                <td>{{ lead.source_primary or '—' }}</td>
+                <td>
+                    <button type="button" class="lc-link-btn" data-lc-open-lead="{{ lead.id }}">
+                        <i class="fas fa-eye"></i> عرض
+                    </button>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="10">{{ empty_state('لا توجد نتائج مطابقة للبحث', 'fa-address-book', url_for('superadmin_leads.new_lead'), 'إضافة عميل') }}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% if leads_data.pages > 1 %}
+<nav class="lc-pagination" aria-label="ترقيم الصفحات">
+    {% for p in range(1, leads_data.pages + 1) %}
+    <a href="?page={{ p }}{% if filters.get('q') %}&q={{ filters.get('q')|urlencode }}{% endif %}{% if filters.get('activity_id') %}&activity_id={{ filters.get('activity_id') }}{% endif %}{% if filters.get('governorate') %}&governorate={{ filters.get('governorate')|urlencode }}{% endif %}{% if filters.get('status') %}&status={{ filters.get('status') }}{% endif %}{% if filters.get('priority') %}&priority={{ filters.get('priority') }}{% endif %}" class="{% if p == leads_data.page %}active{% endif %}">{{ p }}</a>
+    {% endfor %}
+</nav>
+{% endif %}
+{% endblock %}

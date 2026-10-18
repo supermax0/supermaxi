@@ -1,0 +1,73 @@
+{% extends 'superadmin/leads/_base.html' %}
+{% from 'superadmin/leads/_macros.html' import kpi_card %}
+{% set page_title = 'التقارير' %}
+{% set page_subtitle = 'مؤشرات الأداء وتحليل مسار المبيعات والمصادر' %}
+{% block header_actions %}
+<a href="{{ url_for('superadmin_leads.performance_page') }}" class="sa-btn sa-btn-secondary"><i class="fas fa-users"></i> أداء الفريق</a>
+<a href="{{ url_for('superadmin_leads.sources_page') }}" class="sa-btn sa-btn-secondary"><i class="fas fa-link"></i> المصادر</a>
+{% endblock %}
+{% block leads_content %}
+<div class="lc-kpi-grid">
+    {% set kpi_labels = {
+        'total_leads': ('إجمالي العملاء', 'fa-users'),
+        'with_phone': ('بأرقام هاتف', 'fa-phone'),
+        'not_contacted': ('لم يتم التواصل', 'fa-phone-slash'),
+        'interested': ('مهتمون', 'fa-star'),
+        'trial': ('تحت التجربة', 'fa-flask'),
+        'subscribed': ('مشتركون', 'fa-check-circle'),
+        'overdue_followups': ('متابعات متأخرة', 'fa-clock'),
+        'trials_ending_soon': ('تجارب تنتهي قريباً', 'fa-hourglass-half'),
+        'mrr_from_leads': ('الإيراد الشهري', 'fa-coins'),
+    } %}
+    {% for k, v in kpis.items() %}
+    {% set meta = kpi_labels.get(k, (k, 'fa-chart-simple')) %}
+    {{ kpi_card(meta[0], '%.0f'|format(v) if k == 'mrr_from_leads' else v, meta[1]) }}
+    {% endfor %}
+</div>
+
+<div class="lc-split">
+    <section class="lc-card">
+        <header class="lc-card-header"><div><h2><i class="fas fa-filter lc-card-icon"></i> قمع المبيعات</h2></div></header>
+        <div class="lc-card-body">
+            {% set max_count = funnel|map(attribute='count')|max if funnel else 1 %}
+            <div class="lc-funnel">
+                {% for row in funnel %}
+                <div class="lc-funnel-row">
+                    <span>{{ status_labels.get(row.status, row.status) }}</span>
+                    <strong>{{ row.count }}</strong>
+                    <div class="lc-funnel-bar"><span style="width: {{ (row.count / max_count * 100) if max_count else 0 }}%"></span></div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <section class="lc-card">
+        <header class="lc-card-header"><div><h2><i class="fas fa-map lc-card-icon"></i> حسب المحافظة</h2></div></header>
+        <div class="lc-card-body" style="padding:0;">
+            <div class="lc-table-wrap" style="border:none;box-shadow:none;border-radius:0;">
+                <table class="lc-table">
+                    <thead><tr><th>المحافظة</th><th>العدد</th></tr></thead>
+                    <tbody>
+                        {% for g in governorates %}<tr><td>{{ g.governorate }}</td><td><strong>{{ g.count }}</strong></td></tr>{% else %}<tr><td colspan="2" class="lc-empty">—</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</div>
+
+<section class="lc-card">
+    <header class="lc-card-header"><div><h2><i class="fas fa-link lc-card-icon"></i> تحليل المصادر</h2></div></header>
+    <div class="lc-card-body" style="padding:0;">
+        <div class="lc-table-wrap" style="border:none;box-shadow:none;border-radius:0;">
+            <table class="lc-table">
+                <thead><tr><th>المصدر</th><th>العدد</th></tr></thead>
+                <tbody>
+                    {% for s in sources %}<tr><td>{{ s.source }}</td><td><strong>{{ s.count }}</strong></td></tr>{% else %}<tr><td colspan="2" class="lc-empty">—</td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}

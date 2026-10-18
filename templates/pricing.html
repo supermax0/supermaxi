@@ -1,29 +1,28 @@
-{% extends "base.html" %}
-{% from "payment_flow/_macros.html" import pf_topbar %}
+{% extends "public_flow/base.html" %}
+{% from "payment_flow/_macros.html" import pf_topbar, pf_steps with context %}
 {% block title %}خطط الاشتراك — Finora{% endblock %}
-{% block page_title %}{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/payment-flow.css') }}">
 <div class="pf-page">
   {{ pf_topbar('/', 'العودة للرئيسية') }}
+  {{ pf_steps(1, ['اختيار الخطة', 'بيانات الحساب', 'تفعيل واتساب']) }}
 
   <div class="pf-wrap-wide">
     <div class="pf-header">
-      <h1>خطط الاشتراك الشهرية</h1>
+      <span class="pf-eyebrow">الخطط والاشتراكات الشهرية</span><h1>خطة تناسب شغلك.<br>ومساحة تكبر وياك.</h1>
       <p>اختر الخطة المناسبة لشركتك، ثم أكمل بياناتك لإنشاء لوحة تحكم خاصة باسم شركتك.</p>
     </div>
 
     <div class="pf-pricing-grid">
       {% for plan in plans %}
       <div class="pf-pricing-card">
-        <h3>{{ plan.name }}</h3>
+        <h2>{{ plan.name }}</h2>
         <p class="desc">{{ plan.description }}</p>
         <div class="pf-pricing-price">
           {% if plan.original_price and plan.original_price > plan.price %}
           <span class="pf-strike" style="font-size:16px">{{ "{:,}".format(plan.original_price) }}</span>
           {% endif %}
-          {{ "{:,}".format(plan.price) }} <small style="font-size:14px;color:var(--pf-muted)">د.ع/شهر</small>
+          {{ "{:,}".format(plan.price) }} <small style="font-size:14px;color:var(--pf-muted)">{{ ('د.ع / ' ~ (free_trial_days|default(14, true)) ~ ' يوماً') if plan.key == 'free' else 'د.ع/شهر' }}</small>
         </div>
         <ul class="pf-pricing-feats">
           {% for feat in plan.features %}
@@ -38,6 +37,7 @@
       {% endfor %}
     </div>
 
+    <div class="flow-pricing-note"><div><h2>حساب واحد. تجربة على المتصفح وسطح المكتب.</h2><p>تعرّف على التطبيق، ثم اختر الخطة المناسبة لطبيعة عملك.</p></div><a class="pf-btn pf-btn-outline" href="/landing#desktop">اكتشف نسخة Windows <span aria-hidden="true">↗</span></a></div>
     <p class="pf-footer-links" style="margin-top:32px">
       تريد مقارنة تفصيلية؟ <a href="/#pricing">عرض الأسعار على الصفحة الرئيسية</a>
     </p>

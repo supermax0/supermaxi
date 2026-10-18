@@ -31,10 +31,12 @@ def _setup(tenant="test_courier_ro"):
         from flask import g
         from extensions_tenant import init_tenant_db
         from modules.workspace.services.schema_guard import ensure_workspace_schema
+        from utils.order_item_schema_guard import ensure_order_item_schema
 
         g.tenant = tenant
         init_tenant_db(tenant)
         ensure_workspace_schema()
+        ensure_order_item_schema()
     return app, tenant
 
 

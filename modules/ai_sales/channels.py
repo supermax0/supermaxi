@@ -3,16 +3,19 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 import requests
 from flask import current_app
 
+from extensions import db
 from .models import AISalesChannelAccount
-from .security import decrypt_secret
+from .security import decrypt_secret, encrypt_secret
 
+
+from .attachments import normalize as normalize_attachments
 
 def _redact_log_value(value: Any) -> Any:
     """Remove credentials from structured Graph API logs."""
@@ -23,6 +26,8 @@ def _redact_log_value(value: Any) -> Any:
         }
     if isinstance(value, list):
         return [_redact_log_value(item) for item in value]
+    if isinstance(value, str) and "/media/delivery/" in value:
+        return "[TEMPORARY MEDIA URL]"
     return value
 
 
@@ -213,12 +218,261 @@ class WhatsAppClient:
         return str(body["id"])
 
 
+class TikTokClientError(RuntimeError):
+    def __init__(self, message: str, *, status_code: int | None = None, tiktok_code: int | None = None, response_body: Any = None):
+        super().__init__(message)
+        self.status_code = status_code
+        self.tiktok_code = tiktok_code
+        self.response_body = response_body
+
+
+class TikTokClient:
+    """TikTok Business Messaging API client (Open Beta).
+
+    Verified live against TikTok's own docs on 2026-10-01
+    (business-api.tiktok.com/portal/docs/business-messaging-api/v1.3):
+      - Only TEXT and IMAGE messages can be sent by a business — there is no
+        video or audio send support in this API at all.
+      - A business can send at most 10 messages within 48h of the last
+        customer message (a new window opens each time the customer replies).
+      - access_token is short-lived (24h) and must be renewed with
+        refresh_token (valid 1 year) via /tt_user/oauth2/refresh_token/ —
+        see refresh_tiktok_token() below.
+    The image-upload multipart field name and the media-download request
+    shape are this module's best guess from TikTok's general API conventions
+    and are NOT confirmed against a live call — verify both in the API
+    Playground before relying on them in production.
+    """
+
+    API_ROOT = "https://business-api.tiktok.com/open_api/v1.3"
+
+    def __init__(self, channel: AISalesChannelAccount):
+        self.channel = channel
+        self.access_token = decrypt_secret(channel.access_token_encrypted)
+        self.business_id = channel.external_account_id or ""
+        if not self.access_token or not self.business_id:
+            raise TikTokClientError("قناة تيك توك غير مكتملة: التوكن ومعرّف الحساب (business_id) مطلوبان")
+
+    def _call(self, method: str, path: str, *, params: dict | None = None, payload: dict | None = None) -> dict:
+        endpoint = f"{self.API_ROOT}/{path.lstrip('/')}"
+        headers = {"Access-Token": self.access_token, "Content-Type": "application/json"}
+        current_app.logger.info(
+            "AI_SALES_TIKTOK %s",
+            json.dumps(
+                {
+                    "event": "api_request",
+                    "method": method,
+                    "endpoint": endpoint,
+                    "params": _redact_log_value(params or {}),
+                    "payload": _redact_log_value(payload or {}),
+                },
+                ensure_ascii=False,
+                default=str,
+            ),
+        )
+        response = requests.request(method, endpoint, headers=headers, params=params, json=payload, timeout=30)
+        try:
+            body = response.json()
+        except ValueError:
+            body = {"raw": response.text[:1000]}
+        code = body.get("code") if isinstance(body, dict) else None
+        if response.status_code >= 400 or code not in (None, 0):
+            raise TikTokClientError(
+                str(body.get("message") or f"TikTok HTTP {response.status_code}"),
+                status_code=response.status_code,
+                tiktok_code=code,
+                response_body=body,
+            )
+        return body.get("data") or {}
+
+    def send_text(self, conversation_id: str, text: str) -> dict:
+        data = self._call(
+            "POST",
+            "business/message/send/",
+            payload={
+                "business_id": self.business_id,
+                "recipient_type": "CONVERSATION",
+                "recipient": conversation_id,
+                "message_type": "TEXT",
+                "text": {"body": text[:6000]},
+            },
+        )
+        # Flatten {"message": {"message_id": ...}} so outbound_message_id() (which
+        # looks for a top-level message_id/id) finds it.
+        return data.get("message") or data
+
+    def send_media(self, conversation_id: str, media_type: str, *, media_id: str) -> dict:
+        if (media_type or "").lower() != "image":
+            raise TikTokClientError("تيك توك يدعم إرسال الصور فقط حالياً عبر Business Messaging API — لا يوجد دعم لإرسال فيديو أو صوت")
+        data = self._call(
+            "POST",
+            "business/message/send/",
+            payload={
+                "business_id": self.business_id,
+                "recipient_type": "CONVERSATION",
+                "recipient": conversation_id,
+                "message_type": "IMAGE",
+                "image": {"media_id": media_id},
+            },
+        )
+        return data.get("message") or data
+
+    def upload_image(self, file_path: str, mime_type: str) -> str:
+        """Upload an image for a 30-day-valid media_id. Field name 'image' is unverified — confirm in the API Playground."""
+        endpoint = f"{self.API_ROOT}/business/message/media/upload/"
+        file_name = file_path.rsplit("/", 1)[-1].rsplit("\\", 1)[-1]
+        with open(file_path, "rb") as handle:
+            response = requests.post(
+                endpoint,
+                headers={"Access-Token": self.access_token},
+                data={"business_id": self.business_id},
+                files={"image": (file_name, handle, mime_type)},
+                timeout=45,
+            )
+        try:
+            body = response.json()
+        except ValueError:
+            body = {}
+        data = body.get("data") or {}
+        if response.status_code >= 400 or not data.get("media_id"):
+            raise TikTokClientError(str(body.get("message") or "تعذر رفع الصورة إلى تيك توك"), response_body=body)
+        return str(data["media_id"])
+
+    def download_media(self, composite_media_id: str, *, max_bytes: int) -> tuple[bytes, str]:
+        """Resolve a media_id to a download_url then stream it.
+
+        TikTok's download endpoint needs media_id + message_id + conversation_id
+        together, but the shared download_inbound_media() call site (media.py)
+        only passes a single media id string — so inbound TikTok image messages
+        are stored with a composite id "conversation_id:message_id:media_id"
+        (see parse_tiktok_messaging_payload/the TikTok webhook route) which is
+        unpacked here. Request shape (GET + these params) is unverified against
+        a live call — confirm in the API Playground.
+        """
+        parts = str(composite_media_id or "").split(":", 2)
+        if len(parts) != 3:
+            raise TikTokClientError("معرف وسائط تيك توك غير صالح")
+        conversation_id, message_id, media_id = parts
+        data = self._call(
+            "GET",
+            "business/message/media/download/",
+            params={"business_id": self.business_id, "media_id": media_id, "message_id": message_id, "conversation_id": conversation_id},
+        )
+        download_url = str(data.get("download_url") or "")
+        if not download_url:
+            raise TikTokClientError("تعذر الحصول على رابط تنزيل وسائط تيك توك")
+        response = requests.get(download_url, timeout=45, stream=True)
+        if response.status_code >= 400:
+            raise TikTokClientError("تعذر تنزيل وسائط تيك توك")
+        content = bytearray()
+        for chunk in response.iter_content(64 * 1024):
+            if not chunk:
+                continue
+            content.extend(chunk)
+            if len(content) > max_bytes:
+                raise TikTokClientError("حجم وسائط تيك توك أكبر من الحد المسموح")
+        mime_type = str(response.headers.get("Content-Type") or "image/jpeg").split(";", 1)[0].lower()
+        return bytes(content), mime_type
+
+
+def refresh_tiktok_token(channel: AISalesChannelAccount) -> dict:
+    """Renew a TikTok access_token using the stored refresh_token (valid ~1 year).
+
+    access_token expires every 24h, so callers (e.g. a daily scheduled job)
+    must call this before expiry or outbound sends will start failing.
+    Returns the raw token payload; the caller is responsible for re-encrypting
+    and persisting access_token/refresh_token/expiry onto the channel row.
+    """
+    app_id = channel.tiktok_app_id or ""
+    app_secret = decrypt_secret(channel.app_secret_encrypted)
+    refresh_token = decrypt_secret(channel.tiktok_refresh_token_encrypted)
+    if not app_id or not app_secret or not refresh_token:
+        raise TikTokClientError("إعدادات تجديد توكن تيك توك غير مكتملة")
+    response = requests.post(
+        "https://business-api.tiktok.com/open_api/v1.3/tt_user/oauth2/refresh_token/",
+        headers={"Content-Type": "application/json"},
+        json={"client_id": app_id, "client_secret": app_secret, "grant_type": "refresh_token", "refresh_token": refresh_token},
+        timeout=30,
+    )
+    try:
+        body = response.json()
+    except ValueError:
+        body = {}
+    data = body.get("data") or {}
+    if response.status_code >= 400 or not data.get("access_token"):
+        raise TikTokClientError(str(body.get("message") or "تعذر تجديد توكن تيك توك"), response_body=body)
+    return data
+
+
+def parse_tiktok_messaging_payload(payload: dict) -> list[dict]:
+    """Normalize a TikTok Business Messaging webhook notification.
+
+    TikTok wraps the actual event in a `content` field that is itself a JSON
+    *string* (not a nested object) — see im_receive_msg in TikTok's webhook
+    docs. `im_receive_msg_eu` (EEA/Switzerland/UK senders) deliberately omits
+    message content for privacy, so those events are returned with
+    has_message=False and must be skipped by the caller.
+    """
+    event_name = str(payload.get("event") or "")
+    if event_name not in {"im_receive_msg", "im_send_msg"}:
+        return []
+    try:
+        content = json.loads(payload.get("content") or "{}")
+    except ValueError:
+        return []
+    message_type_raw = str(content.get("type") or "text").lower()
+    type_map = {"text": "text", "image": "image", "video": "video", "share_post": "text", "sticker": "sticker", "emoji": "sticker"}
+    message_type = type_map.get(message_type_raw, "file")
+    text_content = str((content.get("text") or {}).get("body") or "")
+    raw_media_id = str(
+        (content.get("image") or {}).get("media_id")
+        or (content.get("video") or {}).get("media_id")
+        or ""
+    )
+    # Composite id so TikTokClient.download_media() can recover conversation_id
+    # and message_id too — see its docstring for why.
+    attachment_media_id = (
+        f"{content.get('conversation_id') or ''}:{content.get('message_id') or ''}:{raw_media_id}"
+        if raw_media_id else ""
+    )
+    is_echo = event_name == "im_send_msg"
+    return [{
+        "platform": "tiktok",
+        "account_id": str(payload.get("user_openid") or ""),
+        "external_message_id": str(content.get("message_id") or ""),
+        "conversation_id": str(content.get("conversation_id") or ""),
+        "from": str(content.get("conversation_id") or ""),
+        "contact_name": str(content.get("from") if not is_echo else content.get("to") or ""),
+        "is_echo": is_echo,
+        "timestamp": str(content.get("timestamp") or ""),
+        "message_type": message_type,
+        "text": text_content,
+        "attachment_media_id": attachment_media_id,
+        "reply_to_external_id": str((content.get("referenced_message_info") or {}).get("referenced_message_id") or ""),
+        "has_message": bool(content.get("conversation_id") and (text_content or attachment_media_id or message_type == "sticker")),
+        "raw": content,
+    }]
+
+
 class MetaMessagingClientError(RuntimeError):
-    def __init__(self, message: str, *, status_code: int | None = None, meta_code: int | None = None, response_body: Any = None):
+    def __init__(
+        self,
+        message: str,
+        *,
+        status_code: int | None = None,
+        meta_code: int | None = None,
+        response_body: Any = None,
+        response_headers: dict | None = None,
+    ):
         super().__init__(message)
         self.status_code = status_code
         self.meta_code = meta_code
         self.response_body = response_body
+        # Only back-off hints are kept (Retry-After / usage headers); used by meta_reliability.classify.
+        self.response_headers = {
+            k: v for k, v in (response_headers or {}).items()
+            if k.lower() in {"retry-after", "x-business-use-case-usage", "x-app-usage", "x-page-usage"}
+        }
 
 
 class MetaMessagingClient:
@@ -269,6 +523,7 @@ class MetaMessagingClient:
                 status_code=response.status_code,
                 meta_code=error.get("code"),
                 response_body=body,
+                response_headers=dict(response.headers or {}),
             )
         return body
 
@@ -439,8 +694,8 @@ class MetaMessagingClient:
         if not account_id:
             raise MetaMessagingClientError("معرف صفحة Meta غير موجود")
         media_type = (media_type or "").lower()
-        if self.channel.channel_type == "instagram" and media_type != "image":
-            raise MetaMessagingClientError("إنستغرام يدعم إرسال الصور فقط من صندوق Finora حالياً")
+        if self.channel.channel_type == "instagram" and media_type not in {"image", "video", "audio"}:
+            raise MetaMessagingClientError("إنستغرام يدعم الصور والفيديو والصوت؛ نوع الملف الآخر غير مدعوم")
         if media_type not in {"image", "video", "audio", "file"}:
             raise MetaMessagingClientError("نوع الوسائط غير مدعوم في Meta")
         payload = {
@@ -518,22 +773,60 @@ class MetaMessagingClient:
         page_id = self.channel.page_id or self.channel.external_account_id
         if not page_id:
             return []
+        requested = max(int(limit or 1), 1)
+        path = f"{page_id}/conversations"
         params = {
             "fields": "id,updated_time,participants{id,name,username,picture},messages.limit(50){id,created_time,from,to,message,attachments}",
-            "limit": min(max(limit, 1), 100),
+            "limit": min(requested, 100),
         }
         if self.channel.channel_type == "instagram":
             params["platform"] = "instagram"
-        body = self._request("GET", f"{page_id}/conversations", params=params)
-        return body.get("data") or []
+        conversations: list[dict] = []
+        while path and len(conversations) < requested:
+            body = self._request("GET", path, params=params)
+            conversations.extend(body.get("data") or [])
+            path = str(((body.get("paging") or {}).get("next") or ""))
+            params = None
+        return conversations[:requested]
 
 
 def channel_client(channel: AISalesChannelAccount):
+    if channel.channel_type == "telegram":
+        from .telegram import TelegramBotClient
+        return TelegramBotClient(channel)
     if channel.channel_type == "whatsapp":
         return WhatsAppClient(channel)
     if channel.channel_type in {"messenger", "instagram", "meta"}:
         return MetaMessagingClient(channel)
+    if channel.channel_type == "tiktok":
+        _ensure_tiktok_token_fresh(channel)
+        return TikTokClient(channel)
     raise ValueError(f"قناة غير مدعومة: {channel.channel_type}")
+
+
+def _ensure_tiktok_token_fresh(channel: AISalesChannelAccount) -> None:
+    """Lazily renew a TikTok access_token (24h lifetime) before it's used.
+
+    There is no scheduled job for this — every call site goes through
+    channel_client(), so refreshing here covers inbound replies, product
+    media sends, and manual test sends alike without needing a cron task.
+    """
+    expires_at = channel.tiktok_token_expires_at
+    if expires_at and expires_at - datetime.utcnow() > timedelta(hours=1):
+        return
+    if not channel.tiktok_refresh_token_encrypted:
+        return
+    try:
+        data = refresh_tiktok_token(channel)
+    except TikTokClientError:
+        current_app.logger.exception("TikTok token refresh failed for channel_id=%s", channel.id)
+        return
+    channel.access_token_encrypted = encrypt_secret(str(data.get("access_token") or ""))
+    if data.get("refresh_token"):
+        channel.tiktok_refresh_token_encrypted = encrypt_secret(str(data["refresh_token"]))
+    expires_in = int(data.get("expires_in") or 0)
+    channel.tiktok_token_expires_at = datetime.utcnow() + timedelta(seconds=expires_in) if expires_in else None
+    db.session.commit()
 
 
 def outbound_message_id(body: dict | None) -> str:
@@ -561,6 +854,7 @@ def meta_attachment_details(attachments) -> dict:
         or ""
     ).strip()
     is_like = attachment_type == "sticker" and sticker_id == "369239263222822"
+    name = str(first.get("name") or payload.get("name") or "")
     raw_url = str(
         payload.get("url")
         or first.get("url")
@@ -580,13 +874,20 @@ def meta_attachment_details(attachments) -> dict:
             attachment_type = "sticker"
         elif first:
             attachment_type = "file"
-    if attachment_type == "file":
-        url_without_query = raw_url.split("?", 1)[0].lower()
-        if mime_type.startswith("audio/") or url_without_query.endswith((".ogg", ".oga", ".opus", ".mp3", ".m4a", ".aac", ".wav", ".webm")):
+    if attachment_type in {"file", "fallback", "share", "reel", "ig_reel", "animated_image_share", "template"}:
+        path = raw_url.split("?", 1)[0].lower()
+        label = name.lower()
+
+        def _looks(mime_prefix: str, extensions: tuple[str, ...]) -> bool:
+            if mime_type.startswith(mime_prefix):
+                return True
+            return any(path.endswith(ext) or label.endswith(ext) for ext in extensions)
+
+        if _looks("audio/", (".ogg", ".oga", ".opus", ".mp3", ".m4a", ".aac", ".wav")):
             attachment_type = "audio"
-        elif mime_type.startswith("video/") or url_without_query.endswith((".mp4", ".mov", ".m4v", ".avi", ".webm")):
+        elif _looks("video/", (".mp4", ".mov", ".m4v", ".avi", ".webm")) or first.get("video_data"):
             attachment_type = "video"
-        elif mime_type.startswith("image/") or url_without_query.endswith((".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp")):
+        elif _looks("image/", (".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp")) or first.get("image_data"):
             attachment_type = "image"
     media_data = (
         first.get(f"{attachment_type}_data")
@@ -600,7 +901,7 @@ def meta_attachment_details(attachments) -> dict:
         or media_data.get("url")
         or ""
     )
-    if attachment_type == "sticker":
+    if attachment_type == "sticker" and is_like:
         url = ""
     preview_url = str(media_data.get("preview_url") or payload.get("preview_url") or "")
     return {
@@ -666,6 +967,8 @@ def parse_meta_messaging_payload(payload: dict) -> list[dict]:
         account_id = str(entry.get("id") or "")
         for event in entry.get("messaging") or []:
             message = event.get("message") or {}
+            if message.get("is_deleted"):
+                continue  # unsend/delete notifications are not new messages
             referral = event.get("referral") or message.get("referral") or {}
             ads_context = (
                 referral.get("ads_context_data")
@@ -722,9 +1025,42 @@ def parse_meta_messaging_payload(payload: dict) -> list[dict]:
                 "ads_context_data": ads_context,
                 # Treat referral-only ad opens as persistable inbox events.
                 "has_message": bool(message) or bool(referral),
+                # Every attachment (not only the first), as safe metadata — see attachments.py.
+                "attachments": normalize_attachments(message.get("attachments")),
+                "is_unsupported": bool(message.get("is_unsupported")),
                 "raw": event,
             })
     return events
+
+
+def parse_meta_receipt_events(payload: dict) -> list[dict]:
+    """Messenger ``delivery`` / ``read`` and Instagram ``read`` events → delivery receipts for outbound messages.
+
+    Messenger delivery: {"delivery": {"mids": [...], "watermark": ms}}; Messenger read: {"read": {"watermark": ms}}
+    (everything sent before the watermark was read); Instagram read: {"read": {"mid": "..."}}.
+    """
+    platform = "instagram" if str(payload.get("object") or "").lower() == "instagram" else "messenger"
+    receipts: list[dict] = []
+    for entry in payload.get("entry") or []:
+        account_id = str(entry.get("id") or "")
+        for event in entry.get("messaging") or []:
+            contact_id = str((event.get("sender") or {}).get("id") or "")
+            for kind in ("delivery", "read"):
+                body = event.get(kind)
+                if not isinstance(body, dict):
+                    continue
+                mids = [str(m) for m in (body.get("mids") or []) if m]
+                if body.get("mid"):
+                    mids.append(str(body["mid"]))
+                receipts.append({
+                    "platform": platform,
+                    "account_id": account_id,
+                    "contact_id": contact_id,
+                    "kind": "delivered" if kind == "delivery" else "read",
+                    "mids": mids,
+                    "watermark": external_timestamp(str(body.get("watermark") or "")) if body.get("watermark") else None,
+                })
+    return receipts
 
 
 def parse_meta_comment_payload(payload: dict) -> list[dict]:

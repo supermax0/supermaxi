@@ -8,13 +8,19 @@ import tarfile
 import threading
 import time
 import queue
+import re
+import socket
+import sys
 import tempfile
 import tkinter as tk
+import urllib.request
+import webbrowser
 from tkinter import ttk, filedialog, messagebox
 from pathlib import Path
 from datetime import datetime
 
-CONFIG_FILE = Path("finora_deploy_config.json")
+APP_DIR = Path(__file__).resolve().parent
+CONFIG_FILE = APP_DIR / "finora_deploy_config.json"
 
 SSH_CONNECT_OPTIONS = [
     "-o", "BatchMode=yes",
@@ -90,17 +96,25 @@ SAFE_PUSH_EXCLUDED_PARTS = {
     "outputs",
     "playwright-report",
     "test-results",
+    "tests",
     ".pytest_cache",
     ".dart_tool",
     ".gradle",
     ".idea",
+    # Local agent/tool caches — never ship to the Linux app server.
+    ".codex-tmp",
+    ".cursor",
+    ".claude",
     "artifacts",
     "backups",
     "build",
     "coverage",
     "dist",
     "downloads",
+    "desktop",
     "mobile",
+    # Test-generated output only (DB backups, screenshots from Playwright runs): never needed on the server.
+    "_artifacts",
 }
 
 SAFE_PUSH_EXCLUDED_SUFFIXES = {
@@ -117,6 +131,10 @@ SAFE_PUSH_EXCLUDED_SUFFIXES = {
     ".ipa",
     ".tgz",
     ".zip",
+    # Windows/native binaries must not ride along with Smart Deploy.
+    ".exe",
+    ".dll",
+    ".msi",
 }
 
 SAFE_PUSH_EXCLUDED_NAME_ENDINGS = (
@@ -129,6 +147,13 @@ SAFE_PUSH_EXCLUDED_NAME_ENDINGS = (
 )
 
 SMART_DEPLOY_MAX_BYTES = 50 * 1024 * 1024
+# Local promotional exports, visual previews and generated reports are not
+# application files. Keep them out of deploys without restricting Git pushes
+# or public media served from static/.
+SMART_DEPLOY_EXCLUDED_ROOTS = {"marketing", "output"}
+SMART_DEPLOY_EXCLUDED_PREFIXES = ("docs/reports/",)
+SMART_UPLOAD_STALL_TIMEOUT_SECONDS = 90
+SMART_UPLOAD_PROGRESS_INTERVAL_SECONDS = 10
 REMOTE_DEPLOY_MANIFEST = ".finora-smart-deploy-manifest.tsv"
 
 SAFE_PUSH_EXCLUDED_FILES = {
@@ -156,13 +181,18 @@ REMOTE_RUNTIME_MUTABLE_TRACKED_FILES = (
 
 
 DEFAULT_CONFIG = {
-    "local_project_path": str(Path.cwd()),
+    # The studio may be launched from a shortcut or another application's
+    # working directory.  Always default to the directory containing this file.
+    "local_project_path": str(APP_DIR),
     "server_ssh": "root@187.124.29.5",
     "server_project_path": "/var/www/finora/supermaxi",
     "nginx_service": "nginx",
     "gunicorn_bind": "127.0.0.1:8000",
     "gunicorn_workers": 3,
-    "logs_command": "journalctl -u nginx -n 100 --no-pager",
+    "logs_command": (
+        "journalctl -u supermaxi.service -u nginx -n 200 --no-pager; "
+        "tail -n 100 /var/log/nginx/error.log 2>/dev/null || true"
+    ),
     "last_deployed_commit": "",
     "adb_path": "adb",
     "flutter_path": "",
@@ -170,6 +200,8 @@ DEFAULT_CONFIG = {
     "android_app_target": "Social (finora_social)",
     "social_api_base_url": "https://www.finora.company",
     "social_tenant_slug": "super",
+    "local_dev_host": "127.0.0.1",
+    "local_dev_port": 5008,
     # كلمة السر لا نحفظها في الملف لأسباب أمان، تبقى فارغة في كل تشغيل
 }
 
@@ -178,10 +210,15 @@ class FinoraDeployStudio(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("Finora Deploy Studio")
-        self.geometry("1040x720")
-        self.minsize(960, 620)
+        self.geometry("1240x840")
+        self.minsize(1080, 720)
 
         self.config_data = self.load_config()
+
+        # Local development server state.  It is deliberately separate from
+        # all SSH/deployment operations so local testing can never publish.
+        self.local_server_process: "subprocess.Popen | None" = None
+        self.local_server_lock = threading.Lock()
 
         # Self Healing Monitor state
         self.monitor_thread: "ServerMonitorThread | None" = None
@@ -194,56 +231,205 @@ class FinoraDeployStudio(tk.Tk):
         self._setup_theme()
 
         self._build_ui()
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
 
     # ---------- Theme / UI ----------
 
     def _setup_theme(self) -> None:
-        # Dark theme
+        """A compact, consistent dark dashboard theme for the desktop studio."""
         self.style.theme_use("clam")
+        self.option_add("*Font", ("Segoe UI", 9))
+
+        bg = "#07111f"
+        surface = "#0f1b2d"
+        surface_2 = "#142238"
+        border = "#263750"
+        text = "#e7edf6"
+        muted = "#91a3ba"
+        accent = "#3b82f6"
+
+        self.configure(bg=bg)
+        self.style.configure("TFrame", background=bg)
+        self.style.configure("Card.TFrame", background=surface)
         self.style.configure(
             "TLabel",
-            background="#0f172a",
-            foreground="#e5e7eb",
+            background=surface,
+            foreground=text,
+            font=("Segoe UI", 9),
+        )
+        self.style.configure("Card.TLabel", background=surface, foreground=text)
+        self.style.configure("Muted.TLabel", background=bg, foreground=muted)
+        self.style.configure("CardMuted.TLabel", background=surface, foreground=muted)
+        self.style.configure(
+            "Hero.TLabel", background=bg, foreground="#f8fafc", font=("Segoe UI Semibold", 18)
+        )
+        self.style.configure(
+            "Subtitle.TLabel", background=bg, foreground=muted, font=("Segoe UI", 9)
+        )
+        self.style.configure(
+            "Status.TLabel", background=surface_2, foreground="#cbd5e1", padding=(8, 4)
+        )
+        self.style.configure(
+            "Running.TLabel",
+            background="#123522",
+            foreground="#86efac",
+            padding=(9, 5),
+            font=("Segoe UI Semibold", 9),
+        )
+        self.style.configure(
+            "Starting.TLabel",
+            background="#3b2b0b",
+            foreground="#fde68a",
+            padding=(9, 5),
+            font=("Segoe UI Semibold", 9),
+        )
+        self.style.configure(
+            "Stopped.TLabel",
+            background="#263244",
+            foreground="#a8b6c8",
+            padding=(9, 5),
+            font=("Segoe UI Semibold", 9),
+        )
+        self.style.configure(
+            "Card.TLabelframe",
+            background=surface,
+            bordercolor=border,
+            darkcolor=border,
+            lightcolor=border,
+            relief="solid",
+            borderwidth=1,
+        )
+        self.style.configure(
+            "Card.TLabelframe.Label",
+            background=bg,
+            foreground="#a9c7f7",
+            font=("Segoe UI Semibold", 9),
+            padding=(6, 0),
         )
         self.style.configure(
             "TEntry",
-            fieldbackground="#020617",
-            foreground="#e5e7eb",
-            bordercolor="#1e293b",
+            fieldbackground="#091526",
+            foreground=text,
+            insertcolor=text,
+            bordercolor=border,
+            lightcolor=border,
+            darkcolor=border,
+            padding=7,
         )
+        self.style.map("TEntry", bordercolor=[("focus", accent)])
         self.style.configure(
-            "TButton",
-            background="#1e293b",
-            foreground="#e5e7eb",
+            "TCombobox",
+            fieldbackground="#091526",
+            background=surface_2,
+            foreground=text,
+            arrowcolor=muted,
+            bordercolor=border,
             padding=6,
         )
         self.style.map(
+            "TCombobox",
+            fieldbackground=[("readonly", "#091526")],
+            foreground=[("readonly", text)],
+            bordercolor=[("focus", accent)],
+        )
+        self.style.configure(
             "TButton",
-            background=[("active", "#2563eb"), ("disabled", "#1e293b")],
-            foreground=[("active", "#f9fafb"), ("disabled", "#64748b")],
+            background=surface_2,
+            foreground=text,
+            bordercolor=border,
+            lightcolor=border,
+            darkcolor=border,
+            relief="flat",
+            padding=(11, 7),
+            font=("Segoe UI Semibold", 9),
+        )
+        self.style.map(
+            "TButton",
+            background=[("active", "#1d3150"), ("disabled", "#101b2b")],
+            foreground=[("active", "#ffffff"), ("disabled", "#52647b")],
+        )
+
+        button_styles = {
+            "Primary.TButton": ("#2563eb", "#3b82f6"),
+            "Success.TButton": ("#15803d", "#16a34a"),
+            "Warning.TButton": ("#9a6700", "#b7791f"),
+            "Danger.TButton": ("#991b1b", "#b91c1c"),
+        }
+        for style_name, (normal, active) in button_styles.items():
+            self.style.configure(
+                style_name,
+                background=normal,
+                foreground="#ffffff",
+                bordercolor=normal,
+                lightcolor=normal,
+                darkcolor=normal,
+            )
+            self.style.map(
+                style_name,
+                background=[("active", active), ("disabled", "#142033")],
+                foreground=[("disabled", "#52647b")],
+                bordercolor=[("active", active), ("disabled", "#142033")],
+            )
+
+        self.style.configure("TNotebook", background=bg, borderwidth=0, tabmargins=(0, 3, 0, 0))
+        self.style.configure(
+            "TNotebook.Tab",
+            background=surface,
+            foreground=muted,
+            padding=(14, 7),
+            borderwidth=0,
+            font=("Segoe UI Semibold", 9),
+        )
+        self.style.map(
+            "TNotebook.Tab",
+            background=[("selected", surface_2), ("active", "#192a43")],
+            foreground=[("selected", "#ffffff"), ("active", "#dbeafe")],
+        )
+        self.style.configure(
+            "Horizontal.TProgressbar",
+            troughcolor=surface,
+            background=accent,
+            bordercolor=surface,
+            lightcolor=accent,
+            darkcolor=accent,
+            thickness=6,
         )
 
     def _build_ui(self) -> None:
         # Header
         header = ttk.Frame(self)
-        header.pack(side=tk.TOP, fill=tk.X, padx=12, pady=(8, 4))
-        title_label = ttk.Label(header, text="Finora Deploy Studio", font=("Segoe UI", 11, "bold"))
-        title_label.pack(side=tk.LEFT)
+        header.pack(side=tk.TOP, fill=tk.X, padx=18, pady=(14, 10))
+        brand = ttk.Frame(header)
+        brand.pack(side=tk.LEFT)
+        ttk.Label(brand, text="FINORA", style="Hero.TLabel").pack(side=tk.TOP, anchor="w")
+        ttk.Label(
+            brand,
+            text="DEPLOY STUDIO  •  LOCAL DEVELOPMENT & RELEASE CONTROL",
+            style="Subtitle.TLabel",
+        ).pack(side=tk.TOP, anchor="w", pady=(1, 0))
         self.current_config_label = ttk.Label(
             header,
-            text=f"Project: {self.config_data['local_project_path']}",
-            font=("Segoe UI", 8),
+            text=f"PROJECT  •  {self.config_data['local_project_path']}",
+            style="Status.TLabel",
         )
-        self.current_config_label.pack(side=tk.RIGHT)
+        self.settings_toggle_btn = ttk.Button(
+            header,
+            text="Hide Settings",
+            command=self.toggle_settings_panel,
+        )
+        self.settings_toggle_btn.pack(side=tk.RIGHT, anchor="e", padx=(8, 0), pady=4)
+        self.current_config_label.pack(side=tk.RIGHT, anchor="e", pady=4)
+        self.settings_visible = True
 
         # Top frame: server + android configuration
         top = ttk.Frame(self)
-        top.pack(side=tk.TOP, fill=tk.X, padx=12, pady=(0, 6))
+        self.settings_frame = top
+        top.pack(side=tk.TOP, fill=tk.X, padx=18, pady=(0, 8))
         top.columnconfigure(0, weight=3)
         top.columnconfigure(1, weight=2)
 
         # Server config
-        cfg = ttk.LabelFrame(top, text="Server Configuration")
+        cfg = ttk.LabelFrame(top, text=" SERVER CONFIGURATION ", style="Card.TLabelframe")
         cfg.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
 
         # Local project path
@@ -300,7 +486,7 @@ class FinoraDeployStudio(tk.Tk):
         cfg.columnconfigure(1, weight=1)
 
         # Android config (separate panel)
-        android_cfg = ttk.LabelFrame(top, text="Android / USB")
+        android_cfg = ttk.LabelFrame(top, text=" ANDROID / USB ", style="Card.TLabelframe")
         android_cfg.grid(row=0, column=1, sticky="nsew")
 
         self.adb_path_var = tk.StringVar(value=(self.config_data.get("adb_path") or "adb"))
@@ -324,6 +510,7 @@ class FinoraDeployStudio(tk.Tk):
             textvariable=self.android_app_var,
             values=[
                 "Social (finora_social)",
+                "Phone (finora_phone)",
                 "Delivery Agent",
                 "POS (finora_pos)",
                 "Custom path",
@@ -344,6 +531,7 @@ class FinoraDeployStudio(tk.Tk):
         ttk.Label(
             android_cfg,
             text="الافتراضي: finora_social — Install APK يبني تلقائياً إذا لم يوجد APK",
+            style="CardMuted.TLabel",
             font=("Segoe UI", 8),
         ).grid(row=4, column=0, columnspan=3, sticky="w", padx=6, pady=(0, 2))
 
@@ -379,34 +567,108 @@ class FinoraDeployStudio(tk.Tk):
 
         # Action buttons — grouped rows
         actions = ttk.Frame(self)
-        actions.pack(side=tk.TOP, fill=tk.X, padx=12, pady=(0, 4))
+        self.actions_frame = actions
+        actions.pack(side=tk.TOP, fill=tk.X, padx=18, pady=(0, 7))
+        for column, weight in enumerate((4, 5, 3)):
+            actions.columnconfigure(column, weight=weight, uniform="actions")
 
-        def _btn_row(parent: ttk.Frame, title: str) -> ttk.Frame:
-            frame = ttk.LabelFrame(parent, text=title)
-            frame.pack(side=tk.TOP, fill=tk.X, pady=(0, 4))
-            inner = ttk.Frame(frame)
-            inner.pack(fill=tk.X, padx=4, pady=4)
+        def _btn_row(
+            parent: ttk.Frame,
+            title: str,
+            row: int,
+            column: int,
+            columnspan: int = 1,
+        ) -> ttk.Frame:
+            frame = ttk.LabelFrame(parent, text=f" {title.upper()} ", style="Card.TLabelframe")
+            frame.grid(
+                row=row,
+                column=column,
+                columnspan=columnspan,
+                sticky="nsew",
+                padx=(0 if column == 0 else 4, 0),
+                pady=(0, 6),
+            )
+            inner = ttk.Frame(frame, style="Card.TFrame")
+            inner.pack(fill=tk.X, padx=7, pady=7)
             return inner
 
-        deploy_row = _btn_row(actions, "Deploy")
+        local_row = _btn_row(actions, "Local Development  •  Test safely before publishing", 0, 0, 3)
+        ttk.Label(local_row, text="Port:").pack(side=tk.LEFT, padx=(3, 2))
+        self.local_dev_port_var = tk.StringVar(
+            value=str(self.config_data.get("local_dev_port") or 5008)
+        )
+        self.local_dev_port_entry = ttk.Entry(
+            local_row,
+            textvariable=self.local_dev_port_var,
+            width=7,
+            justify="center",
+        )
+        self.local_dev_port_entry.pack(side=tk.LEFT, padx=(0, 6), pady=2)
+        self.local_start_btn = ttk.Button(
+            local_row,
+            text="Start / Restart Local",
+            command=self.on_start_local_clicked,
+            style="Success.TButton",
+        )
+        self.local_start_btn.pack(side=tk.LEFT, padx=3, pady=2)
+        self.local_open_btn = ttk.Button(
+            local_row,
+            text="Open in Browser",
+            command=self.on_open_local_clicked,
+            state="disabled",
+            style="Primary.TButton",
+        )
+        self.local_open_btn.pack(side=tk.LEFT, padx=3, pady=2)
+        self.local_stop_btn = ttk.Button(
+            local_row,
+            text="Stop Local",
+            command=self.on_stop_local_clicked,
+            state="disabled",
+            style="Danger.TButton",
+        )
+        self.local_stop_btn.pack(side=tk.LEFT, padx=3, pady=2)
+        self.local_dev_status_var = tk.StringVar(value="LOCAL: stopped")
+        self.local_dev_status_label = ttk.Label(
+            local_row,
+            textvariable=self.local_dev_status_var,
+            style="Stopped.TLabel",
+        )
+        self.local_dev_status_label.pack(
+            side=tk.LEFT, padx=(10, 3)
+        )
+
+        deploy_row = _btn_row(actions, "Deploy", 1, 0, 3)
         self.push_btn = ttk.Button(deploy_row, text="Push to GitHub", command=self.on_push_clicked)
         self.push_btn.pack(side=tk.LEFT, padx=3, pady=2)
-        self.deploy_btn = ttk.Button(deploy_row, text="Smart Deploy", command=self.on_deploy_clicked)
+        self.deploy_btn = ttk.Button(
+            deploy_row, text="Smart Deploy", command=self.on_deploy_clicked, style="Primary.TButton"
+        )
         self.deploy_btn.pack(side=tk.LEFT, padx=3, pady=2)
         self.publish_apk_btn = ttk.Button(
-            deploy_row, text="Publish APK", command=self.on_publish_apk_clicked
+            deploy_row,
+            text="Publish APK",
+            command=self.on_publish_apk_clicked,
+            style="Primary.TButton",
         )
         self.publish_apk_btn.pack(side=tk.LEFT, padx=3, pady=2)
-        self.restart_btn = ttk.Button(deploy_row, text="Restart Server", command=self.on_restart_clicked)
+        self.restart_btn = ttk.Button(
+            deploy_row,
+            text="Restart Server",
+            command=self.on_restart_clicked,
+            style="Warning.TButton",
+        )
         self.restart_btn.pack(side=tk.LEFT, padx=3, pady=2)
         self.logs_btn = ttk.Button(deploy_row, text="View Server Logs", command=self.on_view_logs_clicked)
         self.logs_btn.pack(side=tk.LEFT, padx=3, pady=2)
         self.start_monitor_btn = ttk.Button(
-            deploy_row, text="Start Monitor", command=self.on_start_monitor_clicked
+            deploy_row,
+            text="Start Monitor",
+            command=self.on_start_monitor_clicked,
+            style="Success.TButton",
         )
         self.start_monitor_btn.pack(side=tk.LEFT, padx=3, pady=2)
 
-        build_row = _btn_row(actions, "Build")
+        build_row = _btn_row(actions, "Build", 2, 0)
         self.build_btn = ttk.Button(build_row, text="Build Frontends", command=self.on_build_frontend_clicked)
         self.build_btn.pack(side=tk.LEFT, padx=3, pady=2)
         self.build_social_ai_btn = ttk.Button(
@@ -416,8 +678,10 @@ class FinoraDeployStudio(tk.Tk):
         self.build_apk_btn = ttk.Button(build_row, text="Build APK", command=self.on_build_apk_clicked)
         self.build_apk_btn.pack(side=tk.LEFT, padx=3, pady=2)
 
-        maint_row = _btn_row(actions, "Maintenance")
-        self.fix_all_btn = ttk.Button(maint_row, text="Fix All", command=self.on_fix_all_clicked)
+        maint_row = _btn_row(actions, "Maintenance", 2, 1)
+        self.fix_all_btn = ttk.Button(
+            maint_row, text="Fix All", command=self.on_fix_all_clicked, style="Warning.TButton"
+        )
         self.fix_all_btn.pack(side=tk.LEFT, padx=3, pady=2)
         self.fix_nginx_btn = ttk.Button(
             maint_row, text="Fix Nginx / Proxy", command=self.on_fix_nginx_proxy_clicked
@@ -432,9 +696,12 @@ class FinoraDeployStudio(tk.Tk):
         )
         self.telegram_inbox_db_btn.pack(side=tk.LEFT, padx=3, pady=2)
 
-        android_row = _btn_row(actions, "Android USB")
+        android_row = _btn_row(actions, "Android USB", 2, 2)
         self.install_usb_btn = ttk.Button(
-            android_row, text="Install APK", command=self.on_install_usb_clicked
+            android_row,
+            text="Install APK",
+            command=self.on_install_usb_clicked,
+            style="Primary.TButton",
         )
         self.install_usb_btn.pack(side=tk.LEFT, padx=3, pady=2)
         self.launch_app_btn = ttk.Button(
@@ -444,13 +711,13 @@ class FinoraDeployStudio(tk.Tk):
 
         # Progress + status + small indicators
         status_frame = ttk.Frame(self)
-        status_frame.pack(side=tk.TOP, fill=tk.X, padx=12, pady=(0, 4))
+        status_frame.pack(side=tk.TOP, fill=tk.X, padx=18, pady=(0, 5))
 
         self.progress = ttk.Progressbar(status_frame, mode="indeterminate")
         self.progress.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 8))
 
-        self.status_var = tk.StringVar(value="Ready.")
-        status_label = ttk.Label(status_frame, textvariable=self.status_var, anchor="w")
+        self.status_var = tk.StringVar(value="Ready  •  Ctrl + Win + X opens Finora")
+        status_label = ttk.Label(status_frame, textvariable=self.status_var, anchor="w", style="Muted.TLabel")
         status_label.pack(side=tk.LEFT)
 
         # Small live status indicators for monitor
@@ -471,11 +738,13 @@ class FinoraDeployStudio(tk.Tk):
             self.gunicorn_status_var,
             self.nginx_status_var,
         ):
-            ttk.Label(indicators_frame, textvariable=var).pack(side=tk.RIGHT, padx=(4, 0))
+            ttk.Label(indicators_frame, textvariable=var, style="Muted.TLabel").pack(
+                side=tk.RIGHT, padx=(7, 0)
+            )
 
         # Notebook: Terminal + Error Explorer
         notebook = ttk.Notebook(self)
-        notebook.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=12, pady=(4, 12))
+        notebook.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=18, pady=(4, 14))
 
         terminal_frame = ttk.Frame(notebook)
         errors_frame = ttk.Frame(notebook)
@@ -483,32 +752,49 @@ class FinoraDeployStudio(tk.Tk):
         notebook.add(errors_frame, text="Error Explorer")
 
         # Log output + command input (Terminal tab)
-        log_frame = ttk.LabelFrame(terminal_frame, text="Terminal / Log Output")
+        log_frame = ttk.LabelFrame(
+            terminal_frame, text=" TERMINAL / LIVE OUTPUT ", style="Card.TLabelframe"
+        )
         log_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=4, pady=(4, 8))
 
         self.log_text = tk.Text(
             log_frame,
-            bg="#020617",
-            fg="#e5e7eb",
-            insertbackground="#e5e7eb",
+            bg="#06101e",
+            fg="#d7e2f0",
+            insertbackground="#f8fafc",
+            selectbackground="#1d4ed8",
+            selectforeground="#ffffff",
+            relief="flat",
+            padx=10,
+            pady=8,
             wrap="word",
             state="disabled",
-            font=("Consolas", 10),
+            font=("Cascadia Mono", 9),
         )
-        self.log_text.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        log_frame.rowconfigure(0, weight=1)
+        log_frame.columnconfigure(0, weight=1)
+        self.log_text.grid(row=0, column=0, sticky="nsew")
         scroll = ttk.Scrollbar(log_frame, command=self.log_text.yview)
-        scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        scroll.grid(row=0, column=1, sticky="ns")
         self.log_text.configure(yscrollcommand=scroll.set)
 
-        # تلوين الأنواع المختلفة من الرسائل
-        self.log_text.tag_config("error", foreground="#f87171")
-        self.log_text.tag_config("info", foreground="#4ade80")
+        # Semantic terminal palette: every operation type is readable at a glance.
+        self.log_text.tag_config("error", foreground="#fb7185", font=("Cascadia Mono", 9, "bold"))
+        self.log_text.tag_config("warning", foreground="#fbbf24")
+        self.log_text.tag_config("success", foreground="#4ade80", font=("Cascadia Mono", 9, "bold"))
+        self.log_text.tag_config("step", foreground="#22d3ee", font=("Cascadia Mono", 9, "bold"))
+        self.log_text.tag_config("info", foreground="#93c5fd")
         self.log_text.tag_config("cmd", foreground="#60a5fa")
+        self.log_text.tag_config("detail", foreground="#c4b5fd")
+        self.log_text.tag_config("muted", foreground="#718096")
+        self.log_text.tag_config("plain", foreground="#cbd5e1")
 
         # Local command input (مثل ترمنال بسيط لتنفيذ أوامر محلية مثل pip install paramiko)
-        cmd_frame = ttk.Frame(log_frame)
-        cmd_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(4, 0))
-        ttk.Label(cmd_frame, text="Local command:").pack(side=tk.LEFT, padx=(0, 4))
+        cmd_frame = ttk.Frame(log_frame, style="Card.TFrame")
+        cmd_frame.grid(row=1, column=0, columnspan=2, sticky="ew", pady=(6, 0))
+        ttk.Label(cmd_frame, text="Local command:", style="CardMuted.TLabel").pack(
+            side=tk.LEFT, padx=(2, 6)
+        )
         self.local_cmd_var = tk.StringVar(value="")
         cmd_entry = ttk.Entry(cmd_frame, textvariable=self.local_cmd_var)
         cmd_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 4))
@@ -534,8 +820,14 @@ class FinoraDeployStudio(tk.Tk):
         self.error_entries: list[dict] = []
         self.errors_list = tk.Listbox(
             errors_frame,
-            bg="#020617",
+            bg="#06101e",
             fg="#fca5a5",
+            selectbackground="#7f1d1d",
+            selectforeground="#ffffff",
+            relief="flat",
+            borderwidth=0,
+            highlightthickness=0,
+            font=("Cascadia Mono", 9),
         )
         self.errors_list.pack(side=tk.TOP, fill=tk.BOTH, expand=True, padx=4, pady=(4, 2))
 
@@ -559,6 +851,23 @@ class FinoraDeployStudio(tk.Tk):
         # Start polling monitor queue for UI updates
         self.after(500, self.poll_monitor_queue)
 
+    def toggle_settings_panel(self) -> None:
+        """Collapse bulky connection settings to give the terminal more room."""
+        if self.settings_visible:
+            self.settings_frame.pack_forget()
+            self.settings_toggle_btn.configure(text="Show Settings")
+            self.settings_visible = False
+            return
+        self.settings_frame.pack(
+            side=tk.TOP,
+            fill=tk.X,
+            padx=18,
+            pady=(0, 8),
+            before=self.actions_frame,
+        )
+        self.settings_toggle_btn.configure(text="Hide Settings")
+        self.settings_visible = True
+
     # ---------- Config ----------
 
     def load_config(self) -> dict:
@@ -572,9 +881,10 @@ class FinoraDeployStudio(tk.Tk):
         return DEFAULT_CONFIG.copy()
 
     def save_config(self) -> None:
+        local_project_path = self.local_path_var.get().strip()
         self.config_data.update(
             {
-                "local_project_path": self.local_path_var.get().strip(),
+                "local_project_path": local_project_path,
                 "server_ssh": self.server_ssh_var.get().strip(),
                 "server_project_path": self.server_path_var.get().strip(),
                 "nginx_service": self.nginx_service_var.get().strip(),
@@ -601,8 +911,11 @@ class FinoraDeployStudio(tk.Tk):
                     getattr(self, "social_tenant_var", tk.StringVar(value="super")).get().strip()
                     or "super"
                 ),
+                "local_dev_host": "127.0.0.1",
+                "local_dev_port": self._validated_local_port(show_error=False) or 5008,
             }
         )
+        self.current_config_label.configure(text=f"PROJECT  •  {local_project_path}")
         try:
             with CONFIG_FILE.open("w", encoding="utf-8") as f:
                 json.dump(self.config_data, f, indent=2)
@@ -611,10 +924,282 @@ class FinoraDeployStudio(tk.Tk):
 
     # ---------- Helpers ----------
 
+    def _validated_local_port(self, show_error: bool = True) -> int | None:
+        raw = getattr(self, "local_dev_port_var", tk.StringVar(value="5008")).get().strip()
+        try:
+            port = int(raw)
+        except ValueError:
+            port = 0
+        if 1024 <= port <= 65535:
+            return port
+        if show_error:
+            messagebox.showerror("Local Development", "Port must be a number from 1024 to 65535.")
+        return None
+
+    def _local_url(self) -> str | None:
+        port = self._validated_local_port(show_error=True)
+        return f"http://127.0.0.1:{port}" if port else None
+
+    @staticmethod
+    def _port_is_available(port: int) -> bool:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            try:
+                sock.bind(("127.0.0.1", port))
+            except OSError:
+                return False
+        return True
+
+    def _release_local_port(self, port: int) -> None:
+        """Stop a stale local app process left behind by an older studio run."""
+        if os.name != "nt":
+            return
+        try:
+            result = subprocess.run(
+                ["netstat", "-ano", "-p", "tcp"],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
+            pids = set()
+            needle = f"127.0.0.1:{port}"
+            for raw_line in (result.stdout or b"").decode("utf-8", errors="replace").splitlines():
+                parts = raw_line.split()
+                if len(parts) >= 5 and parts[1].startswith(needle) and parts[3].upper() == "LISTENING":
+                    pids.add(parts[4])
+            with self.local_server_lock:
+                current_pid = str(self.local_server_process.pid) if self.local_server_process else ""
+            for pid in pids:
+                if pid and pid != current_pid and pid != str(os.getpid()):
+                    self.after(0, lambda p=pid: self.append_log(f"[INFO] Closing stale local server (PID {p})…\n"))
+                    subprocess.run(
+                        ["taskkill", "/PID", pid, "/T", "/F"],
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        check=False,
+                    )
+        except (OSError, ValueError):
+            pass
+
+    @staticmethod
+    def _project_python(local_path: Path) -> str:
+        candidates = [
+            local_path / ".venv" / "Scripts" / "python.exe",
+            local_path / "venv" / "Scripts" / "python.exe",
+            local_path / ".venv" / "bin" / "python",
+            local_path / "venv" / "bin" / "python",
+        ]
+        for candidate in candidates:
+            if candidate.is_file():
+                return str(candidate)
+        return sys.executable
+
+    def _set_local_controls(self, running: bool, status: str | None = None) -> None:
+        self.local_stop_btn.config(state="normal" if running else "disabled")
+        self.local_open_btn.config(state="normal" if running else "disabled")
+        self.local_dev_port_entry.config(state="disabled" if running else "normal")
+        if status:
+            self.local_dev_status_var.set(status)
+            lowered = status.lower()
+            if "starting" in lowered:
+                badge_style = "Starting.TLabel"
+            elif running:
+                badge_style = "Running.TLabel"
+            else:
+                badge_style = "Stopped.TLabel"
+            self.local_dev_status_label.configure(style=badge_style)
+
+    def on_start_local_clicked(self) -> None:
+        port = self._validated_local_port(show_error=True)
+        if port is None:
+            return
+        local_path = Path(self.local_path_var.get().strip() or ".")
+        if not local_path.exists() or not (local_path / "app.py").is_file():
+            messagebox.showerror("Local Development", "Select the Finora project folder first.")
+            return
+
+        self.save_config()
+        thread = threading.Thread(
+            target=self._start_local_server_thread,
+            args=(local_path, port),
+            daemon=True,
+        )
+        thread.start()
+
+    def _start_local_server_thread(self, local_path: Path, port: int) -> None:
+        # Restarting is intentional: it is the quick way to load newly edited
+        # Python code without Flask's child reloader making Stop unreliable.
+        self._stop_local_server(wait=True, announce=False)
+        self._release_local_port(port)
+        time.sleep(0.25)
+        if not self._port_is_available(port):
+            self.after(0, lambda: self._set_local_controls(False, f"LOCAL: port {port} busy"))
+            self.after(
+                0,
+                lambda: self.append_log(
+                    f"[ERROR] Local port {port} is already used by another program. Choose another port.\n"
+                ),
+            )
+            return
+
+        python_exe = self._project_python(local_path)
+        env = os.environ.copy()
+        env.update(
+            {
+                "FLASK_HOST": "127.0.0.1",
+                "FLASK_PORT": str(port),
+                "FLASK_DEBUG": "0",
+                "FLASK_ENV": "development",
+                # Never inherit the production PostgreSQL URL from .env while
+                # using the local-workspace button.  Flask resolves this to
+                # instance/database.db, the existing local development DB.
+                "DATABASE_URL": f"sqlite:///{(local_path / 'database.db').resolve().as_posix()}",
+                "FINORA_LOCAL_WORKSPACE": "1",
+                "FINORA_LOCAL_TENANT": "alnoor",
+            }
+        )
+        creationflags = 0
+        if os.name == "nt":
+            creationflags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+
+        self.after(0, lambda: self._set_local_controls(True, "LOCAL: starting…"))
+        self.after(
+            0,
+            lambda: self.append_log(
+                f"[INFO] Starting local Finora at http://127.0.0.1:{port} "
+                "with the local SQLite database.\n"
+            ),
+        )
+        try:
+            proc = subprocess.Popen(
+                [python_exe, "app.py"],
+                cwd=str(local_path),
+                env=env,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                bufsize=0,
+                creationflags=creationflags,
+            )
+        except (OSError, FileNotFoundError) as exc:
+            self.after(0, lambda e=exc: self.append_log(f"[ERROR] Could not start local server: {e}\n"))
+            self.after(0, lambda: self._set_local_controls(False, "LOCAL: failed"))
+            return
+
+        with self.local_server_lock:
+            self.local_server_process = proc
+
+        threading.Thread(target=self._stream_local_server, args=(proc,), daemon=True).start()
+        self._wait_for_local_server(proc, port)
+
+    def _stream_local_server(self, proc: subprocess.Popen) -> None:
+        if proc.stdout is not None:
+            _stream_pipe_lines(proc.stdout, lambda line: self.after(0, self.append_log, line))
+        return_code = proc.wait()
+        with self.local_server_lock:
+            is_current = self.local_server_process is proc
+            if is_current:
+                self.local_server_process = None
+        if is_current:
+            self.after(0, lambda: self._set_local_controls(False, "LOCAL: stopped"))
+            if return_code != 0:
+                self.after(
+                    0,
+                    lambda: self.append_log(
+                        f"[ERROR] Local server stopped with exit code {return_code}.\n"
+                    ),
+                )
+
+    def _wait_for_local_server(self, proc: subprocess.Popen, port: int) -> None:
+        url = f"http://127.0.0.1:{port}"
+        for _ in range(60):
+            if proc.poll() is not None:
+                return
+            try:
+                with urllib.request.urlopen(url, timeout=0.5):
+                    pass
+            except Exception:
+                time.sleep(0.25)
+                continue
+            self.after(0, lambda: self._set_local_controls(True, f"LOCAL: running on {port}"))
+            self.after(0, lambda: self.append_log(f"[INFO] Local workspace is ready: {url}\n"))
+            self.after(0, lambda: webbrowser.open(url))
+            return
+        if proc.poll() is None:
+            self.after(0, lambda: self._set_local_controls(True, "LOCAL: running (not responding yet)"))
+            self.after(0, lambda: self.append_log("[WARN] Local server started but did not answer within 45 seconds.\n"))
+
+    def on_open_local_clicked(self) -> None:
+        url = self._local_url()
+        if url:
+            webbrowser.open(url)
+
+    def on_stop_local_clicked(self) -> None:
+        threading.Thread(target=self._stop_local_server, kwargs={"wait": True}, daemon=True).start()
+
+    def _stop_local_server(self, wait: bool = True, announce: bool = True) -> None:
+        with self.local_server_lock:
+            proc = self.local_server_process
+        if proc is None or proc.poll() is not None:
+            self.after(0, lambda: self._set_local_controls(False, "LOCAL: stopped"))
+            return
+        if announce:
+            self.after(0, lambda: self.append_log("[INFO] Stopping local Finora server…\n"))
+        try:
+            proc.terminate()
+            if wait:
+                try:
+                    proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    proc.kill()
+                    proc.wait(timeout=3)
+        except OSError:
+            pass
+
+    def on_close(self) -> None:
+        if self.monitor_thread is not None:
+            self.monitor_thread.stop()
+        self._stop_local_server(wait=False, announce=False)
+        self.destroy()
+
     def browse_local_path(self) -> None:
         path = filedialog.askdirectory(initialdir=self.local_path_var.get() or str(Path.cwd()))
         if path:
             self.local_path_var.set(path)
+            self.current_config_label.configure(text=f"PROJECT  •  {path}")
+
+    def validate_local_project_path(self, local_path: Path) -> bool:
+        """Reject an unrelated folder before Git collection or deployment."""
+        try:
+            resolved = local_path.expanduser().resolve()
+        except OSError as exc:
+            self.append_log(f"[ERROR] Invalid local project path: {exc}\n")
+            return False
+        required = (resolved / "app.py", resolved / "finora_deploy_studio.py")
+        missing = [item.name for item in required if not item.is_file()]
+        if missing:
+            self.append_log(
+                "[ERROR] Local path is not the Finora project root. "
+                f"Missing: {', '.join(missing)}\n"
+            )
+            self.append_log(f"[INFO] Expected Finora project: {APP_DIR}\n")
+            self.set_status("Blocked: select the Finora project folder.")
+            return False
+        rc, root_text = self.git_capture(["rev-parse", "--show-toplevel"], resolved)
+        if rc != 0:
+            self.append_log("[ERROR] The selected Finora folder is not a Git working tree.\n")
+            self.set_status("Blocked: invalid Git project.")
+            return False
+        try:
+            git_root = Path(root_text.strip()).resolve()
+        except OSError:
+            git_root = resolved
+        if git_root != resolved:
+            self.append_log(
+                f"[ERROR] Select the Git project root itself: {git_root}\n"
+            )
+            self.set_status("Blocked: select the Git project root.")
+            return False
+        return True
 
     def browse_apk_path(self) -> None:
         local_path = Path(self.local_path_var.get().strip() or ".")
@@ -632,25 +1217,83 @@ class FinoraDeployStudio(tk.Tk):
             except Exception:
                 self.android_apk_var.set(chosen)
 
-    def append_log(self, text: str) -> None:
-        self.log_text.configure(state="normal")
-        tag = None
-        if text.startswith("[ERROR]"):
-            tag = "error"
-            # حفظ في Error Explorer
-            self.error_entries.append(
-                {
-                    "time": datetime.now().strftime("%H:%M:%S"),
-                    "message": text.strip(),
-                }
+    @staticmethod
+    def _log_tag_for_line(line: str) -> str:
+        """Choose a semantic colour for one terminal output line."""
+        stripped = line.strip()
+        lowered = stripped.lower()
+        if not stripped:
+            return "plain"
+        if stripped.startswith("$ "):
+            return "cmd"
+        if (
+            stripped.startswith("[ERROR]")
+            or "traceback (most recent call last)" in lowered
+            or re.search(r"\b(error|failed|failure|exception|fatal|denied|refused)\b", lowered)
+        ):
+            return "error"
+        if (
+            stripped.startswith("[WARN]")
+            or re.search(r"\b(warn(?:ing)?|timeout|timed out|disabled|skipped|missing)\b", lowered)
+        ):
+            return "warning"
+        if (
+            stripped.startswith("[OK]")
+            or any(
+                term in lowered
+                for term in (
+                    "success",
+                    "complete",
+                    "ready",
+                    "active (running)",
+                    "started",
+                    "listening",
+                    "passed",
+                )
             )
-            self.refresh_error_explorer()
-        elif text.startswith("[INFO]"):
-            tag = "info"
-        elif text.startswith("$ "):
-            tag = "cmd"
+        ):
+            return "success"
+        if (
+            re.match(r"^\[\d+[a-z]?\]", stripped, re.IGNORECASE)
+            or stripped.startswith(("===", "---"))
+            or lowered.startswith(("checking ", "validating ", "installing ", "uploading "))
+        ):
+            return "step"
+        if stripped.startswith(("[INFO]", "[MONITOR]", "[AUTO FIX]")):
+            return "info"
+        if re.match(
+            r"^(loaded:|active:|main pid:|tasks:|memory:|cpu:|cgroup:|process:|status:)",
+            lowered,
+        ) or stripped.startswith(("●", "├", "└", "│")):
+            return "detail"
+        if re.match(r"^(sep|jan|feb|mar|apr|may|jun|jul|aug|oct|nov|dec)\s+\d+", lowered):
+            return "muted"
+        return "plain"
 
-        self.log_text.insert(tk.END, text, tag)
+    def append_log(self, text: str) -> None:
+        # Remove raw ANSI control sequences; the Text widget applies its own
+        # semantic palette and should never show escape-code noise.
+        clean_text = re.sub(r"\x1b\[[0-?]*[ -/]*[@-~]", "", str(text))
+        lines = clean_text.splitlines(keepends=True) or [clean_text]
+        added_error = False
+
+        self.log_text.configure(state="normal")
+        for line in lines:
+            tag = self._log_tag_for_line(line)
+            self.log_text.insert(tk.END, line, tag)
+            if tag == "error":
+                message = line.strip()
+                if message:
+                    self.error_entries.append(
+                        {
+                            "time": datetime.now().strftime("%H:%M:%S"),
+                            "message": message,
+                        }
+                    )
+                    added_error = True
+
+        if added_error:
+            self.refresh_error_explorer()
         self.log_text.see(tk.END)
         self.log_text.configure(state="disabled")
 
@@ -1082,7 +1725,11 @@ class FinoraDeployStudio(tk.Tk):
             if not local_file.is_file():
                 skipped_paths.append(p)
                 continue
-            if self.is_safe_push_path(p):
+            if (
+                self.is_safe_push_path(p)
+                and Path(p).parts[0] not in SMART_DEPLOY_EXCLUDED_ROOTS
+                and not p.startswith(SMART_DEPLOY_EXCLUDED_PREFIXES)
+            ):
                 safe_paths.append(p)
             else:
                 skipped_paths.append(p)
@@ -1148,6 +1795,37 @@ class FinoraDeployStudio(tk.Tk):
 
                 started = time.monotonic()
                 max_attempts = 8
+
+                def remote_uploaded_size() -> int | None:
+                    try:
+                        result = subprocess.run(
+                            [
+                                ssh_cmd,
+                                *SSH_CONNECT_OPTIONS,
+                                server,
+                                (
+                                    f"stat -c %s {shlex.quote(remote_file)} 2>/dev/null "
+                                    f"|| wc -c < {shlex.quote(remote_file)} 2>/dev/null"
+                                ),
+                            ],
+                            stdin=subprocess.DEVNULL,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.DEVNULL,
+                            timeout=10,
+                            check=False,
+                        )
+                    except (OSError, subprocess.SubprocessError):
+                        return None
+                    if result.returncode != 0:
+                        return None
+                    text = _decode_output_chunk(result.stdout).strip().splitlines()
+                    if not text:
+                        return None
+                    try:
+                        return max(0, int(text[-1].strip()))
+                    except ValueError:
+                        return None
+
                 for attempt in range(1, max_attempts + 1):
                     resume_args: list[str] = []
                     upload_mode = "starting"
@@ -1194,15 +1872,43 @@ class FinoraDeployStudio(tk.Tk):
                     assert proc.stdout is not None
                     attempt_started = time.monotonic()
                     last_notice = attempt_started
+                    last_progress_at = attempt_started
+                    last_remote_size = 0
+                    stalled = False
                     while proc.poll() is None:
                         now = time.monotonic()
-                        if now - last_notice >= 15:
+                        if now - last_notice >= SMART_UPLOAD_PROGRESS_INTERVAL_SECONDS:
                             elapsed = int(now - started)
-                            self.append_log(
-                                f"[INFO] Resumable upload active: {_format_file_size(total_bytes)} "
-                                f"archive, {elapsed}s total elapsed.\n"
-                            )
+                            remote_size = remote_uploaded_size()
+                            if remote_size is not None:
+                                transferred = min(remote_size, total_bytes)
+                                percent = int((transferred * 100) / max(1, total_bytes))
+                                self.append_log(
+                                    f"[INFO] Upload progress: {percent}% "
+                                    f"({_format_file_size(transferred)} / {_format_file_size(total_bytes)}), "
+                                    f"{elapsed}s elapsed.\n"
+                                )
+                                if transferred > last_remote_size:
+                                    last_remote_size = transferred
+                                    last_progress_at = now
+                            else:
+                                self.append_log(
+                                    f"[INFO] Resumable upload active: {_format_file_size(total_bytes)} "
+                                    f"archive, {elapsed}s total elapsed.\n"
+                                )
                             last_notice = now
+                        if now - last_progress_at >= SMART_UPLOAD_STALL_TIMEOUT_SECONDS:
+                            stalled = True
+                            self.append_log(
+                                "[WARN] Upload made no measurable progress for "
+                                f"{SMART_UPLOAD_STALL_TIMEOUT_SECONDS}s; restarting this attempt.\n"
+                            )
+                            proc.kill()
+                            try:
+                                proc.wait(timeout=5)
+                            except subprocess.SubprocessError:
+                                pass
+                            break
                         time.sleep(1)
                     _stream_pipe_lines(proc.stdout, self.append_log)
                     if proc.returncode == 0:
@@ -1213,8 +1919,9 @@ class FinoraDeployStudio(tk.Tk):
                         return 0
 
                     if attempt < max_attempts:
+                        reason = "stalled" if stalled else f"ended with code {proc.returncode}"
                         self.append_log(
-                            f"[WARN] SFTP connection ended with code {proc.returncode}; "
+                            f"[WARN] SFTP connection {reason}; "
                             "retrying in 3s and resuming the remote partial file.\n"
                         )
                         time.sleep(3)
@@ -1343,7 +2050,15 @@ class FinoraDeployStudio(tk.Tk):
                 look_for_keys=not bool(password),
                 allow_agent=not bool(password),
             )
-            stdin, stdout, stderr = client.exec_command(script)
+            # Feed the script via stdin to avoid ARG_MAX / "Argument list too long"
+            # errors that occur when a large file list is embedded directly in the
+            # command string passed to exec_command.
+            stdin, stdout, stderr = client.exec_command("bash -s")
+            try:
+                stdin.write(script.encode("utf-8"))
+                stdin.channel.shutdown_write()
+            except Exception:
+                pass
             while True:
                 line = stdout.readline()
                 if not line:
@@ -1382,6 +2097,8 @@ class FinoraDeployStudio(tk.Tk):
             local_path = Path(self.local_path_var.get().strip() or ".")
             if not local_path.exists():
                 self.append_log(f"[ERROR] Local path does not exist: {local_path}\n")
+                return
+            if not self.validate_local_project_path(local_path):
                 return
 
             self.set_status("Pushing to GitHub…")
@@ -1490,6 +2207,7 @@ class FinoraDeployStudio(tk.Tk):
     def _android_project_roots(self, local_path: Path) -> dict[str, Path]:
         return {
             "Social (finora_social)": local_path / "mobile" / "finora_social",
+            "Phone (finora_phone)": local_path / "mobile" / "finora_phone",
             "POS (finora_pos)": local_path / "mobile" / "finora_pos_android",
             "Delivery Agent": local_path / "mobile" / "finora_delivery_agent_android",
         }
@@ -1516,7 +2234,7 @@ class FinoraDeployStudio(tk.Tk):
         return "Social (finora_social)"
 
     def _is_flutter_app(self, app_target: str) -> bool:
-        return app_target == "Social (finora_social)"
+        return app_target in {"Social (finora_social)", "Phone (finora_phone)"}
 
     def _list_apk_candidates(self, root: Path) -> list[Path]:
         skip_parts = {"intermediates", ".gradle", ".pub-cache"}
@@ -1553,7 +2271,36 @@ class FinoraDeployStudio(tk.Tk):
         except Exception:
             self.android_apk_var.set(str(apk))
 
+    def _expected_package_for_app(self, app_target: str) -> str | None:
+        return {
+            "Social (finora_social)": "iq.finora.finora_social",
+            "Phone (finora_phone)": "iq.finora.phone",
+            "Delivery Agent": "iq.finora.deliveryagent",
+            "POS (finora_pos)": "iq.finora.pos",
+        }.get(app_target)
+
+    def _apk_matches_app_target(self, apk: Path, app_target: str) -> bool:
+        expected = self._expected_package_for_app(app_target)
+        if not expected:
+            return True
+        detected = self._package_for_apk(apk)
+        if detected:
+            return detected == expected
+        # Fall back to path heuristics when package can't be sniffed from filename.
+        path_lower = str(apk).lower().replace("\\", "/")
+        if app_target == "Delivery Agent":
+            return "delivery" in path_lower
+        if app_target == "POS (finora_pos)":
+            return "finora_pos" in path_lower or "/pos/" in path_lower
+        if app_target == "Social (finora_social)":
+            return "finora_social" in path_lower or "finora-social" in path_lower
+        if app_target == "Phone (finora_phone)":
+            return "finora_phone" in path_lower or "finora-phone" in path_lower
+        return True
+
     def _find_latest_apk(self, local_path: Path) -> Path | None:
+        app_target = self._effective_android_app(local_path)
+
         configured = (self.android_apk_var.get() if hasattr(self, "android_apk_var") else "").strip()
         if not configured:
             configured = (self.config_data.get("android_apk_path") or "").strip()
@@ -1562,9 +2309,13 @@ class FinoraDeployStudio(tk.Tk):
             if not p.is_absolute():
                 p = (local_path / p).resolve()
             if p.is_file() and p.suffix.lower() == ".apk":
-                return p
+                if self._apk_matches_app_target(p, app_target):
+                    return p
+                self.append_log(
+                    f"[WARN] Configured APK does not match selected app ({app_target}): {p.name}\n"
+                    "[WARN] Ignoring APK path and searching project outputs instead.\n"
+                )
 
-        app_target = self._effective_android_app(local_path)
         if app_target == "Custom path":
             return None
 
@@ -1579,7 +2330,21 @@ class FinoraDeployStudio(tk.Tk):
                 return artifact_apk
 
         candidates = self._list_apk_candidates(root)
-        return candidates[0] if candidates else None
+        if candidates:
+            return candidates[0]
+
+        if app_target == "Delivery Agent":
+            for fallback in (
+                local_path / "artifacts" / "finora-delivery-agent-debug.apk",
+                local_path / "static" / "downloads" / "finora-delivery-agent.apk",
+            ):
+                if (
+                    fallback.is_file()
+                    and self._apk_matches_app_target(fallback, app_target)
+                    and self._apk_is_signed(fallback)
+                ):
+                    return fallback
+        return None
 
     def _package_for_apk(self, apk: Path) -> str | None:
         path_lower = str(apk).lower().replace("\\", "/")
@@ -1590,6 +2355,31 @@ class FinoraDeployStudio(tk.Tk):
         if "finora_social" in path_lower:
             return "iq.finora.finora_social"
         return None
+
+    @staticmethod
+    def _apk_is_signed(apk: Path) -> bool:
+        """True when APK looks installable (v1 META-INF signature or v2+ APK Signing Block)."""
+        try:
+            import zipfile
+
+            with zipfile.ZipFile(apk, "r") as zf:
+                names = {n.upper() for n in zf.namelist()}
+            has_v1 = (
+                "META-INF/MANIFEST.MF" in names
+                and any(
+                    n.startswith("META-INF/") and n.endswith(ext)
+                    for n in names
+                    for ext in (".RSA", ".DSA", ".EC", ".SF")
+                )
+            )
+            if has_v1:
+                return True
+
+            # APK Signature Scheme v2/v3: magic "APK Sig Block 42" before ZIP central directory
+            data = apk.read_bytes()
+            return b"APK Sig Block 42" in data
+        except Exception:
+            return False
 
     def _launch_app_on_device(self, adb_path: str, serial: str, package: str, cwd: Path) -> int:
         cmd = [
@@ -1815,6 +2605,8 @@ class FinoraDeployStudio(tk.Tk):
         artifacts_dir.mkdir(parents=True, exist_ok=True)
         if app_target == "Social (finora_social)":
             dest = artifacts_dir / "finora-social-release.apk"
+        elif app_target == "Phone (finora_phone)":
+            dest = artifacts_dir / "finora-phone-field-test.apk"
         elif app_target == "Delivery Agent":
             dest = artifacts_dir / "finora-delivery-agent-debug.apk"
         else:
@@ -1859,7 +2651,32 @@ class FinoraDeployStudio(tk.Tk):
 
             self.append_log(f"[INFO] Building Flutter APK for {app_target} in {build_cwd}\n")
             build_command = [flutter_cmd, "build", "apk", "--debug"]
-            if app_target == "Social (finora_social)":
+            if app_target == "Phone (finora_phone)":
+                api_base_url = (
+                    (self.social_api_url_var.get() if hasattr(self, "social_api_url_var") else "")
+                    or self.config_data.get("social_api_base_url")
+                    or "https://www.finora.company"
+                ).strip()
+                tenant_slug = (
+                    (self.social_tenant_var.get() if hasattr(self, "social_tenant_var") else "")
+                    or self.config_data.get("social_tenant_slug")
+                    or "super"
+                ).strip()
+                build_command = [
+                    flutter_cmd,
+                    "build",
+                    "apk",
+                    "--flavor",
+                    "staging",
+                    "--release",
+                    "--dart-define=FLAVOR=staging",
+                    f"--dart-define=API_BASE_URL={api_base_url}",
+                    f"--dart-define=TENANT_SLUG={tenant_slug}",
+                ]
+                self.append_log(
+                    f"[INFO] Phone Field Test build API={api_base_url} tenant={tenant_slug}\n"
+                )
+            elif app_target == "Social (finora_social)":
                 api_base_url, tenant_slug = self._resolve_social_build_settings(local_path)
                 key_properties = project_dir / "android" / "key.properties"
                 if not api_base_url.lower().startswith("https://"):
@@ -2038,6 +2855,22 @@ class FinoraDeployStudio(tk.Tk):
                     "[ERROR] No APK found. Build it first or choose it in APK path.\n"
                 )
                 self.set_status("APK publish failed (APK missing).")
+                return
+
+            if not self._apk_matches_app_target(apk, app_target):
+                self.append_log(
+                    f"[ERROR] Selected APK does not match app target ({app_target}): {apk}\n"
+                    "[ERROR] Choose Delivery Agent / correct APK path, then retry.\n"
+                )
+                self.set_status("APK publish failed (wrong app APK).")
+                return
+
+            if not self._apk_is_signed(apk):
+                self.append_log(
+                    f"[ERROR] APK is unsigned / corrupt (phones show: الحزمة غير صالحة): {apk}\n"
+                    "[ERROR] Build APK again for this app, then Publish APK.\n"
+                )
+                self.set_status("APK publish failed (unsigned APK).")
                 return
 
             remote_name = self._published_apk_name(app_target)
@@ -2246,6 +3079,8 @@ echo "[OK] APK published: {remote_file}"
                 self.append_log(f"[ERROR] Local path does not exist: {local_path}\n")
                 self.set_status("Deploy failed (local path missing).")
                 return
+            if not self.validate_local_project_path(local_path):
+                return
 
             server_path = self.server_path_var.get().strip()
             if not server_path:
@@ -2271,6 +3106,31 @@ echo "[OK] APK published: {remote_file}"
                 if deleted:
                     self.append_log("[INFO] Deleted files were ignored; Smart Deploy does not delete server files.\n")
                 self.set_status("Nothing changed to deploy.")
+                return
+
+            self.append_log(f"[INFO] Smart Deploy will upload {len(changed_paths)} changed file(s):\n")
+            for p in changed_paths[:80]:
+                self.append_log(f"  + {p}\n")
+            if len(changed_paths) > 80:
+                self.append_log(f"  ... and {len(changed_paths) - 80} more\n")
+
+            deploy_sizes = [
+                ((local_path / Path(path)).stat().st_size, path)
+                for path in changed_paths
+            ]
+            total_deploy_bytes = sum(size for size, _ in deploy_sizes)
+            self.append_log(
+                f"[INFO] Code payload before compression: {_format_file_size(total_deploy_bytes)}.\n"
+            )
+            if total_deploy_bytes > SMART_DEPLOY_MAX_BYTES:
+                self.append_log(
+                    "[BLOCKED] Smart Deploy payload is unexpectedly large. "
+                    "Review the largest files below; release artifacts need a separate upload.\n"
+                )
+                self.append_log("[INFO] Largest selected files:\n")
+                for size, path in sorted(deploy_sizes, reverse=True)[:15]:
+                    self.append_log(f"  - {_format_file_size(size):>9}  {path}\n")
+                self.set_status("Deploy blocked (payload is too large).")
                 return
 
             safe_server_path = shlex.quote(server_path)
@@ -2327,38 +3187,13 @@ fi
 
             nginx_service = self.nginx_service_var.get().strip() or "nginx"
             # خدمة التطبيق في هذا السكربت اسمها finora كما في المواصفة
-            service_name = "finora"
+            service_name = "supermaxi.service"
 
             # استخراج المنفذ من bind (مثال 127.0.0.1:8000)
             bind = self.gunicorn_bind_var.get().strip() or "127.0.0.1:8000"
             port = "8000"
             if ":" in bind:
                 port = bind.split(":")[-1] or "8000"
-
-            self.append_log(f"[INFO] Smart Deploy will upload {len(changed_paths)} changed file(s):\n")
-            for p in changed_paths[:80]:
-                self.append_log(f"  + {p}\n")
-            if len(changed_paths) > 80:
-                self.append_log(f"  ... and {len(changed_paths) - 80} more\n")
-
-            deploy_sizes = [
-                ((local_path / Path(path)).stat().st_size, path)
-                for path in changed_paths
-            ]
-            total_deploy_bytes = sum(size for size, _ in deploy_sizes)
-            self.append_log(
-                f"[INFO] Code payload before compression: {_format_file_size(total_deploy_bytes)}.\n"
-            )
-            if total_deploy_bytes > SMART_DEPLOY_MAX_BYTES:
-                self.append_log(
-                    "[BLOCKED] Smart Deploy payload is unexpectedly large. "
-                    "APK/build/artifact files must use their dedicated action.\n"
-                )
-                self.append_log("[INFO] Largest selected files:\n")
-                for size, path in sorted(deploy_sizes, reverse=True)[:15]:
-                    self.append_log(f"  - {_format_file_size(size):>9}  {path}\n")
-                self.set_status("Deploy blocked (payload is too large).")
-                return
 
             archive_path = self.make_changed_files_archive(local_path, changed_paths)
             remote_archive = posixpath.join("/tmp", archive_path.name)
@@ -2479,7 +3314,13 @@ echo "[5] Frontend builds if relevant..."
 echo ""
 echo "[6] Restarting application safely..."
 echo "Using service manager; no process-wide kill commands will be run."
-# تأكد أن المنفذ حر قبل إعادة التشغيل
+# This server historically had both finora.service and supermaxi.service
+# targeting the same Gunicorn port. Stop the non-canonical unit first so an
+# old worker cannot keep serving stale Python routes after a deployment.
+if [ "$SERVICE_NAME" = "supermaxi.service" ]; then
+    echo "[INFO] Disabling conflicting finora.service (same application port)."
+    systemctl disable --now finora.service 2>/dev/null || true
+fi
 echo ""
 systemctl restart "$SERVICE_NAME"
 
@@ -2571,7 +3412,8 @@ echo "=============================="
 
             # إعادة تشغيل خدمة التطبيق + Nginx عبر systemd (أكثر ثباتاً من pkill / gunicorn اليدوي)
             script = (
-                f"cd {server_path} && "
+                f"cd {shlex.quote(server_path)} && "
+                f"(systemctl disable --now finora.service 2>/dev/null || true) && "
                 f"systemctl restart {app_service} && "
                 f"systemctl restart {nginx_service}"
             )
@@ -2905,9 +3747,10 @@ PY
             if ":" in bind:
                 port = bind.split(":")[-1] or "8000"
 
-            # نبني سكربت bash يطبق بالضبط خطوات المواصفات مع إعادة محاولة لكل أمر
+            # Stop on a failed preflight before restarting any services.
             script = f"""
-cd {server_path} || {{ echo '[ERROR] Cannot cd to {server_path}'; exit 1; }}
+set -e
+cd {shlex.quote(server_path)} || {{ echo '[ERROR] Cannot open server project'; exit 1; }}
 
 run_cmd() {{
   desc="$1"; shift
@@ -2929,24 +3772,21 @@ run_cmd() {{
     fi
     attempt=$((attempt+1))
   done
+  return "$status"
 }};
 
 run_cmd 'Mark repo as safe directory' git config --global --add safe.directory {server_path}
 run_cmd 'Git fetch origin' git fetch origin
-run_cmd 'Git reset --hard origin/main' git reset --hard origin/main
+run_cmd 'Safe Git fast-forward (preserve server changes)' venv/bin/python scripts/safe_git_update.py --ref origin/main
 
 run_cmd 'Activate venv if exists' bash -lc 'if [ -d "venv" ]; then source venv/bin/activate; fi'
 run_cmd 'Install Python dependencies' bash -lc 'if [ -f "requirements.txt" ]; then pip install -r requirements.txt; fi'
 
 run_cmd 'Clean Python cache' bash -lc 'find . -name "*.pyc" -delete && find . -name "__pycache__" -type d -exec rm -rf {{}} +'
-run_cmd 'Clean static cache' bash -lc 'rm -rf static/build || true'
-
-run_cmd 'Kill old gunicorn processes' bash -lc 'pkill -9 gunicorn || true'
-run_cmd 'Free port {port}' bash -lc 'fuser -k {port}/tcp || true'
-
-run_cmd 'Restart finora service' systemctl restart finora
+run_cmd 'Disable conflicting finora service' systemctl disable --now finora.service
+run_cmd 'Restart supermaxi service' systemctl restart supermaxi.service
 run_cmd 'Restart nginx' systemctl restart {nginx_service}
-run_cmd 'Check finora status' bash -lc 'systemctl status finora --no-pager || true'
+run_cmd 'Check supermaxi status' bash -lc 'systemctl status supermaxi.service --no-pager || true'
 run_cmd 'Verify gunicorn port {port}' bash -lc 'lsof -i :{port} || true'
 
 echo ""
@@ -3177,12 +4017,12 @@ else
   nginx_status="DOWN"
 fi
 
-log "[MONITOR] Checking gunicorn/app service..."
-if systemctl is-active --quiet finora || systemctl is-active --quiet supermaxi; then
-  log "[OK] application service running"
+log "[MONITOR] Checking canonical gunicorn/app service..."
+if systemctl is-active --quiet supermaxi.service; then
+  log "[OK] supermaxi application service running"
   gunicorn_status="OK"
 else
-  log "[ERROR DETECTED] application service is down"
+  log "[ERROR DETECTED] supermaxi application service is down"
   gunicorn_status="DOWN"
 fi
 
@@ -3286,8 +4126,9 @@ systemctl restart {self.nginx_service}
                     fix_script = f"""
 LOG_FILE="/var/log/finora_monitor.log"
 NOW="{start_ts}"
-echo "[$NOW] [AUTO FIX] restarting finora/supermaxi service..." | tee -a "$LOG_FILE" 2>/dev/null || true
-systemctl restart finora || systemctl restart supermaxi || true
+echo "[$NOW] [AUTO FIX] restarting canonical supermaxi service..." | tee -a "$LOG_FILE" 2>/dev/null || true
+systemctl disable --now finora.service 2>/dev/null || true
+systemctl restart supermaxi.service || true
 """
                     _, out_fix = self._safe_ssh_exec(fix_script)
                     if out_fix:

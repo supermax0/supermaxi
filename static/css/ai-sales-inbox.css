@@ -2501,6 +2501,19 @@ audio.sales-ai-chat-media {
 
 .sales-ai-saved.show { display: inline-flex; }
 
+.sales-ai-beta-badge {
+  display: inline-flex;
+  align-items: center;
+  margin-inline-start: 6px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--ai-amber-soft, #fef3c7);
+  color: var(--ai-amber, #92400e);
+  font-size: 10px;
+  font-weight: 700;
+  vertical-align: middle;
+}
+
 .sales-ai-switch-row {
   min-height: 58px;
   display: flex;
@@ -3486,4 +3499,71 @@ audio.sales-ai-chat-media {
 .sales-ai-training-correction textarea {
   resize: vertical;
   min-height: 76px;
+}
+
+.sales-ai-verify-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+}
+
+.sales-ai-verify-toolbar {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sales-ai-verify-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 320px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding: 14px;
+  border: 1px solid var(--ai-border);
+  border-radius: 10px;
+  background: var(--ai-surface-soft);
+}
+
+.sales-ai-verify-empty {
+  margin: auto;
+  color: var(--ai-faint);
+  font-size: 13px;
+  text-align: center;
+}
+
+.sales-ai-verify-diagnostics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--ai-faint);
+}
+
+.sales-ai-verify-diagnostics span {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--ai-surface-hover);
+}
+
+.sales-ai-verify-flag {
+  color: var(--ai-red) !important;
+  font-weight: 700;
+}
+
+.sales-ai-verify-composer {
+  display: flex;
+  gap: 8px;
+}
+
+.sales-ai-verify-composer input {
+  flex: 1;
+  border: 1px solid var(--ai-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: inherit;
+  background: #fff;
+  color: var(--ai-text);
 }

@@ -1,0 +1,116 @@
+{% extends "hr/layout.html" %}
+{% block hr_title %}صندوق HR{% endblock %}
+{% block hr_content %}
+<section class="hr-page-heading">
+  <div>
+    <span class="hr-eyebrow dark">التمويل والخزنة</span>
+    <h1>الصندوق</h1>
+    <p>إيداع الرصيد، متابعة الحسابات، وتخصيص مبلغ الرواتب من مكان واحد.</p>
+  </div>
+  <div class="hr-hero-actions" style="position:static">
+    <a class="hr-btn hr-btn-light" style="background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe" href="{{ url_for('hr.settings') }}#payroll-settings"><i class="fa-solid fa-sliders"></i> طريقة الصرف</a>
+    <button class="hr-btn hr-btn-primary" type="button" data-hr-dialog-open="cash-deposit-modal"><i class="fa-solid fa-piggy-bank"></i> إيداع رصيد</button>
+  </div>
+</section>
+
+<section class="hr-payroll-method-bar">
+  <div>
+    <small>طريقة الصرف الحالية</small>
+    <strong>{{ payout_method_label }}</strong>
+    <em class="hr-cash-balance">رصيد حساب الصرف: {{ "{:,}".format(payout_balance) }} {{ currency }}</em>
+  </div>
+  <div class="hr-payroll-actions">
+    {% if payout_method == 'salary_fund' %}
+    <form method="post" action="{{ url_for('hr.allocate_payroll_fund') }}" onsubmit="return confirm('تخصيص مبلغ الرواتب غير المصروفة لصندوق الرواتب؟')">
+      <input type="hidden" name="period_year" value="{{ year }}">
+      <input type="hidden" name="period_month" value="{{ month }}">
+      <button class="hr-btn hr-btn-dark" type="submit"><i class="fa-solid fa-vault"></i> تخصيص {{ "{:,}".format(unpaid_total) }} لصندوق الرواتب</button>
+    </form>
+    {% endif %}
+    <a class="hr-btn hr-btn-primary" href="{{ url_for('hr.payroll', year=year, month=month) }}"><i class="fa-solid fa-money-check-dollar"></i> الذهاب للرواتب</a>
+  </div>
+</section>
+
+<section class="hr-kpis">
+  {% for row in account_rows[:4] %}
+  <article class="hr-kpi {% if row.is_payout %}emphasis{% endif %}">
+    <span class="hr-kpi-icon {{ 'green' if row.account.account_type == 'cash' else 'indigo' }}"><i class="fa-solid {{ 'fa-vault' if row.account.account_type == 'cash' else 'fa-building-columns' }}"></i></span>
+    <div>
+      <small>{{ row.account.name }}</small>
+      <strong>{{ "{:,}".format(row.balance) }}</strong>
+      <em>{{ row.role or ('صندوق' if row.account.account_type == 'cash' else 'بنك') }}</em>
+    </div>
+  </article>
+  {% else %}
+  <article class="hr-kpi"><span class="hr-kpi-icon amber"><i class="fa-solid fa-wallet"></i></span><div><small>لا توجد حسابات</small><strong>0</strong></div></article>
+  {% endfor %}
+</section>
+
+<section class="hr-card hr-table-card">
+  <div class="hr-card-head"><div><span class="hr-card-kicker">الحسابات</span><h2>أرصدة الصندوق والبنك</h2></div></div>
+  <div class="hr-table-wrap">
+    <table class="hr-table">
+      <thead><tr><th>الحساب</th><th>النوع</th><th>الاستخدام</th><th>الرصيد</th></tr></thead>
+      <tbody>
+        {% for row in account_rows %}
+        <tr class="{% if row.is_payout %}hr-row-active{% endif %}">
+          <td><strong>{{ row.account.name }}</strong>{% if row.is_payout %} <span class="hr-status approved">حساب الصرف</span>{% endif %}</td>
+          <td>{{ 'صندوق' if row.account.account_type == 'cash' else 'بنك' }}</td>
+          <td>{{ row.role or '—' }}</td>
+          <td><strong>{{ "{:,}".format(row.balance) }}</strong> <small>{{ currency }}</small></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4"><div class="hr-empty"><p>لا توجد حسابات خزنة</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="hr-card hr-table-card" style="margin-top:16px">
+  <div class="hr-card-head"><div><span class="hr-card-kicker">الحركة</span><h2>آخر حركات حساب الصرف</h2></div></div>
+  <div class="hr-table-wrap">
+    <table class="hr-table">
+      <thead><tr><th>التاريخ</th><th>النوع</th><th>البيان</th><th>المبلغ</th></tr></thead>
+      <tbody>
+        {% for move in movements %}
+        <tr>
+          <td>{{ move.created_at.strftime('%Y-%m-%d %H:%M') if move.created_at else '—' }}</td>
+          <td>{{ 'إيداع' if move.type == 'deposit' else 'سحب' if move.type == 'withdraw' else (move.type or '—') }}</td>
+          <td>{{ move.note or '—' }}</td>
+          <td class="{{ 'hr-positive' if move.type == 'deposit' else 'hr-negative' }}">{{ "{:,}".format(move.amount or 0) }}</td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4"><div class="hr-empty compact"><p>لا توجد حركات بعد — ابدأ بإيداع رصيد</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<dialog class="hr-modal" id="cash-deposit-modal" aria-labelledby="cash-deposit-title">
+  <div class="hr-modal-panel">
+    <header class="hr-modal-head">
+      <div><span class="hr-modal-kicker">تمويل الصندوق</span><h2 id="cash-deposit-title">إيداع رصيد</h2></div>
+      <button class="hr-modal-close" type="button" data-hr-dialog-close="cash-deposit-modal" aria-label="إغلاق"><i class="fa-solid fa-xmark"></i></button>
+    </header>
+    <p class="hr-modal-note"><i class="fa-solid fa-circle-info"></i> أودع المبلغ في الحساب المناسب قبل صرف الرواتب.</p>
+    <form method="post" action="{{ url_for('hr.deposit_payroll_balance') }}" class="hr-form-grid">
+      <label><span>الحساب</span>
+        <select name="treasury_account_id" required>
+          {% for account in treasury_accounts %}
+          <option value="{{ account.id }}"
+            {% if payout_method == 'bank' and settings.payroll_bank_account_id == account.id %}selected
+            {% elif payout_method == 'salary_fund' and settings.payroll_fund_account_id == account.id %}selected
+            {% elif payout_method == 'direct' and settings.payroll_cash_account_id == account.id %}selected
+            {% endif %}>{{ account.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label><span>المبلغ</span><input type="number" name="amount" min="1" required placeholder="{{ unpaid_total or '' }}"></label>
+      <label class="hr-full"><span>ملاحظة</span><input name="note" placeholder="إيداع رواتب الشهر"></label>
+      <div class="hr-form-actions hr-full"><button class="hr-btn hr-btn-primary"><i class="fa-solid fa-plus"></i> تأكيد الإيداع</button></div>
+    </form>
+  </div>
+</dialog>
+{% endblock %}

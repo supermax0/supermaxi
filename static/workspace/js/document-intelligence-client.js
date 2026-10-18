@@ -40,9 +40,11 @@ class DocumentIntelligenceClient {
         body: JSON.stringify({ session_id: sid }),
       });
       if (data.session) this.onSessionUpdate(data.session);
+      this._busy = false;
       this.onComplete(data.result);
       return data;
     } catch (e) {
+      this._busy = false;
       this.onError(e);
       throw e;
     } finally {
@@ -61,9 +63,11 @@ class DocumentIntelligenceClient {
         body: "{}",
       });
       if (data.session) this.onSessionUpdate(data.session);
+      this._busy = false;
       this.onComplete(data.result);
       return data;
     } catch (e) {
+      this._busy = false;
       this.onError(e);
       throw e;
     } finally {

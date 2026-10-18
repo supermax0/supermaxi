@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}لوحة الأقساط - Finora{% endblock %}
+{% block content %}
+<main class="ins-wrap ins-dashboard">
+  {% include "installments/admin/_nav.html" %}
+
+  <section class="ins-dashboard-hero">
+    <div>
+      <span class="ins-eyebrow">نظرة عامة</span>
+      <h1>لوحة الأقساط</h1>
+      <p>تابع أداء المتجر والطلبات والعقود والتحصيلات من مكان واحد.</p>
+      <div class="ins-dashboard-hero__actions">
+        <a class="ins-btn" href="{{ url_for('installments_admin.applications') }}">مراجعة الطلبات</a>
+        <a class="ins-btn ghost" href="{{ url_for('installments_admin.products') }}">إدارة المنتجات</a>
+      </div>
+    </div>
+    <div class="ins-dashboard-hero__art" aria-hidden="true">
+      <span class="ins-coin ins-coin--one">د.ع</span><span class="ins-coin ins-coin--two">✓</span>
+      <svg viewBox="0 0 260 180"><rect x="35" y="31" width="172" height="112" rx="14"></rect><path d="M35 65h172"></path><path d="M62 96h53M62 117h82"></path><circle cx="176" cy="105" r="19"></circle><path d="m168 105 6 6 11-13"></path></svg>
+    </div>
+  </section>
+
+  <div class="ins-section-heading"><div><span>المؤشرات الرئيسية</span><h2>حالة الأقساط اليوم</h2></div><small>بيانات مباشرة من سجلات الشركة</small></div>
+  <section class="ins-kpi-grid" aria-label="المؤشرات">
+    <article class="ins-stat tone-blue"><span class="ins-stat__icon"><svg viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5zM3 12l9 5 9-5"></path></svg></span><div><small>منتجات الأقساط</small><strong>{{ stats.products }}</strong><em>منتج مسجل</em></div></article>
+    <article class="ins-stat tone-amber"><span class="ins-stat__icon"><svg viewBox="0 0 24 24"><path d="M6 3h12v18H6zM9 8h6M9 12h6"></path></svg></span><div><small>طلبات المراجعة</small><strong>{{ stats.new_applications }}</strong><em>تحتاج إلى إجراء</em></div></article>
+    <article class="ins-stat tone-green"><span class="ins-stat__icon"><svg viewBox="0 0 24 24"><path d="M5 3h14v18H5zM8 7h8M8 11h5"></path></svg></span><div><small>عقود نشطة</small><strong>{{ stats.active_contracts }}</strong><em>قيد التحصيل</em></div></article>
+    <article class="ins-stat tone-violet"><span class="ins-stat__icon"><svg viewBox="0 0 24 24"><path d="M3 7h18v13H3zM3 11h18M7 16h4"></path></svg></span><div><small>رصيد العقود</small><strong class="ins-money">{{ stats.outstanding|toLocaleString }} <i>د.ع</i></strong><em>إجمالي المبالغ المتبقية</em></div></article>
+    <article class="ins-stat tone-cyan"><span class="ins-stat__icon"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"></rect><path d="M7 3v4M17 3v4M3 10h18"></path></svg></span><div><small>المستحق اليوم</small><strong class="ins-money">{{ stats.due_today|toLocaleString }} <i>د.ع</i></strong><em>دفعات تاريخ اليوم</em></div></article>
+    <article class="ins-stat tone-red"><span class="ins-stat__icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v6l4 2"></path></svg></span><div><small>المتأخرات</small><strong class="ins-money">{{ stats.overdue_amount|toLocaleString }} <i>د.ع</i></strong><em>مبالغ تجاوزت الاستحقاق</em></div></article>
+    <article class="ins-stat tone-teal"><span class="ins-stat__icon"><svg viewBox="0 0 24 24"><path d="M4 18 9 13l4 4 7-9"></path><path d="M15 8h5v5"></path></svg></span><div><small>تحصيل الشهر</small><strong class="ins-money">{{ stats.collected_month|toLocaleString }} <i>د.ع</i></strong><em>منذ بداية الشهر</em></div></article>
+    <article class="ins-stat tone-navy"><span class="ins-stat__icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M8 12h8M12 8v8"></path></svg></span><div><small>كل التحصيلات</small><strong class="ins-money">{{ stats.collected|toLocaleString }} <i>د.ع</i></strong><em>منذ بدء العمل</em></div></article>
+  </section>
+
+  <section class="ins-panel ins-section-gap">
+    <div class="ins-panel__header"><div><span class="ins-panel__icon"><svg viewBox="0 0 24 24"><path d="M6 3h12v18H6zM9 8h6M9 12h6M9 16h4"></path></svg></span><div><h2>أحدث الطلبات</h2><p>آخر طلبات التقسيط الواردة إلى المتجر</p></div></div><a class="ins-text-link" href="{{ url_for('installments_admin.applications') }}">عرض كل الطلبات ←</a></div>
+    <div class="ins-table-wrap is-flush"><table class="ins-table"><thead><tr><th>رقم الطلب</th><th>العميل</th><th>الهاتف</th><th>الحالة</th><th>تاريخ التقديم</th><th></th></tr></thead><tbody>{% for row in recent %}<tr><td><a class="ins-primary-link" href="{{ url_for('installments_admin.application_detail',application_id=row.id) }}">{{ row.application_number }}</a></td><td>{{ row.customer_name }}</td><td dir="ltr">{{ row.phone }}</td><td><span class="ins-badge {{ row.status }}">{{ row.status }}</span></td><td>{{ row.created_at.strftime('%Y-%m-%d %H:%M') }}</td><td><a class="ins-row-action" href="{{ url_for('installments_admin.application_detail',application_id=row.id) }}">فتح ←</a></td></tr>{% else %}<tr><td colspan="6"><div class="ins-empty"><span>☷</span><strong>لا توجد طلبات بعد</strong><small>ستظهر طلبات العملاء الجديدة هنا</small></div></td></tr>{% endfor %}</tbody></table></div>
+  </section>
+</main>
+{% endblock %}

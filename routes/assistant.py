@@ -1,10 +1,10 @@
 # routes/assistant.py
-from flask import Blueprint, render_template, request, jsonify, session, redirect, g
+from flask import Blueprint, render_template, request, jsonify, session, redirect, g, send_file, current_app
 from extensions import db
 from models.system_analytics import SystemAnalytics
 from models.system_alert import SystemAlert
 from models.assistant_memory import AssistantMemory
-from models.ai_assistant_control import AIActionPlan, AIAuditRun, AIToolCallLog, AIUploadedFile
+from models.ai_assistant_control import AIActionPlan, AIAuditRun, AIToolCallLog, AIUploadedFile, AIChatSession, AIChatMessage
 from models.employee import Employee
 from models.invoice import Invoice
 from models.customer import Customer
@@ -28,6 +28,9 @@ from utils.plan_limits import get_plan, has_feature
 from datetime import datetime, timedelta
 from sqlalchemy import func
 import json
+import io
+
+from utils.leon_presentation import export_presentation
 
 assistant_bp = Blueprint("assistant", __name__, url_prefix="/assistant")
 
@@ -152,6 +155,118 @@ def api_chat_send():
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@assistant_bp.route("/api/chat/sessions", methods=["GET"])
+def api_chat_sessions():
+    """List the signed-in user's recent LEON conversations."""
+    denied = _require_assistant_json("use_ai_assistant")
+    if denied:
+        return denied
+    chats = (
+        AIChatSession.query.filter_by(employee_id=session.get("user_id"))
+        .order_by(AIChatSession.updated_at.desc(), AIChatSession.id.desc())
+        .limit(30)
+        .all()
+    )
+    items = []
+    for chat in chats:
+        latest = (
+            AIChatMessage.query.filter_by(session_id=chat.id)
+            .filter(AIChatMessage.role.in_(["user", "assistant"]))
+            .order_by(AIChatMessage.id.desc())
+            .first()
+        )
+        first_user = (
+            AIChatMessage.query.filter_by(session_id=chat.id, role="user")
+            .order_by(AIChatMessage.id.asc())
+            .first()
+        )
+        title = chat.title
+        if not title or title == "محادثة مساعد Finora":
+            title = (first_user.content or "")[:80] if first_user else "محادثة LEON"
+        items.append({
+            "id": chat.id,
+            "title": title,
+            "preview": (latest.content or "")[:140] if latest else "لا توجد رسائل بعد",
+            "updated_at": (chat.updated_at or chat.created_at).isoformat() if (chat.updated_at or chat.created_at) else None,
+            "message_count": AIChatMessage.query.filter_by(session_id=chat.id).count(),
+        })
+    return jsonify({"success": True, "sessions": items})
+
+
+@assistant_bp.route("/api/chat/sessions/<int:chat_session_id>/export.<file_format>", methods=["GET"])
+def api_chat_export(chat_session_id, file_format):
+    """Download the latest structured LEON result without widening read access."""
+    denied = _require_assistant_json("use_ai_assistant")
+    if denied:
+        return denied
+    if file_format not in {"xlsx", "pdf", "csv", "json"}:
+        return jsonify({"success": False, "error": "صيغة الملف غير مدعومة"}), 400
+
+    chat = AIChatSession.query.filter_by(
+        id=chat_session_id,
+        employee_id=session.get("user_id"),
+    ).first()
+    if not chat:
+        return jsonify({"success": False, "error": "المحادثة غير موجودة أو غير مصرح بها"}), 404
+
+    latest = (
+        AIChatMessage.query.filter_by(session_id=chat.id, role="assistant")
+        .order_by(AIChatMessage.id.desc())
+        .first()
+    )
+    presentation = (latest.get_metadata() if latest else {}).get("presentation") or {}
+    if not presentation.get("widgets"):
+        return jsonify({"success": False, "error": "لا توجد نتيجة منظّمة قابلة للتنزيل بعد"}), 404
+    try:
+        payload, mimetype, filename = export_presentation(presentation, file_format)
+        return send_file(
+            io.BytesIO(payload),
+            mimetype=mimetype,
+            as_attachment=True,
+            download_name=filename,
+            max_age=0,
+        )
+    except Exception as exc:
+        current_app.logger.exception("LEON export failed")
+        return jsonify({"success": False, "error": f"تعذّر إنشاء الملف: {exc}"}), 500
+
+
+@assistant_bp.route("/api/chat/sessions/<int:chat_session_id>/messages", methods=["GET"])
+def api_chat_messages(chat_session_id):
+    """Return a user's recent LEON messages with their structured UI payloads."""
+    denied = _require_assistant_json("use_ai_assistant")
+    if denied:
+        return denied
+    chat = AIChatSession.query.filter_by(
+        id=chat_session_id,
+        employee_id=session.get("user_id"),
+    ).first()
+    if not chat:
+        return jsonify({"success": False, "error": "المحادثة غير موجودة أو غير مصرح بها"}), 404
+    rows = (
+        AIChatMessage.query.filter_by(session_id=chat.id)
+        .order_by(AIChatMessage.id.desc())
+        .limit(40)
+        .all()
+    )
+    rows.reverse()
+    return jsonify({
+        "success": True,
+        "session_id": chat.id,
+        "messages": [
+            {
+                "id": row.id,
+                "role": row.role,
+                "content": row.content,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
+                "presentation": (row.get_metadata() or {}).get("presentation"),
+            }
+            for row in rows
+            if row.role in {"user", "assistant"}
+        ],
+    })
 
 
 @assistant_bp.route("/api/files/upload", methods=["POST"])

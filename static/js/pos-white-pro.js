@@ -5,7 +5,11 @@
   const bootstrapEl = document.getElementById("posBootstrapData");
   const bootstrap = bootstrapEl ? JSON.parse(bootstrapEl.textContent || "{}") : {};
   const canEditPrice = !!bootstrap.canEditPrice;
+  const canPrintInvoice = !!bootstrap.canPrintInvoice;
+  const isAdmin = !!bootstrap.isAdmin;
+  const independentBranches = bootstrap.independentBranches !== false;
   const allProducts = Array.isArray(bootstrap.products) ? bootstrap.products : [];
+  const PRIMARY_PROVINCE = String(bootstrap.primaryProvince || "بغداد").trim() || "بغداد";
 
   let items = [];
   let selectedCustomerId = null;
@@ -16,6 +20,7 @@
   let editingOrderId = null;
   let currentPriceEditIndex = -1;
   let pendingColorCtx = null;
+  let pendingSaleCtx = null;
   let colorEditCartIndex = -1;
   let activeCategory = "all";
   let productSearchQuery = "";
@@ -27,10 +32,13 @@
   let pageSize = 20;
 
   const initialOrderData = bootstrap.orderData ?? null;
+  let orderInstallmentUi = Object.assign({}, bootstrap.orderInstallmentUi || {});
+  let selectedBranchId = Number(initialOrderData?.branch_id || bootstrap.currentBranchId) || null;
   if (initialOrderData) {
     editingOrderId = initialOrderData.id ?? null;
     selectedCustomerId = initialOrderData.customer_id ?? null;
     selectedCustomerName = initialOrderData.customer_name || "";
+    selectedCustomerCity = initialOrderData.customer_city || "";
     discountValue = Number(initialOrderData.discount_amount) || 0;
     items = Array.isArray(initialOrderData.items)
       ? initialOrderData.items.map((it) => ({
@@ -41,6 +49,9 @@
           stock: Number(it.stock) || 0,
           color: (it.color || "").trim(),
           color_stock: Number(it.color_stock) || 0,
+          sale_mode: it.sale_mode || "normal",
+          trade_in_source_product_id: it.trade_in_source_product_id || null,
+          trade_in_source_product_name: it.trade_in_source_product_name || "",
           fulfillment_branch_id: it.fulfillment_branch_id || null,
           image_url: it.image_url || "",
           sku: it.sku || "",
@@ -49,6 +60,18 @@
   }
 
   const $ = (id) => document.getElementById(id);
+
+  function currentPosBranchId() {
+    const value = $("posBranchSelect")?.value || selectedBranchId;
+    return Number(value) || null;
+  }
+
+  function productsForCurrentBranch() {
+    if (!independentBranches) return allProducts;
+    const branchId = currentPosBranchId();
+    if (!branchId) return [];
+    return allProducts.filter((product) => Number(product.branch_id) === branchId);
+  }
 
   function debounce(fn, ms) {
     let t;
@@ -112,21 +135,109 @@
     return (Number(n) || 0).toLocaleString("en-US");
   }
 
-  function getProductById(id) {
-    return allProducts.find((p) => p.id === id);
+  function colorSwatchCss(colorName) {
+    const raw = String(colorName || "").trim();
+    if (/^#[0-9a-f]{3,8}$/i.test(raw) || /^rgba?\(/i.test(raw) || /^hsla?\(/i.test(raw)) {
+      return raw;
+    }
+    const normalized = raw
+      .toLowerCase()
+      .replace(/[أإآ]/g, "ا")
+      .replace(/ة/g, "ه")
+      .replace(/\s+/g, "");
+    const known = [
+      [["ابيض", "white"], "#ffffff"],
+      [["اسود", "black"], "#111827"],
+      [["احمر", "red"], "#ef4444"],
+      [["اخضر", "green"], "#22c55e"],
+      [["ازرق", "blue"], "#3b82f6"],
+      [["سماوي", "cyan"], "#22d3ee"],
+      [["كحلي", "navy"], "#172554"],
+      [["اصفر", "yellow"], "#facc15"],
+      [["برتقالي", "orange"], "#f97316"],
+      [["بنفسجي", "purple"], "#8b5cf6"],
+      [["وردي", "pink"], "#ec4899"],
+      [["بني", "brown"], "#92400e"],
+      [["بيج", "beige"], "#d6c6a5"],
+      [["رمادي", "gray", "grey"], "#94a3b8"],
+      [["فضي", "silver"], "linear-gradient(135deg,#f8fafc,#94a3b8)"],
+      [["ذهبي", "gold"], "linear-gradient(135deg,#fde68a,#d97706)"],
+    ];
+    const match = known.find(([aliases]) => aliases.some((alias) => normalized.includes(alias)));
+    if (match) return match[1];
+    let hash = 0;
+    for (let index = 0; index < raw.length; index += 1) {
+      hash = ((hash << 5) - hash + raw.charCodeAt(index)) | 0;
+    }
+    return `hsl(${Math.abs(hash) % 360} 68% 52%)`;
   }
 
-  function cartLineKey(productId, color) {
-    return String(productId) + "::" + ((color || "").trim() || "");
+  function getProductById(id) {
+    // Shared mode already receives one merged card per catalog family.
+    // Do not reject it merely because its representative record belongs to
+    // a different physical branch; the server resolves that branch copy at
+    // checkout before it deducts stock.
+    if (!independentBranches) {
+      return allProducts.find((p) => Number(p.id) === Number(id));
+    }
+    const branchId = currentPosBranchId();
+    return allProducts.find((p) => Number(p.id) === Number(id) && Number(p.branch_id) === branchId);
+  }
+
+  function cartLineKey(productId, color, saleMode, sourceProductId) {
+    return [
+      String(productId),
+      ((color || "").trim() || ""),
+      saleMode || "normal",
+      "",
+    ].join("::");
+  }
+
+  function isPrimaryCustomerCity(city) {
+    const value = String(city || "").trim();
+    if (!value) return true;
+    return value === PRIMARY_PROVINCE;
+  }
+
+  function regionSalePriceForProduct(product, colorRow) {
+    const bagdad = colorRow && colorRow.sale_price != null && colorRow.sale_price !== ""
+      ? Number(colorRow.sale_price)
+      : Number(product?.price ?? product?.sale_price ?? 0);
+    if (!product?.dual_region_pricing) return bagdad || 0;
+    if (isPrimaryCustomerCity(selectedCustomerCity)) return bagdad || 0;
+    const govRaw = colorRow && colorRow.governorate_sale_price != null && colorRow.governorate_sale_price !== ""
+      ? Number(colorRow.governorate_sale_price)
+      : Number(product?.governorate_sale_price ?? 0);
+    return (govRaw > 0 ? govRaw : bagdad) || 0;
+  }
+
+  function repriceCartForCustomerCity() {
+    let changed = false;
+    items.forEach((item) => {
+      if (String(item.sale_mode || "normal") !== "normal") return;
+      const product = getProductById(item.product_id);
+      if (!product?.dual_region_pricing) return;
+      const colorRow = item.color
+        ? (product.colors || []).find((c) => (c.name || c) === item.color)
+        : null;
+      const next = regionSalePriceForProduct(product, colorRow);
+      if (next > 0 && Number(item.price) !== next) {
+        item.price = next;
+        changed = true;
+      }
+    });
+    if (changed) renderItems();
   }
 
   function serializeCartItems() {
-    return items.map(({ product_id, qty, price, color, fulfillment_branch_id }) => ({
+    const branchId = currentPosBranchId();
+    return items.map(({ product_id, qty, price, color, sale_mode }) => ({
       product_id,
       qty,
       price,
       color: (color || "").trim() || null,
-      fulfillment_branch_id: fulfillment_branch_id || null,
+      sale_mode: sale_mode || "normal",
+      fulfillment_branch_id: branchId,
     }));
   }
 
@@ -149,6 +260,8 @@
       button.disabled = !!busy;
       button.classList.toggle("is-busy", !!busy);
     });
+    const branchSelect = $("posBranchSelect");
+    if (branchSelect && isAdmin && !editingOrderId) branchSelect.disabled = !!busy;
   }
 
   function effectiveItemStock(item) {
@@ -242,7 +355,7 @@
         badge.classList.add("is-selected");
         badge.hidden = false;
       } else {
-        badge.textContent = "لم يتم اختيار زبون";
+        badge.textContent = "الزبون المختار: لم يتم اختيار زبون (نقدي عام)";
         badge.classList.remove("is-selected");
       }
     }
@@ -266,7 +379,7 @@
     selectedCustomerPhone = "";
     const badge = $("selectedCustomer");
     if (badge) {
-      badge.textContent = "لم يتم اختيار زبون";
+      badge.textContent = "الزبون المختار: لم يتم اختيار زبون (نقدي عام)";
       badge.classList.remove("is-selected");
     }
     const sc = $("searchCustomer");
@@ -279,7 +392,7 @@
   function updateStats() {
     const total = calcTotal();
     const count = items.reduce((s, i) => s + (i.qty || 0), 0);
-    const countLabel = count + " منتج";
+    const countLabel = count + " أصناف";
     const itemCountEl = $("itemCount");
     if (itemCountEl) itemCountEl.textContent = countLabel;
     const itemCountMobile = $("itemCountMobile");
@@ -314,12 +427,18 @@
     return `<span class="${cls} pos-cart-price-editable" role="button" tabindex="0" onclick="PosWP.changePrice(${idx})" title="اضغط لتعديل السعر">${text}</span>`;
   }
 
+  function cartSaleBadgeHtml(item) {
+    return item?.sale_mode === "exchange"
+      ? '<span class="pos-color-badge">استبدال</span>'
+      : '<span class="pos-color-badge">بيع</span>';
+  }
+
   function renderItems() {
     const tbody = $("orderItems");
     const mobileList = $("cartMobileList");
     const itemCountEl = $("itemCount");
     const count = items.reduce((s, i) => s + (i.qty || 0), 0);
-    if (itemCountEl) itemCountEl.textContent = count + " منتج";
+    if (itemCountEl) itemCountEl.textContent = count + " أصناف";
 
     const rowHtml = items.map((i, idx) => {
       const t = (i.price || 0) * (i.qty || 0);
@@ -328,6 +447,7 @@
       const colorBadge = color
         ? `<button type="button" class="pos-color-badge" onclick="PosWP.changeCartColor(${idx})" title="تغيير اللون">${color}</button>`
         : "";
+      const saleBadge = cartSaleBadgeHtml(i);
       const priceLabel = cartPriceHtml(i.price, idx);
       return `<tr>
         <td>
@@ -336,6 +456,7 @@
             <div>
               <strong>${i.name}</strong>
               ${colorBadge}
+              ${saleBadge}
               ${sku ? `<div class="pos-cart-sku">${sku}</div>` : ""}
             </div>
           </div>
@@ -355,15 +476,22 @@
 
     if (tbody) tbody.innerHTML = rowHtml;
 
+    const cartEmpty = $("cartEmptyState");
+    const cartTable = tbody ? tbody.closest(".pos-cart-table") : null;
+    if (cartEmpty) cartEmpty.hidden = items.length > 0;
+    if (cartTable) cartTable.hidden = items.length === 0;
+
     const mobileHtml = items.map((i, idx) => {
       const t = (i.price || 0) * (i.qty || 0);
       const color = (i.color || "").trim();
+      const saleBadge = cartSaleBadgeHtml(i);
       return `<div class="pos-cart-mobile-item">
         <div class="pos-cart-mobile-thumb-wrap">${cartThumbHtml(i)}</div>
         <div class="pos-cart-mobile-main">
           <div class="pos-cart-mobile-item-name">${i.name}</div>
           <div class="pos-cart-mobile-meta">
             ${color ? `<span class="pos-color-badge pos-color-badge--sm" onclick="PosWP.changeCartColor(${idx})">${color}</span>` : ""}
+            ${saleBadge}
             ${i.sku ? `<span class="pos-cart-sku">${i.sku}</span>` : "<span></span>"}
             ${cartPriceHtml(i.price, idx, "pos-cart-mobile-unit")}
           </div>
@@ -390,7 +518,7 @@
   }
 
   function filteredProducts() {
-    let list = allProducts.slice();
+    let list = productsForCurrentBranch();
     const q = productSearchQuery.trim().toLowerCase();
     if (q) {
       list = list.filter((p) => {
@@ -480,15 +608,24 @@
         </div>
         <div class="pos-product-stock">${stockLabel}</div>
         <button type="button" class="pos-btn-add"
-          onclick="PosWP.addItemById(${p.id})"><i class="fas fa-cart-plus"></i> إضافة</button>
+          onclick="PosWP.addItemById(${p.id})"><i class="fas fa-plus"></i> إضافة</button>
       </article>`;
     }).join("");
   }
 
-  function syncLocalStock(productId, delta) {
-    const p = allProducts.find((x) => x.id === productId);
-    if (p) p.quantity = Math.max(0, (p.quantity || 0) - delta);
-    renderProductGrid();
+  async function refreshCatalogStock() {
+    try {
+      const response = await fetch("/pos/all-products");
+      if (!response.ok) throw new Error("catalog request failed");
+      const data = await response.json();
+      if (!Array.isArray(data.products)) throw new Error("invalid catalog response");
+      allProducts.splice(0, allProducts.length, ...data.products);
+      filterInventory();
+      buildCategoryTabs();
+      renderProductGrid();
+    } catch (error) {
+      toast("تم حفظ الطلب، لكن تعذّر تحديث المخزون. حدّث الصفحة قبل البيع التالي.", "warning");
+    }
   }
 
   function addItemById(id) {
@@ -498,15 +635,74 @@
       openColorPickerModal({
         id: p.id,
         name: p.name,
-        price: p.sale_price,
+        price: regionSalePriceForProduct(p, null),
         stock: p.quantity,
         image_url: p.image_url,
         sku: p.sku,
         colors: p.colors,
+        dual_region_pricing: p.dual_region_pricing,
+        governorate_sale_price: p.governorate_sale_price,
+        sale_price: p.sale_price,
       });
       return;
     }
-    addItem(p.id, p.name, p.sale_price, p.quantity, p.image_url, p.sku, "");
+    chooseSaleMode({ ...p, sale_price: regionSalePriceForProduct(p, null), price: regionSalePriceForProduct(p, null) }, "", 0);
+  }
+
+  function chooseSaleMode(product, color, colorStock) {
+    const normalPrice = Number(product.sale_price ?? product.price) || 0;
+    if (!product?.has_exchange_sale) {
+      addItem(
+        product.id, product.name, normalPrice, product.quantity,
+        product.image_url, product.sku, color || "", colorStock,
+        "normal", null, ""
+      );
+      return;
+    }
+    pendingSaleCtx = { product, color: color || "", colorStock: Number(colorStock) || 0 };
+    const modal = $("saleModePickerModal");
+    const title = $("saleModeProductName");
+    if (title) title.textContent = product.name;
+    const normalPriceEl = $("normalSaleModePrice");
+    const exchangePrice = $("exchangeSaleModePrice");
+    if (normalPriceEl) normalPriceEl.textContent = fmt(normalPrice) + " د.ع";
+    if (exchangePrice) exchangePrice.textContent = fmt(product.exchange_sale_price) + " د.ع";
+    modal?.classList.add("show");
+  }
+
+  function closeSaleModePickerModal() {
+    $("saleModePickerModal")?.classList.remove("show");
+    pendingSaleCtx = null;
+  }
+
+  function selectSaleMode(mode) {
+    if (!pendingSaleCtx) return;
+    if (mode === "exchange") {
+      const { product, color, colorStock } = pendingSaleCtx;
+      addItem(
+        product.id, product.name, product.exchange_sale_price, product.quantity,
+        product.image_url, product.sku, color, colorStock, "exchange", null, ""
+      );
+      closeSaleModePickerModal();
+      return;
+    }
+    const { product, color, colorStock } = pendingSaleCtx;
+    addItem(
+      product.id, product.name, Number(product.sale_price ?? product.price) || 0, product.quantity,
+      product.image_url, product.sku, color, colorStock, "normal", null, ""
+    );
+    closeSaleModePickerModal();
+  }
+
+  function confirmExchangeSale() {
+    if (!pendingSaleCtx) return;
+    const { product, color, colorStock } = pendingSaleCtx;
+    addItem(
+      product.id, product.name, product.exchange_sale_price, product.quantity,
+      product.image_url, product.sku, color, colorStock,
+      "exchange", null, ""
+    );
+    closeSaleModePickerModal();
   }
 
   function openColorPickerModal(product, cartIndex) {
@@ -524,11 +720,22 @@
     if (!colors.length) {
       list.innerHTML = '<div class="pos-dropdown-empty">لا توجد ألوان معرّفة</div>';
     } else {
-      list.innerHTML = colors.map((c) => {
-        const name = (c.name || c).toString().replace(/"/g, "&quot;");
+      list.innerHTML = colors.map((c, index) => {
+        const rawName = (c.name || c).toString();
+        const name = escapeHtml(rawName);
         const qty = Number(c.qty ?? c.quantity) || 0;
-        return `<button type="button" class="pos-color-option" data-color="${name}" onclick="PosWP.selectColor('${name.replace(/'/g, "\\'")}')">
-          <span>${name}</span><small>${qty > 0 ? "متوفر: " + fmt(qty) : "نفد"}</small>
+        const salePrice = regionSalePriceForProduct(product, c);
+        const stateClass = qty > 0 ? "is-available" : "is-unavailable";
+        return `<button type="button" class="pos-color-option pos-color-choice-card ${stateClass}" onclick="PosWP.selectColorByIndex(${index})">
+          <span class="pos-color-swatch" style="--pos-choice-color:${colorSwatchCss(rawName)}">
+            <i class="fas fa-check"></i>
+          </span>
+          <span class="pos-color-choice-copy">
+            <strong>${name}</strong>
+            <small>${qty > 0 ? "جاهز للبيع · " + fmt(salePrice) + " د.ع" : "يمكن إضافته بانتظار المخزون"}</small>
+          </span>
+          <span class="pos-color-stock">${qty > 0 ? fmt(qty) + " قطعة" : "نفد"}</span>
+          <i class="fas fa-chevron-left pos-color-choice-arrow"></i>
         </button>`;
       }).join("");
     }
@@ -545,15 +752,23 @@
     if (!pendingColorCtx) return;
     const color = (colorName || "").trim();
     if (!color) return;
-    const p = pendingColorCtx;
+    const p = getProductById(pendingColorCtx.id) || pendingColorCtx;
     const colorRow = (p.colors || []).find((c) => (c.name || c) === color);
     const colorStock = colorRow ? Number(colorRow.qty ?? colorRow.quantity) || 0 : 0;
+    const colorSalePrice = regionSalePriceForProduct(p, colorRow);
     if (colorEditCartIndex >= 0) {
       const item = items[colorEditCartIndex];
       if (item) {
         item.color = color;
         item.color_stock = colorStock + (item.qty || 0);
-        const dup = items.find((it, idx) => idx !== colorEditCartIndex && cartLineKey(it.product_id, it.color) === cartLineKey(item.product_id, color));
+        if (String(item.sale_mode || "normal") === "normal") {
+          item.price = colorSalePrice;
+        }
+        const dup = items.find((it, idx) =>
+          idx !== colorEditCartIndex &&
+          cartLineKey(it.product_id, it.color, it.sale_mode, it.trade_in_source_product_id) ===
+            cartLineKey(item.product_id, color, item.sale_mode, item.trade_in_source_product_id)
+        );
         if (dup) {
           toast("هذا اللون موجود مسبقاً في السلة");
         } else {
@@ -564,8 +779,20 @@
       renderItems();
       return;
     }
-    addItem(p.id, p.name, p.price ?? p.sale_price, p.stock ?? p.quantity, p.image_url, p.sku, color, colorStock);
+    chooseSaleMode(
+      { ...p, sale_price: colorSalePrice, price: colorSalePrice, quantity: p.stock ?? p.quantity },
+      color,
+      colorStock
+    );
     closeColorPickerModal();
+  }
+
+  function selectColorByIndex(index) {
+    if (!pendingColorCtx) return;
+    const product = getProductById(pendingColorCtx.id) || pendingColorCtx;
+    const row = (product.colors || [])[Number(index)];
+    if (!row) return;
+    selectColor((row.name || row).toString());
   }
 
   function changeCartColor(idx) {
@@ -592,33 +819,35 @@
       openColorPickerModal({
         id: p.id,
         name: p.name,
-        price: parseInt(el.getAttribute("data-price"), 10) || p.sale_price,
+        price: regionSalePriceForProduct(p, null),
         stock: parseInt(el.getAttribute("data-stock"), 10) || p.quantity,
         image_url: el.getAttribute("data-image") || p.image_url,
         sku: p.sku,
         colors: p.colors,
+        dual_region_pricing: p.dual_region_pricing,
+        governorate_sale_price: p.governorate_sale_price,
+        sale_price: p.sale_price,
       });
       return;
     }
-    addItem(
-      id,
-      el.querySelector(".pos-product-name")?.textContent || "",
-      parseInt(el.getAttribute("data-price"), 10) || 0,
-      parseInt(el.getAttribute("data-stock"), 10) || 0,
-      el.getAttribute("data-image") || "",
-      ""
-    );
+    const priced = p
+      ? { ...p, sale_price: regionSalePriceForProduct(p, null), price: regionSalePriceForProduct(p, null) }
+      : p;
+    chooseSaleMode(priced, "", 0);
   }
 
-  function addItem(id, name, price, stock, imageUrl, sku, color, colorStock) {
+  function addItem(id, name, price, stock, imageUrl, sku, color, colorStock, saleMode, sourceProductId, sourceProductName) {
     const idNum = typeof id === "string" ? parseInt(id, 10) : id;
     const stockNum = typeof stock === "string" ? parseInt(stock, 10) : (stock || 0);
     const product = getProductById(idNum);
     const img = imageUrl || product?.image_url || "";
     const itemSku = sku || product?.sku || product?.barcode || "";
     const colorName = (color || "").trim();
-    const lineKey = cartLineKey(idNum, colorName);
-    const item = items.find((i) => cartLineKey(i.product_id, i.color) === lineKey);
+    const mode = saleMode || "normal";
+    const lineKey = cartLineKey(idNum, colorName, mode, sourceProductId);
+    const item = items.find((i) =>
+      cartLineKey(i.product_id, i.color, i.sale_mode, i.trade_in_source_product_id) === lineKey
+    );
     const maxStock = colorName
       ? (Number(colorStock) || (product?.colors || []).find((c) => c.name === colorName)?.qty || 0)
       : stockNum;
@@ -639,6 +868,9 @@
         stock: stockNum,
         color: colorName,
         color_stock: maxStock,
+        sale_mode: mode,
+        trade_in_source_product_id: null,
+        trade_in_source_product_name: "",
         fulfillment_branch_id: product?.fulfillment_branch_id || null,
         image_url: img,
         sku: itemSku,
@@ -727,6 +959,7 @@
     selectedCustomerCity = c.city || "";
     selectedCustomerPhone = c.phone || "";
     updateCustomerDisplay(c);
+    repriceCartForCustomerCity();
     $("customerResults")?.classList.remove("open");
     toast("تم اختيار الزبون: " + (c.name || ""));
   }
@@ -845,6 +1078,8 @@
     if (!addressValue) { toast("يرجى إدخال العنوان"); $("address")?.focus(); return; }
     const cityValue = ($("city")?.value || "").trim();
     if (!cityValue) { toast("يرجى اختيار المحافظة"); $("city")?.focus(); return; }
+    const branchId = currentPosBranchId();
+    if (!branchId) { toast("اختر فرع خصم المخزون"); return; }
 
     const saveBtn = document.querySelector("#customerModal .pos-btn-primary");
     if (saveBtn?.dataset.busy === "1") return;
@@ -859,6 +1094,7 @@
         phone2,
         city: cityValue,
         address: addressValue,
+        branch_id: branchId,
       }),
     })
       .then(async (r) => {
@@ -879,6 +1115,7 @@
             phone: selectedCustomerPhone,
             city: selectedCustomerCity,
           });
+          repriceCartForCustomerCity();
           resetCustomerForm();
           toast("تم حفظ الزبون بنجاح");
           closeCustomerModal();
@@ -891,6 +1128,7 @@
   }
 
   function openOrderNotesModal() {
+    if (!currentPosBranchId()) { toast("اختر فرع خصم المخزون"); return; }
     if (!selectedCustomerId) { toast("اختر زبوناً"); return; }
     if (!items.length) { toast("لا توجد منتجات"); return; }
     const ni = $("orderNotesInput");
@@ -913,10 +1151,63 @@
     }
   }
 
+  async function toggleInstallmentOrderMode() {
+    if (!orderInstallmentUi.can_toggle) return;
+    const enabling = !orderInstallmentUi.mode_on;
+    try {
+      const res = await fetch(enabling ? "/api/order-installment/mode/enable" : "/api/order-installment/mode/disable", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        toast(data.error || "تعذر تبديل وضع الأقساط");
+        return;
+      }
+      orderInstallmentUi.mode_on = !!data.mode_on;
+      const btn = $("installmentModeToggleBtn");
+      const label = $("installmentModeToggleLabel");
+      const banner = $("installmentModeBanner");
+      if (btn) {
+        btn.classList.toggle("is-on", orderInstallmentUi.mode_on);
+        btn.classList.toggle("is-off", !orderInstallmentUi.mode_on);
+        btn.setAttribute("aria-pressed", orderInstallmentUi.mode_on ? "true" : "false");
+      }
+      if (label) label.textContent = orderInstallmentUi.mode_on ? "ON" : "OFF";
+      if (btn) btn.classList.toggle("is-off", !orderInstallmentUi.mode_on);
+      if (banner) banner.style.display = orderInstallmentUi.mode_on ? "block" : "none";
+      toast(data.message || (orderInstallmentUi.mode_on ? "تم تفعيل وضع الأقساط" : "تم إيقاف وضع الأقساط"));
+    } catch (e) {
+      toast("تعذر تبديل وضع الأقساط");
+    }
+  }
+
   function confirmOrderWithNotes() {
     if (isSubmitting) { toast("جاري إنشاء الطلب، انتظر لحظة..."); return; }
     if (!selectedCustomerId) { toast("اختر زبوناً"); return; }
     if (!items.length) { toast("لا توجد منتجات"); return; }
+    const branchId = currentPosBranchId();
+    if (!branchId) { toast("اختر فرع خصم المخزون"); return; }
+
+    const oilUi = orderInstallmentUi || {};
+    if (!editingOrderId && oilUi.mode_on && oilUi.settings && oilUi.settings.confirm_on_create !== false) {
+      const days = (oilUi.settings && oilUi.settings.duration_value) || 7;
+      const unit = (oilUi.settings && oilUi.settings.duration_unit) === "hours" ? "ساعات" : "أيام";
+      const due = new Date();
+      if ((oilUi.settings && oilUi.settings.duration_unit) === "hours") {
+        due.setHours(due.getHours() + Number(days));
+      } else {
+        due.setDate(due.getDate() + Number(days));
+      }
+      const dueLabel = due.toLocaleDateString("en-GB");
+      if (!window.confirm(
+        "إنشاء طلب أقساط؟\n\nسيتم تسجيل هذا الطلب ضمن دورة أقساط مدتها " +
+        days + " " + unit + ".\n\nإذا لم يتم ترجيعه قبل " + dueLabel +
+        "\nسيتم تسديده تلقائياً."
+      )) {
+        return;
+      }
+    }
 
     const pageSelect = $("pageSelect");
     let pageId = null;
@@ -955,6 +1246,7 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         order_id: editingOrderId || null,
+        branch_id: branchId,
         customer_id: selectedCustomerId,
         items: serializeCartItems(),
         note: notes || null,
@@ -970,21 +1262,29 @@
         isSubmitting = false;
         activeSubmissionToken = null;
         setSubmitBusy(false);
-        if (btn) btn.innerHTML = editingOrderId ? '<i class="fas fa-save"></i> حفظ التعديل' : '<i class="fas fa-print"></i> تنفيذ و طباعة';
-        if (btnM) btnM.innerHTML = editingOrderId ? '<i class="fas fa-save"></i> حفظ' : '<i class="fas fa-print"></i> تنفيذ';
+        if (btn) btn.innerHTML = editingOrderId
+          ? '<i class="fas fa-save"></i> حفظ التعديل'
+          : canPrintInvoice
+            ? '<i class="fas fa-print"></i> تنفيذ و طباعة'
+            : '<i class="fas fa-check"></i> تنفيذ';
+        if (btnM) btnM.innerHTML = editingOrderId
+          ? '<i class="fas fa-save"></i> حفظ'
+          : canPrintInvoice
+            ? '<i class="fas fa-print"></i> تنفيذ و طباعة'
+            : '<i class="fas fa-check"></i> تنفيذ';
         if (d.error) {
           toast(d.error);
           updateStats();
           return;
         }
+        showSavedInvoice(d.invoice_id);
         if (editingOrderId) {
           toast("تم حفظ التعديل", "success");
         } else {
           showOrderCreatedNotification(d.invoice_id, d.stock_locked);
         }
-        if (!d.stock_locked) items.forEach((i) => syncLocalStock(i.product_id, i.qty));
+        refreshCatalogStock();
         closeOrderNotesModal();
-        printServerInvoice(d.invoice_id);
         if (!editingOrderId) {
           items = [];
           selectedCustomerId = null;
@@ -994,23 +1294,50 @@
           initialOrderData.note = notes || "";
         }
         renderItems();
+        if (canPrintInvoice) {
+          try {
+            printServerInvoice(d.invoice_id);
+          } catch (error) {
+            toast("تم حفظ الطلب. افتح الفاتورة من الرابط لإعادة الطباعة.", "warning");
+          }
+        }
       })
       .catch((err) => {
         isSubmitting = false;
         activeSubmissionToken = null;
         setSubmitBusy(false);
-        if (btn) btn.innerHTML = editingOrderId ? '<i class="fas fa-save"></i> حفظ التعديل' : '<i class="fas fa-print"></i> تنفيذ و طباعة';
-        if (btnM) btnM.innerHTML = editingOrderId ? '<i class="fas fa-save"></i> حفظ' : '<i class="fas fa-print"></i> تنفيذ';
+        if (btn) btn.innerHTML = editingOrderId
+          ? '<i class="fas fa-save"></i> حفظ التعديل'
+          : canPrintInvoice
+            ? '<i class="fas fa-print"></i> تنفيذ و طباعة'
+            : '<i class="fas fa-check"></i> تنفيذ';
+        if (btnM) btnM.innerHTML = editingOrderId
+          ? '<i class="fas fa-save"></i> حفظ'
+          : canPrintInvoice
+            ? '<i class="fas fa-print"></i> تنفيذ و طباعة'
+            : '<i class="fas fa-check"></i> تنفيذ';
         toast("حدث خطأ: " + err.message);
         updateStats();
       });
   }
 
   function printServerInvoice(invoiceId) {
+    if (!canPrintInvoice) return;
     finoraPrintUrl("/orders/invoice/" + encodeURIComponent(invoiceId));
   }
 
+  function showSavedInvoice(invoiceId) {
+    const panel = $("posSavedInvoice");
+    const link = $("posSavedInvoiceLink");
+    const label = $("posSavedInvoiceLabel");
+    if (!panel || !link || !label || !invoiceId || !canPrintInvoice) return;
+    link.href = "/orders/invoice/" + encodeURIComponent(invoiceId);
+    label.textContent = "تم حفظ الفاتورة #" + invoiceId;
+    panel.hidden = false;
+  }
+
   function openScheduleModal() {
+    if (!currentPosBranchId()) { toast("اختر فرع خصم المخزون"); return; }
     if (!selectedCustomerId) { toast("اختر زبوناً"); return; }
     if (!items.length) { toast("لا توجد منتجات"); return; }
     const today = new Date().toISOString().split("T")[0];
@@ -1028,6 +1355,8 @@
     const scheduleDate = $("scheduleDateInput")?.value;
     if (!scheduleDate) { toast("اختر تاريخ التأجيل"); return; }
     if (!selectedCustomerId || !items.length) return;
+    const branchId = currentPosBranchId();
+    if (!branchId) { toast("اختر فرع خصم المخزون"); return; }
 
     const notes = ($("scheduleNotesInput")?.value || "").trim();
     const pageSelect = $("pageSelect");
@@ -1047,6 +1376,7 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         order_id: editingOrderId || null,
+        branch_id: branchId,
         customer_id: selectedCustomerId,
         items: serializeCartItems(),
         note: notes || null,
@@ -1062,7 +1392,7 @@
         activeSubmissionToken = null;
         setSubmitBusy(false);
         if (d.error) { toast(d.error); return; }
-        if (!d.stock_locked) items.forEach((i) => syncLocalStock(i.product_id, i.qty));
+        refreshCatalogStock();
         toast(d.stock_locked ? "تم تأجيل الطلب مقفلاً بانتظار المخزون" : "تم تأجيل الطلب — رقم " + d.invoice_id);
         closeScheduleModal();
         items = [];
@@ -1108,9 +1438,11 @@
 
   function filterInventory() {
     const q = ($("inventorySearch")?.value || "").toLowerCase();
+    const branchId = currentPosBranchId();
     document.querySelectorAll("#inventoryModalList .inventory-card").forEach((card) => {
       const name = (card.getAttribute("data-name") || "").toLowerCase();
-      card.style.display = name.includes(q) ? "" : "none";
+      const sameBranch = Number(card.getAttribute("data-branch-id")) === branchId;
+      card.style.display = sameBranch && name.includes(q) ? "" : "none";
     });
   }
 
@@ -1120,7 +1452,7 @@
 
     const cats = new Set();
     let hasOffers = false;
-    allProducts.forEach((p) => {
+    productsForCurrentBranch().forEach((p) => {
       if (p.category) cats.add(p.category);
       if (p.store_badge) hasOffers = true;
     });
@@ -1296,7 +1628,9 @@
         }
         // إذا كان النص هو الزبون المختار حالياً فلا نعيد البحث
         if (selectedCustomerId && val === customerLabel()) return;
-        fetch("/pos/search-customer?q=" + encodeURIComponent(val))
+        const branchId = currentPosBranchId();
+        if (!branchId) { toast("اختر فرع خصم المخزون"); return; }
+        fetch("/pos/search-customer?q=" + encodeURIComponent(val) + "&branch_id=" + encodeURIComponent(branchId))
           .then((r) => r.json())
           .then((d) => {
             if (!customerResults) return;
@@ -1332,7 +1666,9 @@
         productResults?.classList.remove("open");
         return;
       }
-      fetch("/pos/search-product?q=" + encodeURIComponent(val))
+      const branchId = currentPosBranchId();
+      if (!branchId) { toast("اختر فرع خصم المخزون"); return; }
+      fetch("/pos/search-product?q=" + encodeURIComponent(val) + "&branch_id=" + encodeURIComponent(branchId))
         .then((r) => r.json())
         .then((d) => {
           if (d.length === 1 && d[0].is_barcode) {
@@ -1348,7 +1684,7 @@
                 colors: d[0].colors,
               });
             } else {
-              addItem(d[0].id, d[0].name, d[0].price, d[0].quantity, d[0].image_url || p?.image_url, p?.sku, "");
+              chooseSaleMode(p || d[0], "", 0);
             }
             if (searchProduct) searchProduct.value = "";
             productSearchQuery = "";
@@ -1360,7 +1696,7 @@
           if (d.length > 0 && productResults) {
             productResults.innerHTML = d.map((p) => {
               const nameEsc = (p.name || "").replace(/</g, "&lt;");
-              return `<div class="pos-product-item" onclick="PosWP.addItemById(${p.id})">${nameEsc} — ${fmt(p.price)} <small>(${fmt(p.quantity || 0)})</small></div>`;
+              return `<div class="pos-product-item" onclick="PosWP.addItemById(${p.id})">${nameEsc} — ${fmt(p.price)} <small>المخزون: ${fmt(p.quantity || 0)}</small></div>`;
             }).join("");
             productResults.classList.add("open");
           } else if (productResults) {
@@ -1461,7 +1797,41 @@
     }, { passive: false });
   }
 
+  function initBranchSelector() {
+    const select = $("posBranchSelect");
+    if (!select) return;
+    if (selectedBranchId) select.value = String(selectedBranchId);
+    selectedBranchId = Number(select.value) || selectedBranchId;
+    select.addEventListener("change", () => {
+      const nextBranchId = Number(select.value) || null;
+      if (!nextBranchId || nextBranchId === selectedBranchId) return;
+      selectedBranchId = nextBranchId;
+      items = [];
+      selectedCustomerId = null;
+      selectedCustomerName = "";
+      selectedCustomerCity = "";
+      selectedCustomerPhone = "";
+      customerSearchCache = Object.create(null);
+      discountValue = 0;
+      activeCategory = "all";
+      productSearchQuery = "";
+      currentPage = 1;
+      const customerInput = $("searchCustomer");
+      if (customerInput) customerInput.value = "";
+      const productInput = $("searchProduct");
+      if (productInput) productInput.value = "";
+      clearCustomerDisplay();
+      buildCategoryTabs();
+      filterInventory();
+      renderProductGrid();
+      renderItems();
+      toast("تم تغيير فرع الخصم وإفراغ السلة والزبون السابقين");
+    });
+  }
+
   function init() {
+    initBranchSelector();
+    filterInventory();
     buildCategoryTabs();
     bindStockPills();
     initSearch();
@@ -1518,7 +1888,11 @@
     openColorPickerModal,
     closeColorPickerModal,
     selectColor,
+    selectColorByIndex,
     changeCartColor,
+    closeSaleModePickerModal,
+    selectSaleMode,
+    confirmExchangeSale,
     pickCustomerFromSearch,
     openCustomerModal,
     closeCustomerModal,
@@ -1526,6 +1900,7 @@
     openOrderNotesModal,
     closeOrderNotesModal,
     confirmOrderWithNotes,
+    toggleInstallmentOrderMode,
     openScheduleModal,
     closeScheduleModal,
     confirmScheduleOrder,

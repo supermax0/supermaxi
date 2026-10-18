@@ -38,6 +38,8 @@ from routes.pos import pos_bp
 from routes.employees import employees_bp
 from routes.inventory import inventory_bp
 from routes.purchases import purchases_bp
+from routes.purchase_lists import purchase_lists_bp
+from routes.product_dedup import product_dedup_bp
 from routes.inventory_ledger import inventory_ledger_bp
 from routes.cash import cash_bp
 from routes.customers import customers_bp
@@ -45,6 +47,7 @@ from routes.customer_credit import customer_credit_bp
 from routes.orders import orders_bp
 from routes.shipping import shipping_bp
 from routes.reports import reports_bp
+from routes.daily_closing import daily_closing_bp
 from routes.suppliers import suppliers_bp
 from routes.expenses import expenses_bp
 from routes.accounts import accounts_bp
@@ -90,6 +93,7 @@ app.config.from_object(ProductionConfig if _env == "production" else Development
 # i18n / Multi-language Setup
 # =====================================
 import json
+from utils.invoice_text_format import format_invoice_text
 
 def load_translations():
     translations = {}
@@ -126,6 +130,10 @@ def to_locale_string(value):
     except (ValueError, TypeError):
         return value
 
+@app.template_filter("invoice_rich_text")
+def invoice_rich_text(value):
+    return format_invoice_text(value)
+
 app.config["UPLOAD_FOLDER"] = "static/uploads/messages"
 # حد رفع الملفات (للرسائل، النشر التلقائي صورة/فيديو حتى 500 ميجا)
 app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500MB
@@ -158,6 +166,7 @@ with app.app_context():
     from models.core.tenant import Tenant
     from models.core.payment_request import PaymentRequest
     from models.core.global_setting import GlobalSetting
+    from models.core.feature import TenantFeature, FeatureAuditLog  # noqa: F401
     from models.core.landing_visit import LandingVisit
     from models.core.landing_content import (  # noqa: F401
         LandingCTA,
@@ -173,12 +182,32 @@ with app.app_context():
         LandingTestimonial,
     )
     from models.user import User  # جدول users مطلوب لـ tenant_template_purchases / tenant_template_settings
+    from modules.employee_desk.models import EmployeeQuickReply  # noqa: F401
     from models.telegram_inbox_message import TelegramInboxMessage  # noqa: F401
     from models.telegram_chat_profile import TelegramChatProfile  # noqa: F401
     from models.telegram_booking_session import TelegramBookingSession  # noqa: F401
     from models.customer_credit import CustomerCreditPlan, CustomerInstallment, CustomerCreditPayment  # noqa: F401
+    from models.purchase_list import PurchaseList, PurchaseListItem  # noqa: F401
     from models.core.platform_announcement import PlatformAnnouncement  # noqa: F401
     from models.core.announcement_send_log import AnnouncementSendLog  # noqa: F401
+    from models.core.leads.models import (  # noqa: F401
+        BusinessActivity,
+        BusinessLead,
+        BusinessLeadPhone,
+        LeadAuditLog,
+        LeadAutomationRule,
+        LeadDuplicateCandidate,
+        LeadFollowUp,
+        LeadImportBatch,
+        LeadImportRow,
+        LeadInteraction,
+        LeadMergeLog,
+        LeadNote,
+        LeadSavedView,
+        LeadScore,
+        LeadSourceRecord,
+        LeadStatusConfig,
+    )
 
     db.create_all()
 
@@ -189,6 +218,16 @@ with app.app_context():
     except Exception as e:
         db.session.rollback()
         print(f"Landing content seed note: {e}")
+
+    try:
+        from services.leads_crm.schema import ensure_leads_crm_schema
+        from services.leads_crm.seed import seed_leads_crm_defaults
+
+        ensure_leads_crm_schema()
+        seed_leads_crm_defaults()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Leads CRM schema note: {e}")
 
     # Database health check on startup
     try:
@@ -920,6 +959,10 @@ def inject_global_data():
         "can_see_reports": False,
         "can_manage_inventory": False,
         "can_see_expenses": False,
+        "can_see_receipts": False,
+        "can_create_receipts": False,
+        "can_print_receipts": False,
+        "can_cancel_receipts": False,
         "can_manage_suppliers": False,
         "can_manage_customers": False,
         "can_see_accounts": False,
@@ -934,9 +977,13 @@ def inject_global_data():
         "can_see_messages": False,
         "can_edit_price": False,
         "can_manage_orders": False,
+        "can_pay_orders": False,
+        "can_return_orders": False,
+        "can_delete_orders": False,
         "can_manage_shipping": False,
         "can_manage_settings": False,
         "can_view_dashboard": False,
+        "can_use_employee_desk": False,
         "_": lambda x: x,
         "current_lang": "ar"
     }
@@ -982,6 +1029,10 @@ def inject_global_data():
             "can_see_reports": employee_can(employee, "view_reports"),
             "can_manage_inventory": employee_can(employee, "manage_inventory"),
             "can_see_expenses": employee_can(employee, "view_expenses"),
+            "can_see_receipts": employee_can(employee, "view_receipts"),
+            "can_create_receipts": employee_can(employee, "create_receipts"),
+            "can_print_receipts": employee_can(employee, "print_receipts"),
+            "can_cancel_receipts": employee_can(employee, "cancel_receipts"),
             "can_manage_suppliers": employee_can(employee, "manage_suppliers"),
             "can_manage_customers": employee_can(employee, "manage_customers"),
             "can_see_accounts": employee_can(employee, "view_accounts"),
@@ -999,9 +1050,13 @@ def inject_global_data():
             "can_manage_agents": employee_can(employee, "manage_agents"),
             "can_manage_pages": employee_can(employee, "manage_pages"),
             "can_manage_orders": employee_can(employee, "manage_orders"),
+            "can_pay_orders": employee_can(employee, "pay_orders"),
+            "can_return_orders": employee_can(employee, "return_orders"),
+            "can_delete_orders": employee_can(employee, "delete_orders"),
             "can_manage_shipping": employee_can(employee, "manage_shipping"),
             "can_manage_settings": employee_can(employee, "manage_settings"),
             "can_view_dashboard": employee_can(employee, "view_dashboard"),
+            "can_use_employee_desk": employee_can(employee, "use_employee_desk"),
             "_": translate,
             "current_lang": final_lang
         }
@@ -1046,11 +1101,22 @@ _OPEN_ROUTES = [
     "/api/landing-chat",  # مساعد الذكاء الاصطناعي لصفحة الهبوط
     "/telegram",  # بوت تيليجرام: webhook و setup و test — بدون تسجيل (ليستقبل التحديثات من Telegram)
     "/api/v1/ai-sales/webhooks/",  # Finora Sales AI public WhatsApp callbacks
+    "/webhooks/facebook",  # Permanent Messenger webhook (Meta verify + inbound)
     "/delivery-agent",  # بوابة مندوب التوصيل
+    "/employee-desk/login",
+    "/employee-desk/logout",
+    "/employee-desk/manifest.webmanifest",
+    "/employee-desk/sw.js",
     "/shop",  # المتجر العام للزبائن — بدون تسجيل دخول
+    "/book",  # روابط الحجز القديمة
+    "/c",  # بوابة المريض العامة للعيادة
+    "/api/public/clinics",  # API عامة محدودة لبوابة المريض
     "/orders/p/o",  # تفاصيل طلب عامة (QR) — موقّعة، بدون تسجيل
     "/orders/invoice-video",  # بث فيديو الطلب للعامة — رمز موقّع
     "/api/mobile/v1/",  # Social Commerce mobile API (OTP/JWT — own auth)
+    "/api/phone/v1/",  # Finora Phone staff companion API (Bearer — own auth)
+    "/api/v1/pos/",  # POS machine API (Bearer — own auth)
+    "/api/v1/store",  # Store catalog API (Bearer sk_ — own auth)
 ]
 
 
@@ -1059,13 +1125,21 @@ def _is_public_path(path: str) -> bool:
     if path == "/":
         return True
     for prefix in _OPEN_ROUTES:
-        if prefix != "/" and path.startswith(prefix):
+        if prefix == "/":
+            continue
+        # segment boundary: "/c" must not open "/customers"; entries ending with "/" stay prefixes
+        if prefix.endswith("/"):
+            if path.startswith(prefix):
+                return True
+        elif path == prefix or path.startswith(prefix + "/"):
             return True
     return False
 
 
 @app.before_request
 def require_login():
+    if (request.path == "/mcp" or request.path.startswith("/mcp/")) and (request.headers.get("Authorization") or not session.get("user_id")):
+        return None
     if session.get("user_id") or session.get("is_superadmin") or session.get("agent_id"):
         session.permanent = True
     # #region agent log
@@ -1141,6 +1215,7 @@ def require_login():
             ("/orders/returned", ("view_orders", "view_orders_returned")),
             ("/orders/cancelled", ("view_orders", "view_orders_returned")),
             ("/orders", "view_orders"),
+            ("/shipping/company-returns", "return_orders"),
             ("/shipping", "view_shipping"),
             ("/expenses", "view_expenses"),
             ("/cash", "view_accounts"),
@@ -1153,8 +1228,17 @@ def require_login():
             ("/employees", "manage_employees"),
             ("/settings", "manage_settings"),
             ("/activity", "view_activity"),
+            ("/employee-desk", "use_employee_desk"),
+            ("/api/employee-desk", "use_employee_desk"),
         ]
         for prefix, required in rules:
+            if path.startswith((
+                "/employee-desk/login",
+                "/employee-desk/logout",
+                "/employee-desk/manifest",
+                "/employee-desk/sw",
+            )):
+                break
             if not path.startswith(prefix):
                 continue
             if isinstance(required, tuple):
@@ -1191,6 +1275,16 @@ def require_login():
         except Exception:
             pass
         # #endregion
+        if (request.args.get("finora_embed") or "").strip() == "1":
+            return (
+                "<!doctype html><html lang='ar' dir='rtl'><head><meta charset='utf-8'>"
+                "<title>انتهت الجلسة</title></head><body>"
+                "<p data-finora-print-blocked='session'>"
+                "انتهت الجلسة. أعد تسجيل الدخول ثم اطبع مرة أخرى."
+                "</p></body></html>",
+                401,
+                {"Content-Type": "text/html; charset=utf-8"},
+            )
         return redirect("/login")
 
     # التحقق من صلاحية الاشتراك (SaaS)
@@ -1255,6 +1349,14 @@ def inject_platform_branding():
             "platform_logo_url": "/static/finora-logo.png",
             "platform_app_name": "Finora",
         }
+
+
+# تفضيل آمن عند فشل تحميل خطط الاشتراك (يتجنب 500 في الصفحات العامة)
+_SAFE_PLAN = {
+    "key": "basic",
+    "name": "الخطة الأساسية",
+    "features": {},
+}
 
 
 @app.context_processor
@@ -1365,7 +1467,17 @@ app.register_blueprint(ai_bp, url_prefix="/ai")
 app.register_blueprint(social_ai_bp, url_prefix="/social-ai")
 app.register_blueprint(ai_sales_bp)
 app.register_blueprint(ai_sales_webhook_bp)
+from modules.facebook_monitor import facebook_monitor_bp
+app.register_blueprint(facebook_monitor_bp)
+from modules.employee_desk import employee_desk_bp
+app.register_blueprint(employee_desk_bp)
 app.register_blueprint(workflow_api)
+try:
+    from modules.finora_ai import init_finora_ai
+    init_finora_ai(app)
+    print("Finora AI + MCP Phase 1 loaded.")
+except Exception as _finora_ai_ex:
+    print(f"Finora AI + MCP load warning: {_finora_ai_ex}")
 
 app.register_blueprint(pos_bp)
 app.register_blueprint(employees_bp, url_prefix="/employees")
@@ -1374,6 +1486,8 @@ app.register_blueprint(stock_transfers_bp)
 app.register_blueprint(branch_api_bp)
 app.register_blueprint(delivery_fee_api_bp)
 app.register_blueprint(purchases_bp, url_prefix="/purchases")
+app.register_blueprint(purchase_lists_bp)
+app.register_blueprint(product_dedup_bp)
 app.register_blueprint(maintenance_bp)
 app.register_blueprint(inventory_ledger_bp, url_prefix="/inventory/ledger")
 app.register_blueprint(cash_bp, url_prefix="/cash")
@@ -1382,6 +1496,9 @@ app.register_blueprint(customer_credit_bp)
 app.register_blueprint(orders_bp, url_prefix="/orders")
 app.register_blueprint(shipping_bp, url_prefix="/shipping")
 app.register_blueprint(reports_bp, url_prefix="/reports")
+from modules.reports_api import init_reports_api
+init_reports_api(app)
+app.register_blueprint(daily_closing_bp)
 app.register_blueprint(suppliers_bp, url_prefix="/suppliers")
 app.register_blueprint(expenses_bp, url_prefix="/expenses")
 app.register_blueprint(accounts_bp)
@@ -1399,6 +1516,21 @@ app.register_blueprint(permissions_bp, url_prefix="/admin/permissions")
 from routes.superadmin import superadmin_bp
 app.register_blueprint(superadmin_bp)
 
+from routes.superadmin_leads import superadmin_leads_bp
+app.register_blueprint(superadmin_leads_bp)
+
+from routes.superadmin_features import superadmin_features_bp
+app.register_blueprint(superadmin_features_bp)
+
+from routes.features_api import features_api_bp
+app.register_blueprint(features_api_bp)
+
+from modules.ai_tutor.routes import ai_tutor_bp
+app.register_blueprint(ai_tutor_bp)
+
+from routes.superadmin_ai_tutor import superadmin_ai_tutor_bp
+app.register_blueprint(superadmin_ai_tutor_bp)
+
 from routes.admin import admin_bp
 app.register_blueprint(admin_bp)
 
@@ -1412,6 +1544,46 @@ try:
     print("Mobile app API loaded.")
 except Exception as _mobile_ex:
     print(f"Mobile app API load warning: {_mobile_ex}")
+
+try:
+    from modules.pos_api import init_pos_api
+    init_pos_api(app)
+    print("POS machine API loaded.")
+except Exception as _pos_api_ex:
+    print(f"POS machine API load warning: {_pos_api_ex}")
+
+try:
+    from modules.store_api import init_store_api
+    init_store_api(app)
+    print("Store catalog API loaded.")
+except Exception as _store_api_ex:
+    print(f"Store catalog API load warning: {_store_api_ex}")
+
+try:
+    from modules.wholesale import init_wholesale
+    init_wholesale(app)
+    print("Wholesale module loaded.")
+except Exception as _ws_ex:
+    print(f"Wholesale module load warning: {_ws_ex}")
+try:
+    from modules.clinics import init_clinics
+    init_clinics(app)
+    print("Clinics workspace loaded.")
+except Exception as _clinics_ex:
+    print(f"Clinics workspace load warning: {_clinics_ex}")
+try:
+    from modules.receipts import init_receipts
+    init_receipts(app)
+    print("Receipts module loaded.")
+except Exception as _rc_ex:
+    print(f"Receipts module load warning: {_rc_ex}")
+
+try:
+    from modules.order_installment_lifecycle import init_order_installment_lifecycle
+    init_order_installment_lifecycle(app)
+    print("Order installment lifecycle loaded.")
+except Exception as _oil_ex:
+    print(f"Order installment lifecycle load warning: {_oil_ex}")
 
 
 @app.cli.command("seed_landing_page")
@@ -1530,6 +1702,95 @@ def _start_social_ai_scheduler():
         pass
 
 _start_social_ai_scheduler()
+
+# =====================================
+# Scheduled Expense Posting (time-of-day)
+# =====================================
+def _start_expense_posting_scheduler():
+    """خصم المصاريف المجدولة بساعة محددة كل دقيقة لكل المستأجرين."""
+    import os
+    import sys
+
+    if os.environ.get("SERVER_SOFTWARE", "").startswith("gunicorn/") or "gunicorn" in (sys.argv[0] or ""):
+        return
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "false":
+        return
+
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore[import-untyped]
+        from apscheduler.triggers.interval import IntervalTrigger  # type: ignore[import-untyped]
+        from routes.expenses import run_scheduled_expense_posting_for_all_tenants
+
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(
+            lambda: run_scheduled_expense_posting_for_all_tenants(app),
+            IntervalTrigger(minutes=1),
+            id="expense_timed_posting",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.start()
+    except Exception:
+        pass
+
+_start_expense_posting_scheduler()
+
+
+def _start_order_installment_lifecycle_scheduler():
+    import os
+
+    if os.environ.get("ORDER_INSTALLMENT_SCHEDULER_ENABLED", "1") in {"0", "false", "False"}:
+        return
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore[import-untyped]
+        from apscheduler.triggers.interval import IntervalTrigger  # type: ignore[import-untyped]
+
+        def _run_order_installment_auto_settle():
+            with app.app_context():
+                try:
+                    from flask import g
+                    from models.core.tenant import Tenant as CoreTenant
+                    from modules.order_installment_lifecycle.service import process_due_lifecycles
+
+                    old_tenant = getattr(g, "tenant", None)
+                    g.tenant = None
+                    try:
+                        tenants = CoreTenant.query.filter_by(is_active=True).all()
+                    except Exception:
+                        tenants = []
+                    finally:
+                        g.tenant = old_tenant
+
+                    for tenant in tenants:
+                        tenant_slug = getattr(tenant, "slug", None)
+                        if not tenant_slug:
+                            continue
+                        g.tenant = tenant_slug
+                        try:
+                            process_due_lifecycles(limit=100)
+                        except Exception:
+                            db.session.rollback()
+                        finally:
+                            g.tenant = None
+                except Exception:
+                    pass
+
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(
+            _run_order_installment_auto_settle,
+            IntervalTrigger(minutes=5),
+            id="order_installment_auto_settle",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.start()
+    except Exception:
+        pass
+
+
+_start_order_installment_lifecycle_scheduler()
 
 # =====================================
 # Weekly Announcement Scheduler
@@ -1705,6 +1966,13 @@ def robots_txt():
             "Disallow: /pos/",
             "Disallow: /delivery-agent",
             "Disallow: /webhook",
+            # store pages that are per-visitor or endless filter combinations (each store has its own sitemap.xml)
+            "Disallow: /shop/*/api/",
+            "Disallow: /shop/*/cart",
+            "Disallow: /shop/*/checkout",
+            "Disallow: /shop/*/account",
+            "Disallow: /shop/*/compare",
+            "Disallow: /shop/*/personalization",
             "",
             "Sitemap: https://www.finora.company/sitemap.xml",
             "",

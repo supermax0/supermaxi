@@ -1,0 +1,86 @@
+{% extends "storefront_v2/base.html" %}
+{% block legacy_assets %}{% endblock %}
+{# store-luxury.js keeps driving the live quantity / remove / totals (same data-* hooks as before) #}
+{% block body_class %} sm-native{% endblock %}
+{% block title %}السلة — {{ store_design.store_name }}{% endblock %}
+{% block content %}
+{% set home_url = url_for('storefront.store_index', tenant_slug=shop_tenant_slug) %}
+<section class="sm-shell sm-section">
+  <ol class="sm-steps" aria-label="خطوات الطلب"><li aria-current="step">السلة</li><li>التوصيل</li><li>التأكيد</li></ol>
+  <h1 class="sm-h1">السلة{% if cart_items %} <span class="sm-muted">({{ cart_count }} قطعة)</span>{% endif %}</h1>
+
+  {% if coupon_success %}<p class="sm-alert is-ok" role="status">{{ coupon_success }}</p>{% endif %}
+  {% if coupon_error %}<p class="sm-alert is-err" role="alert">{{ coupon_error }}</p>{% endif %}
+
+  {% if cart_items %}
+  <div class="sm-cart" id="luxCartPage" data-subtotal="{{ subtotal }}" data-discount="{{ discount_amount }}" data-net="{{ net_subtotal }}">
+    <form id="luxCartForm" class="sm-cart__list" method="post" action="{{ url_for('storefront.cart_update', tenant_slug=shop_tenant_slug) }}">
+      {% for item in cart_items %}
+      {% set is_usd = item.price_currency == 'USD' %}
+      <article class="sm-line" data-lux-cart-item data-product-id="{{ item.id }}" data-line-key="{{ item.line_key }}"
+               data-unit-price="{{ item.price }}" data-currency="{{ item.price_currency or 'IQD' }}" data-stock="{{ item.stock }}">
+        <a class="sm-line__img" href="{{ item.url }}">
+          {% if item.image_url %}<img src="{{ item.image_url }}" alt="" width="88" height="88" loading="lazy" decoding="async">
+          {% else %}<span aria-hidden="true">{{ item.name[:1] }}</span>{% endif %}
+        </a>
+        <div class="sm-line__body">
+          <a class="sm-line__name" href="{{ item.url }}">{{ item.name }}</a>
+          <p class="sm-muted sm-line__meta">
+            {% if item.model %}<span dir="ltr">{{ item.model }}</span>{% endif %}
+            {% if item.color %} · الخيار: {{ item.color }}{% endif %}
+            {% if item.sale_mode == 'exchange' %} · استبدال{% endif %}
+          </p>
+          {% if item.is_reservation %}<p class="sm-stock is-order">متاح للطلب — يُؤكَّد موعد التجهيز معك</p>
+          {% elif 0 < item.stock <= 5 %}<p class="sm-stock is-order">بقي {{ item.stock }} فقط</p>{% endif %}
+          <div class="sm-line__row">
+            <div class="sm-qty" role="group" aria-label="كمية {{ item.name }}">
+              <button type="button" data-lux-cart-qty-minus aria-label="تقليل">−</button>
+              <input type="hidden" name="line_key[]" value="{{ item.line_key }}">
+              <input class="lux-cart-qty-input" type="number" min="1" max="9999" name="line_qty[]" value="{{ item.quantity }}" inputmode="numeric" aria-label="الكمية">
+              <button type="button" data-lux-cart-qty-plus aria-label="زيادة">+</button>
+            </div>
+            <strong class="sm-line__total" data-lux-line-total data-currency="{{ item.price_currency or 'IQD' }}">{% if is_usd %}${{ "{:,.0f}".format(item.price * item.quantity) }}{% else %}{{ "{:,.0f}".format(item.price * item.quantity) }} <small>د.ع</small>{% endif %}</strong>
+          </div>
+        </div>
+        <button class="sm-line__remove" type="button" data-lux-cart-remove aria-label="حذف {{ item.name }}">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </article>
+      {% endfor %}
+      <noscript><button class="sm-btn" type="submit">تحديث السلة</button></noscript>
+    </form>
+
+    <aside class="sm-summary" aria-label="ملخص الطلب">
+      <h2 class="sm-h2">ملخص الطلب</h2>
+      <dl>
+        <div><dt>المجموع</dt><dd id="luxCartSubtotal">{{ "{:,.0f}".format(subtotal) }} د.ع</dd></div>
+        <div><dt>الخصم</dt><dd id="luxCartDiscount">{% if discount_amount > 0 %}-{{ "{:,.0f}".format(discount_amount) }} د.ع{% else %}0 د.ع{% endif %}</dd></div>
+        <div class="is-total"><dt>الصافي</dt><dd id="luxCartNet">{{ "{:,.0f}".format(net_subtotal) }} د.ع</dd></div>
+      </dl>
+      {% include "storefront_v2/partials/delivery.html" %}
+      <a class="sm-btn sm-btn--primary sm-summary__go" href="{{ url_for('storefront.checkout_page', tenant_slug=shop_tenant_slug) }}">إكمال الطلب</a>
+      <form id="sfCouponForm" class="sm-coupon" method="post" action="{{ url_for('storefront.cart_coupon', tenant_slug=shop_tenant_slug) }}">
+        <label class="sm-field"><span>كود الخصم</span>
+          <span class="sm-coupon__row"><input id="sfCoupon" type="text" name="coupon_code" value="{{ active_coupon }}" autocomplete="off" placeholder="إن وُجد">
+          <button class="sm-btn" type="submit" name="action" value="apply">تطبيق</button></span>
+        </label>
+        {% if active_coupon %}<button class="sm-link" type="submit" name="action" value="remove">إزالة الكوبون {{ active_coupon }}</button>{% endif %}
+      </form>
+      {% if not store_account %}<p class="sm-muted sm-summary__note">لديك حساب؟ <a href="{{ url_for('storefront.account_page', tenant_slug=shop_tenant_slug) }}">سجّل الدخول</a> لحفظ بياناتك وطلباتك.</p>{% endif %}
+    </aside>
+  </div>
+  {% if cart_suggestions %}
+  <section class="sm-section" aria-labelledby="smCartMore" data-sm-rec="cart">
+    <h2 class="sm-h2" id="smCartMore">قد تحتاج أيضاً</h2>
+    <div class="sm-rail">{% for item in cart_suggestions %}{% set product = item %}{% include "storefront_v2/partials/product_card.html" %}{% endfor %}</div>
+  </section>
+  {% endif %}
+  {% else %}
+  <div class="sm-empty">
+    <h3>السلة فارغة</h3>
+    <p>أضف المنتجات التي تعجبك وستبقى هنا حتى إتمام الطلب.</p>
+    <a class="sm-btn sm-btn--primary" href="{{ home_url }}">تصفّح المنتجات</a>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

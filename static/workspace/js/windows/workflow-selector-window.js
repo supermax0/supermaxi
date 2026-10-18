@@ -1,5 +1,6 @@
 const WorkflowSelectorWindow = {
   OPTIONS: [
+    { type: "inventory_forensics", label: "المحقق الذكي للمخزون" },
     { type: "mock_workspace", label: "تجربة Workspace" },
     { type: "courier_settlement", label: "كشف تسديد شركة توصيل" },
     { type: "return_statement", label: "كشف راجع" },
@@ -20,6 +21,7 @@ const WorkflowSelectorWindow = {
       </div>
     `;
     const wrap = container.querySelector(".ws-workflow-options");
+    const buttons = [];
     this.OPTIONS.forEach((opt) => {
       const btn = document.createElement("button");
       btn.type = "button";
@@ -27,10 +29,22 @@ const WorkflowSelectorWindow = {
       if (opt.type === recommended) btn.classList.add("ws-workflow-option-recommended");
       btn.textContent = opt.label;
       btn.dataset.workflowType = opt.type;
-      btn.addEventListener("click", () => {
-        if (handlers.onSelect) handlers.onSelect(opt.type);
+      btn.addEventListener("click", async () => {
+        if (!handlers.onSelect || btn.disabled) return;
+        const originalLabel = opt.label;
+        buttons.forEach((item) => { item.disabled = true; });
+        btn.classList.add("is-loading");
+        btn.textContent = "جاري التشغيل...";
+        try {
+          await handlers.onSelect(opt.type);
+        } finally {
+          buttons.forEach((item) => { item.disabled = false; });
+          btn.classList.remove("is-loading");
+          btn.textContent = originalLabel;
+        }
       });
       wrap.appendChild(btn);
+      buttons.push(btn);
     });
   },
 

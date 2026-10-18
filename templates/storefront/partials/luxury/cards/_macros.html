@@ -1,8 +1,8 @@
 {# Shared fragments for luxury product cards #}
 {% macro lux_badges(product) %}
   {% if product.discount_percent %}<span class="lux-badge lux-badge-sale">-{{ product.discount_percent }}%</span>{% endif %}
-  {% if product.is_new and product.is_available %}<span class="lux-badge lux-badge-new">جديد</span>{% endif %}
-  {% if not product.is_available %}<span class="lux-badge lux-badge-out">غير متوفر</span>{% endif %}
+  {% if product.is_new and (product.is_available or product.is_reservation) %}<span class="lux-badge lux-badge-new">جديد</span>{% endif %}
+  {% if product.is_reservation %}<span class="lux-badge lux-badge-reservation">متاح للطلب</span>{% elif not product.is_available %}<span class="lux-badge lux-badge-out">غير متوفر</span>{% endif %}
 {% endmacro %}
 
 {% macro lux_meta(product) %}
@@ -43,5 +43,5 @@
 {% endmacro %}
 
 {% macro lux_cart_btn(product) %}
-  <button type="button" class="lux-btn-cart" data-sf-add-cart="{{ product.id }}" {% if not product.is_available %}disabled{% endif %}>أضف إلى السلة</button>
+  <button type="button" class="lux-btn-cart" data-sf-add-cart="{{ product.id }}" {% if not product.is_available and not product.is_reservation %}disabled{% endif %}>أضف إلى السلة</button>
 {% endmacro %}

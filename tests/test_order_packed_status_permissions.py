@@ -8,6 +8,7 @@ class FakeEmployee:
 
     def __init__(self, permissions):
         self.permissions = set(permissions)
+        self.roles = []
 
     def has_permission(self, permission_name):
         return permission_name in self.permissions

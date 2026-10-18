@@ -30,6 +30,7 @@
   var verifyBox = document.getElementById('emailVerifyBox');
   var btnSubmit = document.getElementById('btnSignupSubmit');
   var signupHint = document.getElementById('signupHint');
+  var whatsappConfirmed = document.getElementById('whatsapp_confirmed');
 
   function isValidEmail(v) {
     return /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test((v || '').trim());
@@ -42,16 +43,16 @@
   }
 
   function updateSubmitState() {
-    var canSubmit = emailVerified && emailInput && emailInput.value.trim().toLowerCase() === verifiedEmail;
+    var canSubmit = Boolean(whatsappConfirmed && whatsappConfirmed.checked);
     if (btnSubmit) btnSubmit.disabled = !canSubmit;
     if (signupHint) {
       signupHint.textContent = canSubmit
-        ? 'يمكنك الآن إكمال بياناتك وإنشاء الحساب'
-        : 'تحقق من بريدك الإلكتروني أولاً لتفعيل زر التسجيل';
+        ? 'جاهز لحفظ الحساب وإرسال طلب التفعيل'
+        : 'أكد أن الرقم مرتبط بواتساب أولاً';
     }
-    if (verifyBox) verifyBox.classList.toggle('verified', canSubmit);
-    if (emailInput) emailInput.readOnly = canSubmit;
   }
+
+  if (whatsappConfirmed) whatsappConfirmed.addEventListener('change', updateSubmitState);
 
   function resetEmailVerification() {
     emailVerified = false;
@@ -187,15 +188,13 @@
   };
 
   window.validateForm = function () {
-    if (!emailVerified) {
-      setVerifyStatus('يجب التحقق من البريد الإلكتروني قبل التسجيل', 'err');
-      return false;
-    }
+    if (!whatsappConfirmed || !whatsappConfirmed.checked) return false;
     var ok = true;
     [
       { id: 'company_name', min: 1 },
       { id: 'contact_name', min: 1 },
-      { id: 'email', min: 3 },
+      { id: 'phone', min: 10 },
+      { id: 'discovery_source', min: 1 },
       { id: 'username', min: 3 },
       { id: 'password', min: 6 }
     ].forEach(function (f) {
@@ -205,6 +204,10 @@
         ok = false;
       }
     });
+    if (emailInput && emailInput.value.trim() && !isValidEmail(emailInput.value)) {
+      emailInput.classList.add('invalid');
+      ok = false;
+    }
     var p1 = document.getElementById('password');
     var p2 = document.getElementById('password2');
     if (p1 && p2 && p1.value !== p2.value) {

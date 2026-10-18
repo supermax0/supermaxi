@@ -1,0 +1,72 @@
+{% extends "storefront_v2/base.html" %}
+{% block legacy_assets %}{% endblock %}
+{% block legacy_scripts %}{% endblock %}
+{% block body_class %} sm-native{% endblock %}
+{% block title %}إتمام الطلب — {{ store_design.store_name }}{% endblock %}
+{% block content %}
+<section class="sm-shell sm-section">
+  <ol class="sm-steps" aria-label="خطوات الطلب"><li>السلة</li><li aria-current="step">التوصيل</li><li>التأكيد</li></ol>
+  <h1 class="sm-h1">بيانات التوصيل</h1>
+  {% if checkout_error %}<p class="sm-alert is-err" role="alert">{{ checkout_error }}</p>{% endif %}
+
+  {% if cart_items %}
+  <div class="sm-checkout">
+    <form method="post" class="sm-form" data-sm-checkout novalidate>
+      {% if store_account %}<p class="sm-alert is-ok">الطلب سيُحفظ في حساب {{ store_account.customer.name }}.</p>{% endif %}
+      <label class="sm-field"><span>الاسم الكامل</span>
+        <input type="text" name="customer_name" required maxlength="120" value="{{ checkout_form.customer_name }}" autocomplete="name" {{ 'readonly' if store_account }}>
+      </label>
+      <label class="sm-field"><span>رقم الهاتف</span>
+        <input id="sfPhone" type="tel" name="phone" required value="{{ checkout_form.phone }}" autocomplete="tel" inputmode="tel" dir="ltr"
+               placeholder="07xx xxx xxxx" data-sm-iq-phone {{ 'readonly' if store_account }}>
+        <small class="sm-field__err" data-sm-phone-err hidden>اكتب رقماً عراقياً صحيحاً يبدأ بـ 07 (11 رقماً)</small>
+      </label>
+      <label class="sm-field"><span>المحافظة</span>
+        <select id="sfCheckoutCity" name="city" required data-sm-city>
+          <option value="">— اختر المحافظة —</option>
+          {% for city, fee in shipping_map.items()|sort %}
+          <option value="{{ city }}" {{ 'selected' if checkout_form.city == city }}>{{ city }}</option>
+          {% endfor %}
+          {% if checkout_form.city and checkout_form.city not in shipping_map %}<option value="{{ checkout_form.city }}" selected>{{ checkout_form.city }}</option>{% endif %}
+        </select>
+      </label>
+      <label class="sm-field"><span>المنطقة والعنوان</span>
+        <textarea name="address" required minlength="5" rows="3" placeholder="المنطقة، أقرب نقطة دالة، رقم الدار">{{ checkout_form.address }}</textarea>
+      </label>
+      <label class="sm-field"><span>ملاحظات (اختياري)</span>
+        <textarea name="notes" rows="2">{{ checkout_form.notes }}</textarea>
+      </label>
+      <p class="sm-muted">الدفع نقداً عند الاستلام، وتستطيع فحص المنتج قبل الدفع.</p>
+      <button class="sm-btn sm-btn--primary sm-checkout__go" type="submit">تأكيد الطلب</button>
+    </form>
+
+    <aside class="sm-summary" aria-label="ملخص الطلب">
+      <h2 class="sm-h2">ملخص الطلب</h2>
+      <ul class="sm-summary__items">
+        {% for item in cart_items %}
+        <li><span>{{ item.name }} × {{ item.quantity }}{% if item.color %} <small class="sm-muted">({{ item.color }})</small>{% endif %}</span><strong>{{ "{:,.0f}".format(item.line_total) }}</strong></li>
+        {% endfor %}
+      </ul>
+      <dl>
+        <div><dt>المجموع</dt><dd>{{ "{:,.0f}".format(subtotal) }} د.ع</dd></div>
+        {% if discount_amount %}<div><dt>الخصم{% if active_coupon %} ({{ active_coupon }}){% endif %}</dt><dd>-{{ "{:,.0f}".format(discount_amount) }} د.ع</dd></div>{% endif %}
+        <div><dt>التوصيل</dt><dd data-sm-ship>{{ "{:,.0f}".format(shipping_fee) }} د.ع</dd></div>
+        <div class="is-total"><dt>الإجمالي</dt><dd id="sfGrandTotalText" data-sm-grand>{{ "{:,.0f}".format(grand_total) }} د.ع</dd></div>
+      </dl>
+      <p class="sm-muted sm-summary__note">يُعاد التحقق من السعر والتوفر وأجرة التوصيل عند التأكيد.</p>
+    </aside>
+  </div>
+  {% else %}
+  <div class="sm-empty"><h3>السلة فارغة</h3><a class="sm-btn sm-btn--primary" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">تصفّح المنتجات</a></div>
+  {% endif %}
+</section>
+{% endblock %}
+{% block scripts %}
+<script>
+  window.STOREFRONT_CONFIG = Object.assign(window.STOREFRONT_CONFIG || {}, {
+    shippingMap: {{ shipping_map|tojson }},
+    shippingDefault: {{ shipping_default_fee|tojson }},
+    netSubtotal: {{ net_subtotal|tojson }}
+  });
+</script>
+{% endblock %}

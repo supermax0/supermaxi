@@ -59,6 +59,20 @@ def ensure_delivery_agent_schema() -> None:
 
 def build_employees_grid_rows(employees_list, stats_map, delivery_agents, agent_stats_map):
     """Serialize employee + delivery-agent rows for the AG Grid script."""
+    from models.branch import Branch
+
+    branch_ids = {
+        int(branch_id)
+        for branch_id in [
+            *(getattr(item, "branch_id", None) for item in employees_list),
+            *(getattr(item, "branch_id", None) for item in delivery_agents),
+        ]
+        if branch_id
+    }
+    branch_names = {
+        int(branch.id): branch.name
+        for branch in Branch.query.filter(Branch.id.in_(branch_ids)).all()
+    } if branch_ids else {}
     rows = []
     for e in employees_list:
         s = stats_map.get(e.id, {"orders": 0, "sales": 0, "commission": 0, "total_due": 0})
@@ -87,9 +101,12 @@ def build_employees_grid_rows(employees_list, stats_map, delivery_agents, agent_
                 "name": e.name,
                 "username": e.username,
                 "phone": getattr(e, "phone", None) or "",
+                "transfer_number": getattr(e, "transfer_number", None) or "",
                 "role": e.role,
                 "role_name": "كاشير" if e.role == "cashier" else "مدير",
                 "role_labels": role_labels,
+                "branch_id": int(e.branch_id) if getattr(e, "branch_id", None) else None,
+                "branch_name": branch_names.get(int(e.branch_id), "") if getattr(e, "branch_id", None) else "كل الفروع",
                 "pages_count": pages_count,
                 "status": "active" if e.is_active else "inactive",
                 "orders": orders,
@@ -120,6 +137,8 @@ def build_employees_grid_rows(employees_list, stats_map, delivery_agents, agent_
                 "role": "delivery",
                 "role_name": "مندوب توصيل",
                 "role_labels": [],
+                "branch_id": int(agent.branch_id) if getattr(agent, "branch_id", None) else None,
+                "branch_name": branch_names.get(int(agent.branch_id), "") if getattr(agent, "branch_id", None) else "غير محدد",
                 "pages_count": 0,
                 "status": "active" if agent.is_active else "inactive",
                 "orders": int(s.get("orders") or 0),

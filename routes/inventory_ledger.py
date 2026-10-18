@@ -13,6 +13,7 @@ from utils.inventory_movements import (
     get_all_products_movements_summary
 )
 from utils.permission_checks import check_permission
+from utils.branch_mode import independent_branches_enabled
 
 inventory_ledger_bp = Blueprint("inventory_ledger", __name__, url_prefix="/inventory/ledger")
 
@@ -27,10 +28,19 @@ def inventory_ledger():
         return redirect("/pos"), 403
     
     # جلب جميع المنتجات
-    products = Product.query.filter_by(active=True).order_by(Product.name).all()
+    products = Product.query.filter_by(active=True).order_by(Product.name, Product.id).all()
+    if not independent_branches_enabled():
+        grouped_products = {}
+        for product in products:
+            group_key = str(product.catalog_group_id or "").strip() or f"product:{product.id}"
+            grouped_products.setdefault(group_key, product)
+        products = list(grouped_products.values())
     
     # ملخصات الحركات لجميع المنتجات
-    summaries = get_all_products_movements_summary()
+    summaries = [get_product_inventory_summary(product.id) for product in products]
+    inventory_quantities = {
+        summary["product_id"]: summary["actual_quantity"] for summary in summaries
+    }
     
     # إحصائيات عامة
     total_products = len(products)
@@ -69,6 +79,7 @@ def inventory_ledger():
         selected_movements=selected_movements,
         selected_summary=selected_summary,
         branches=branches,
+        inventory_quantities=inventory_quantities,
     )
 
 

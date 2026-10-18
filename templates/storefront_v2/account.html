@@ -1,0 +1,119 @@
+{% extends "storefront_v2/base.html" %}
+{% block legacy_assets %}{% endblock %}
+{% block body_class %} sm-native{% endblock %}
+{% block title %}حسابي — {{ store_design.store_name }}{% endblock %}
+{% block meta %}<meta name="robots" content="noindex">{% endblock %}
+{% set home = url_for('storefront.store_index', tenant_slug=shop_tenant_slug) %}
+
+{% block content %}
+<div class="sm-shell sm-account">
+{% if not account %}
+  <h1 class="sm-h1">حسابي</h1>
+  <p class="sm-muted">الحساب اختياري — يمكنك الطلب بدونه. فائدته: متابعة طلباتك، وتعبئة اسمك وعنوانك تلقائياً في الطلب القادم.</p>
+  <div class="sm-account__auth">
+    <div class="sm-tabs" role="tablist" aria-label="الدخول أو إنشاء حساب">
+      <button type="button" role="tab" id="smTabLogin" aria-controls="smLogin" aria-selected="{{ 'false' if mode == 'register' else 'true' }}" data-sm-tab="smLogin">تسجيل الدخول</button>
+      <button type="button" role="tab" id="smTabRegister" aria-controls="smRegister" aria-selected="{{ 'true' if mode == 'register' else 'false' }}" data-sm-tab="smRegister">إنشاء حساب</button>
+    </div>
+    {% if error %}<p class="sm-alert is-err" role="alert">{{ error }}</p>{% endif %}
+    <form id="smLogin" role="tabpanel" aria-labelledby="smTabLogin" class="sm-form" method="post" {{ 'hidden' if mode == 'register' }}
+          action="{{ url_for('storefront.account_login', tenant_slug=shop_tenant_slug) }}">
+      <label class="sm-field"><span>رقم الهاتف</span><input name="phone" dir="ltr" inputmode="tel" autocomplete="tel" placeholder="07xxxxxxxxx" required></label>
+      <label class="sm-field"><span>كلمة المرور</span><input name="password" type="password" autocomplete="current-password" minlength="8" required></label>
+      <label class="sm-check"><input type="checkbox" data-sm-show-password> إظهار كلمة المرور</label>
+      <button class="sm-btn sm-btn--primary sm-btn--block" type="submit">دخول</button>
+    </form>
+    <form id="smRegister" role="tabpanel" aria-labelledby="smTabRegister" class="sm-form" method="post" {{ 'hidden' if mode != 'register' }}
+          action="{{ url_for('storefront.account_register', tenant_slug=shop_tenant_slug) }}">
+      <label class="sm-field"><span>الاسم الرباعي</span><input name="name" autocomplete="name" maxlength="150" required placeholder="الاسم واسم الأب والجد واللقب"></label>
+      <label class="sm-field"><span>رقم الهاتف</span><input name="phone" dir="ltr" inputmode="tel" autocomplete="tel" placeholder="07xxxxxxxxx" required></label>
+      <label class="sm-field"><span>كلمة المرور <small class="sm-muted">(8 أحرف على الأقل)</small></span><input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
+      <label class="sm-check"><input type="checkbox" data-sm-show-password> إظهار كلمة المرور</label>
+      <button class="sm-btn sm-btn--primary sm-btn--block" type="submit">إنشاء الحساب</button>
+      <p class="sm-muted sm-small">بإنشاء الحساب توافق على <a href="{{ url_for('storefront.terms_page', tenant_slug=shop_tenant_slug) }}">الشروط وسياسة الطلب</a>.</p>
+    </form>
+  </div>
+  <p class="sm-muted">تريد معرفة حالة طلب بدون حساب؟ <a href="{{ url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug) }}">تتبع الطلب برقمه</a></p>
+
+{% else %}
+  <header class="sm-account__head">
+    <div>
+      <p class="sm-muted">أهلاً</p>
+      <h1 class="sm-h1">{{ customer.name }}</h1>
+    </div>
+    <form method="post" action="{{ url_for('storefront.account_logout', tenant_slug=shop_tenant_slug) }}"><button class="sm-btn" type="submit">تسجيل الخروج</button></form>
+  </header>
+  {% if request.args.get('welcome') %}<p class="sm-alert is-ok" role="status">تم إنشاء حسابك. ستُملأ بياناتك تلقائياً في طلبك القادم.</p>{% endif %}
+
+  <div class="sm-account__grid">
+    <section aria-labelledby="smOrdersTitle">
+      <h2 class="sm-h2" id="smOrdersTitle">طلباتي <span class="sm-muted">({{ cash_orders|length }})</span></h2>
+      {% for order in cash_orders %}
+      {% set status = order.status or 'تم الطلب' %}
+      <article class="sm-order">
+        <div class="sm-order__head">
+          <b dir="ltr">#{{ order.id }}</b>
+          <span class="sm-badge{{ ' is-bad' if status == 'ملغي' else (' is-ok' if status in ['تم التوصيل', 'مكتمل'] else '') }}">{{ cash_status_labels.get(status, status) }}</span>
+        </div>
+        <ul class="sm-order__items">{% for item in order.items %}<li>{{ item.product_name }}{% if item.variant_color %} <span class="sm-muted">— {{ item.variant_color }}</span>{% endif %} <span class="sm-muted">× {{ item.quantity }}</span></li>{% endfor %}</ul>
+        <div class="sm-order__foot">
+          <span class="sm-muted">{{ order.created_at.strftime('%Y/%m/%d') if order.created_at else '' }}</span>
+          <b>{{ order.total|toLocaleString }} د.ع</b>
+          {% if track_urls.get(order.id) %}<a class="sm-link" href="{{ track_urls[order.id] }}">تفاصيل وتتبع</a>{% endif %}
+        </div>
+      </article>
+      {% else %}
+      <div class="sm-empty"><h3>لا توجد طلبات بعد</h3><p>عندما تطلب وأنت مسجّل الدخول سيظهر طلبك هنا مع حالته.</p><a class="sm-btn sm-btn--primary" href="{{ home }}">تسوّق الآن</a></div>
+      {% endfor %}
+
+      {% if installment_orders %}
+      <h2 class="sm-h2">طلبات التقسيط</h2>
+      {% for application in installment_orders %}
+      <article class="sm-order">
+        <div class="sm-order__head"><b dir="ltr">{{ application.application_number }}</b><span class="sm-badge">{{ installment_status_labels.get(application.status, application.status) }}</span></div>
+        <ul class="sm-order__items">{% for item in application.items %}<li>{{ item.product_name_snapshot or 'منتج' }} <span class="sm-muted">× {{ item.quantity }}</span></li>{% endfor %}</ul>
+        <div class="sm-order__foot"><span class="sm-muted">{{ application.created_at.strftime('%Y/%m/%d') if application.created_at else '' }}</span></div>
+      </article>
+      {% endfor %}
+      {% endif %}
+    </section>
+
+    <aside class="sm-account__side" aria-labelledby="smProfileTitle">
+      <h2 class="sm-h2" id="smProfileTitle">بياناتي</h2>
+      <dl class="sm-dl">
+        <div><dt>الهاتف</dt><dd dir="ltr">{{ account.phone }}</dd></div>
+        <div><dt>المحافظة</dt><dd>{{ customer.city or '— تُحفظ مع أول طلب' }}</dd></div>
+        <div><dt>العنوان</dt><dd>{{ customer.address or '— يُحفظ مع أول طلب' }}</dd></div>
+      </dl>
+      <p class="sm-muted sm-small">يُحدَّث العنوان عندما تكتب عنواناً جديداً في طلبك القادم.</p>
+      {% if cash_orders %}<p class="sm-small">مجموع طلباتك: <b>{{ cash_total|toLocaleString }} د.ع</b></p>{% endif %}
+      <nav class="sm-account__links" aria-label="روابط الحساب">
+        <a href="{{ url_for('storefront.favorites_page', tenant_slug=shop_tenant_slug) }}">المفضلة</a>
+        <a href="{{ url_for('storefront.cart_page', tenant_slug=shop_tenant_slug) }}">السلة</a>
+        <a href="{{ url_for('storefront.personalization_page', tenant_slug=shop_tenant_slug) }}">الخصوصية والتخصيص</a>
+        <a href="{{ url_for('storefront.contact_page', tenant_slug=shop_tenant_slug) }}">تواصل معنا</a>
+      </nav>
+    </aside>
+  </div>
+{% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.querySelectorAll('[data-sm-tab]').forEach(function (tab) {
+  tab.addEventListener('click', function () {
+    document.querySelectorAll('[data-sm-tab]').forEach(function (t) {
+      var on = t === tab;
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      document.getElementById(t.getAttribute('data-sm-tab')).hidden = !on;
+    });
+  });
+});
+document.querySelectorAll('[data-sm-show-password]').forEach(function (box) {
+  box.addEventListener('change', function () {
+    box.closest('form').querySelectorAll('input[name=password]').forEach(function (i) { i.type = box.checked ? 'text' : 'password'; });
+  });
+});
+</script>
+{% endblock %}

@@ -165,7 +165,7 @@
       <select class="fd-input" id="productSelector" aria-label="اختر منتج لعرض سجل الحركات">
         <option value="">كل المنتجات — ملخص الحركات</option>
         {% for p in products %}
-        <option value="{{ p.id }}" {% if request.args.get('product_id')|int == p.id %}selected{% endif %}>{{ p.name }} (المخزون: {{ p.quantity }})</option>
+        <option value="{{ p.id }}" {% if request.args.get('product_id')|int == p.id %}selected{% endif %}>{{ p.name }} (المخزون: {{ inventory_quantities.get(p.id, p.quantity) }})</option>
         {% endfor %}
       </select>
     </label>

@@ -9,10 +9,14 @@ from models.employee import Employee
 from sqlalchemy import or_, and_, func
 from datetime import datetime
 import json
+from urllib.parse import urlencode, urlsplit
+from utils.business_time import business_date, business_datetime
 
 from utils.agent_report_helpers import (
     STATUS_TO_AR,
+    extract_agent_id_from_report,
     find_open_agent_report_for_order,
+    find_open_agent_reports_for_order,
     get_order_applied_status,
     get_report_order_ids,
     get_report_progress,
@@ -27,6 +31,7 @@ from utils.agent_employee_link import (
 )
 from utils.shipping_report_execute import execute_shipping_report
 from utils.team_schema import ensure_delivery_agent_schema
+from utils.invoice_schema_guard import ensure_invoice_schema
 
 delivery_agent_bp = Blueprint("delivery_agent", __name__, url_prefix="/delivery-agent")
 
@@ -77,6 +82,10 @@ def _activate_tenant_slug(slug):
 @delivery_agent_bp.before_request
 def _bind_delivery_agent_tenant():
     ensure_delivery_agent_schema()
+    ensure_invoice_schema()
+    from utils.agent_tracking import ensure_agent_location_schema
+
+    ensure_agent_location_schema()
     slug = _resolve_request_tenant_slug()
     if slug:
         _activate_tenant_slug(slug)
@@ -86,13 +95,60 @@ def _bind_delivery_agent_tenant():
 
 @delivery_agent_bp.before_request
 def _ensure_agent_messaging_session():
-    if "agent_id" not in session or session.get("user_id"):
+    if "agent_id" not in session:
         return None
     agent = DeliveryAgent.query.get(session["agent_id"])
     tenant_slug = session.get("agent_tenant_slug")
-    if agent and tenant_slug:
-        bind_agent_messaging_session(session, agent, tenant_slug)
+    if not agent or not tenant_slug:
+        return None
+    bind_agent_messaging_session(session, agent, tenant_slug)
     return None
+
+
+_AR_MONTHS = (
+    "",
+    "يناير",
+    "فبراير",
+    "مارس",
+    "أبريل",
+    "مايو",
+    "يونيو",
+    "يوليو",
+    "أغسطس",
+    "سبتمبر",
+    "أكتوبر",
+    "نوفمبر",
+    "ديسمبر",
+)
+
+
+def _arabic_date_label(raw):
+    """تاريخ عرض فقط، مثل 30 سبتمبر 2026. لا يغيّر القيمة المخزّنة."""
+    text = (raw or "").strip()
+    if len(text) < 10:
+        return text
+    try:
+        parsed = datetime.strptime(text[:10], "%Y-%m-%d")
+    except Exception:
+        return text
+    return f"{parsed.day} {_AR_MONTHS[parsed.month]} {parsed.year}"
+
+
+def _ready_manifests(orders):
+    groups = {}
+    for order in orders:
+        report_id = order.get("report_id")
+        if not report_id:
+            continue
+        groups.setdefault(report_id, []).append(order)
+    ready = []
+    for report_id, group in groups.items():
+        if group and all(item.get("applied_status") for item in group):
+            ready.append({
+                "report_id": report_id,
+                "report_number": group[0].get("report_number") or "",
+            })
+    return ready
 
 
 def _agent_login_redirect(tenant_slug=None):
@@ -114,37 +170,204 @@ def _agent_pending_orders(agent_id):
     return [_serialize_agent_order(o) for o in rows]
 
 
-def _agent_delivered_today_total(agent_id):
-    """مجموع الباقي للطلبات «واصل» في كشوف المندوب غير المنفّذة (بانتظار المحاسب)."""
-    from utils.agent_report_helpers import compute_report_delivered_amount
+def _agent_active_report_orders(agent_id):
+    """طلبات المندوب مجمعة حسب كشوفه المفتوحة، مع إبقاء الطلبات المباشرة ظاهرة."""
+    reports = (
+        ShippingReport.query.filter(
+            ShippingReport.is_executed.is_(False),
+            ShippingReport.report_number.like(f"AGT-{int(agent_id)}-%"),
+        )
+        .order_by(ShippingReport.created_at.desc(), ShippingReport.id.desc())
+        .all()
+    )
 
+    grouped_orders = []
+    report_order_ids = set()
+
+    for report in reports:
+        order_ids = get_report_order_ids(report)
+        if not order_ids:
+            continue
+
+        invoices = {
+            order.id: order
+            for order in Invoice.query.filter(Invoice.id.in_(order_ids)).all()
+        }
+        try:
+            selections = json.loads(report.order_status_selections or "{}")
+        except Exception:
+            selections = {}
+
+        report_orders = []
+        for order_id in order_ids:
+            order = invoices.get(order_id)
+            if not order:
+                continue
+            serialized = _serialize_agent_order(order)
+            selected = selections.get(str(order_id))
+            if selected:
+                serialized["applied_status"] = STATUS_TO_AR.get(selected, selected)
+                serialized["pending_accountant"] = True
+            report_orders.append(serialized)
+            report_order_ids.add(order_id)
+
+        if not report_orders:
+            continue
+
+        report_total = sum(int(order.get("remaining", 0) or 0) for order in report_orders)
+        created_raw = report.created_at.strftime("%Y-%m-%d %H:%M") if report.created_at else ""
+        report_meta = {
+            "report_id": report.id,
+            "report_number": report.report_number,
+            "report_created_at": created_raw,
+            "report_date_label": _arabic_date_label(created_raw),
+            "report_orders_count": len(report_orders),
+            "report_total_amount": report_total,
+        }
+        for order in report_orders:
+            order.update(report_meta)
+        grouped_orders.extend(report_orders)
+
+    # لا نخفي الطلبات التي ربطت بالمندوب مباشرة ولم تدخل في كشف بعد.
+    direct_orders = [
+        order for order in _agent_pending_orders(agent_id)
+        if order["id"] not in report_order_ids
+    ]
+    if direct_orders:
+        direct_meta = {
+            "report_id": None,
+            "report_number": "طلبات مرتبطة مباشرة",
+            "report_created_at": "",
+            "report_date_label": "",
+            "report_orders_count": len(direct_orders),
+            "report_total_amount": sum(int(order.get("remaining", 0) or 0) for order in direct_orders),
+        }
+        for order in direct_orders:
+            order.update(direct_meta)
+        grouped_orders.extend(direct_orders)
+
+    return grouped_orders
+
+
+def _agent_open_report_for_order(agent_id, order_id, report_id=None):
+    """أعد كشفاً مفتوحاً يملكه المندوب ويحتوي الطلب، بما يشمل الكشوف القديمة."""
+    if report_id:
+        report = ShippingReport.query.get(report_id)
+        reports = [report] if report else []
+    else:
+        reports = find_open_agent_reports_for_order(int(order_id), int(agent_id))
+
+    for report in reports:
+        if not report or report.is_executed or not is_agent_report(report):
+            continue
+        if extract_agent_id_from_report(report.report_number) != int(agent_id):
+            continue
+        if int(order_id) not in get_report_order_ids(report):
+            continue
+        return report
+    return None
+
+
+def _report_rows(report):
+    try:
+        rows = json.loads(report.orders_data or "[]")
+    except (ValueError, TypeError):
+        return []
+    return [row for row in rows if isinstance(row, dict)] if isinstance(rows, list) else []
+
+
+def _recorded_time(raw):
+    if not raw:
+        return None
+    try:
+        return business_datetime(datetime.fromisoformat(str(raw).replace("Z", "+00:00")))
+    except (ValueError, TypeError):
+        return None
+
+
+def _agent_delivery_summary(agent_id):
+    from utils.agent_report_helpers import row_collectible_amount, DELIVERED_STATUSES
+
+    today = business_date(datetime.utcnow())
+    summary = {"delivered_total": 0, "delivered_count": 0, "awaiting_total": 0, "undated_count": 0}
     reports = ShippingReport.query.filter(
-        ShippingReport.report_number.like(f"AGT-{agent_id}-%"),
-        ShippingReport.is_executed.is_(False),
+        ShippingReport.report_number.like(f"AGT-{int(agent_id)}-%"),
     ).all()
+    seen = set()
+    for report in reports:
+        try:
+            selections = json.loads(report.order_status_selections or "{}")
+        except (ValueError, TypeError):
+            selections = {}
+        if not isinstance(selections, dict):
+            continue
+        for row in _report_rows(report):
+            oid = str(row.get("id") or row.get("order_id"))
+            if selections.get(oid) not in DELIVERED_STATUSES:
+                continue
+            amount = row_collectible_amount(row)
+            if not report.is_executed:
+                summary["awaiting_total"] += amount
+            recorded = _recorded_time(row.get("agent_status_updated_at") or row.get("executed_at"))
+            if not recorded:
+                summary["undated_count"] += 1
+            elif recorded.date() == today and oid not in seen:
+                seen.add(oid)
+                summary["delivered_total"] += amount
+                summary["delivered_count"] += 1
+    return summary
 
-    return sum(compute_report_delivered_amount(report) for report in reports)
+
+def _agent_delivered_today_total(agent_id):
+    return _agent_delivery_summary(agent_id)["delivered_total"]
 
 
-def _agent_order_stats(agent_id):
+def _agent_order_stats(agent_id, active_orders=None):
+    summary = _agent_delivery_summary(agent_id)
+    if active_orders is not None:
+        return {
+            "pending_count": len(active_orders),
+            "pending_total": sum(int(order.get("remaining", 0) or 0) for order in active_orders),
+            **summary,
+        }
+
     base = Invoice.query.filter(Invoice.delivery_agent_id == agent_id)
     pending_q = base.filter(Invoice.status.in_(_AGENT_PENDING_STATUSES))
-    pending_count = pending_q.count()
-    pending_total = pending_q.with_entities(func.sum(Invoice.total)).scalar() or 0
-    delivered_total = _agent_delivered_today_total(agent_id)
+    pending_orders = pending_q.all()
+    pending_count = len(pending_orders)
+    from utils.agent_report_helpers import order_payment_snapshot
+
+    pending_total = sum(order_payment_snapshot(o)["remaining"] for o in pending_orders)
     return {
         "pending_count": int(pending_count),
         "pending_total": int(pending_total),
-        "delivered_total": int(delivered_total),
+        **summary,
     }
 
 
+def _agent_map_url(order):
+    raw = (getattr(order, "location_url", None) or "").strip()
+    try:
+        parsed = urlsplit(raw)
+    except ValueError:
+        parsed = None
+    if parsed and parsed.scheme in {"http", "https"} and parsed.netloc:
+        return raw
+    lat, lng = getattr(order, "location_lat", None), getattr(order, "location_lng", None)
+    customer = getattr(order, "customer", None)
+    query = f"{lat},{lng}" if lat is not None and lng is not None else " ".join(
+        part for part in [getattr(customer, "city", ""), getattr(customer, "address", "")] if part
+    )
+    return "https://www.google.com/maps/search/?" + urlencode({"api": 1, "query": query}) if query else ""
+
+
 def _serialize_agent_order(order):
-    items_count = OrderItem.query.filter_by(invoice_id=order.id).count()
+    items = OrderItem.query.filter_by(invoice_id=order.id).all()
     applied_status = get_order_applied_status(order.id)
     from utils.agent_report_helpers import order_payment_snapshot
 
     payment = order_payment_snapshot(order)
+    agent_note = (getattr(order, "agent_note", None) or "").strip()
     return {
         "id": order.id,
         "customer_name": order.customer_name,
@@ -156,13 +379,49 @@ def _serialize_agent_order(order):
         "remaining": payment["remaining"],
         "status": order.status,
         "payment_status": order.payment_status,
-        "items_count": items_count,
+        "items_count": len(items),
+        "items": [{"name": item.product_name, "quantity": item.quantity,
+                   "color": getattr(item, "variant_color", None) or ""} for item in items],
         "created_at": order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else "",
         "note": order.note or "",
+        "agent_note": agent_note,
         "scheduled_date": order.scheduled_date.strftime("%Y-%m-%d") if order.scheduled_date else None,
         "applied_status": applied_status,
         "pending_accountant": bool(applied_status),
+        "location_lat": getattr(order, "location_lat", None),
+        "location_lng": getattr(order, "location_lng", None),
+        "location_url": getattr(order, "location_url", None) or "",
+        "location_label": getattr(order, "location_label", None) or "",
+        "map_url": _agent_map_url(order),
     }
+
+
+def _sync_agent_note_to_open_report(order_id: int, agent_note: str, report=None) -> None:
+    """احفظ ملاحظة المندوب أيضاً داخل صف الكشف المفتوح إن وُجد."""
+    report = report or find_open_agent_report_for_order(int(order_id))
+    if not report or report.is_executed:
+        return
+    try:
+        rows = json.loads(report.orders_data or "[]")
+    except Exception:
+        rows = []
+    if not isinstance(rows, list):
+        return
+    changed = False
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        oid = row.get("id") or row.get("order_id")
+        try:
+            if int(oid) != int(order_id):
+                continue
+        except (TypeError, ValueError):
+            continue
+        row["agent_note"] = agent_note
+        changed = True
+        break
+    if changed:
+        report.orders_data = json.dumps(rows, ensure_ascii=False)
 
 
 def _build_executed_report_meta(agent_id):
@@ -181,7 +440,9 @@ def _build_executed_report_meta(agent_id):
             selections = json.loads(report.order_status_selections or "{}")
         except Exception:
             selections = {}
-        exec_at = report.created_at.strftime("%Y-%m-%d %H:%M") if report.created_at else ""
+        execution_times = [_recorded_time(row.get("executed_at")) for row in _report_rows(report)]
+        execution_times = [value for value in execution_times if value]
+        exec_at = max(execution_times).strftime("%Y-%m-%d %H:%M") if execution_times else ""
         for oid in get_report_order_ids(report):
             if oid in meta:
                 continue
@@ -200,7 +461,8 @@ def _serialize_completed_order(order, meta):
     base.update({
         "final_status": meta.get("final_status") or order.status,
         "invoice_status": order.status,
-        "executed_at": meta.get("executed_at") or base["created_at"],
+        "executed_at": meta.get("executed_at") or "",
+        "executed_label": _arabic_date_label(meta["executed_at"]) if meta.get("executed_at") else "غير مسجل — كشف قديم",
         "report_number": meta.get("report_number") or "—",
     })
     return base
@@ -352,14 +614,20 @@ def dashboard():
         session.pop("agent_role", None)
         return redirect(_agent_login_redirect(tenant_slug))
 
-    orders = _agent_pending_orders(agent_id)
+    orders = _agent_active_report_orders(agent_id)
     completed_orders = _agent_completed_orders(agent_id)
-    stats = _agent_order_stats(agent_id)
+    stats = _agent_order_stats(agent_id, orders)
 
     employees = Employee.query.filter_by(is_active=True).all()
     other_agents = DeliveryAgent.query.filter(DeliveryAgent.id != agent_id).filter(DeliveryAgent.username.isnot(None)).all()
 
     ensure_agent_employee(agent)
+    own_employee_id = getattr(agent, "employee_id", None)
+    chat_contacts = [
+        {"id": employee.id, "name": employee.name, "role": employee.role or ""}
+        for employee in employees
+        if employee.id != own_employee_id and (employee.role or "") == "admin"
+    ]
     
     # التحقق من صلاحيات الأدmin (إذا كان مسجل دخول كأدمن)
     is_admin = session.get("role") == "admin" and "user_id" in session
@@ -370,8 +638,11 @@ def dashboard():
         orders=orders,
         completed_orders=completed_orders,
         stats=stats,
+        today=business_date(datetime.utcnow()).isoformat(),
         employees=employees,
         other_agents=other_agents,
+        chat_contacts=chat_contacts,
+        ready_reports=_ready_manifests(orders),
         is_admin=is_admin,
     )
 
@@ -396,20 +667,29 @@ def update_order_status():
     if status not in ("واصل", "ملغي", "مؤجل"):
         return jsonify({"error": "حالة غير صالحة"}), 400
 
+    scheduled = None
+    if status == "مؤجل":
+        try:
+            scheduled = datetime.strptime(data.get("scheduled_date") or "", "%Y-%m-%d")
+        except (ValueError, TypeError):
+            return jsonify({"error": "يرجى تحديد تاريخ تأجيل صالح"}), 400
+        if scheduled.date() < business_date(datetime.utcnow()):
+            return jsonify({"error": "تاريخ التأجيل لا يمكن أن يكون في الماضي"}), 400
+
     order = Invoice.query.get(order_id)
     if not order:
         return jsonify({"error": "الطلب غير موجود"}), 404
 
-    if order.delivery_agent_id != agent_id:
-        return jsonify({"error": "غير مصرح"}), 403
-
     agent = DeliveryAgent.query.get(agent_id)
 
-    report = None
-    if report_id:
-        report = ShippingReport.query.get(report_id)
-    if not report:
-        report = find_open_agent_report_for_order(int(order_id))
+    report = _agent_open_report_for_order(agent_id, int(order_id), report_id)
+
+    if order.delivery_agent_id != agent_id and not report:
+        return jsonify({"error": "غير مصرح"}), 403
+
+    # إصلاح الربط القديم عند أول تعامل مع طلب موجود فعلاً في كشف هذا المندوب.
+    if report and order.delivery_agent_id != agent_id:
+        order.delivery_agent_id = agent_id
 
     if not report:
         from routes.orders import create_agent_report_internal
@@ -428,13 +708,12 @@ def update_order_status():
     progress_before = get_report_progress(report)
 
     if status == "مؤجل":
-        scheduled_date = data.get("scheduled_date")
-        if scheduled_date:
-            try:
-                order.scheduled_date = datetime.strptime(scheduled_date, "%Y-%m-%d")
-            except Exception:
-                pass
-        order.note = "مؤجل"
+        order.scheduled_date = scheduled
+        order.note = order.note or "مؤجل"
+    else:
+        order.scheduled_date = None
+        if order.note == "مؤجل":
+            order.note = None
 
     progress = save_selection_to_report(report, int(order_id), status)
 
@@ -450,7 +729,50 @@ def update_order_status():
         "report_progress": progress,
         "all_complete": progress["all_complete"],
         "applied_status": status,
+        "scheduled_date": order.scheduled_date.strftime("%Y-%m-%d") if order.scheduled_date else None,
+        "stats": _agent_order_stats(agent_id, _agent_active_report_orders(agent_id)),
     })
+
+
+@delivery_agent_bp.route("/update-order-note", methods=["POST"])
+def update_order_note():
+    """حفظ ملاحظة المندوب على الطلب."""
+    if "agent_id" not in session:
+        return jsonify({"error": "غير مصرح"}), 403
+
+    data = request.json or {}
+    order_id = data.get("order_id")
+    report_id = data.get("report_id")
+    agent_id = session["agent_id"]
+    note_text = (data.get("agent_note") or data.get("note") or "").strip()
+    if len(note_text) > 1000:
+        return jsonify({"error": "الملاحظة طويلة جداً (الحد 1000 حرف)"}), 400
+
+    if not order_id:
+        return jsonify({"error": "بيانات غير كاملة"}), 400
+
+    order = Invoice.query.get(order_id)
+    if not order:
+        return jsonify({"error": "الطلب غير موجود"}), 404
+
+    report = _agent_open_report_for_order(agent_id, int(order_id), report_id)
+    if order.delivery_agent_id != agent_id and not report:
+        return jsonify({"error": "غير مصرح"}), 403
+
+    if report and order.delivery_agent_id != agent_id:
+        order.delivery_agent_id = agent_id
+
+    order.agent_note = note_text or None
+    _sync_agent_note_to_open_report(int(order_id), note_text, report)
+    db.session.commit()
+
+    return jsonify({
+        "success": True,
+        "message": "تم حفظ الملاحظة",
+        "agent_note": note_text,
+        "order_id": int(order_id),
+    })
+
 
 # =====================================================
 # Execute Report (Admin Only)
@@ -518,3 +840,95 @@ def send_message():
 def get_messages():
     """توافق قديم — استخدم /messages/get/<user_id>."""
     return jsonify({"error": "تم تحديث نظام المحادثة. افتح تبويب المحادثة من جديد."}), 410
+
+
+def _agent_can_see_order(agent_id, order_id):
+    order = Invoice.query.get(order_id)
+    if not order:
+        return None
+    if order.delivery_agent_id == agent_id:
+        return order
+    if _agent_open_report_for_order(agent_id, int(order_id)):
+        return order
+    return None
+
+
+@delivery_agent_bp.route("/location", methods=["POST"])
+def update_location():
+    """آخر موقع للمندوب طالما التطبيق مفتوح."""
+    if "agent_id" not in session:
+        return jsonify({"error": "غير مصرح"}), 403
+    data = request.json or {}
+    try:
+        lat = float(data.get("lat"))
+        lng = float(data.get("lng"))
+    except (TypeError, ValueError):
+        return jsonify({"error": "إحداثيات غير صالحة"}), 400
+    if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+        return jsonify({"error": "إحداثيات غير صالحة"}), 400
+
+    def _opt(name):
+        value = data.get(name)
+        if value in (None, ""):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return None
+
+    from utils.agent_tracking import record_agent_fix
+
+    record_agent_fix(
+        int(session["agent_id"]),
+        lat,
+        lng,
+        accuracy=_opt("accuracy"),
+        heading=_opt("heading"),
+        speed=_opt("speed"),
+    )
+    return jsonify({"success": True})
+
+
+@delivery_agent_bp.route("/route/<int:order_id>")
+def order_route(order_id):
+    """أقصر مسار قيادة من موقع المندوب إلى الطلب."""
+    if "agent_id" not in session:
+        return jsonify({"error": "غير مصرح"}), 403
+    agent_id = int(session["agent_id"])
+    order = _agent_can_see_order(agent_id, order_id)
+    if not order:
+        return jsonify({"error": "غير مصرح"}), 403
+    if order.location_lat is None or order.location_lng is None:
+        return jsonify({"error": "الطلب بلا إحداثيات"}), 400
+
+    from utils.agent_tracking import driving_route, latest_position
+
+    try:
+        from_lat = float(request.args.get("from_lat")) if request.args.get("from_lat") else None
+        from_lng = float(request.args.get("from_lng")) if request.args.get("from_lng") else None
+    except (TypeError, ValueError):
+        from_lat = from_lng = None
+    if from_lat is None or from_lng is None:
+        position = latest_position(agent_id)
+        if not position:
+            return jsonify({"error": "فعّل الموقع أولاً"}), 400
+        from_lat, from_lng = position.lat, position.lng
+
+    route = driving_route(from_lat, from_lng, float(order.location_lat), float(order.location_lng))
+    if not route.get("ok"):
+        return jsonify({
+            "success": False,
+            "fallback": True,
+            "error": route.get("error") or "تعذر حساب الطريق",
+            "from": [from_lat, from_lng],
+            "to": [order.location_lat, order.location_lng],
+        })
+    return jsonify({
+        "success": True,
+        "from": [from_lat, from_lng],
+        "to": [float(order.location_lat), float(order.location_lng)],
+        "distance": route["distance"],
+        "duration": route["duration"],
+        "line": route["line"],
+        "steps": route["steps"],
+    })

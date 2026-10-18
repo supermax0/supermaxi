@@ -23,6 +23,16 @@ from utils.team_schema import build_employees_grid_rows, ensure_delivery_agent_s
 from utils.payroll_schema import ensure_payroll_schema
 from utils.payroll_service import apply_payroll_config, WEEKDAY_LABELS
 from utils.activity_logger import EMPLOYEE_SNAPSHOT_FIELDS, log_activity, log_mutation, snapshot_attrs
+from utils.branch_context import init_branch_context
+from utils.branch_migration import ensure_branch_schema
+from utils.branch_scope import (
+    active_branch_id,
+    is_general_admin,
+    require_visible,
+    resolve_write_branch_id,
+    scope_query,
+    viewing_all_branches,
+)
 
 employees_bp = Blueprint("employees", __name__)
 
@@ -65,6 +75,10 @@ def _ensure_employee_profile_schema():
             if "language" not in columns:
                 conn.execute(text("ALTER TABLE employee ADD COLUMN language VARCHAR(10) DEFAULT 'ar'"))
                 changed = True
+            if "must_change_password" not in columns:
+                # Newly provisioned / reset admins must replace their one-time password at first login.
+                conn.execute(text("ALTER TABLE employee ADD COLUMN must_change_password BOOLEAN DEFAULT FALSE"))
+                changed = True
             if "profile_pic" not in columns:
                 conn.execute(text("ALTER TABLE employee ADD COLUMN profile_pic VARCHAR(500)"))
                 changed = True
@@ -73,6 +87,12 @@ def _ensure_employee_profile_schema():
                 changed = True
             if "phone" not in columns:
                 conn.execute(text("ALTER TABLE employee ADD COLUMN phone VARCHAR(20)"))
+                changed = True
+            if "transfer_number" not in columns:
+                conn.execute(text("ALTER TABLE employee ADD COLUMN transfer_number VARCHAR(50)"))
+                changed = True
+            if "default_warehouse_id" not in columns:
+                conn.execute(text("ALTER TABLE employee ADD COLUMN default_warehouse_id INTEGER"))
                 changed = True
             if changed:
                 conn.commit()
@@ -127,7 +147,7 @@ def _wa_digits(phone: str | None) -> str:
 def _build_employee_page_cards():
     """Active employees with assigned pages + per-page order/sales totals."""
     employees_list = (
-        Employee.query.filter(Employee.is_active.is_(True))
+        scope_query(Employee.query, Employee).filter(Employee.is_active.is_(True))
         .order_by(Employee.name.asc())
         .all()
     )
@@ -222,6 +242,8 @@ def _ensure_commission_schema():
 
 @employees_bp.before_request
 def ensure_employee_schema():
+    ensure_branch_schema()
+    init_branch_context()
     _ensure_employee_profile_schema()
     ensure_delivery_agent_schema()
     ensure_payroll_schema()
@@ -242,12 +264,19 @@ def employees():
         if not limit_result["ok"]:
             return render_template("upgrade_required.html", limit_error=limit_result["error"]), 403
         role_name = request.form.get("role", "cashier")
+        if role_name not in {"cashier", "admin"}:
+            role_name = "cashier"
+        if role_name == "admin" and not is_general_admin():
+            return jsonify({"error": "إنشاء مدير عام متاح للمدير العام فقط"}), 403
+        branch_id = None if role_name == "admin" else resolve_write_branch_id(request.form)
         emp = Employee(
             name=request.form["name"],
             username=request.form["username"],
             password=generate_password_hash(request.form["password"]),
             phone=_normalize_employee_phone(request.form.get("phone")),
+            transfer_number=(str(request.form.get("transfer_number") or "").strip()[:50] or None),
             role=role_name,
+            branch_id=branch_id,
             salary=int(request.form.get("salary", 0)),
             commission_percent=max(
                 0,
@@ -283,10 +312,24 @@ def employees():
             pass
         return redirect(url_for("employees.employees"))
 
-    employees_list = Employee.query.all()
+    employee_query = Employee.query
+    requested_branch_id = request.args.get("branch_id", type=int)
+    if is_general_admin() and requested_branch_id:
+        from models.branch import Branch
+
+        selected = Branch.query.filter_by(id=requested_branch_id, is_active=True).first_or_404()
+        employee_query = employee_query.filter(Employee.branch_id == selected.id)
+    else:
+        employee_query = scope_query(employee_query, Employee)
+    employees_list = employee_query.order_by(Employee.name.asc()).all()
     stats_map = build_employee_commission_stats_map(unsettled_only=True)
 
-    delivery_agents = DeliveryAgent.query.order_by(DeliveryAgent.name).all()
+    agent_query = DeliveryAgent.query
+    if is_general_admin() and requested_branch_id:
+        agent_query = agent_query.filter(DeliveryAgent.branch_id == requested_branch_id)
+    else:
+        agent_query = scope_query(agent_query, DeliveryAgent)
+    delivery_agents = agent_query.order_by(DeliveryAgent.name).all()
     agent_stats = (
         db.session.query(
             Invoice.delivery_agent_id,
@@ -317,6 +360,7 @@ def employees():
         agents_without_login=agents_without_login,
         fixed_commission_amount=get_fixed_employee_commission_amount(),
         weekday_labels=WEEKDAY_LABELS,
+        selected_employee_branch_id=requested_branch_id or active_branch_id(),
     )
 
 
@@ -329,7 +373,9 @@ def update_fixed_commission():
     except (TypeError, ValueError):
         return jsonify({"error": "مبلغ غير صالح"}), 400
     value = set_fixed_employee_commission_amount(amount)
-    Employee.query.update({"commission_percent": value}, synchronize_session=False)
+    scope_query(Employee.query, Employee).filter(Employee.role != "admin").update(
+        {"commission_percent": value}, synchronize_session=False
+    )
     db.session.commit()
     return jsonify({"success": True, "amount": value, "message": "تم حفظ مبلغ العمولة الثابتة"})
 
@@ -408,7 +454,7 @@ def commission_settle():
 @employees_bp.route("/toggle/<int:id>", methods=["POST"])
 @permission_required("manage_employees")
 def toggle_employee(id):
-    emp = Employee.query.get_or_404(id)
+    emp = require_visible(Employee.query.get_or_404(id))
     before = snapshot_attrs(emp, *EMPLOYEE_SNAPSHOT_FIELDS)
     emp.is_active = not emp.is_active
     db.session.commit()
@@ -430,14 +476,26 @@ def toggle_employee(id):
 @employees_bp.route("/update/<int:id>", methods=["POST"])
 @permission_required("manage_employees")
 def update_employee(id):
-    emp = Employee.query.get_or_404(id)
+    emp = require_visible(Employee.query.get_or_404(id))
     before = snapshot_attrs(emp, *EMPLOYEE_SNAPSHOT_FIELDS)
     data = request.get_json(silent=True) or request.form
+    if "branch_id" in data and emp.role != "admin":
+        if not is_general_admin():
+            return jsonify({"error": "تغيير فرع الموظف متاح للمدير العام فقط"}), 403
+        from models.branch import Branch
+
+        branch = Branch.query.filter_by(id=data.get("branch_id"), is_active=True).first()
+        if not branch:
+            return jsonify({"error": "اختر فرعاً فعالاً"}), 400
+        emp.branch_id = branch.id
     name = str(data.get("name") or "").strip()
     if name:
         emp.name = name
     if "phone" in data:
         emp.phone = _normalize_employee_phone(data.get("phone"))
+    if "transfer_number" in data:
+        transfer = str(data.get("transfer_number") or "").strip()[:50]
+        emp.transfer_number = transfer or None
     if "salary" in data:
         emp.salary = int(data.get("salary") or 0)
     if "commission" in data:
@@ -469,7 +527,7 @@ def update_employee(id):
 @employees_bp.route("/update-agent/<int:id>", methods=["POST"])
 @permission_required("manage_employees")
 def update_delivery_agent(id):
-    agent = DeliveryAgent.query.get_or_404(id)
+    agent = require_visible(DeliveryAgent.query.get_or_404(id))
     data = request.get_json(silent=True) or {}
     name = str(data.get("name") or "").strip()
     if name:
@@ -495,7 +553,7 @@ def update_delivery_agent(id):
 @employees_bp.route("/reset-password/<int:id>", methods=["POST"])
 @permission_required("manage_employees")
 def reset_employee_password(id):
-    emp = Employee.query.get_or_404(id)
+    emp = require_visible(Employee.query.get_or_404(id))
     data = request.get_json(silent=True) or {}
     password = str(data.get("password") or "").strip()
     if len(password) < 4:
@@ -541,7 +599,7 @@ def add_agent_account():
 @employees_bp.route("/manage-pages/<int:employee_id>", methods=["POST"])
 @permission_required("manage_employees")
 def manage_employee_pages(employee_id):
-    employee = Employee.query.get_or_404(employee_id)
+    employee = require_visible(Employee.query.get_or_404(employee_id))
     data = request.json or {}
     page_ids = data.get("page_ids", [])
     try:
@@ -561,7 +619,7 @@ def manage_employee_pages(employee_id):
 @employees_bp.route("/pages/<int:employee_id>")
 @permission_required("manage_employees")
 def get_employee_pages(employee_id):
-    employee = Employee.query.get_or_404(employee_id)
+    employee = require_visible(Employee.query.get_or_404(employee_id))
     pages = employee.pages.all()
     return jsonify({"pages": [{"id": p.id, "name": p.name} for p in pages]})
 
@@ -569,18 +627,18 @@ def get_employee_pages(employee_id):
 @employees_bp.route("/view-orders/<int:employee_id>")
 @permission_required("manage_employees")
 def view_employee_orders(employee_id):
-    employee = Employee.query.get_or_404(employee_id)
-    orders = Invoice.query.filter_by(employee_id=employee_id).all()
+    employee = require_visible(Employee.query.get_or_404(employee_id))
+    orders = scope_query(Invoice.query, Invoice).filter_by(employee_id=employee_id).all()
     pages = employee.pages.all()
     page_stats = {}
     for page in pages:
-        page_orders = Invoice.query.filter_by(employee_id=employee_id, page_id=page.id).all()
+        page_orders = scope_query(Invoice.query, Invoice).filter_by(employee_id=employee_id, page_id=page.id).all()
         page_stats[page.id] = {
             "name": page.name,
             "orders_count": len(page_orders),
             "orders": [{"id": o.id, "total": o.total, "customer_name": o.customer_name} for o in page_orders],
         }
-    orders_without_page = Invoice.query.filter_by(employee_id=employee_id).filter(Invoice.page_id.is_(None)).all()
+    orders_without_page = scope_query(Invoice.query, Invoice).filter_by(employee_id=employee_id).filter(Invoice.page_id.is_(None)).all()
     return jsonify(
         {
             "employee": {"id": employee.id, "name": employee.name},
@@ -609,7 +667,7 @@ def page_warnings():
 @employees_bp.route("/page-warnings/update-phone/<int:employee_id>", methods=["POST"])
 @permission_required("manage_employees")
 def update_employee_phone_for_warnings(employee_id):
-    emp = Employee.query.get_or_404(employee_id)
+    emp = require_visible(Employee.query.get_or_404(employee_id))
     data = request.get_json(silent=True) or {}
     emp.phone = _normalize_employee_phone(data.get("phone"))
     db.session.commit()
@@ -629,6 +687,7 @@ def delete_employee(id):
     emp = Employee.query.get(id)
     if not emp:
         return jsonify({"error": "الموظف غير موجود"}), 404
+    require_visible(emp)
 
     current_id = session.get("user_id")
     if current_id and int(current_id) == emp.id:

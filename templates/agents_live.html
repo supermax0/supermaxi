@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}مراقبة المندوبين{% endblock %}
+{% block page_title %}مراقبة المندوبين على الخريطة{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  .live-wrap { display: grid; grid-template-columns: minmax(240px, 320px) 1fr; gap: 14px; min-height: 70vh; }
+  .live-side { background: var(--card, #fff); border: 1px solid var(--border-light, #e4eaf2); border-radius: 16px; overflow: auto; max-height: 75vh; }
+  .live-side h2 { margin: 0; padding: 14px 16px; font-size: 16px; border-bottom: 1px solid var(--border-light, #e4eaf2); }
+  .live-item { width: 100%; border: 0; border-bottom: 1px solid var(--border-light, #e4eaf2); background: transparent; text-align: start; padding: 12px 16px; cursor: pointer; }
+  .live-item.is-active { background: rgba(37, 99, 235, 0.08); }
+  .live-item strong { display: block; }
+  .live-item small { color: #667085; }
+  .live-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-inline-end: 6px; }
+  .live-dot.live { background: #059669; }
+  .live-dot.recent { background: #d97706; }
+  .live-dot.stale { background: #94a3b8; }
+  #liveMap { min-height: 70vh; border-radius: 16px; border: 1px solid var(--border-light, #e4eaf2); }
+  .live-empty { padding: 24px 16px; color: #667085; }
+  .live-legend { display: flex; gap: 12px; flex-wrap: wrap; margin: 0 0 12px; font-size: 13px; color: #667085; }
+  .live-toolbar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; align-items: center; }
+  @media (max-width: 900px) {
+    .live-wrap { grid-template-columns: 1fr; }
+    #liveMap { min-height: 55vh; }
+    .live-side { max-height: 280px; }
+  }
+</style>
+
+<div class="live-toolbar">
+  <a href="/agents" class="nav-crosslink"><i class="fas fa-arrow-right"></i> المندوبون</a>
+  <div class="live-legend">
+    <span><i class="live-dot live"></i> متصل (&lt; 45ث)</span>
+    <span><i class="live-dot recent"></i> حديث (&lt; 3د)</span>
+    <span><i class="live-dot stale"></i> قديم</span>
+  </div>
+  <button type="button" class="btn btn-primary" id="liveRefresh">تحديث الآن</button>
+</div>
+
+<div class="live-wrap">
+  <aside class="live-side">
+    <h2>المندوبون على الخريطة</h2>
+    <div id="liveList" class="live-empty">جاري التحميل…</div>
+  </aside>
+  <div id="liveMap"></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="/static/js/agents-live.js"></script>
+{% endblock %}

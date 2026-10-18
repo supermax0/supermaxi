@@ -1,0 +1,35 @@
+{% extends 'superadmin/leads/_base.html' %}
+{% from 'superadmin/leads/_macros.html' import kpi_card, empty_state, table_link %}
+{% set page_title = 'التجارب' %}
+{% set page_subtitle = 'تجارب Finora النشطة والمنتهية والمحوّلة' %}
+{% block leads_content %}
+<div class="lc-kpi-grid lc-kpi-grid-sm">
+    {{ kpi_card('نشطة', trials.counts.active, 'fa-flask', 'lc-kpi-info') }}
+    {{ kpi_card('تنتهي قريباً', trials.counts.ending_soon, 'fa-hourglass-half', 'lc-kpi-warn') }}
+    {{ kpi_card('منتهية', trials.counts.expired, 'fa-calendar-xmark') }}
+    {{ kpi_card('تحولت', trials.counts.converted, 'fa-check-circle', 'lc-kpi-success') }}
+</div>
+<section class="lc-card">
+    <header class="lc-card-header"><div><h2><i class="fas fa-flask lc-card-icon"></i> قائمة التجارب</h2></div></header>
+    <div class="lc-card-body" style="padding:0;">
+        <div class="lc-table-wrap" style="border:none;box-shadow:none;border-radius:0;">
+            <table class="lc-table">
+                <thead><tr><th>الشركة</th><th>البداية</th><th>النهاية</th><th>رقم Finora</th><th></th></tr></thead>
+                <tbody>
+                    {% for lead in trials.leads %}
+                    <tr>
+                        <td>{{ table_link(url_for('superadmin_leads.lead_detail', lead_id=lead.id), lead.business_name) }}</td>
+                        <td>{{ lead.trial_started_at[:10] if lead.trial_started_at else '—' }}</td>
+                        <td>{{ lead.trial_ends_at[:10] if lead.trial_ends_at else '—' }}</td>
+                        <td>{% if lead.finora_company_id %}<span class="lc-badge">{{ lead.finora_company_id }}</span>{% else %}—{% endif %}</td>
+                        <td><a href="{{ url_for('superadmin_leads.lead_detail', lead_id=lead.id) }}" class="lc-link-btn">عرض</a></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5">{{ empty_state('لا توجد تجارب حالياً', 'fa-flask') }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}

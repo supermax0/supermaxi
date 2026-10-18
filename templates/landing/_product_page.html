@@ -1,0 +1,189 @@
+{% set desktop = sm.get('desktop', {}) %}
+{% set tour = sm.get('product_tour', {}) %}
+{% set tour_content = tour.get('content') or {} %}
+{% set release = landing.desktop_release %}
+{% set primary_url = hero.button_primary_url or settings.trial_url or '/signup?plan=free&billing=monthly' %}
+{% set pricing_url = '#pricing' if sm.get('pricing', {}).is_visible is not sameas false else '/signup' %}
+{% if not free_plan_enabled and 'plan=free' in primary_url %}{% set primary_url = pricing_url %}{% endif %}
+{% set primary_label = (hero.button_primary_text or nav.trial_label) if free_plan_enabled else 'استكشف الخطط' %}
+{% set default_slides = [
+  {'key':'suppliers', 'label':'الموردون', 'title':'كل مورد. كل دفعة. صورة كاملة.', 'description':'اعرف مستحقات الموردين، راجع فواتير الشراء والدفعات، وانتقل من الملخص إلى تفاصيل الحساب في نفس النافذة.', 'image_url':'/static/images/landing/suppliers.png', 'platform':'تطبيق Windows'},
+  {'key':'inventory', 'label':'المخزون', 'title':'اعرف أين تحرّك كل منتج.', 'description':'تابع دخول المنتجات وخروجها، وابحث بالاسم أو الباركود، وراجع الكمية قبل الحركة وبعدها حسب الفرع والتاريخ.', 'image_url':'/static/images/landing/inventory.png', 'platform':'تطبيق Windows'},
+  {'key':'customers', 'label':'العملاء والأقساط', 'title':'تفاصيل العميل، أقرب إليك.', 'description':'اجمع بيانات العميل وفواتيره ومدفوعاته وأقساطه في ملف واحد، مع متابعة المستحقات وكشوف الحساب.', 'image_url':'/static/images/landing/customers.png', 'platform':'تطبيق Windows'},
+  {'key':'purchases', 'label':'المشتريات', 'title':'مشتريات منظّمة من أول صنف.', 'description':'رتّب قائمة الشراء حسب المورد، راجع الكميات والتكلفة وطريقة الدفع، وحدد ما تريد تنفيذه.', 'image_url':'/static/images/landing/purchases.png', 'platform':'نسخة الويب'},
+  {'key':'offline', 'label':'المزامنة', 'title':'حالة الاتصال واضحة أمامك.', 'description':'راجع البيانات المحفوظة وسجل المزامنة والعمليات التي تحتاج متابعة. تتوفر وظائف محددة دون اتصال حسب إعدادات حسابك وتجهيز الجهاز.', 'image_url':'/static/images/landing/offline.png', 'platform':'تطبيق Windows'}
+] %}
+{% set slides = tour_content.get('items') or default_slides %}
+{% set hero_content = hero.get('content') or {} %}
+{% set hero_image = hero.image_url if hero.image_url and hero.image_url.split('?')[0] not in legacy_logos + ['/static/image.png'] else slides[0].image_url %}
+{% set desktop_content = desktop.get('content') or {} %}
+{% set footer = sm.get('footer', {}) %}
+{% macro icon(name) -%}<svg class="fp-icon" width="20" height="20" aria-hidden="true"><use href="#fp-{{ name }}"></use></svg>{%- endmacro %}
+{% macro shot(src, alt, eager=false) -%}
+<a class="fp-shot" href="{{ src }}" data-lightbox aria-label="تكبير الصورة: {{ alt }}">
+  <img src="{{ src }}" alt="{{ alt }}" width="1920" height="1250" {% if eager %}fetchpriority="high" loading="eager"{% else %}loading="lazy" decoding="async"{% endif %}>
+  <span class="fp-expand">{{ icon('expand') }} تكبير الصورة</span>
+</a>
+{%- endmacro %}
+<body class="landing finora-product">
+<svg class="fp-symbols" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
+  <symbol id="fp-arrow" viewBox="0 0 24 24"><path d="M19 12H5m6-6-6 6 6 6"/></symbol>
+  <symbol id="fp-check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+  <symbol id="fp-monitor" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="13" rx="2"/><path d="M8 21h8m-4-5v5"/></symbol>
+  <symbol id="fp-globe" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><path d="M3 12h18"/></symbol>
+  <symbol id="fp-box" viewBox="0 0 24 24"><path d="m3 7 9-4 9 4v10l-9 4-9-4V7Zm0 0 9 5 9-5m-9 5v9M7 5l9 5"/></symbol>
+  <symbol id="fp-download" viewBox="0 0 24 24"><path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/></symbol>
+  <symbol id="fp-expand" viewBox="0 0 24 24"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></symbol>
+  <symbol id="fp-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="fp-close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+  <symbol id="fp-users" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M2 21v-3a7 7 0 0 1 14 0v3m0-18a4 4 0 0 1 0 8m3 3a6 6 0 0 1 3 5v2"/></symbol>
+  <symbol id="fp-receipt" viewBox="0 0 24 24"><path d="M5 3h14v18l-3-2-4 2-4-2-3 2V3Zm4 5h6m-6 4h6"/></symbol>
+  <symbol id="fp-chart" viewBox="0 0 24 24"><path d="M4 3v18h17M8 16v-4m5 4V8m5 8V5"/></symbol>
+  <symbol id="fp-shield" viewBox="0 0 24 24"><path d="m12 3 9 4v6c0 4-9 8-9 8s-9-4-9-8V7l9-4Z"/><path d="m8 12 3 3 5-6"/></symbol>
+  <symbol id="fp-spark" viewBox="0 0 24 24"><path d="m12 3 2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5L12 3Z"/></symbol>
+</defs></svg>
+<a class="fp-skip" href="#main-content">تخطّ إلى المحتوى</a>
+{% if preview_mode %}<div class="fp-preview">معاينة المسودة — تظهر التغييرات للزوار بعد النشر من لوحة الإدارة.</div>{% endif %}
+<header class="fp-header">
+  <nav class="fp-nav fp-container" aria-label="التنقل الرئيسي">
+    <a class="fp-brand" href="/" aria-label="فينورا — الرئيسية"><img src="{{ landing_logo_url }}" width="38" height="38" alt=""><span dir="ltr">FINORA<span class="fp-brand-dot">.</span></span></a>
+    <div class="fp-nav-links">
+      {% if tour.is_visible is not sameas false %}<a href="#product">اكتشف فينورا</a>{% endif %}
+      {% if sm.get('features', {}).is_visible is not sameas false %}<a href="#features">المزايا</a>{% endif %}
+      {% if desktop.is_visible is not sameas false %}<a href="#desktop">تطبيق Windows</a>{% endif %}
+      {% if sm.get('pricing', {}).is_visible is not sameas false %}<a href="#pricing">الأسعار</a>{% endif %}
+    </div>
+    <div class="fp-nav-actions"><a class="fp-login" href="{{ settings.login_url or '/login' }}">{{ nav.login_label }}</a><a class="fp-btn fp-btn-small" href="{{ primary_url }}">{{ primary_label }} {{ icon('arrow') }}</a><button class="fp-menu" id="fpMenu" aria-controls="fpMobileNav" aria-expanded="false" aria-label="فتح قائمة التنقل">{{ icon('menu') }}</button></div>
+  </nav>
+  <nav id="fpMobileNav" class="fp-mobile-nav" aria-label="التنقل على الهاتف" hidden>
+    {% if tour.is_visible is not sameas false %}<a href="#product">اكتشف فينورا</a>{% endif %}
+    {% if sm.get('features', {}).is_visible is not sameas false %}<a href="#features">المزايا</a>{% endif %}
+    {% if desktop.is_visible is not sameas false %}<a href="#desktop">تطبيق Windows</a>{% endif %}
+    {% if sm.get('pricing', {}).is_visible is not sameas false %}<a href="#pricing">الأسعار</a>{% endif %}
+    <a href="{{ settings.login_url or '/login' }}">{{ nav.login_label }}</a>
+  </nav>
+</header>
+<main id="main-content">
+{% if hero.is_visible is not sameas false %}
+<section class="fp-hero">
+  <div class="fp-container">
+    <div class="fp-hero-copy">
+      <span class="fp-eyebrow"><span class="fp-status-dot"></span> {{ hero.subtitle or 'مصمم للشركات والمتاجر العراقية' }}</span>
+      <h1>{% if hero.title and hero.title != 'فينورا — نظام إدارة ومحاسبة ذكي لشركتك' %}{{ hero.title }}{% else %}كل تفاصيل شغلك.<br><span>في مكانٍ واحد.</span>{% endif %}</h1>
+      <p>{{ hero_content.get('intro') or (hero.description if hero.description and not hero.description.startswith('تابع المبيعات، الطلبات، المخزون، شركات التوصيل،') else 'مبيعاتك، مخزونك وحساباتك بصورة أوضح. فينورا يجمع عملياتك اليومية في نظام عربي متكامل، على الويب وتطبيق Windows.') }}</p>
+      <div class="fp-actions"><a class="fp-btn" href="{{ primary_url }}">{{ primary_label }} {{ icon('arrow') }}</a>{% if desktop.is_visible is not sameas false %}<a class="fp-btn fp-btn-outline" href="#desktop">{{ icon('monitor') }} اكتشف نسخة الديسكتوب</a>{% endif %}</div>
+      <div class="fp-hero-notes"><span>{{ icon('check') }} واجهة عربية</span><span>{{ icon('check') }} ويب + Windows</span><span>{{ icon('check') }} صلاحيات لفريقك</span></div>
+    </div>
+    <div class="fp-hero-stage">
+      <div class="fp-window-bar"><span class="fp-window-dots"><i></i><i></i><i></i></span><span dir="ltr">FINORA / YOUR BUSINESS, CONNECTED</span><span>{{ icon('monitor') }}</span></div>
+      {{ shot(hero_image, 'واجهة فينورا لإدارة الموردين والمشتريات والحسابات', true) }}
+      <div class="fp-stage-note"><span class="fp-status-dot"></span> من داخل تطبيق فينورا <span>•</span> بيانات توضيحية</div>
+    </div>
+    <div class="fp-capabilities" aria-label="مجالات العمل"><span>من أول عملية بيع… إلى آخر رقم في الحساب.</span><div><b>المبيعات</b><b>المخزون</b><b>المشتريات</b><b>العملاء</b><b>الحسابات</b></div></div>
+  </div>
+</section>
+{% endif %}
+
+{% if tour.is_visible is not sameas false %}
+<section id="product" class="fp-section fp-tour">
+  <div class="fp-container">
+    <div class="fp-section-head"><div><span class="fp-eyebrow">01 / جولة داخل النظام</span><h2>{{ tour.title or 'شاهد التفاصيل التي تصنع الفرق.' }}</h2></div><p>{{ tour.description or 'تعرّف على واجهات فينورا الفعلية. اختر القسم، استكشف تفاصيله، وكبّر الصورة لتشاهدها بوضوح.' }}</p></div>
+    <div class="fp-tabs" role="tablist" aria-label="صور أقسام التطبيق">
+      {% for slide in slides %}<button type="button" id="fpTab{{ loop.index }}" role="tab" aria-selected="{{ 'true' if loop.first else 'false' }}" aria-controls="fpPanel{{ loop.index }}" tabindex="{{ '0' if loop.first else '-1' }}">{{ slide.label }}</button>{% endfor %}
+    </div>
+    {% for slide in slides %}
+    <div class="fp-tour-panel" id="fpPanel{{ loop.index }}" role="tabpanel" aria-labelledby="fpTab{{ loop.index }}" tabindex="0" {% if not loop.first %}hidden{% endif %}>
+      <div class="fp-tour-copy"><span class="fp-pill">{{ slide.platform }}</span><h3>{{ slide.title }}</h3><p>{{ slide.description }}</p><span class="fp-image-note">لقطة فعلية من التطبيق • بيانات توضيحية</span></div>
+      {{ shot(slide.image_url, slide.title) }}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+{% set features_section = sm.get('features', {}) %}
+{% if features_section.is_visible is not sameas false %}
+<section id="features" class="fp-section fp-features"><div class="fp-container">
+  <div class="fp-section-head"><div><span class="fp-eyebrow">02 / مساحة عمل متكاملة</span><h2>{{ features_section.title or 'أدوات مترابطة. يوم عمل أسهل.' }}</h2></div><p>{{ features_section.description or 'أعطِ كل مهمة مكانها، وكل فرد في فريقك الأدوات التي يحتاجها.' }}</p></div>
+  <div class="fp-feature-grid">
+    {% set feature_icons = ['receipt','box','chart','users','receipt','box','chart','shield','spark'] %}
+    {% for feature in landing.features or [] %}
+    <article class="fp-feature"><span class="fp-feature-icon">{{ icon(feature_icons[loop.index0 % 9]) }}</span><h3>{{ feature.title }}</h3><p>{{ feature.description }}</p>{% if feature.image_url %}<img loading="lazy" src="{{ feature.image_url }}" alt="{{ feature.title }}" width="480" height="300">{% endif %}</article>
+    {% endfor %}
+  </div>
+</div></section>
+{% endif %}
+
+{% if desktop.is_visible is not sameas false %}
+<section id="desktop" class="fp-section fp-desktop"><div class="fp-container">
+  <div class="fp-desktop-top"><div><span class="fp-eyebrow">03 / FINORA FOR WINDOWS</span><h2>{{ desktop.title or 'مساحة عملك، على سطح مكتبك.' }}</h2><p>{{ desktop.description or 'افتح فينورا كتطبيق مستقل. تنقّل بين المبيعات والمنتجات والمشتريات والطلبات، وتابع حسابات العملاء والموردين من واجهة عربية مصممة للعمل اليومي.' }}</p>
+    <div class="fp-actions">
+      {% if desktop.button_primary_url %}<a class="fp-btn fp-btn-light" href="{{ desktop.button_primary_url }}">{{ icon('download') }} {{ desktop.button_primary_text or 'تحميل تطبيق Windows' }}</a>
+      {% elif release %}<a class="fp-btn fp-btn-light" href="{{ release.url }}" download data-desktop-download>{{ icon('download') }} تحميل تطبيق Windows</a>
+      {% else %}<a class="fp-btn fp-btn-light" href="#contact">استفسر عن نسخة Windows {{ icon('arrow') }}</a>{% endif %}
+      <a class="fp-text-link" href="#desktop-start">خطوات البدء {{ icon('arrow') }}</a>
+    </div>
+    {% if release and not desktop.button_primary_url %}<p class="fp-release-meta" dir="ltr">{{ release.platform }} <span>·</span> v{{ release.version }} <span>·</span> {{ release.size_mb }} MB</p>{% elif desktop_content.get('release_label') %}<p class="fp-release-meta">{{ desktop_content.release_label }}</p>{% endif %}
+    <p class="fp-desktop-caption">تحميل البرنامج لا يغني عن حساب فينورا؛ تتحدد المزايا حسب الاشتراك والصلاحيات.</p>
+  </div><div class="fp-desktop-art"><div class="fp-desktop-orbit" aria-hidden="true"></div><div class="fp-app-icon"><img src="{{ landing_logo_url }}" alt="" width="96" height="96"></div><span dir="ltr">FINORA<br><small>DESKTOP WORKSPACE</small></span><div class="fp-platform-badge">{{ icon('monitor') }} Windows</div></div></div>
+  <div class="fp-desktop-details"><article>{{ icon('monitor') }}<h3>تطبيق مستقل</h3><p>نافذة خاصة لشغلك، تنقّل بين الأقسام، وبحث واختصارات للوصول إلى مهامك.</p></article><article>{{ icon('globe') }}<h3>مرتبط بحساب شركتك</h3><p>سجّل الدخول ببيانات حسابك، وتابع الأقسام المتاحة لك وفق صلاحياتك.</p></article><article>{{ icon('shield') }}<h3>وضوح عند انقطاع الاتصال</h3><p>بيانات محلية ووظائف محددة حسب التجهيز. راجع حالة المزامنة قبل اعتماد العمليات.</p></article></div>
+  <div id="desktop-start" class="fp-setup"><span>ابدأ بثلاث خطوات</span><ol><li><b>01</b> حمّل البرنامج وثبّته</li><li><b>02</b> أدخل عنوان خادم شركتك وسجّل الدخول</li><li><b>03</b> افتح أقسامك وابدأ العمل</li></ol></div>
+</div></section>
+{% endif %}
+
+{% set workflow = sm.get('workflow', {}) %}
+{% if workflow.is_visible is not sameas false %}
+<section id="workflow" class="fp-section"><div class="fp-container">
+  <div class="fp-section-head"><div><span class="fp-eyebrow">04 / من البداية إلى المتابعة</span><h2>كل خطوة مرتبطة باللي بعدها.</h2></div><p>{{ workflow.description or 'تابع رحلة الطلب والمخزون والتحصيل من داخل نظام واحد.' }}</p></div>
+  <ol class="fp-workflow">{% for step in (workflow.get('content') or {}).get('steps') or ['طلب','تجهيز','شحن','تسليم','تسوية','متابعة الأرباح'] %}<li><span>{{ '%02d'|format(loop.index) }}</span><h3>{{ step }}</h3></li>{% endfor %}</ol>
+  <div class="fp-audiences"><span>مساحة تناسب طريقة شغلك</span><p>المتاجر ونقاط البيع <i>·</i> البيع والتوزيع <i>·</i> فرق الطلبات والتوصيل <i>·</i> الإدارة والمحاسبة</p></div>
+</div></section>
+{% endif %}
+
+{% set modules = sm.get('modules', {}) %}
+{% set module_labels = {'POS':'نقطة البيع', 'Orders':'الطلبات', 'Inventory':'المخزون', 'Customers':'العملاء', 'Suppliers':'الموردون', 'Accounting':'الحسابات', 'Courier Settlement':'تسويات التوصيل', 'Reports':'التقارير', 'Employees':'الموظفون'} %}
+{% if modules.is_visible is not sameas false and landing.modules %}
+<section class="fp-module-section"><div class="fp-container"><div class="fp-module-heading"><span class="fp-eyebrow">تفاصيل أكثر لكل فريق</span><h2>{{ modules.title if modules.title and modules.title != 'موديلات النظام' else 'استكشف أقسام فينورا.' }}</h2></div><div class="fp-modules">
+{% for module in landing.modules %}<details><summary>{{ module_labels.get(module.name, module.name) }}<span>+</span></summary><p>{{ module.long_description or module.short_description }}</p>{% if module.screenshot_url %}{{ shot(module.screenshot_url, module.name) }}{% endif %}</details>{% endfor %}
+</div></div></section>
+{% endif %}
+
+{% set ai = sm.get('ai_assistant', {}) %}
+{% if ai.is_visible is not sameas false %}<section class="fp-container fp-ai"><div class="fp-ai-mark">{{ icon('spark') }}</div><div><span class="fp-eyebrow">أدوات إضافية حسب خطتك</span><h2>{{ ai.title or 'مساعدة ذكية داخل مساحة عملك.' }}</h2><p>{{ ai.description }}</p><small>توفر ميزات الذكاء الاصطناعي وحدود استخدامها يعتمد على الخطة. لا تشملها التجربة المجانية.</small></div><a class="fp-btn fp-btn-outline" href="#pricing">قارن الخطط {{ icon('arrow') }}</a></section>{% endif %}
+
+{% set video = sm.get('demo_video', {}) %}
+{% if video.is_visible is not sameas false and video.video_url %}<section class="fp-container fp-video-section"><h2>{{ video.title }}</h2><p>{{ video.description }}</p><button class="fp-btn" type="button" data-video-open data-video-url="{{ video.video_url }}">{{ video.button_primary_text or 'شاهد الفيديو' }}</button></section>{% endif %}
+
+{% set pricing = sm.get('pricing', {}) %}
+{% if pricing.is_visible is not sameas false %}
+<section id="pricing" class="fp-section fp-pricing"><div class="fp-container">
+  <div class="fp-centered"><span class="fp-eyebrow">05 / مساحة للنمو</span><h2>{{ pricing.title or 'اختر ما يناسب شغلك اليوم.' }}</h2><p>{{ pricing.description or 'قارن المزايا واختر الخطة المناسبة لفريقك.' }}</p></div>
+  {% if free_plan_enabled %}<div class="fp-trial"><div><span class="fp-pill">للمشتركين الجدد</span><h3>{{ landing.free_trial_days or 14 }} يوماً لتتعرف على فينورا.</h3><p>جرّب الميزات المشمولة في الخطة المجانية على شغلك. ميزات الذكاء الاصطناعي غير مشمولة.</p></div><a class="fp-btn" href="{{ primary_url }}">ابدأ التجربة المجانية {{ icon('arrow') }}</a></div>{% endif %}
+  <div class="fp-plans">{% for plan in landing.pricing or [] %}{% if free_plan_enabled or plan.slug != 'free' %}<article class="fp-plan {% if plan.is_popular %}fp-plan-featured{% endif %}">{% if plan.badge_text %}<span class="fp-plan-badge">{{ plan.badge_text }}</span>{% endif %}<h3>{{ plan.name }}</h3><p>{{ plan.description }}</p><div class="fp-price"><strong>{{ '{:,.0f}'.format(plan.price or 0) }}</strong> <span>{{ plan.currency }} / {{ plan.billing_period }}</span></div><ul>{% for feature in plan.features or [] %}<li>{{ icon('check') }} {{ feature }}</li>{% endfor %}</ul><a class="fp-btn {% if not plan.is_popular %}fp-btn-outline{% endif %}" href="{{ plan.cta_url }}">{{ plan.cta_text or 'اختر هذه الخطة' }} {{ icon('arrow') }}</a></article>{% endif %}{% endfor %}</div>
+  <p class="fp-pricing-note">المزايا المتاحة في الويب وتطبيق Windows تتحدد حسب الخطة والصلاحيات. راجع تفاصيل اشتراكك قبل البدء.</p>
+</div></section>
+{% endif %}
+
+{% set testimonials = sm.get('testimonials', {}) %}
+{% if testimonials.is_visible is not sameas false and (testimonials.get('content') or {}).get('verified') and landing.testimonials %}<section class="fp-section fp-container"><h2>{{ testimonials.title }}</h2><div class="fp-quotes">{% for item in landing.testimonials %}<blockquote><p>{{ item.quote }}</p><footer>{{ item.customer_name }} · {{ item.company_name }}</footer></blockquote>{% endfor %}</div></section>{% endif %}
+
+{% set faq = sm.get('faq', {}) %}
+{% if faq.is_visible is not sameas false %}<section id="faq" class="fp-section fp-container fp-faq"><div><span class="fp-eyebrow">قبل أن تبدأ</span><h2>{{ faq.title or 'إجابات على أسئلتك.' }}</h2><p>تعرّف على طريقة الوصول إلى فينورا واختيار النسخة المناسبة لعملك.</p></div><div class="fp-faq-list">
+  <details><summary>ما الفرق بين نسخة الويب وتطبيق Windows؟<span>+</span></summary><p>تفتح نسخة الويب من المتصفح، بينما تثبّت تطبيق Windows على جهازك وتربطه بخادم شركتك. الأقسام والعمليات المتاحة تعتمد على النسخة والخطة والصلاحيات.</p></details>
+  <details><summary>هل يعمل البرنامج دون إنترنت؟<span>+</span></summary><p>توجد وظائف محددة للعمل المحلي بعد تجهيز الجهاز وتنزيل البيانات المطلوبة. بعض العمليات تحتاج اتصالاً أو مخزوناً مخصصاً للجهاز، وتُراجع حالة المزامنة عند عودة الاتصال. لا يعني ذلك أن كل ميزات النظام تعمل دون إنترنت.</p></details>
+  <details><summary>هل تحميل تطبيق Windows مجاني؟<span>+</span></summary><p>يمكنك تنزيل ملف التثبيت من هذه الصفحة. استخدام النظام يحتاج حساب فينورا وخطة مناسبة؛ تحميل الملف وحده لا ينشئ اشتراكاً.</p></details>
+  {% for item in landing.faqs or [] %}{% if free_plan_enabled or 'مجاني' not in item.question %}<details><summary>{{ item.question }}<span>+</span></summary><p>{{ item.answer }}</p></details>{% endif %}{% endfor %}
+</div></section>{% endif %}
+
+{% set cta = sm.get('final_cta', {}) %}
+{% if cta.is_visible is not sameas false %}<section id="contact" class="fp-final"><div class="fp-container"><span class="fp-eyebrow">خطوتك القادمة</span><h2>{{ cta.title or 'خلّ شغلك أوضح، من اليوم.' }}</h2><p>{{ cta.description or 'ابدأ مع فينورا، واستكشف مساحة عمل تجمع تفاصيل مشروعك.' }}</p><div class="fp-actions"><a class="fp-btn" href="{{ primary_url }}">{{ primary_label }} {{ icon('arrow') }}</a>{% if settings.whatsapp_enabled and settings.whatsapp_number %}{% set wa_number = settings.whatsapp_number|replace('+','')|replace(' ','')|replace('-','') %}<a class="fp-btn fp-btn-outline" href="https://wa.me/{{ wa_number }}?text={{ (settings.whatsapp_message or 'مرحباً، أريد التعرف على فينورا ونسخة Windows.')|urlencode }}" target="_blank" rel="noopener">تواصل معنا</a>{% elif settings.contact_email %}<a class="fp-btn fp-btn-outline" href="mailto:{{ settings.contact_email }}">تواصل معنا</a>{% endif %}</div></div></section>{% endif %}
+</main>
+<footer class="fp-footer"><div class="fp-container"><div class="fp-footer-top"><a class="fp-brand" href="/"><img src="{{ landing_logo_url }}" alt="" width="32" height="32"><span dir="ltr">FINORA.</span></a><p>{{ footer.description or 'مساحة واحدة لإدارة المبيعات والمخزون والحسابات.' }}</p><div>{% for link in (footer.get('content') or {}).get('links') or [] %}<a href="{{ link.url }}">{{ link.label }}</a>{% endfor %}</div></div><div class="fp-footer-bottom"><span>فينورا — نظام إدارة الأعمال</span><span dir="ltr">Built around your business.</span></div></div></footer>
+<dialog id="fpLightbox" class="fp-lightbox" aria-label="عرض صورة التطبيق"><div class="fp-lightbox-toolbar"><span id="fpLightboxCaption"></span><button type="button" class="fp-icon-button" aria-label="إغلاق الصورة">{{ icon('close') }}</button></div><img alt="" id="fpLightboxImage"></dialog>
+<div class="cms-video-modal" id="videoModal" hidden><button type="button" id="videoClose" aria-label="إغلاق الفيديو">{{ icon('close') }}</button><div id="videoHost"></div></div>
+{% include 'landing/_chat_widget.html' %}
+{% include 'landing/_scripts.html' %}
+<script src="{{ url_for('static', filename='js/landing_cms.js') }}"></script>
+<script src="{{ url_for('static', filename='js/landing_product.js', v='20261018') }}" defer></script>
+</body>
+</html>

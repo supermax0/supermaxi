@@ -1,10 +1,13 @@
 {% extends "base.html" %}
 {% block title %}كشف {{ report.report_number }} - {{ report.shipping_company_name }}{% endblock %}
-{% block page_title %}📋 كشف {{ report.report_number }}{% endblock %}
+{% block page_title %}<i class="fas fa-clipboard-list" aria-hidden="true"></i> كشف {{ report.report_number }}{% endblock %}
 {% block content %}
 
 <!-- مكتبة الباركود -->
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+<script src="/static/js/stock-trace.js?v=20260803a"></script>
+<link rel="stylesheet" href="/static/css/stock-trace.css?v=20260803a">
+<script type="application/json" id="stockTraceMap">{{ (stock_trace_map or {})|tojson }}</script>
 
 <style>
 :root {
@@ -13,65 +16,83 @@
   --report-card: var(--card);
   --report-text: var(--text);
   --report-muted: var(--text-muted);
+  --report-border: var(--border, rgba(148, 163, 184, 0.2));
+  --report-surface: var(--surface, var(--card));
+  --report-soft: var(--surface-soft, rgba(148, 163, 184, 0.08));
 }
 
-.shipping-report-view-page{
+.shipping-report-view-page {
   color: var(--report-text);
+  display: grid;
+  gap: 16px;
 }
 
 .shipping-report-view-page .report-header {
-  background: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9));
-  border-radius: 20px;
-  padding: 24px;
-  margin-bottom: 24px;
-  border: 1px solid rgba(59, 130, 246, 0.1);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  background: var(--report-surface);
+  border-radius: 18px;
+  padding: 18px 20px;
+  border: 1px solid var(--report-border);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+}
+
+.shipping-report-view-page .report-header h2 {
+  margin: 0 0 14px;
+  font-size: 18px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .shipping-report-view-page .report-header .info {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-top: 20px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
 }
 
 .shipping-report-view-page .report-header .info-item {
-  background: rgba(15, 23, 42, 0.6);
-  padding: 16px;
+  background: var(--report-soft);
+  padding: 12px 14px;
   border-radius: 12px;
+  border: 1px solid transparent;
+  min-width: 0;
 }
 
 .shipping-report-view-page .report-header .info-item .label {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--report-muted);
   margin-bottom: 6px;
+  font-weight: 700;
 }
 
 .shipping-report-view-page .report-header .info-item .value {
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 800;
   color: var(--report-text);
+  line-height: 1.35;
+  word-break: break-word;
 }
 
-.shipping-report-view-page .report-header .info-item .value[style*="color: var(--report-success)"] {
-  color: var(--report-success) !important;
+.shipping-report-view-page .report-header .info-item .value.is-money {
+  color: var(--report-success);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
 .shipping-report-view-page .report-actions {
   display: flex;
-  gap: 12px;
-  margin-bottom: 24px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
 .shipping-report-view-page .btn {
-  padding: 12px 24px;
+  padding: 10px 18px;
   border-radius: 12px;
   border: none;
   cursor: pointer;
-  font-size: 15px;
-  font-weight: 600;
-  transition: all 0.3s ease;
+  font-size: 14px;
+  font-weight: 700;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
@@ -79,96 +100,391 @@
 }
 
 .shipping-report-view-page .btn-primary {
-  background: linear-gradient(135deg, var(--report-primary), #2563eb);
-  color: white;
+  background: var(--report-primary);
+  color: #fff;
 }
 
 .shipping-report-view-page .btn-success {
-  background: linear-gradient(135deg, var(--report-success), #059669);
-  color: white;
+  background: var(--report-success);
+  color: #fff;
 }
 
 .shipping-report-view-page .btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.14);
 }
 
 .shipping-report-view-page .report-table {
-  background: linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9));
-  border-radius: 20px;
-  padding: 24px;
-  overflow-x: auto;
-  border: 1px solid rgba(59, 130, 246, 0.1);
+  background: var(--report-surface);
+  border-radius: 18px;
+  padding: 14px;
+  overflow: auto;
+  border: 1px solid var(--report-border);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
 }
 
 .shipping-report-view-page .report-table table {
   width: 100%;
-  border-collapse: collapse;
+  min-width: 1180px;
+  border-collapse: separate;
+  border-spacing: 0;
 }
 
 .shipping-report-view-page .report-table th {
-  padding: 14px 12px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 12px 10px;
+  text-align: right;
+  background: var(--report-soft);
+  color: var(--report-muted);
+  font-weight: 800;
+  font-size: 12px;
+  border-bottom: 1px solid var(--report-border);
+  white-space: nowrap;
+}
+
+.shipping-report-view-page .report-table th.is-center,
+.shipping-report-view-page .report-table td.is-center {
   text-align: center;
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
-  color: var(--report-text);
-  font-weight: 700;
-  font-size: 14px;
-  border-bottom: 2px solid rgba(59, 130, 246, 0.3);
-  letter-spacing: 0.5px;
+}
+
+.shipping-report-view-page .report-table th.is-money,
+.shipping-report-view-page .report-table td.is-money {
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .shipping-report-view-page .report-table td {
-  padding: 14px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 14px;
-  text-align: center;
+  padding: 12px 10px;
+  border-bottom: 1px solid color-mix(in srgb, var(--report-border) 80%, transparent);
+  font-size: 13px;
+  text-align: right;
+  vertical-align: top;
+  color: var(--report-text);
 }
 
 .shipping-report-view-page .report-table tbody tr:nth-child(even) {
-  background: rgba(15, 23, 42, 0.4);
+  background: color-mix(in srgb, var(--report-soft) 70%, transparent);
 }
 
-.shipping-report-view-page .report-table tr:hover {
-  background: rgba(59, 130, 246, 0.15) !important;
-  transform: scale(1.002);
-  transition: all 0.2s ease;
+.shipping-report-view-page .report-table tbody tr:hover {
+  background: color-mix(in srgb, var(--report-primary) 8%, transparent);
+}
+
+.shipping-report-view-page .order-id-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.shipping-report-view-page .order-id-text {
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.shipping-report-view-page .customer-cell {
+  display: grid;
+  gap: 4px;
+  min-width: 120px;
+}
+
+.shipping-report-view-page .customer-cell__name {
+  font-weight: 800;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.shipping-report-view-page .customer-cell__phone {
+  direction: ltr;
+  unicode-bidi: plaintext;
+  font-family: ui-monospace, "Courier New", monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--report-muted);
+}
+
+.shipping-report-view-page .customer-cell__city {
+  display: inline-flex;
+  width: fit-content;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--report-primary) 10%, transparent);
+  color: var(--report-primary);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.shipping-report-view-page .address-cell {
+  max-width: 220px;
+  min-width: 160px;
+}
+
+.shipping-report-view-page .address-cell__text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: 1.45;
+  font-size: 12px;
+  color: var(--report-text);
+  white-space: normal;
+  word-break: break-word;
+}
+
+.shipping-report-view-page .address-cell details {
+  margin-top: 4px;
+}
+
+.shipping-report-view-page .address-cell summary {
+  cursor: pointer;
+  color: var(--report-primary);
+  font-size: 11px;
+  font-weight: 700;
+  list-style: none;
+}
+
+.shipping-report-view-page .address-cell summary::-webkit-details-marker {
+  display: none;
+}
+
+.shipping-report-view-page .address-cell__full {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--report-soft);
+  font-size: 12px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.shipping-report-view-page .stock-trace-cell {
+  max-width: 180px;
+}
+
+.shipping-report-view-page .stock-trace-cell__label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--report-text);
+}
+
+.shipping-report-view-page .note-cell {
+  max-width: 160px;
+  min-width: 110px;
+}
+
+.shipping-report-view-page .note-pill {
+  padding: 7px 9px;
+  border-radius: 10px;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  color: #b45309;
+  font-weight: 700;
+  font-size: 12px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.shipping-report-view-page .money-cell {
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.shipping-report-view-page .money-cell.is-paid {
+  color: #2563eb;
+}
+
+.shipping-report-view-page .money-cell.is-remaining {
+  color: var(--report-success);
+}
+
+.shipping-report-view-page .status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  white-space: nowrap;
+  line-height: 1.2;
+}
+
+.shipping-report-view-page .status-badge.is-shipping,
+.shipping-report-view-page .status-badge.is-pending {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+}
+
+.shipping-report-view-page .status-badge.is-delivered,
+.shipping-report-view-page .status-badge.is-paid {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.shipping-report-view-page .status-badge.is-unpaid {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+
+.shipping-report-view-page .status-badge.is-canceled {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+
+.shipping-report-view-page .status-badge.is-delayed {
+  background: rgba(245, 158, 11, 0.14);
+  color: #d97706;
+}
+
+.shipping-report-view-page .status-badge.is-neutral {
+  background: var(--report-soft);
+  color: var(--report-muted);
+}
+
+.shipping-report-view-page .muted-dash {
+  color: var(--report-muted);
+}
+
+.shipping-report-view-page .date-cell {
+  white-space: nowrap;
+  font-size: 12px;
+  color: var(--report-muted);
+  font-weight: 600;
+}
+
+.shipping-report-view-page .total-summary-row td {
+  background: color-mix(in srgb, var(--report-success) 10%, var(--report-surface));
+  border-top: 2px solid color-mix(in srgb, var(--report-success) 35%, transparent);
+  border-bottom: none;
+  padding: 14px 12px;
+  vertical-align: middle;
+}
+
+.shipping-report-view-page .total-summary-row .total-label {
+  text-align: right;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.shipping-report-view-page .total-summary-row .total-amount {
+  color: var(--report-success);
+  font-size: 16px;
+  font-weight: 900;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+}
+
+.shipping-report-view-page .report-footer-panel {
+  margin-top: 14px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  text-align: center;
+}
+
+.shipping-report-view-page .report-footer-panel.is-ready {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.22);
+}
+
+.shipping-report-view-page .report-footer-panel.is-done {
+  background: rgba(100, 116, 139, 0.08);
+  border: 1px solid rgba(100, 116, 139, 0.2);
+}
+
+.shipping-report-view-page .report-footer-panel.is-wait {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.22);
+}
+
+.shipping-report-view-page .report-footer-panel.is-notes {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  text-align: right;
+}
+
+.shipping-report-view-page .report-footer-panel p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.shipping-report-view-page .report-footer-panel.is-ready p {
+  color: #059669;
+}
+
+.shipping-report-view-page .report-footer-panel.is-done p {
+  color: #64748b;
+}
+
+.shipping-report-view-page .report-footer-panel.is-wait p {
+  color: #d97706;
+}
+
+.shipping-report-view-page .report-footer-panel .hint {
+  margin-top: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  opacity: 0.9;
+}
+
+.shipping-report-view-page .report-footer-panel .btn {
+  margin-top: 12px;
+  font-size: 15px;
+  padding: 12px 24px;
 }
 
 .shipping-report-view-page .order-details {
-  background: rgba(15, 23, 42, 0.4);
+  background: var(--report-soft);
   padding: 12px;
   border-radius: 8px;
   margin-top: 8px;
 }
 
+@media (max-width: 1100px) {
+  .shipping-report-view-page .report-header .info {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .shipping-report-view-page .report-header .info {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 480px) {
+  .shipping-report-view-page .report-header .info {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Light mode readability */
 :root[data-theme="light"] .shipping-report-view-page .report-header,
 :root[data-theme="light"] .shipping-report-view-page .report-table {
-  background: rgba(255, 255, 255, 0.92);
-  border-color: rgba(2, 6, 23, 0.08);
-  box-shadow: 0 16px 34px rgba(2, 6, 23, 0.08);
+  background: #fff;
+  border-color: rgba(15, 23, 42, 0.08);
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.06);
 }
 
-:root[data-theme="light"] .shipping-report-view-page .report-header .info-item {
-  background: rgba(241, 245, 249, 0.90);
-}
-
+:root[data-theme="light"] .shipping-report-view-page .report-header .info-item,
 :root[data-theme="light"] .shipping-report-view-page .report-table th {
-  background: rgba(241, 245, 249, 0.96);
-  color: rgba(15, 23, 42, 0.80);
-  border-bottom-color: rgba(2, 6, 23, 0.10);
-}
-
-:root[data-theme="light"] .shipping-report-view-page .report-table td {
-  border-bottom-color: rgba(2, 6, 23, 0.08);
+  background: #f8fafc;
 }
 
 :root[data-theme="light"] .shipping-report-view-page .report-table tbody tr:nth-child(even) {
-  background: rgba(2, 6, 23, 0.03);
+  background: #fafbfc;
 }
 
-:root[data-theme="light"] .shipping-report-view-page .report-table tr:hover {
-  background: rgba(37, 99, 235, 0.05) !important;
+:root[data-theme="light"] .shipping-report-view-page .note-pill {
+  color: #92400e;
 }
 
 @media print {
@@ -252,6 +568,7 @@
   .report-table table {
     border: 1px solid #000 !important;
     box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+    min-width: 0 !important;
   }
   
   .report-table th {
@@ -262,6 +579,7 @@
     font-weight: 700 !important;
     font-size: 13px !important;
     text-align: center !important;
+    position: static !important;
   }
   
   .report-table td {
@@ -280,14 +598,21 @@
   .report-table tbody tr:hover {
     background: #e3f2fd !important;
   }
+
+  .address-cell__text {
+    -webkit-line-clamp: unset !important;
+    display: block !important;
+    overflow: visible !important;
+  }
+
+  .address-cell summary,
+  .address-cell details {
+    display: none !important;
+  }
   
   .order-id-text {
     font-weight: 700 !important;
     color: #1a1a1a !important;
-  }
-  
-  /* إخفاء رقم الطلب النصي وإظهار الباركود فقط عند الطباعة */
-  .order-id-text {
     display: none !important;
   }
   
@@ -300,36 +625,16 @@
     height: 45px !important;
   }
   
-  /* تحسين صف الإجمالي */
-  tr[style*="background: rgba(59, 130, 246, 0.1)"] {
-    background: linear-gradient(135deg, #e8f5e9, #c8e6c9) !important;
-  }
-  
-  tr[style*="background: rgba(59, 130, 246, 0.1)"] td {
+  .total-summary-row td {
+    background: #e8f5e9 !important;
     border-top: 3px solid #4caf50 !important;
-    border-bottom: 3px solid #4caf50 !important;
-    padding: 15px 8px !important;
-    font-size: 15px !important;
-    font-weight: 700 !important;
     color: #1b5e20 !important;
   }
   
-  tr[style*="background: rgba(59, 130, 246, 0.1)"] td:first-child {
-    border-right: 3px solid #4caf50 !important;
-  }
-  
-  /* تحسين المبالغ */
-  td[style*="color: var(--report-success)"] {
-    color: #1b5e20 !important;
-    font-weight: 700 !important;
-    font-size: 13px !important;
-  }
-  
-  /* إخفاء العناصر الإدارية */
   .no-print,
   button,
   a[href],
-  div[style*="margin-top: 24px"][style*="padding: 20px"] {
+  .report-footer-panel {
     display: none !important;
   }
 }
@@ -342,7 +647,7 @@
 
 <div class="shipping-report-view-page">
 <div class="report-header">
-  <h2>🚚 شركة النقل: {{ report.shipping_company_name }}</h2>
+  <h2><i class="fas fa-truck" aria-hidden="true"></i> شركة النقل: {{ report.shipping_company_name }}</h2>
   <div class="info">
     <div class="info-item">
       <div class="label">رقم الكشف</div>
@@ -354,7 +659,7 @@
     </div>
     <div class="info-item">
       <div class="label">{% if display_total_label == 'مجموع الواصل' %}مجموع الواصل{% else %}إجمالي المبلغ{% endif %}</div>
-      <div class="value" style="color: var(--report-success);">{{ "{:,.0f}".format(display_total_amount) }} د.ع</div>
+      <div class="value is-money">{{ "{:,.0f}".format(display_total_amount) }} د.ع</div>
     </div>
     <div class="info-item">
       <div class="label">التاريخ</div>
@@ -368,18 +673,21 @@
 </div>
 
 <div class="report-actions no-print">
-  <button class="btn btn-primary" onclick="window.print()">🖨️ طباعة</button>
+  <a class="btn btn-primary" href="{{ print_url or ('/delivery/report/' ~ report.id ~ '/print?autoprint=1') }}" target="_blank" rel="noopener">
+    <i class="fas fa-print" aria-hidden="true"></i> طباعة مع المنتجات
+  </a>
+  <button class="btn btn-success" type="button" onclick="window.print()"><i class="fas fa-table" aria-hidden="true"></i> طباعة الجدول فقط</button>
   {% if current_role == "admin" %}
-    <a href="{{ reports_back_url or '/shipping' }}" class="btn btn-success">← العودة للأرشيف</a>
+    <a href="{{ reports_back_url or '/shipping' }}" class="btn btn-success"><i class="fas fa-arrow-right" aria-hidden="true"></i> العودة للأرشيف</a>
   {% else %}
-  <a href="/delivery/archive" class="btn btn-success">← العودة للأرشيف</a>
+  <a href="/delivery/archive" class="btn btn-success"><i class="fas fa-arrow-right" aria-hidden="true"></i> العودة للأرشيف</a>
   {% endif %}
 </div>
 
 {% if current_role == "admin" %}
 <!-- Modal for Execute Report -->
 <div id="executeReportModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(5px); z-index: 9999; padding: 20px; align-items: center; justify-content: center;">
-  <div style="background: linear-gradient(145deg, rgba(17, 24, 39, 0.98), rgba(11, 18, 32, 0.98)); border-radius: 20px; padding: 32px; max-width: 500px; width: 100%; border: 1px solid rgba(59, 130, 246, 0.3); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);">
+  <div style="background: linear-gradient(145deg, rgba(17, 24, 39, 0.98), rgba(11, 18, 32, 0.98)); border-radius: 20px; padding: 32px; max-width: 560px; width: 100%; border: 1px solid rgba(59, 130, 246, 0.3); box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5); max-height: 90vh; overflow: auto;">
     <h2 style="color: #f1f5f9; font-size: 24px; margin: 0 0 24px 0; text-align: center;">تنفيذ الكشف</h2>
     <div style="margin-bottom: 24px; padding: 20px; background: rgba(16, 185, 129, 0.1); border-radius: 12px; border: 1px solid rgba(16, 185, 129, 0.3);">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
@@ -387,6 +695,23 @@
         <span id="deliveredAmountDisplay" style="color: #10b981; font-size: 24px; font-weight: 700;">0 د.ع</span>
       </div>
     </div>
+    {% set ns_notes = namespace(count=0) %}
+    {% for order in orders_data %}
+      {% if order.agent_note %}{% set ns_notes.count = ns_notes.count + 1 %}{% endif %}
+    {% endfor %}
+    {% if ns_notes.count > 0 %}
+    <div style="margin-bottom: 20px; padding: 14px 16px; background: rgba(245, 158, 11, 0.1); border-radius: 12px; border: 1px solid rgba(245, 158, 11, 0.28); text-align: right;">
+      <div style="color:#f59e0b;font-weight:800;margin-bottom:10px;">📝 ملاحظات المندوب</div>
+      {% for order in orders_data %}
+        {% if order.agent_note %}
+        <div style="padding:8px 0;border-top:1px solid rgba(245,158,11,0.18);color:#f1f5f9;font-size:14px;line-height:1.5;">
+          <strong style="color:#fbbf24;">#{{ order.id }}</strong>
+          — {{ order.agent_note }}
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
     <div style="margin-bottom: 24px;">
       <label style="display: block; color: #f1f5f9; font-size: 16px; margin-bottom: 8px; font-weight: 600;">المصروف (الكروة):</label>
       <input type="number" id="expenseAmountInput" min="0" step="100" placeholder="أدخل مبلغ الكروة" style="width: 100%; padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(15,23,42,0.6); color: #f1f5f9; font-size: 16px; font-weight: 600;">
@@ -402,6 +727,7 @@
 <script>
 let currentReportId = null;
 const reportHasStockReturn = {{ 'true' if has_stock_return else 'false' }};
+const reportReturnsToOriginalBranch = {{ 'true' if report.report_number and report.report_number.startswith('AGT-') else 'false' }};
 
 function executeReport(reportId) {
   currentReportId = reportId;
@@ -441,7 +767,7 @@ function confirmExecuteReport() {
   const expenseAmount = document.getElementById('expenseAmountInput').value;
   const expenseAmountNum = parseFloat(expenseAmount) || 0;
 
-  if (reportHasStockReturn) {
+  if (reportHasStockReturn && !reportReturnsToOriginalBranch) {
     const reportId = currentReportId;
     document.getElementById('executeReportModal').style.display = 'none';
     openReturnStockModal({
@@ -454,6 +780,7 @@ function confirmExecuteReport() {
     return;
   }
 
+  // كشوف المندوب تعيد كل صنف تلقائياً إلى نفس الفرع الذي خُصم منه.
   submitReportExecution(currentReportId, expenseAmountNum, null);
 }
 
@@ -500,66 +827,132 @@ document.addEventListener('DOMContentLoaded', function() {
   <table>
     <thead>
       <tr>
-        <th>#</th>
-        <th>رقم الطلب</th>
+        <th class="is-center">#</th>
+        <th class="is-center">الطلب</th>
         <th>الزبون</th>
-        <th>الهاتف</th>
-        <th>المحافظة</th>
         <th>العنوان</th>
-        <th>الإجمالي</th>
-        <th>المدفوع مسبقاً</th>
-        <th>الباقي</th>
-        <th>حالة الطلب الحالية</th>
-        <th>حالة الدفع</th>
+        <th>حركة المخزون</th>
+        <th>ملاحظة المندوب</th>
+        <th class="is-money">الإجمالي</th>
+        <th class="is-money">المدفوع مسبقاً</th>
+        <th class="is-money">الباقي</th>
+        <th class="is-center">حالة الطلب</th>
+        <th class="is-center">حالة الدفع</th>
         {% if current_role == "admin" and not report.is_executed and status_selections %}
-        <th>الحالة المحددة</th>
+        <th class="is-center">الحالة المحددة</th>
         {% endif %}
-        <th>التاريخ</th>
+        <th class="is-center">التاريخ</th>
       </tr>
     </thead>
     <tbody>
       {% for order in orders_data %}
+      {% set addr = order.customer_address or order.address or "" %}
+      {% set st = (order.status or "")|string %}
+      {% set pay = (order.payment_status or "")|string %}
+      {% set st_l = st|lower %}
+      {% set pay_l = pay|lower %}
       <tr>
-        <td>{{ loop.index }}</td>
-        <td>
-          <div style="display: flex; flex-direction: column; align-items: center; gap: 5px;">
-            <span class="order-id-text"><strong>#{{ order.id }}</strong></span>
+        <td class="is-center">{{ loop.index }}</td>
+        <td class="is-center">
+          <div class="order-id-cell">
+            <span class="order-id-text">#{{ order.id }}</span>
             <svg class="order-id-barcode" id="barcode-{{ order.id }}"></svg>
           </div>
         </td>
-        <td><strong>{{ order.customer_name }}</strong></td>
-        <td style="direction: ltr; text-align: center; font-family: 'Courier New', monospace; font-weight: 600;">{{ order.customer_phone }}</td>
-        <td>{{ order.customer_city }}</td>
-        <td style="max-width: 220px; word-wrap: break-word; text-align: right; font-size: 13px;">{{ order.customer_address or order.address or "—" }}</td>
-        <td style="font-weight: 600; font-size: 13px;">{{ "{:,.0f}".format(order.total|default(0)|int) }} د.ع</td>
-        <td style="color: #3b82f6; font-weight: 600; font-size: 13px;">{{ "{:,.0f}".format(order.paid_amount|default(0, true)|int) }} د.ع</td>
-        <td style="color: var(--report-success); font-weight: 700; font-size: 14px;">{{ "{:,.0f}".format(order.remaining|default(order.total, true)|int) }} د.ع</td>
-        <td>{{ order.status }}</td>
-        <td>{{ order.payment_status }}</td>
-        {% if current_role == "admin" and not report.is_executed and status_selections %}
         <td>
+          <div class="customer-cell">
+            <div class="customer-cell__name">{{ order.customer_name or "—" }}</div>
+            {% if order.customer_phone %}
+            <div class="customer-cell__phone">{{ order.customer_phone }}</div>
+            {% endif %}
+            {% if order.customer_city %}
+            <span class="customer-cell__city">{{ order.customer_city }}</span>
+            {% endif %}
+          </div>
+        </td>
+        <td>
+          <div class="address-cell">
+            {% if addr %}
+            <div class="address-cell__text" title="{{ addr|e }}">{{ addr }}</div>
+            {% if addr|length > 70 or '\n' in addr %}
+            <details>
+              <summary>عرض العنوان كاملاً</summary>
+              <div class="address-cell__full">{{ addr }}</div>
+            </details>
+            {% endif %}
+            {% else %}
+            <span class="muted-dash">—</span>
+            {% endif %}
+          </div>
+        </td>
+        <td>
+          {% if order.stock_trace %}
+          <div class="stock-trace-cell" title="{{ order.stock_trace.summary_label if order.stock_trace else '' }}">
+            <span class="stock-trace-cell__label">{{ order.stock_trace.summary_label if order.stock_trace else "لا توجد حركة" }}</span>
+            <button type="button" class="stock-trace-help" data-stock-trace-order="{{ order.id }}" title="عرض تفاصيل خروج ورجوع الكميات" aria-label="تفاصيل حركة مخزون الطلب {{ order.id }}">؟</button>
+          </div>
+          {% else %}
+          <span class="muted-dash">غير متاح</span>
+          {% endif %}
+        </td>
+        <td>
+          <div class="note-cell">
+            {% if order.agent_note %}
+            <div class="note-pill" title="{{ order.agent_note|e }}">{{ order.agent_note }}</div>
+            {% else %}
+            <span class="muted-dash">—</span>
+            {% endif %}
+          </div>
+        </td>
+        <td class="is-money money-cell">{{ "{:,.0f}".format(order.total|default(0)|int) }} د.ع</td>
+        <td class="is-money money-cell is-paid">{{ "{:,.0f}".format(order.paid_amount|default(0, true)|int) }} د.ع</td>
+        <td class="is-money money-cell is-remaining">{{ "{:,.0f}".format(order.remaining|default(order.total, true)|int) }} د.ع</td>
+        <td class="is-center">
+          {% if 'شحن' in st or 'shipping' in st_l %}
+          <span class="status-badge is-shipping">{{ st }}</span>
+          {% elif 'واصل' in st or 'تم التوصيل' in st or 'delivered' in st_l %}
+          <span class="status-badge is-delivered">{{ st }}</span>
+          {% elif 'ملغي' in st or 'cancel' in st_l %}
+          <span class="status-badge is-canceled">{{ st }}</span>
+          {% elif 'مؤجل' in st or 'delay' in st_l %}
+          <span class="status-badge is-delayed">{{ st }}</span>
+          {% else %}
+          <span class="status-badge is-neutral">{{ st or "—" }}</span>
+          {% endif %}
+        </td>
+        <td class="is-center">
+          {% if 'غير مسدد' in pay or 'unpaid' in pay_l or pay == 'آجل' %}
+          <span class="status-badge is-unpaid">{{ pay }}</span>
+          {% elif 'مسدد' in pay or 'paid' in pay_l %}
+          <span class="status-badge is-paid">{{ pay }}</span>
+          {% else %}
+          <span class="status-badge is-neutral">{{ pay or "—" }}</span>
+          {% endif %}
+        </td>
+        {% if current_role == "admin" and not report.is_executed and status_selections %}
+        <td class="is-center">
           {% if status_selections.get(order.id|string) %}
             {% set selected_status = status_selections.get(order.id|string) %}
             {% if selected_status == "واصل" or selected_status == "Delivered" %}
-              <span style="color: #10b981; font-weight: 600;">✅ واصل</span>
+              <span class="status-badge is-delivered">واصل</span>
             {% elif selected_status == "ملغي" or selected_status == "Canceled" %}
-              <span style="color: #ef4444; font-weight: 600;">❌ ملغي</span>
+              <span class="status-badge is-canceled">ملغي</span>
             {% elif selected_status == "مؤجل" or selected_status == "Delayed" %}
-              <span style="color: #f59e0b; font-weight: 600;">⏸️ مؤجل</span>
+              <span class="status-badge is-delayed">مؤجل</span>
             {% else %}
-              <span>{{ selected_status }}</span>
+              <span class="status-badge is-neutral">{{ selected_status }}</span>
             {% endif %}
           {% else %}
-            <span style="color: var(--report-muted);">—</span>
+            <span class="muted-dash">—</span>
           {% endif %}
         </td>
         {% endif %}
-        <td>{{ order.created_at }}</td>
+        <td class="is-center date-cell">{{ order.created_at or "—" }}</td>
       </tr>
       {% endfor %}
-      <tr class="total-summary-row" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.2)); font-weight: 700;">
-        <td colspan="8" style="text-align: right; padding-right: 25px; font-size: 16px;">💰 {{ display_total_label }}:</td>
-        <td id="reportTotalAmount" style="color: var(--report-success); font-size: 18px; font-weight: 800;">{{ "{:,.0f}".format(display_total_amount) }} دينار عراقي</td>
+      <tr class="total-summary-row">
+        <td colspan="6" class="total-label">{{ display_total_label }}:</td>
+        <td colspan="3" class="total-amount" id="reportTotalAmount">{{ "{:,.0f}".format(display_total_amount) }} د.ع</td>
         <td colspan="{% if current_role == 'admin' and not report.is_executed and status_selections %}4{% else %}3{% endif %}"></td>
       </tr>
     </tbody>
@@ -567,28 +960,36 @@ document.addEventListener('DOMContentLoaded', function() {
   
   {% if current_role == "admin" %}
     {% if report.is_executed %}
-    <div style="margin-top: 24px; padding: 20px; background: rgba(107, 114, 128, 0.1); border-radius: 12px; text-align: center; border: 1px solid rgba(107, 114, 128, 0.3);">
-      <p style="color: #6b7280; margin: 0; font-size: 16px; font-weight: 600;">
-        ✓ تم تنفيذ هذا الكشف مسبقاً
-      </p>
+    <div class="report-footer-panel is-done no-print">
+      <p>تم تنفيذ هذا الكشف مسبقاً</p>
     </div>
     {% elif report.order_status_selections and status_selections and status_selections|length > 0 %}
-    <div style="margin-top: 24px; padding: 20px; background: rgba(16, 185, 129, 0.1); border-radius: 12px; text-align: center; border: 1px solid rgba(16, 185, 129, 0.3);">
-      <p style="color: #10b981; margin: 0 0 16px 0; font-size: 16px; font-weight: 600;">
-        ✅ هناك {{ status_selections|length }} طلب(ات) بحالات محفوظة جاهزة للتنفيذ
-      </p>
-      <button class="btn btn-success" onclick="executeReport({{ report.id }})" style="background: linear-gradient(135deg, #10b981, #059669); font-size: 18px; padding: 16px 32px;">
-        ✅ تنفيذ التغييرات
+    {% set ns_notes2 = namespace(count=0) %}
+    {% for order in orders_data %}
+      {% if order.agent_note %}{% set ns_notes2.count = ns_notes2.count + 1 %}{% endif %}
+    {% endfor %}
+    {% if ns_notes2.count > 0 %}
+    <div class="report-footer-panel is-notes no-print">
+      <p style="color:#d97706;margin-bottom:10px;">ملاحظات المندوب قبل التنفيذ</p>
+      {% for order in orders_data %}
+        {% if order.agent_note %}
+        <div style="padding:8px 0;border-top:1px solid rgba(245,158,11,0.2);color:var(--text);font-size:13px;line-height:1.5;">
+          <strong>#{{ order.id }} — {{ order.customer_name }}:</strong> {{ order.agent_note }}
+        </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+    {% endif %}
+    <div class="report-footer-panel is-ready no-print">
+      <p>هناك {{ status_selections|length }} طلب(ات) بحالات محفوظة جاهزة للتنفيذ</p>
+      <button class="btn btn-success" onclick="executeReport({{ report.id }})">
+        <i class="fas fa-check" aria-hidden="true"></i> تنفيذ التغييرات
       </button>
-      <p style="color: #10b981; margin: 12px 0 0 0; font-size: 14px;">
-        سيتم تطبيق: الواصل → تم التوصيل / مسدد | الملغي → ملغي | المؤجل → تم الطلب
-      </p>
+      <p class="hint">الواصل → تم التوصيل / مسدد | الملغي → ملغي | المؤجل → تم الطلب</p>
     </div>
     {% else %}
-    <div style="margin-top: 24px; padding: 20px; background: rgba(245, 158, 11, 0.1); border-radius: 12px; text-align: center; border: 1px solid rgba(245, 158, 11, 0.3);">
-      <p style="color: #f59e0b; margin: 0; font-size: 16px; font-weight: 600;">
-        ⏳ في انتظار شركة النقل لتحديد الحالات
-      </p>
+    <div class="report-footer-panel is-wait no-print">
+      <p>في انتظار شركة النقل لتحديد الحالات</p>
     </div>
     {% endif %}
   {% endif %}

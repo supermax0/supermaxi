@@ -1,0 +1,67 @@
+{% extends "hr/layout.html" %}
+{% block hr_title %}لوحة الموارد البشرية{% endblock %}
+{% block hr_content %}
+<section class="hr-hero">
+  <div class="hr-hero-copy">
+    <span class="hr-eyebrow"><i class="fa-solid fa-sparkles"></i> مركز إدارة الفريق</span>
+    <h1>كل ما يخص فريقك، في لوحة واحدة</h1>
+    <p>راقب الحضور والإجازات والرواتب، واتخذ قراراتك من بيانات واضحة ومحدثة.</p>
+    <div class="hr-hero-meta">
+      <span><i class="fa-solid fa-circle-check"></i> النظام جاهز للعمل</span>
+      <span><i class="fa-regular fa-calendar"></i> {{ today.strftime('%m/%Y') }}</span>
+    </div>
+  </div>
+  <div class="hr-hero-actions">
+    <a class="hr-btn hr-btn-light" href="{{ url_for('hr.attendance') }}"><i class="fa-solid fa-fingerprint"></i> تسجيل الحضور</a>
+    <a class="hr-btn hr-btn-white" href="{{ url_for('hr.employees', new=1) }}"><i class="fa-solid fa-user-plus"></i> موظف جديد</a>
+  </div>
+</section>
+
+<section class="hr-kpis hr-kpis-6">
+  <article class="hr-kpi"><span class="hr-kpi-icon indigo"><i class="fa-solid fa-users"></i></span><div><small>الموظفون النشطون</small><strong>{{ active_count }}</strong><em>إجمالي القوة العاملة</em></div></article>
+  <article class="hr-kpi"><span class="hr-kpi-icon green"><i class="fa-solid fa-user-check"></i></span><div><small>حاضرون اليوم</small><strong>{{ present_count }}</strong><em>من {{ active_count }} موظف</em></div></article>
+  <article class="hr-kpi"><span class="hr-kpi-icon rose"><i class="fa-solid fa-user-xmark"></i></span><div><small>غياب اليوم</small><strong>{{ absent_count }}</strong><em>مسجل بالنظام</em></div></article>
+  <article class="hr-kpi"><span class="hr-kpi-icon amber"><i class="fa-solid fa-umbrella-beach"></i></span><div><small>في إجازة</small><strong>{{ on_leave_count }}</strong><em>{{ pending_leaves }} طلب ينتظر القرار</em></div></article>
+  <article class="hr-kpi"><span class="hr-kpi-icon cyan"><i class="fa-solid fa-wallet"></i></span><div><small>الرواتب الأساسية</small><strong>{{ "{:,}".format(payroll_total) }}</strong><em>د.ع شهريًا</em></div></article>
+  <article class="hr-kpi"><span class="hr-kpi-icon violet"><i class="fa-solid fa-calendar-days"></i></span><div><small>الفترة الحالية</small><strong>{{ today.strftime('%m/%Y') }}</strong><em>{{ month_start }} — {{ month_end }}</em></div></article>
+</section>
+
+<section class="hr-dashboard-grid">
+  <article class="hr-card hr-span-2">
+    <div class="hr-card-head"><div><span class="hr-card-kicker">طلبات الفريق</span><h2>أحدث الإجازات</h2></div><a href="{{ url_for('hr.leaves') }}">عرض الكل <i class="fa-solid fa-arrow-left"></i></a></div>
+    <div class="hr-list">
+      {% for leave in recent_leaves %}
+      <a class="hr-list-row" href="{{ url_for('hr.leaves') }}">
+        <span class="hr-avatar">{{ leave.employee.name[:1] }}</span>
+        <span class="hr-list-main"><strong>{{ leave.employee.name }}</strong><small>{{ leave_types.get(leave.leave_type, leave.leave_type) }} · {{ leave.start_date }} إلى {{ leave.end_date }}</small></span>
+        <span class="hr-status {{ leave.status }}">{{ {'pending':'قيد المراجعة','approved':'مقبولة','rejected':'مرفوضة','cancelled':'ملغاة'}.get(leave.status, leave.status) }}</span>
+      </a>
+      {% else %}<div class="hr-empty"><i class="fa-regular fa-calendar"></i><p>لا توجد طلبات إجازة حتى الآن</p></div>{% endfor %}
+    </div>
+  </article>
+  <article class="hr-card">
+    <div class="hr-card-head"><div><span class="hr-card-kicker">توزيع الفريق</span><h2>الأقسام</h2></div><a href="{{ url_for('hr.settings') }}">إدارة</a></div>
+    <div class="hr-dept-list">
+      {% for department, count in department_stats %}
+      <div><span class="hr-dept-dot" style="--dept-color:{{ department.color }}"></span><strong>{{ department.name }}</strong><em>{{ count }} موظف</em><span class="hr-dept-bar"><i style="width:{{ ([100, (count * 100 / active_count)|round]|min) if active_count else 0 }}%;--dept-color:{{ department.color }}"></i></span></div>
+      {% else %}<div class="hr-empty compact"><p>أضف أقسام الشركة لعرض التوزيع</p></div>{% endfor %}
+    </div>
+  </article>
+  <article class="hr-card">
+    <div class="hr-card-head"><div><span class="hr-card-kicker">خلال 30 يومًا</span><h2>تنبيهات المستندات</h2></div></div>
+    <div class="hr-list compact-list">
+      {% for doc in expiring_documents %}
+      <a class="hr-list-row" href="{{ url_for('hr.employee_detail', employee_id=doc.employee_id) }}"><span class="hr-mini-icon warning"><i class="fa-solid fa-file-circle-exclamation"></i></span><span class="hr-list-main"><strong>{{ doc.title }}</strong><small>{{ doc.employee.name }} · ينتهي {{ doc.expiry_date }}</small></span></a>
+      {% else %}<div class="hr-empty compact"><i class="fa-solid fa-circle-check"></i><p>لا توجد مستندات قاربت على الانتهاء</p></div>{% endfor %}
+    </div>
+  </article>
+  <article class="hr-card">
+    <div class="hr-card-head"><div><span class="hr-card-kicker">المناسبات</span><h2>أعياد الميلاد القادمة</h2></div></div>
+    <div class="hr-list compact-list">
+      {% for birthday, profile in birthdays %}
+      <a class="hr-list-row" href="{{ url_for('hr.employee_detail', employee_id=profile.employee_id) }}"><span class="hr-mini-icon birthday"><i class="fa-solid fa-cake-candles"></i></span><span class="hr-list-main"><strong>{{ profile.employee.name }}</strong><small>{{ birthday.strftime('%d/%m') }} · {{ profile.job_title or 'موظف' }}</small></span></a>
+      {% else %}<div class="hr-empty compact"><p>لا توجد مناسبات قريبة</p></div>{% endfor %}
+    </div>
+  </article>
+</section>
+{% endblock %}

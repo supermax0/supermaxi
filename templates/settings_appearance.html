@@ -12,6 +12,20 @@
 
 <div class="settings-section-card">
   <div class="settings-section-header">
+    <h2><i class="fas fa-list"></i> ترتيب القائمة</h2>
+    <p>تجميع الصفحات حسب العمل، مع بحث ومفضلة. أطفئ الخيار للرجوع إلى القائمة السابقة.</p>
+  </div>
+  <div class="settings-switch-row">
+    {% set navigation_available = not (is_hr_management or is_clinics_business or is_beauty_center or is_food_business or is_wholesale) %}
+    <div class="settings-switch-label"><label for="organizedNavigation"><strong>القائمة المنظمة</strong></label>
+      {% if not navigation_available %}<span>هذا النشاط يحتفظ بقائمته المتخصصة؛ ترتيب القائمة العامة غير مطبق عليه حالياً.</span>{% endif %}
+    </div>
+    <label class="settings-toggle"><input type="checkbox" id="organizedNavigation" {% if not navigation_available %}disabled{% endif %} {% if ui_flags.get('navigation_v2', False) == true %}checked{% endif %}><span class="settings-toggle-slider"></span></label>
+  </div>
+</div>
+
+<div class="settings-section-card">
+  <div class="settings-section-header">
     <h2><i class="fas fa-palette"></i> مظهر النظام</h2>
     <p>تحكم في الثيم وحجم الخط وبعض عناصر الواجهة العامة.</p>
   </div>
@@ -69,10 +83,10 @@
     <div class="settings-switch-row"><div class="settings-switch-label"><strong>إجمالي المبيعات</strong></div><label class="settings-toggle"><input type="checkbox" id="showDashTotalSales" {% if ui_flags.get('show_dash_total_sales', True) %}checked{% endif %}><span class="settings-toggle-slider"></span></label></div>
     <div class="settings-switch-row"><div class="settings-switch-label"><strong>المبيعات النقدية</strong></div><label class="settings-toggle"><input type="checkbox" id="showDashCashSales" {% if ui_flags.get('show_dash_cash_sales', True) %}checked{% endif %}><span class="settings-toggle-slider"></span></label></div>
     <div class="settings-switch-row"><div class="settings-switch-label"><strong>المبيعات الآجلة</strong></div><label class="settings-toggle"><input type="checkbox" id="showDashCreditSales" {% if ui_flags.get('show_dash_credit_sales', True) %}checked{% endif %}><span class="settings-toggle-slider"></span></label></div>
-    <div class="settings-switch-row"><div class="settings-switch-label"><strong>قيمة المخزون</strong></div><label class="settings-toggle"><input type="checkbox" id="showDashInventory" {% if ui_flags.get('show_dash_inventory', True) %}checked{% endif %}><span class="settings-toggle-slider"></span></label></div>
+    <div class="settings-switch-row"><div class="settings-switch-label"><strong>قيمة المخزون</strong></div><label class="settings-toggle"><input type="checkbox" id="showDashInventory" {% if ui_flags.get('show_dash_inventory', False) %}checked{% endif %}><span class="settings-toggle-slider"></span></label></div>
     <div class="settings-switch-row"><div class="settings-switch-label"><strong>الالتزامات</strong></div><label class="settings-toggle"><input type="checkbox" id="showDashLiabilities" {% if ui_flags.get('show_dash_liabilities', True) %}checked{% endif %}><span class="settings-toggle-slider"></span></label></div>
     <div class="settings-switch-row"><div class="settings-switch-label"><strong>مستحقات مندوب التوصيل</strong></div><label class="settings-toggle"><input type="checkbox" id="showDashAgentDues" {% if ui_flags.get('show_dash_agent_dues', True) %}checked{% endif %}><span class="settings-toggle-slider"></span></label></div>
-    <div class="settings-switch-row"><div class="settings-switch-label"><strong>كشوف المندوب — بانتظار التنفيذ</strong></div><label class="settings-toggle"><input type="checkbox" id="showDashAgentPending" {% if ui_flags.get('show_dash_agent_pending', True) %}checked{% endif %}><span class="settings-toggle-slider"></span></label></div>
+    <div class="settings-switch-row"><div class="settings-switch-label"><strong>كشوف المندوب — بانتظار التنفيذ</strong></div><label class="settings-toggle"><input type="checkbox" id="showDashAgentPending" {% if ui_flags.get('show_dash_agent_pending', False) %}checked{% endif %}><span class="settings-toggle-slider"></span></label></div>
     <div class="settings-switch-row"><div class="settings-switch-label"><strong>المصاريف</strong></div><label class="settings-toggle"><input type="checkbox" id="showDashExpenses" {% if ui_flags.get('show_dash_expenses', True) %}checked{% endif %}><span class="settings-toggle-slider"></span></label></div>
   </div>
 </div>
@@ -101,6 +115,7 @@ document.getElementById("saveAppearanceBtn").addEventListener("click", function 
     default_currency: document.getElementById("defaultCurrency").value,
     ai_enabled: document.getElementById("aiEnabled").checked,
     ui_flags: {
+      navigation_v2: document.getElementById("organizedNavigation").checked,
       show_dash_cash_balance: document.getElementById("showDashCashBalance").checked,
       show_dash_period_profit: document.getElementById("showDashPeriodProfit").checked,
       show_dash_total_sales: document.getElementById("showDashTotalSales").checked,

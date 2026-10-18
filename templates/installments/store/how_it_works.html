@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>كيف يعمل التقسيط؟ | {{ settings.store_name if settings else 'Finora' }}</title>
+  <meta name="description" content="شرح مبسّط لخطوات الشراء بالتقسيط في متجر {{ settings.store_name if settings else 'Finora' }}.">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installments.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installment_store.css', v='20260812-full-width-2') }}">
+</head>
+<body class="store-body">
+  {% include 'installments/store/_header.html' %}
+
+  <main class="store-info-page">
+    <section class="store-info-hero">
+      <div class="store-shell">
+        <nav class="store-info-crumb" aria-label="مسار الصفحة">
+          <a href="{{ url_for('installments_store.store_index', tenant_slug=tenant_slug) }}">الرئيسية</a>
+          <span>/</span>
+          <strong>كيف يعمل التقسيط؟</strong>
+        </nav>
+        <span>خطوات واضحة</span>
+        <h1>من اختيار المنتج إلى أول قسط… كل شيء مرتّب</h1>
+        <p>نقدّم تجربة تقسيط بسيطة: ترى الأرقام مسبقاً، ترسل الطلب، وتتابع الحالة من حسابك أو عبر رقم التتبع.</p>
+      </div>
+    </section>
+
+    <div class="store-shell store-info-body">
+      <ol class="store-steps">
+        <li>
+          <span>1</span>
+          <div>
+            <h2>اختر المنتج والقسم</h2>
+            <p>تصفّح الأقسام أو ابحث عن المنتج المناسب، ثم افتح صفحة التفاصيل لمشاهدة الصور والمواصفات.</p>
+          </div>
+        </li>
+        <li>
+          <span>2</span>
+          <div>
+            <h2>حدد خطة التقسيط</h2>
+            <p>قارن المدد المتاحة، واطلع على الدفعة الأولى والقسط الشهري والإجمالي قبل إضافة المنتج إلى السلة.</p>
+          </div>
+        </li>
+        <li>
+          <span>3</span>
+          <div>
+            <h2>أرسل طلبك</h2>
+            <p>أدخل بياناتك الأساسية وعنوان التسليم. إن كان لديك حساب، ستُربط الطلبات تلقائياً بملفك.</p>
+          </div>
+        </li>
+        <li>
+          <span>4</span>
+          <div>
+            <h2>المراجعة والموافقة</h2>
+            <p>يراجع فريقنا الطلب، وقد يطلب مستندات إضافية حسب السياسة. بعد الموافقة يبدأ تجهيز التسليم والعقد.</p>
+          </div>
+        </li>
+        <li>
+          <span>5</span>
+          <div>
+            <h2>الاستلام والسداد الشهري</h2>
+            <p>تستلم منتجك وفق ترتيب التوصيل، وتسدد الأقساط حسب جدول الخطة المعتمدة معك.</p>
+          </div>
+        </li>
+      </ol>
+
+      <section class="store-info-grid store-info-grid--four">
+        <article>
+          <i>✓</i>
+          <h3>أرقام واضحة</h3>
+          <p>القسط والدفعة تظهران قبل التقديم بدون مفاجآت.</p>
+        </article>
+        <article>
+          <i>{% if max_months %}{{ max_months }}{% else %}∞{% endif %}</i>
+          <h3>مدد مرنة</h3>
+          <p>{% if max_months %}تقسيط حتى {{ max_months }} شهراً حسب المنتج والخطة.{% else %}مدد متنوعة تناسب ميزانيتك الشهرية.{% endif %}</p>
+        </article>
+        <article>
+          <i>◉</i>
+          <h3>متابعة مباشرة</h3>
+          <p>تتبع الطلب من حسابك أو عبر صفحة التتبع.</p>
+        </article>
+        <article>
+          <i>?</i>
+          <h3>دعم عند الحاجة</h3>
+          <p>فريق التواصل جاهز لأي استفسار قبل أو بعد الطلب.</p>
+        </article>
+      </section>
+
+      <section class="store-info-cta">
+        <div>
+          <span>ابدأ الآن</span>
+          <h2>اختر منتجاً وشاهد خطة التقسيط مباشرة</h2>
+          <p>كل بطاقة منتج تعرض الحد الأدنى للقسط الشهري لتسهيل المقارنة.</p>
+        </div>
+        <div class="store-info-cta__actions">
+          <a class="is-primary" href="{{ url_for('installments_store.store_index', tenant_slug=tenant_slug) }}#products">عرض المنتجات</a>
+          <a href="{{ url_for('installments_store.faq_page', tenant_slug=tenant_slug) }}">الأسئلة الشائعة</a>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  {% include 'installments/store/_footer.html' %}
+</body>
+</html>

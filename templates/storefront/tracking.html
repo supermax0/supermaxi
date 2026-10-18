@@ -1,4 +1,4 @@
-{% extends "storefront/base.html" %}
+{% extends storefront_base|default("storefront/base.html") %}
 {% block title %}تتبع الطلب - {{ store_design.store_name }}{% endblock %}
 {% block content %}
 <section class="sf-tracking-layout">
@@ -79,7 +79,7 @@
     <div class="sf-mini-items">
       {% for item in order.items %}
       <div class="sf-mini-item">
-        <span>{{ item.product_name }} × {{ item.quantity }}</span>
+        <span>{{ item.display_name }} × {{ item.quantity }}</span>
         <strong>{{ "{:,.0f}".format(item.total or 0) }} د.ع</strong>
       </div>
       {% else %}

@@ -1,0 +1,14 @@
+<section class="inv-add-card" data-product-options-editor data-stock="{{ edit_current_stock|default(0) }}" data-edit="{{ '1' if edit_product else '0' }}">
+  <h3>خيارات المنتج <details class="inv-option-help"><summary aria-label="شرح خيارات المنتج">?</summary><p>ميزة اختيارية لكل أنواع المنتجات. أضف الحجم فقط، أو اللون والمقاس، أو صفات مخصصة. لكل تركيبة صورة وأسعار ومخزون مستقل.</p></details></h3>
+  <script type="application/json" data-option-config>{{ {'axes': m.get('product_options', {}).get('axes', []), 'rows': product_option_rows|default([])}|tojson }}</script>
+  <label class="inv-check"><input type="checkbox" data-option-enable>هذا المنتج عنده خيارات</label>
+  <div data-option-content hidden></div>
+  <input type="hidden" data-option-payload disabled name="product_options">
+  <p data-option-error role="alert" style="color:#dc2626"></p>
+</section>
+<style>
+  .inv-option-help{display:inline-block;font-size:12px;vertical-align:middle}.inv-option-help summary{display:inline-grid;place-items:center;width:24px;height:24px;border:1px solid var(--border-light);border-radius:50%;cursor:pointer;color:#7645ed}.inv-option-help p{font-weight:400;line-height:1.8;max-width:420px;background:var(--card);padding:12px;border:1px solid var(--border-light);border-radius:10px}
+  .inv-option-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin:12px 0}.inv-option-fields label{font-size:12px;display:grid;gap:6px}.inv-option-fields input,.inv-option-fields select{min-width:0;width:100%;box-sizing:border-box;min-height:40px;padding:8px;border:1px solid var(--border-light);border-radius:10px;background:var(--card);color:var(--text)}
+  .inv-option-row{margin-top:12px;padding:14px;border:1px solid var(--border-light);border-radius:14px}.inv-option-row header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.inv-option-row img{width:64px;height:64px;object-fit:contain;border-radius:10px}.inv-option-btn{padding:8px 12px;border:1px solid var(--border-light);border-radius:10px;background:var(--card);color:var(--text);cursor:pointer;margin:4px}.inv-option-btn.primary{background:#7645ed;color:white}
+</style>
+<script src="{{ url_for('static', filename='js/product-options-editor.js') }}" defer></script>

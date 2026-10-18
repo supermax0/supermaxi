@@ -49,7 +49,7 @@ def _effective_paid_amount(invoice: Invoice) -> int:
     if payment_status == "مسدد":
         return max(total, 0)
 
-    if payment_status == "جزئي":
+    if payment_status in ("جزئي", "مسدد جزئياً", "مسدد جزئي"):
         paid_amount = int(getattr(invoice, "paid_amount", 0) or 0)
         if paid_amount < 0:
             return 0
@@ -80,20 +80,73 @@ def _cash_affecting_note_filter(column):
 
 def calculate_cash_balance():
     """
-    حساب الرصيد النقدي الفعلي (Cash Balance) — الصندوق الافتراضي.
+    حساب الرصيد النقدي الفعلي.
+
+    عند عرض «كل الفروع» يمثل الرصيد مجموع صناديق الفروع،
+    وفي عرض فرع محدد يمثل صندوق ذلك الفرع فقط.
     """
-    from utils.treasury_calculations import calculate_treasury_balance
+    from flask import has_request_context
+    from utils.treasury_calculations import calculate_treasury_balance, list_treasury_accounts
     from utils.treasury_helpers import get_default_cash_account
+
+    if has_request_context():
+        # list_treasury_accounts is already restricted by the active branch
+        # scope. In an all-branches request it contains every visible branch;
+        # in a single-branch request it contains that branch only.
+        visible_cash_accounts = [
+            account for account in list_treasury_accounts() if account.is_cash
+        ]
+        if visible_cash_accounts:
+            return sum(
+                calculate_treasury_balance(account.id)
+                for account in visible_cash_accounts
+            )
 
     return calculate_treasury_balance(get_default_cash_account().id)
 
 
 def get_cash_movements():
     """
-    حساب سجل حركات الكاش (Cash Movements Ledger) للصندوق الافتراضي.
+    حساب سجل حركات الكاش (Cash Movements Ledger).
+
+    في عرض «كل الفروع» تُدمج سجلات جميع صناديق الفروع، ثم
+    يُعاد حساب الرصيد التراكمي حسب الترتيب الزمني الموحد.
     """
-    from utils.treasury_calculations import get_treasury_movements
+    from flask import has_request_context
+    from utils.treasury_calculations import get_treasury_movements, list_treasury_accounts
     from utils.treasury_helpers import get_default_cash_account
+
+    if has_request_context():
+        visible_cash_accounts = [
+            account for account in list_treasury_accounts() if account.is_cash
+        ]
+        if len(visible_cash_accounts) == 1:
+            return get_treasury_movements(visible_cash_accounts[0].id)
+        if visible_cash_accounts:
+            movements = []
+            for account in visible_cash_accounts:
+                for movement in get_treasury_movements(account.id):
+                    item = dict(movement)
+                    item["treasury_account_id"] = account.id
+                    item["treasury_account_name"] = account.name
+                    item["branch_id"] = account.branch_id
+                    movements.append(item)
+
+            movements.sort(
+                key=lambda item: (
+                    item.get("datetime")
+                    or datetime.combine(item["date"], datetime.min.time()),
+                    item.get("reference_type", ""),
+                    item.get("reference_id", 0),
+                    item.get("treasury_account_id", 0),
+                )
+            )
+            running_balance = 0
+            for movement in movements:
+                from utils.cash_movement_values import signed_movement_amount
+                running_balance += signed_movement_amount(movement)
+                movement["balance_after"] = running_balance
+            return movements
 
     return get_treasury_movements(get_default_cash_account().id)
 
@@ -107,13 +160,16 @@ def get_cash_summary():
     """
     movements = get_cash_movements()
     
-    total_in = sum(m["amount"] for m in movements if m["type"] == "cash_in")
-    total_out = sum(m["amount"] for m in movements if m["type"] == "cash_out")
+    from utils.cash_movement_values import movement_amount
+    total_in = sum(movement_amount(m) for m in movements if m["type"] == "cash_in")
+    total_out = sum(movement_amount(m) for m in movements if m["type"] == "cash_out")
     current_balance = calculate_cash_balance()
     
+    from modules.sales_returns.collections import undated_balance
     return {
         "total_in": total_in,
         "total_out": total_out,
         "current_balance": current_balance,
-        "movements_count": len(movements)
+        "movements_count": len(movements),
+        "undated_collection_balance": undated_balance(),
     }

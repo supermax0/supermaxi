@@ -69,6 +69,65 @@
   background: rgba(148, 163, 184, 0.15);
   color: #94a3b8;
 }
+.agent-pending-page .badge-delivered {
+  background: rgba(16, 185, 129, 0.14);
+  color: #059669;
+}
+.agent-pending-page .badge-returned {
+  background: rgba(239, 68, 68, 0.12);
+  color: #dc2626;
+}
+.agent-pending-page .badge-postponed {
+  background: rgba(245, 158, 11, 0.14);
+  color: #d97706;
+}
+.agent-pending-page .status-stack {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+.agent-pending-page .amount-stack {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  font-variant-numeric: tabular-nums;
+  min-width: 150px;
+}
+.agent-pending-page .amount-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.agent-pending-page .amount-line .label {
+  color: var(--text-muted);
+  font-weight: 700;
+}
+.agent-pending-page .amount-line.is-delivered .value {
+  color: #059669;
+}
+.agent-pending-page .amount-line.is-returned .value {
+  color: #dc2626;
+}
+.agent-pending-page .amount-line.is-postponed .value {
+  color: #d97706;
+}
+.agent-pending-page .amount-line.is-muted .value {
+  color: var(--text-muted);
+}
+.agent-pending-page .amount-line.is-total {
+  margin-top: 2px;
+  padding-top: 4px;
+  border-top: 1px dashed rgba(148, 163, 184, 0.35);
+  font-size: 13px;
+}
+.agent-pending-page .amount-line.is-total .value {
+  color: var(--text);
+  font-weight: 800;
+}
 .agent-pending-page .btn {
   padding: 10px 16px;
   border-radius: 10px;
@@ -93,6 +152,45 @@
   opacity: 0.5;
   cursor: not-allowed;
 }
+.agent-pending-page .merge-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(16, 185, 129, 0.22);
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.07);
+}
+.agent-pending-page .merge-bar .hint {
+  color: var(--text-muted);
+  font-size: 13px;
+  flex: 1;
+  min-width: 200px;
+}
+.agent-pending-page .btn-merge {
+  background: linear-gradient(135deg, #0d9488, #059669);
+  color: #fff;
+}
+.agent-pending-page .btn-merge:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.agent-pending-page .merge-check {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #10b981;
+}
+.agent-pending-page .merge-msg {
+  min-height: 20px;
+  font-size: 13px;
+  margin-bottom: 10px;
+  color: var(--text-muted);
+}
+.agent-pending-page .merge-msg.ok { color: #10b981; }
+.agent-pending-page .merge-msg.err { color: #f87171; }
 </style>
 
 <div class="agent-pending-page">
@@ -124,9 +222,17 @@
   </div>
 
   <div class="card">
+    <div class="merge-bar">
+      <span class="hint">حدد كشوف نفس المندوب لدمجها في كشف واحد — أول محدد يبقى كشف الهدف، والباقي يُدمَج فيه.</span>
+      <button type="button" class="btn btn-merge" id="mergeReportsBtn" onclick="mergeSelectedPendingReports()" disabled>🔗 دمج المحدد</button>
+    </div>
+    <div id="mergeMessage" class="merge-msg"></div>
     <table>
       <thead>
         <tr>
+          <th>
+            <input type="checkbox" class="merge-check" id="selectAllPendingReports" title="تحديد الكل" onclick="toggleAllPendingReports(this)">
+          </th>
           <th>#</th>
           <th>رقم الكشف</th>
           <th>المندوب</th>
@@ -140,20 +246,62 @@
       <tbody>
         {% if reports %}
           {% for r in reports %}
-          <tr>
+          <tr data-agent-id="{{ r.agent_id or '' }}">
+            <td>
+              <input type="checkbox" class="merge-check pending-merge-cb" value="{{ r.id }}" data-agent-id="{{ r.agent_id or '' }}" onchange="syncPendingMergeButton()">
+            </td>
             <td>{{ loop.index }}</td>
             <td><strong>{{ r.report_number }}</strong></td>
             <td>{{ r.agent_name }}</td>
             <td>{{ r.progress_label }}</td>
-            <td>{{ "{:,.0f}".format(r.total_amount) }} د.ع</td>
+            <td>
+              <div class="amount-stack">
+                <div class="amount-line is-delivered">
+                  <span class="label">واصل</span>
+                  <span class="value">{{ "{:,.0f}".format(r.delivered_amount or 0) }} د.ع</span>
+                </div>
+                <div class="amount-line is-returned">
+                  <span class="label">راجع</span>
+                  <span class="value">{{ "{:,.0f}".format(r.canceled_amount or 0) }} د.ع</span>
+                </div>
+                <div class="amount-line is-postponed">
+                  <span class="label">مؤجل</span>
+                  <span class="value">{{ "{:,.0f}".format(r.postponed_amount or 0) }} د.ع</span>
+                </div>
+                {% if r.pending_selection_count > 0 %}
+                <div class="amount-line is-muted">
+                  <span class="label">بانتظار</span>
+                  <span class="value">{{ "{:,.0f}".format(r.pending_amount or 0) }} د.ع</span>
+                </div>
+                {% endif %}
+                <div class="amount-line is-total">
+                  <span class="label">الإجمالي</span>
+                  <span class="value">{{ "{:,.0f}".format(r.total_collectible or r.total_amount or 0) }} د.ع</span>
+                </div>
+              </div>
+            </td>
             <td>{{ r.created_at }}</td>
             <td>
+              <div class="status-stack">
+                <span class="badge badge-delivered">{{ r.delivered_count or 0 }} واصل</span>
+                <span class="badge badge-returned">{{ r.canceled_count or 0 }} راجع</span>
+                <span class="badge badge-postponed">{{ r.postponed_count or 0 }} مؤجل</span>
+                {% if r.pending_selection_count > 0 %}
+                <span class="badge badge-wait">{{ r.pending_selection_count }} بانتظار</span>
+                {% endif %}
+              </div>
               {% if r.ready_for_execution %}
-              <span class="badge badge-ready">جاهز للتنفيذ</span>
+              <div style="margin-top:8px;">
+                <span class="badge badge-ready">جاهز للتنفيذ</span>
+              </div>
               {% elif r.applied_count > 0 %}
-              <span class="badge badge-progress">قيد التطبيق</span>
+              <div style="margin-top:8px;">
+                <span class="badge badge-progress">قيد التطبيق</span>
+              </div>
               {% else %}
-              <span class="badge badge-wait">بانتظار المندوب</span>
+              <div style="margin-top:8px;">
+                <span class="badge badge-wait">بانتظار المندوب</span>
+              </div>
               {% endif %}
             </td>
             <td>
@@ -168,7 +316,7 @@
           {% endfor %}
         {% else %}
           <tr>
-            <td colspan="8" style="padding:40px;color:var(--text-muted);">لا توجد كشوف مندوب مفتوحة حالياً</td>
+            <td colspan="9" style="padding:40px;color:var(--text-muted);">لا توجد كشوف مندوب مفتوحة حالياً</td>
           </tr>
         {% endif %}
       </tbody>
@@ -178,6 +326,71 @@
 
 <script src="/static/js/return-stock-modal.js"></script>
 <script>
+function selectedPendingMergeIds() {
+  return Array.from(document.querySelectorAll(".pending-merge-cb:checked")).map(function(el) {
+    return { id: Number(el.value), agentId: el.getAttribute("data-agent-id") || "" };
+  });
+}
+
+function syncPendingMergeButton() {
+  var btn = document.getElementById("mergeReportsBtn");
+  var selected = selectedPendingMergeIds();
+  if (!btn) return;
+  if (selected.length < 2) {
+    btn.disabled = true;
+    return;
+  }
+  var agentId = selected[0].agentId;
+  btn.disabled = !agentId || selected.some(function(s) { return s.agentId !== agentId; });
+}
+
+function toggleAllPendingReports(master) {
+  document.querySelectorAll(".pending-merge-cb").forEach(function(cb) {
+    cb.checked = !!master.checked;
+  });
+  syncPendingMergeButton();
+}
+
+function mergeSelectedPendingReports() {
+  var msg = document.getElementById("mergeMessage");
+  var selected = selectedPendingMergeIds();
+  msg.className = "merge-msg";
+  msg.textContent = "";
+  if (selected.length < 2) {
+    msg.classList.add("err");
+    msg.textContent = "حدد كشفين على الأقل.";
+    return;
+  }
+  var agentId = selected[0].agentId;
+  if (!agentId || selected.some(function(s) { return s.agentId !== agentId; })) {
+    msg.classList.add("err");
+    msg.textContent = "يمكن دمج كشوف نفس المندوب فقط.";
+    return;
+  }
+  if (!confirm("دمج " + (selected.length - 1) + " كشف في الكشف الأول المحدد؟")) return;
+  var ids = selected.map(function(s) { return s.id; });
+  fetch("/agents/reports/merge", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ report_ids: ids })
+  })
+  .then(function(r) { return r.json().then(function(data) { return { ok: r.ok, data: data }; }); })
+  .then(function(res) {
+    if (!res.ok || res.data.error) {
+      msg.classList.add("err");
+      msg.textContent = (res.data && res.data.error) || "تعذر الدمج.";
+      return;
+    }
+    msg.classList.add("ok");
+    msg.textContent = res.data.message || "تم الدمج.";
+    setTimeout(function() { location.reload(); }, 800);
+  })
+  .catch(function() {
+    msg.classList.add("err");
+    msg.textContent = "حدث خطأ بالاتصال.";
+  });
+}
+
 function submitAgentReportExecution(reportId, returnBranchId) {
   if (!confirm('تنفيذ الكشف؟ سيتم تطبيق: الواصل → تم التوصيل / مسدد | الملغي → ملغي | المؤجل → تم الطلب')) return;
   fetch('/delivery/execute-report/' + reportId, {
@@ -210,5 +423,7 @@ function executeAgentReport(reportId, hasStockReturn) {
     }
   });
 }
+
+syncPendingMergeButton();
 </script>
 {% endblock %}

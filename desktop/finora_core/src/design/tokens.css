@@ -1,0 +1,54 @@
+/* FINORA CORE design tokens. Light, premium, restrained. Every component reads from these. */
+:root {
+  /* surfaces */
+  --bg: #f7f8fc;
+  --surface: rgba(255, 255, 255, 0.72);
+  --surface-strong: rgba(255, 255, 255, 0.9);
+  --surface-sunken: rgba(237, 239, 247, 0.75);
+  --line: rgba(24, 28, 70, 0.07);
+  --line-strong: rgba(24, 28, 70, 0.12);
+  --glass-edge: rgba(255, 255, 255, 0.95);
+
+  /* text */
+  --text: #161833;
+  --text-2: #4f5372;
+  --text-3: #8c90aa;
+
+  /* brand + accents (used sparingly) */
+  --burgundy: #700020;
+  --burgundy-ink: #4a0a24;
+  --accent: #5b63f0;
+  --accent-2: #8b7cf7;
+  --accent-soft: rgba(91, 99, 240, 0.09);
+  --accent-softer: rgba(91, 99, 240, 0.05);
+  --pink: #e0559a;
+  --cyan: #2ab4d6;
+  --green: #16a864;
+  --amber: #d98a14;
+  --red: #e0474c;
+
+  /* shape */
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 16px;
+  --r-lg: 22px;
+  --r-xl: 28px;
+
+  /* depth — extremely soft */
+  --shadow-1: 0 1px 2px rgba(22, 25, 60, 0.03), 0 6px 18px rgba(22, 25, 60, 0.045);
+  --shadow-2: 0 2px 6px rgba(22, 25, 60, 0.04), 0 18px 48px rgba(22, 25, 60, 0.08);
+  --shadow-glow: 0 8px 28px rgba(110, 100, 240, 0.22);
+  --ring: 0 0 0 3px rgba(91, 99, 240, 0.28);
+
+  /* type */
+  --font: "Inter Variable", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --font-ar: "IBM Plex Sans Arabic", "Inter Variable", system-ui, sans-serif;
+
+  /* motion (mirrors src/design/motion.ts) */
+  --t-fast: 120ms;
+  --t-normal: 220ms;
+  --t-slow: 550ms;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  color-scheme: light;
+}

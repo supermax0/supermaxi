@@ -4,10 +4,12 @@ const FinancialPreviewWindow = {
     const preview = p.preview || {};
     const posting = p.posting || {};
     const postingPreview = preview.posting_preview || {};
+    const profit = preview.profit || {};
     const posted = posting.status === "posted" || postingPreview.status === "posted";
     container.innerHTML = `
       <div class="ws-financial-preview">
         <p class="ws-doc-intel-disclaimer">${posted ? "تم تنفيذ الصفوف المطابقة السليمة فقط." : "هذه ليست عملية تسديد بعد. التنفيذ يحتاج موافقة صريحة."}</p>
+        ${preview.global_blockers ? `<p class="ws-financial-note" style="color:#b42318">التنفيذ متوقف: يوجد ${preview.global_blockers} خلل في مجاميع الكشف أو بنيته.</p>` : ""}
         <div class="ws-courier-cards">
           ${this._card("إجمالي التحصيل", preview.total_collected_amount)}
           ${this._card("إجمالي أجور التوصيل", preview.total_delivery_fees)}
@@ -15,7 +17,10 @@ const FinancialPreviewWindow = {
           ${this._card("مبالغ بها مشكلة", preview.issue_amount)}
           ${this._card("صفوف آمنة نظرياً", preview.safe_to_post_rows)}
           ${this._card("صفوف ممنوعة", preview.blocked_rows)}
+          ${this._card("صافي ربح الطلبات المطابقة", profit.net_profit)}
+          ${this._card("متوسط ربح الطلب", profit.avg_profit)}
         </div>
+        <p class="ws-financial-note">احتُسب الربح من قيمة الطلب ناقص كلفة البضاعة وأجرة التوصيل، وللطلبات المطابقة مؤكداً فقط.</p>
         <p class="ws-financial-note">${(preview.posting_preview && preview.posting_preview.message) || (posting.message || "")}</p>
       </div>`;
   },

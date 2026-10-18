@@ -1,0 +1,42 @@
+{% extends "public_flow/base.html" %}
+{% from "payment_flow/_macros.html" import pf_topbar with context %}
+{% block title %}تفعيل الحساب عبر واتساب — Finora{% endblock %}
+
+{% block content %}
+<div class="pf-page">
+  {{ pf_topbar('/', 'العودة للرئيسية') }}
+  <div class="pf-wrap">
+    <section class="pf-card wa-activation-card">
+      {% if is_activated %}
+        <div class="wa-activation-icon"><i class="fas fa-circle-check"></i></div>
+        <h1>تم تفعيل حسابك</h1>
+        <div class="wa-activation-success">حساب {{ tenant.name }} أصبح جاهزاً. يمكنك تسجيل الدخول الآن.</div>
+        <a class="pf-btn pf-btn-primary pf-btn-block" href="{{ url_for('index.login_tenant', tenant_slug=tenant.slug) }}">
+          <i class="fas fa-right-to-bracket"></i> تسجيل الدخول للنظام
+        </a>
+      {% else %}
+        <div class="wa-activation-icon"><i class="fab fa-whatsapp"></i></div>
+        <h1>بقيت خطوة واحدة</h1>
+        <p>تم حفظ معلوماتك، لكن الحساب لن يعمل قبل إرسال طلب التفعيل من رقم واتساب الذي سجلته. اضغط الزر وأرسل الرسالة الجاهزة بدون تعديل.</p>
+
+        <div class="wa-activation-details">
+          <div class="wa-activation-detail"><span>اسم النشاط</span><strong>{{ registration.company_name or tenant.name }}</strong></div>
+          <div class="wa-activation-detail"><span>اسم صاحب الحساب</span><strong>{{ registration.contact_name or '—' }}</strong></div>
+          <div class="wa-activation-detail"><span>رقم واتساب</span><strong dir="ltr">{{ registration.phone or '—' }}</strong></div>
+          <div class="wa-activation-detail"><span>رمز طلب التفعيل</span><strong dir="ltr">{{ registration.activation_code or '—' }}</strong></div>
+        </div>
+
+        {% if whatsapp_url %}
+        <a class="pf-btn pf-btn-primary pf-btn-block wa-activation-btn" href="{{ whatsapp_url }}" target="_blank" rel="noopener">
+          <i class="fab fa-whatsapp"></i> إرسال طلب التفعيل عبر واتساب
+        </a>
+        {% else %}
+        <div class="pf-alert-error" role="alert">رقم واتساب الدعم غير مضبوط حالياً. يرجى التواصل مع الإدارة.</div>
+        {% endif %}
+        <div class="wa-activation-note"><i class="fas fa-clock"></i><span>بعد إرسال الرسالة، حدّث هذه الصفحة لمعرفة حالة الحساب. لا ترسل كلمة المرور عبر واتساب.</span></div>
+        <a class="pf-btn pf-btn-outline pf-btn-block" href="{{ url_for('index.signup_whatsapp_pending') }}">تحديث حالة الحساب</a>
+      {% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}

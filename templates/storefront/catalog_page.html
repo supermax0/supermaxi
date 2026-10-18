@@ -1,0 +1,14 @@
+{% extends storefront_base|default("storefront/base.html") %}
+{% block title %}{{ page_title }} | {{ store_design.store_name }}{% endblock %}
+{% block content %}
+<section class="store-info-page cash-catalog-page">
+  <div class="store-info-hero"><div class="store-shell">
+    <nav class="store-info-crumb"><a href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">الرئيسية</a><span>/</span><strong>{{ page_title }}</strong></nav>
+    <span>{{ page_eyebrow }}</span><h1>{{ page_title }}</h1><p>{{ page_description }}</p>
+  </div></div>
+  <div class="store-shell store-info-body">
+    {% if products %}<div class="store-product-grid cash-catalog-grid">{% for product in products %}{% include 'storefront/partials/shared/product_card.html' %}{% endfor %}</div>
+    {% else %}<div class="store-account-empty cash-empty-page"><span>♡</span><h3>{{ empty_title }}</h3><p>تصفّح المنتجات واضغط علامة القلب لحفظ اختياراتك هنا.</p><a href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">استعرض المنتجات</a></div>{% endif %}
+  </div>
+</section>
+{% endblock %}

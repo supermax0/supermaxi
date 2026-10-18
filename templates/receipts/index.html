@@ -1,0 +1,930 @@
+{% extends "base.html" %}
+{% block title %}القبض والتسديدات{% endblock %}
+{% block page_title %}<i class="fa fa-hand-holding-usd"></i> القبض والتسديدات{% endblock %}
+
+{% block content %}
+<style>
+  .rc-page {
+    --rc-blue: #2563eb; --rc-indigo: #4338ca; --rc-ink: #0f172a;
+    width: 100%; max-width: 1540px; margin: 0 auto; padding: 0 4px 80px; box-sizing: border-box;
+  }
+  .rc-page *, .rc-page *::before, .rc-page *::after { box-sizing: border-box; }
+  .rc-hero {
+    position: relative; isolation: isolate; overflow: hidden; display: flex; align-items: center;
+    justify-content: space-between; gap: 18px; margin-bottom: 14px; padding: 22px 24px;
+    border: 1px solid rgba(37,99,235,.18); border-radius: 22px; color: #fff;
+    background: linear-gradient(125deg, #0f2f75 0%, #1d4ed8 55%, #4f46e5 100%);
+    box-shadow: 0 18px 42px rgba(37,99,235,.16);
+  }
+  .rc-hero::before, .rc-hero::after { content:""; position:absolute; z-index:-1; border-radius:999px; background:rgba(255,255,255,.09); }
+  .rc-hero::before { width:220px; height:220px; inset:-130px auto auto 12%; }
+  .rc-hero::after { width:160px; height:160px; inset:auto 44% -120px auto; }
+  .rc-hero-copy { display:flex; align-items:center; gap:14px; min-width:0; }
+  .rc-hero-icon { width:54px; height:54px; flex:0 0 54px; display:grid; place-items:center; border-radius:17px; background:rgba(255,255,255,.15); border:1px solid rgba(255,255,255,.24); font-size:23px; }
+  .rc-hero h2 { margin:0 0 4px; font-size:22px; font-weight:900; letter-spacing:-.3px; }
+  .rc-hero p { margin:0; color:rgba(255,255,255,.78); font-size:12px; font-weight:600; }
+  .rc-hero .rc-btn-primary { height:44px; padding-inline:18px; background:#fff; color:#1d4ed8; box-shadow:0 9px 24px rgba(15,23,42,.2); }
+  .rc-summary { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .rc-sum-card {
+    display:flex; align-items:center; gap:11px; min-height:82px; background: var(--card);
+    border: 1px solid var(--border); border-radius: 16px; padding: 13px; position: relative; overflow: hidden;
+    box-shadow:0 8px 24px rgba(15,23,42,.045); transition:transform .18s ease, box-shadow .18s ease;
+  }
+  .rc-sum-card:hover { transform:translateY(-2px); box-shadow:0 12px 28px rgba(15,23,42,.08); }
+  .rc-sum-icon { width:40px; height:40px; flex:0 0 40px; display:grid; place-items:center; border-radius:13px; font-size:16px; }
+  .today .rc-sum-icon { background:#dcfce7; color:#15803d; } .cust .rc-sum-icon { background:#dbeafe; color:#1d4ed8; }
+  .cour .rc-sum-icon { background:#fef3c7; color:#b45309; } .ship .rc-sum-icon { background:#ede9fe; color:#6d28d9; }
+  .cnt .rc-sum-icon { background:#cffafe; color:#0e7490; } .cancel .rc-sum-icon { background:#fee2e2; color:#b91c1c; }
+  .out .rc-sum-icon { background:#ffedd5; color:#c2410c; }
+  .rc-sum-card .lbl { font-size: 10px; color: var(--text-muted); font-weight: 800; margin-bottom:3px; }
+  .rc-sum-card .val { font-size: 1rem; font-weight: 900; line-height: 1.2; }
+  .rc-filter-shell { background:var(--card); border:1px solid var(--border); border-radius:17px; padding:11px; margin-bottom:12px; box-shadow:0 8px 24px rgba(15,23,42,.035); }
+  .rc-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+  .rc-filter { flex:0 1 160px; min-width:130px; }
+  .rc-filter.search { flex:1 1 260px; }
+  .rc-filter label { display:block; margin:0 3px 5px; font-size:10px; color:var(--text-muted); font-weight:800; }
+  .rc-toolbar input, .rc-toolbar select {
+    width:100%; height: 40px; padding: 0 11px; border-radius: 11px; border: 1px solid var(--border);
+    background: var(--bg, #fff); font-size: 12px; min-width: 0; outline:none; transition:.18s;
+  }
+  .rc-toolbar input:focus, .rc-toolbar select:focus { border-color:#60a5fa; box-shadow:0 0 0 3px rgba(37,99,235,.11); }
+  .rc-toolbar .grow { flex: 1 1 160px; }
+  .rc-btn {
+    height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid var(--border);
+    background: var(--card-alt, #f8fafc); font-size: 13px; font-weight: 700; cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px; white-space: nowrap;
+  }
+  .rc-btn-primary { background: var(--primary); color: #fff; border-color: transparent; }
+  .rc-btn-primary:disabled { opacity: .6; cursor: wait; }
+  .rc-panel { background: var(--card); border: 1px solid var(--border); border-radius: 18px; padding: 0; overflow: hidden; box-shadow:0 10px 30px rgba(15,23,42,.045); }
+  .rc-panel-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:15px 17px; border-bottom:1px solid var(--border); }
+  .rc-panel-head h3 { margin:0; font-size:14px; font-weight:900; }
+  .rc-panel-head p { margin:3px 0 0; color:var(--text-muted); font-size:10px; }
+  .rc-table-wrap { overflow:auto; padding:0 12px 12px; }
+  .rc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .rc-table th, .rc-table td { padding: 12px 9px; border-bottom: 1px solid var(--border); text-align: right; white-space: nowrap; }
+  .rc-table th { position:sticky; top:0; background:var(--card); z-index:1; font-size: 10px; color: var(--text-muted); font-weight: 800; }
+  .rc-table tbody tr { transition:background .15s; } .rc-table tbody tr:hover { background:rgba(37,99,235,.035); }
+  .rc-table td:first-child a { color:#2563eb; font-weight:900; text-decoration:none; }
+  .rc-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700;
+  }
+  .rc-badge.ok { background: rgba(22,163,74,.12); color: #15803d; }
+  .rc-badge.bad { background: rgba(239,68,68,.12); color: #b91c1c; }
+  .rc-badge.in { background: rgba(37,99,235,.12); color: #1d4ed8; }
+  .rc-badge.out { background: rgba(194,65,12,.12); color: #c2410c; }
+  .rc-actions { display: flex; gap: 4px; flex-wrap: wrap; }
+  .rc-actions a, .rc-actions button {
+    border: 1px solid var(--border); background: var(--bg); border-radius: 8px; padding: 4px 8px;
+    font-size: 12px; cursor: pointer; color: inherit; text-decoration: none;
+  }
+  .rc-empty { padding: 40px 16px; text-align: center; color: var(--text-muted); }
+  .rc-mode-switch { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:12px; }
+  .rc-mode-btn {
+    border:1px solid var(--border); background:var(--bg,#fff); border-radius:10px; padding:8px 12px;
+    font-size:12px; font-weight:800; cursor:pointer; color:var(--text);
+  }
+  .rc-mode-btn.is-on { background:#2563eb; color:#fff; border-color:#2563eb; }
+  .rc-dir-in { color:#15803d; font-weight:900; }
+  .rc-dir-out { color:#c2410c; font-weight:900; }
+
+  .rc-overlay {
+    position: fixed; inset: 0; background: rgba(15,23,42,.5); z-index: 10210;
+    opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .2s;
+  }
+  .rc-overlay.is-open { opacity: 1; visibility: visible; pointer-events: auto; }
+  .rc-modal {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -48%) scale(.98);
+    width: min(790px, 96vw); max-height: 92vh; overflow: auto; z-index: 10220;
+    background: var(--card); border-radius: 22px; border: 1px solid var(--border);
+    padding: 20px; opacity: 0; visibility: hidden; pointer-events: none; transition: .2s;
+  }
+  .rc-modal.is-open { opacity: 1; visibility: visible; pointer-events: auto; transform: translate(-50%, -50%) scale(1); }
+  .rc-modal h3 { margin: 0 0 12px; font-size: 16px; font-weight: 800; }
+  .rc-form { display: grid; gap: 10px; }
+  .rc-form label { font-size: 12px; font-weight: 700; color: var(--text-muted); display: block; margin-bottom: 4px; }
+  .rc-form input, .rc-form select, .rc-form textarea {
+    width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--bg, #fff); font-size: 14px; min-height: 42px;
+  }
+  .rc-modal-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin:-20px -20px 16px; padding:17px 20px; border-bottom:1px solid var(--border); background:linear-gradient(135deg,rgba(37,99,235,.09),rgba(79,70,229,.04)); }
+  .rc-modal-title { display:flex; align-items:center; gap:10px; }
+  .rc-modal-title i { width:36px; height:36px; display:grid; place-items:center; border-radius:11px; background:#2563eb; color:#fff; }
+  .rc-modal-title h3 { margin:0; }
+  .rc-modal-title small { display:block; margin-top:2px; color:var(--text-muted); font-size:10px; font-weight:600; }
+  .rc-section-label { display:flex; align-items:center; gap:7px; margin:3px 0 -2px; color:#2563eb; font-size:11px; font-weight:900; }
+  .rc-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .rc-info {
+    border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px;
+    background: var(--card-alt, #f8fafc); display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; font-size: 13px;
+  }
+  .rc-info strong { font-weight: 800; }
+  .rc-inv-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .rc-inv-table th, .rc-inv-table td { padding: 6px; border-bottom: 1px solid var(--border); text-align: right; }
+  .rc-manual-col { display: none; }
+  .rc-manual-on .rc-manual-col { display: table-cell; }
+  .rc-manual-amount { min-width: 100px !important; min-height: 34px !important; padding: 5px 7px !important; }
+  .rc-preview {
+    border: 1px dashed var(--border); border-radius: 12px; padding: 10px 12px; font-size: 13px;
+    background: rgba(37,99,235,.04);
+  }
+  .rc-preview .line { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; }
+  .rc-search-results {
+    border: 1px solid var(--border); border-radius: 10px; max-height: 180px; overflow: auto;
+    background: var(--bg); display: none;
+  }
+  .rc-search-results.is-open { display: block; }
+  .rc-search-results button {
+    width: 100%; text-align: right; border: none; background: transparent; padding: 8px 10px;
+    border-bottom: 1px solid var(--border); cursor: pointer; font-size: 13px;
+  }
+  .rc-search-results button:hover { background: var(--card-alt, #f8fafc); }
+  .rc-toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 11000;
+    background: #0f172a; color: #fff; padding: 10px 16px; border-radius: 10px; font-size: 13px;
+    display: none;
+  }
+  .rc-toast.is-on { display: block; }
+  @media (max-width: 1100px) {
+    .rc-summary { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+  @media (max-width: 900px) {
+    .rc-page { padding-inline:0; }
+    .rc-hero { padding:17px; border-radius:18px; }
+    .rc-hero h2 { font-size:18px; }
+    .rc-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .rc-row { grid-template-columns: 1fr; }
+    .rc-info { grid-template-columns: 1fr; }
+    .rc-desktop-only { display: none; }
+    .rc-cards { display: grid; gap: 9px; padding:10px; }
+    .rc-card-item {
+      border: 1px solid var(--border); border-radius: 12px; padding: 12px; background: var(--card);
+    }
+    .rc-card-item .top { display: flex; justify-content: space-between; gap: 8px; font-weight: 800; }
+    .rc-card-item .meta { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  }
+  @media (min-width: 901px) { .rc-cards { display: none; } }
+  @media (max-width: 560px) {
+    .rc-hero { align-items:stretch; flex-direction:column; }
+    .rc-hero .rc-btn-primary { width:100%; justify-content:center; }
+    .rc-summary { gap:7px; }
+    .rc-sum-card { min-height:72px; padding:10px; gap:8px; }
+    .rc-sum-icon { width:35px; height:35px; flex-basis:35px; }
+    .rc-sum-card .val { font-size:.85rem; }
+    .rc-filter { flex:1 1 calc(50% - 8px); }
+    .rc-filter.search { flex-basis:100%; }
+    .rc-modal { width:calc(100vw - 14px); max-height:calc(100vh - 18px); border-radius:18px; padding:15px; }
+    .rc-modal-head { margin:-15px -15px 14px; padding:14px 15px; }
+  }
+</style>
+
+<div class="rc-page" id="rcPage"
+  data-can-create="{{ 1 if can_create_any else 0 }}"
+  data-can-create-receipt="{{ 1 if can_create_receipt else 0 }}"
+  data-can-pay-supplier="{{ 1 if can_pay_supplier else 0 }}"
+  data-can-add-expense="{{ 1 if can_add_expense else 0 }}"
+  data-can-pay-salary="{{ 1 if can_pay_salary else 0 }}"
+  data-can-cancel="{{ 1 if (is_admin or can_cancel_receipts) else 0 }}"
+  data-can-print="{{ 1 if (is_admin or can_print_receipts) else 0 }}">
+
+  <section class="rc-hero">
+    <div class="rc-hero-copy">
+      <div class="rc-hero-icon"><i class="fa fa-hand-holding-usd"></i></div>
+      <div>
+        <h2>مركز القبض والتسديدات</h2>
+        <p>قبض وتحصيل + تسديد وصرف من مكان واحد</p>
+      </div>
+    </div>
+    {% if can_create_any %}
+    <button type="button" class="rc-btn rc-btn-primary" id="rcNewBtn"><i class="fa fa-plus"></i> حركة جديدة</button>
+    {% endif %}
+  </section>
+
+  <div class="rc-summary" id="rcStats">
+    <div class="rc-sum-card today"><div class="rc-sum-icon"><i class="fa fa-wallet"></i></div><div><div class="lbl">إجمالي قبض الفترة</div><div class="val" id="stTotal">—</div></div></div>
+    <div class="rc-sum-card out"><div class="rc-sum-icon"><i class="fa fa-arrow-up"></i></div><div><div class="lbl">إجمالي الصادر</div><div class="val" id="stOut">—</div></div></div>
+    <div class="rc-sum-card cust"><div class="rc-sum-icon"><i class="fa fa-user"></i></div><div><div class="lbl">قبض العملاء</div><div class="val" id="stCust">—</div></div></div>
+    <div class="rc-sum-card cour"><div class="rc-sum-icon"><i class="fa fa-motorcycle"></i></div><div><div class="lbl">قبض المندوبين</div><div class="val" id="stCour">—</div></div></div>
+    <div class="rc-sum-card ship"><div class="rc-sum-icon"><i class="fa fa-truck"></i></div><div><div class="lbl">قبض شركات النقل</div><div class="val" id="stShip">—</div></div></div>
+    <div class="rc-sum-card cnt"><div class="rc-sum-icon"><i class="fa fa-receipt"></i></div><div><div class="lbl">السندات المعتمدة</div><div class="val" id="stCnt">—</div></div></div>
+    <div class="rc-sum-card cancel"><div class="rc-sum-icon"><i class="fa fa-ban"></i></div><div><div class="lbl">السندات الملغاة</div><div class="val" id="stCancel">—</div></div></div>
+  </div>
+
+  <div class="rc-filter-shell">
+    <div class="rc-toolbar">
+      <div class="rc-filter search"><label for="rcSearch">بحث سريع</label><input class="grow" type="search" id="rcSearch" placeholder="رقم السند، اسم الجهة أو المرجع"></div>
+      <div class="rc-filter"><label for="rcPeriod">الفترة</label><select id="rcPeriod">
+        <option value="today">اليوم</option><option value="yesterday">أمس</option><option value="week">هذا الأسبوع</option>
+        <option value="month" selected>هذا الشهر</option><option value="custom">فترة مخصصة</option>
+      </select></div>
+      <div class="rc-filter" id="rcFromWrap" style="display:none"><label for="rcFrom">من تاريخ</label><input type="date" id="rcFrom"></div>
+      <div class="rc-filter" id="rcToWrap" style="display:none"><label for="rcTo">إلى تاريخ</label><input type="date" id="rcTo"></div>
+      <div class="rc-filter"><label for="rcKind">نوع الحركة</label><select id="rcKind">
+        <option value="">كل الحركات</option>
+        <option value="receipt">قبض</option>
+        <option value="supplier_payment">تسديد مورد</option>
+        <option value="expense">مصروف / راتب</option>
+      </select></div>
+      <div class="rc-filter"><label for="rcType">جهة القبض</label><select id="rcType">
+        <option value="">كل الجهات</option><option value="customer">عميل</option><option value="courier">مندوب</option><option value="shipping_company">شركة نقل</option>
+      </select></div>
+      <div class="rc-filter"><label for="rcStatus">الحالة</label><select id="rcStatus">
+        <option value="">كل الحالات</option><option value="معتمد">معتمد</option><option value="ملغى">ملغى</option>
+      </select></div>
+      <button type="button" class="rc-btn" id="rcReload" title="تحديث البيانات" aria-label="تحديث البيانات"><i class="fa fa-sync"></i></button>
+    </div>
+  </div>
+
+  <div class="rc-panel">
+    <div class="rc-panel-head"><div><h3>سجل الحركات الموحّد</h3><p>قبض وارد وتسديد/صرف صادر ضمن الفترة والفلاتر</p></div><i class="fa fa-list-ul" style="color:#2563eb"></i></div>
+    <div class="rc-desktop-only rc-table-wrap">
+      <table class="rc-table">
+        <thead>
+          <tr>
+            <th>المرجع</th><th>التاريخ</th><th>النوع</th><th>الجهة</th>
+            <th>الاتجاه</th><th>المبلغ</th><th>الدفع</th><th>الحالة</th><th>إجراءات</th>
+          </tr>
+        </thead>
+        <tbody id="rcTbody"><tr><td colspan="9" class="rc-empty">جاري التحميل...</td></tr></tbody>
+      </table>
+    </div>
+    <div class="rc-cards" id="rcCards"></div>
+  </div>
+</div>
+
+<div class="rc-overlay" id="rcOverlay"></div>
+<div class="rc-modal" id="rcModal" role="dialog" aria-modal="true">
+  <div class="rc-modal-head">
+    <div class="rc-modal-title"><i class="fa fa-receipt"></i><div><h3 id="rcModalTitle">إنشاء حركة</h3><small id="rcModalSub">اختر نوع الحركة ثم أكمل البيانات</small></div></div>
+    <button type="button" class="rc-btn" id="rcCloseModal">إغلاق</button>
+  </div>
+  <div class="rc-form" id="rcForm">
+    <div class="rc-mode-switch" id="fModeSwitch" role="tablist" aria-label="نوع الحركة"></div>
+
+    <div class="rc-section-label" id="secPartyLabel"><i class="fa fa-user-circle"></i> الجهة والذمة</div>
+    <div class="rc-row" id="secPartyRow">
+      <div id="fSourceTypeWrap">
+        <label id="fSourceTypeLabel">القبض من</label>
+        <select id="fSourceType">
+          <option value="customer">عميل</option>
+          <option value="courier">مندوب توصيل</option>
+          <option value="shipping_company">شركة نقل</option>
+        </select>
+      </div>
+      <div>
+        <label id="fSourceSearchLabel">البحث عن الجهة</label>
+        <input type="text" id="fSourceSearch" placeholder="اسم / هاتف..." autocomplete="off">
+        <div class="rc-search-results" id="fSourceResults"></div>
+        <input type="hidden" id="fSourceId">
+      </div>
+    </div>
+
+    <div class="rc-info" id="fSummary" style="display:none"></div>
+    <div id="fInvoicesWrap" style="display:none;max-height:180px;overflow:auto">
+      <table class="rc-inv-table">
+        <thead><tr><th>الرقم</th><th>التاريخ</th><th>الإجمالي</th><th>المدفوع</th><th>المتبقي</th><th>الحالة</th><th class="rc-manual-col">تخصيص</th></tr></thead>
+        <tbody id="fInvoices"></tbody>
+      </table>
+    </div>
+
+    <div class="rc-section-label" id="secMoneyLabel"><i class="fa fa-money-bill-wave"></i> بيانات الحركة</div>
+    <div class="rc-row" id="fExpenseTitleRow" style="display:none">
+      <div>
+        <label>عنوان المصروف</label>
+        <input type="text" id="fExpenseTitle" placeholder="مثال: راتب أحمد">
+      </div>
+      <div>
+        <label>فئة المصروف</label>
+        <select id="fExpenseCategory"></select>
+      </div>
+    </div>
+    <div class="rc-row" id="fAmountRow">
+      <div>
+        <label id="fAmountLabel">المبلغ (د.ع)</label>
+        <input type="text" id="fAmount" inputmode="numeric" placeholder="0">
+      </div>
+      <div id="fPayMethodWrap">
+        <label>طريقة الدفع</label>
+        <select id="fPayMethod"></select>
+      </div>
+    </div>
+    <div class="rc-row">
+      <div>
+        <label>الحساب المالي</label>
+        <select id="fTreasury"></select>
+      </div>
+      <div id="fRefWrap">
+        <label id="fRefLabel">رقم المرجع (اختياري)</label>
+        <input type="text" id="fRef">
+      </div>
+    </div>
+    <div id="fAllocWrap">
+      <label>طريقة التوزيع</label>
+      <select id="fAllocMethod">
+        <option value="oldest_first">أقدم فاتورة أولاً</option>
+        <option value="manual">اختيار يدوي</option>
+      </select>
+      <small style="display:block;margin-top:5px;color:var(--text-muted)">يجب توزيع كامل المبلغ على فواتير الجهة. الدفعات المقدمة لا تُسجل كسند قبض عادي.</small>
+    </div>
+    <div>
+      <label>ملاحظات</label>
+      <textarea id="fNotes" rows="2"></textarea>
+    </div>
+    <div class="rc-preview" id="fPreview"><div class="rc-empty" style="padding:12px">أدخل المبلغ لمعاينة التوزيع</div></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      <button type="button" class="rc-btn" id="rcCancelForm">إلغاء</button>
+      <button type="button" class="rc-btn rc-btn-primary" id="rcSubmit">تأكيد</button>
+    </div>
+  </div>
+</div>
+
+<div class="rc-overlay" id="rcCancelOverlay"></div>
+<div class="rc-modal" id="rcCancelModal">
+  <h3>إلغاء سند القبض</h3>
+  <p id="rcCancelLabel" style="font-size:13px;color:var(--text-muted)"></p>
+  <label style="font-size:12px;font-weight:700">سبب الإلغاء</label>
+  <textarea id="rcCancelReason" rows="3" style="width:100%;margin:8px 0;padding:10px;border-radius:10px;border:1px solid var(--border)"></textarea>
+  <div style="display:flex;gap:8px;justify-content:flex-end">
+    <button type="button" class="rc-btn" id="rcCancelClose">رجوع</button>
+    <button type="button" class="rc-btn" style="background:#ef4444;color:#fff;border:none" id="rcCancelConfirm">تأكيد الإلغاء</button>
+  </div>
+</div>
+
+<div class="rc-toast" id="rcToast"></div>
+
+<script>
+(function () {
+  const page = document.getElementById('rcPage');
+  const canCreate = page.dataset.canCreate === '1';
+  const canCreateReceipt = page.dataset.canCreateReceipt === '1';
+  const canPaySupplier = page.dataset.canPaySupplier === '1';
+  const canAddExpense = page.dataset.canAddExpense === '1';
+  const canPaySalary = page.dataset.canPaySalary === '1';
+  const canCancel = page.dataset.canCancel === '1';
+  const canPrint = page.dataset.canPrint === '1';
+  const SOURCE_LABEL = { customer: 'عميل', courier: 'مندوب', shipping_company: 'شركة نقل', supplier: 'مورد', employee: 'موظف', delivery_agent: 'مندوب', expense: 'مصروف' };
+  const KIND_LABEL = { receipt: 'قبض', supplier_payment: 'تسديد مورد', expense: 'مصروف / راتب', payroll: 'راتب موظف' };
+  const PAY_LABEL = {};
+  let selectedSource = null;
+  let summaryCache = null;
+  let metaLoaded = false;
+  let metaCache = null;
+  let cancelId = null;
+  let submitting = false;
+  let idempotencyKey = null;
+  let previewTimer = null;
+  let movementType = canCreateReceipt ? 'receipt' : (canPaySupplier ? 'supplier_payment' : (canAddExpense ? 'expense' : 'payroll'));
+
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n) => Number(n || 0).toLocaleString('en-IQ');
+  const esc = (value) => String(value == null ? '' : value)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+
+  function toast(msg) {
+    const el = $('rcToast');
+    el.textContent = msg;
+    el.classList.add('is-on');
+    setTimeout(() => el.classList.remove('is-on'), 2800);
+  }
+
+  function openModal() {
+    idempotencyKey = 'rc-' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+    $('rcOverlay').classList.add('is-open');
+    $('rcModal').classList.add('is-open');
+  }
+  function closeModal() {
+    $('rcOverlay').classList.remove('is-open');
+    $('rcModal').classList.remove('is-open');
+  }
+
+  async function api(url, opts) {
+    const res = await fetch(url, {
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      credentials: 'same-origin',
+      ...opts,
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.success === false) throw new Error(data.error || 'فشل الطلب');
+    return data.data;
+  }
+
+  function availableModes() {
+    const modes = [];
+    if (canCreateReceipt) modes.push({ id: 'receipt', label: 'سند قبض' });
+    if (canPaySupplier) modes.push({ id: 'supplier_payment', label: 'تسديد مورد' });
+    if (canAddExpense) modes.push({ id: 'expense', label: 'مصروف / راتب حر' });
+    if (canPaySalary) modes.push({ id: 'payroll', label: 'صرف راتب موظف' });
+    return modes;
+  }
+
+  function renderModeSwitch() {
+    const box = $('fModeSwitch');
+    box.innerHTML = availableModes().map(m =>
+      `<button type="button" class="rc-mode-btn${m.id === movementType ? ' is-on' : ''}" data-mode="${m.id}">${esc(m.label)}</button>`
+    ).join('');
+  }
+
+  function partyKindForMode() {
+    if (movementType === 'receipt') return $('fSourceType').value || 'customer';
+    if (movementType === 'supplier_payment') return 'supplier';
+    if (movementType === 'payroll') return $('fSourceType').value || 'employee';
+    return 'employee';
+  }
+
+  function applyModeUI() {
+    renderModeSwitch();
+    const isReceipt = movementType === 'receipt';
+    const isSupplier = movementType === 'supplier_payment';
+    const isExpense = movementType === 'expense';
+    const isPayroll = movementType === 'payroll';
+
+    $('rcModalTitle').textContent = isReceipt ? 'إنشاء سند قبض'
+      : isSupplier ? 'تسديد مورد'
+      : isExpense ? 'صرف مصروف / راتب حر'
+      : 'صرف راتب موظف';
+    $('rcModalSub').textContent = isReceipt ? 'اختر الجهة ثم وزّع المبلغ على الفواتير المستحقة'
+      : isSupplier ? 'اختر المورد وسجّل التسديد على ذمته'
+      : isExpense ? 'سجّل مصروفاً أو راتباً حراً من الخزينة'
+      : 'اختر موظفاً بصرف راتبه من جدول الرواتب';
+    $('rcSubmit').textContent = isReceipt ? 'تأكيد وإنشاء سند القبض'
+      : isSupplier ? 'تأكيد تسديد المورد'
+      : isExpense ? 'تأكيد صرف المصروف'
+      : 'تأكيد صرف الراتب';
+
+    $('fSourceTypeWrap').style.display = (isReceipt || isPayroll) ? '' : 'none';
+    $('secPartyRow').style.display = isExpense ? 'none' : '';
+    $('secPartyLabel').style.display = isExpense ? 'none' : '';
+    $('fExpenseTitleRow').style.display = isExpense ? '' : 'none';
+    $('fAllocWrap').style.display = isReceipt ? '' : 'none';
+    $('fInvoicesWrap').style.display = isReceipt && summaryCache ? 'block' : 'none';
+    $('fPayMethodWrap').style.display = isReceipt ? '' : 'none';
+    $('fAmount').disabled = isPayroll;
+    $('fAmountLabel').textContent = isReceipt ? 'مبلغ القبض (د.ع)'
+      : isSupplier ? 'مبلغ التسديد (د.ع)'
+      : isPayroll ? 'مبلغ الراتب (تلقائي)'
+      : 'المبلغ (د.ع)';
+    $('fRefLabel').textContent = isSupplier ? 'رقم مستند التسديد (اختياري)' : 'رقم المرجع (اختياري)';
+    $('fSourceSearchLabel').textContent = isSupplier ? 'البحث عن المورد' : (isPayroll ? 'البحث عن المستفيد' : 'البحث عن الجهة');
+    $('fSourceTypeLabel').textContent = isPayroll ? 'نوع المستفيد' : 'القبض من';
+
+    if (isPayroll) {
+      $('fSourceType').innerHTML = '<option value="employee">موظف</option><option value="delivery_agent">مندوب توصيل</option>';
+    } else if (isReceipt) {
+      $('fSourceType').innerHTML = '<option value="customer">عميل</option><option value="courier">مندوب توصيل</option><option value="shipping_company">شركة نقل</option>';
+    }
+
+    if (!isReceipt) {
+      $('fPreview').innerHTML = '<div class="rc-empty" style="padding:12px">معاينة التوزيع متاحة لسند القبض فقط</div>';
+    }
+  }
+
+  async function loadMeta() {
+    if (metaLoaded) return metaCache;
+    const data = await api('/api/receipts/meta');
+    metaCache = data;
+    const pm = $('fPayMethod');
+    pm.innerHTML = '';
+    (data.payment_methods || []).forEach(m => {
+      PAY_LABEL[m.id] = m.label;
+      const o = document.createElement('option');
+      o.value = m.id; o.textContent = m.label; pm.appendChild(o);
+    });
+    const tr = $('fTreasury');
+    tr.innerHTML = '<option value="">تلقائي حسب طريقة الدفع</option>';
+    (data.treasury_accounts || []).forEach(a => {
+      const o = document.createElement('option');
+      o.value = a.id;
+      o.textContent = a.name + (a.account_type ? ' (' + a.account_type + ')' : '');
+      tr.appendChild(o);
+    });
+    const cat = $('fExpenseCategory');
+    cat.innerHTML = '';
+    (data.expense_categories || []).forEach(c => {
+      const o = document.createElement('option');
+      o.value = c.id; o.textContent = c.label || c.id;
+      if (c.id === 'salary') o.selected = true;
+      cat.appendChild(o);
+    });
+    metaLoaded = true;
+    return data;
+  }
+
+  function queryParams() {
+    const p = new URLSearchParams();
+    p.set('period', $('rcPeriod').value);
+    if ($('rcPeriod').value === 'custom') {
+      if ($('rcFrom').value) p.set('date_from', $('rcFrom').value);
+      if ($('rcTo').value) p.set('date_to', $('rcTo').value);
+    }
+    if ($('rcSearch').value.trim()) p.set('q', $('rcSearch').value.trim());
+    if ($('rcKind').value) p.set('kind', $('rcKind').value);
+    if ($('rcType').value) p.set('source_type', $('rcType').value);
+    if ($('rcStatus').value) p.set('status', $('rcStatus').value);
+    return p.toString();
+  }
+
+  function renderRows(items) {
+    const tb = $('rcTbody');
+    const cards = $('rcCards');
+    if (!items.length) {
+      tb.innerHTML = '<tr><td colspan="9" class="rc-empty">لا توجد حركات</td></tr>';
+      cards.innerHTML = '<div class="rc-empty">لا توجد حركات</div>';
+      return;
+    }
+    tb.innerHTML = items.map(r => {
+      const badge = r.status === 'ملغى'
+        ? '<span class="rc-badge bad">ملغى</span>'
+        : `<span class="rc-badge ok">${esc(r.status_label || r.status || 'معتمد')}</span>`;
+      const dir = r.direction === 'out'
+        ? '<span class="rc-badge out">صادر</span>'
+        : '<span class="rc-badge in">وارد</span>';
+      const amountClass = r.direction === 'out' ? 'rc-dir-out' : 'rc-dir-in';
+      const detail = r.detail_url || '#';
+      let actions = `<a href="${esc(detail)}">عرض</a>`;
+      if (r.kind === 'receipt') {
+        if (canPrint) actions += ` <a href="/receipts/${Number(r.id)}/print" target="_blank">طباعة</a>`;
+        if (canCancel && r.status !== 'ملغى') {
+          actions += ` <button type="button" data-cancel="${Number(r.id)}" data-no="${esc(r.ref || '')}">إلغاء</button>`;
+        }
+      }
+      return `<tr>
+        <td><a href="${esc(detail)}">${esc(r.ref || '—')}</a></td>
+        <td>${esc(r.date || '—')}</td>
+        <td>${esc(r.kind_label || KIND_LABEL[r.kind] || r.kind)}</td>
+        <td>${esc(r.party_name || '—')}</td>
+        <td>${dir}</td>
+        <td class="${amountClass}">${fmt(r.amount)}</td>
+        <td>${esc(PAY_LABEL[r.payment_method] || r.payment_method || '—')}</td>
+        <td>${badge}</td>
+        <td><div class="rc-actions">${actions}</div></td>
+      </tr>`;
+    }).join('');
+
+    cards.innerHTML = items.map(r => {
+      const detail = r.detail_url || '#';
+      let actions = `<a href="${esc(detail)}">عرض</a>`;
+      if (r.kind === 'receipt') {
+        if (canPrint) actions += ` <a href="/receipts/${Number(r.id)}/print" target="_blank">طباعة</a>`;
+        if (canCancel && r.status !== 'ملغى') {
+          actions += ` <button type="button" data-cancel="${Number(r.id)}" data-no="${esc(r.ref || '')}">إلغاء</button>`;
+        }
+      }
+      return `<div class="rc-card-item">
+        <div class="top"><span>${esc(r.ref || '—')}</span><span>${fmt(r.amount)} د.ع</span></div>
+        <div class="meta">${esc(r.kind_label || '')} — ${esc(r.party_name || '')} — ${esc(r.date || '')}</div>
+        <div class="meta" style="margin-top:8px"><div class="rc-actions">${actions}</div></div>
+      </div>`;
+    }).join('');
+  }
+
+  async function loadList() {
+    try {
+      const data = await api('/api/receipts/movements?' + queryParams());
+      const s = data.stats || {};
+      $('stTotal').textContent = fmt(s.total_amount || s.inbound_total) + ' د.ع';
+      $('stOut').textContent = fmt(s.outbound_total) + ' د.ع';
+      $('stCust').textContent = fmt(s.customer_amount) + ' د.ع';
+      $('stCour').textContent = fmt(s.courier_amount) + ' د.ع';
+      $('stShip').textContent = fmt(s.shipping_amount) + ' د.ع';
+      $('stCnt').textContent = fmt(s.count);
+      $('stCancel').textContent = fmt(s.cancelled_count);
+      (data.payment_methods || []).forEach(m => { PAY_LABEL[m.id] = m.label; });
+      renderRows(data.items || []);
+    } catch (e) {
+      $('rcTbody').innerHTML = `<tr><td colspan="9" class="rc-empty">${e.message}</td></tr>`;
+      toast(e.message);
+    }
+  }
+
+  function parseAmount(raw) {
+    return parseInt(String(raw || '').replace(/[^\d]/g, ''), 10) || 0;
+  }
+
+  function renderSummary(sum) {
+    summaryCache = sum;
+    const box = $('fSummary');
+    box.style.display = 'grid';
+    if (movementType === 'payroll') {
+      box.innerHTML = `
+        <div>الاسم: <strong>${esc(sum.name || '')}</strong></div>
+        <div>الجدول: <strong>${esc(sum.schedule_label || '—')}</strong></div>
+        <div>مبلغ الراتب: <strong>${fmt(sum.amount)} د.ع</strong></div>
+        <div>حالة الدورة: <strong>${sum.paid_in_cycle ? 'مدفوع' : (sum.is_due ? 'مستحق' : 'غير مستحق بعد')}</strong></div>
+        <div>يمكن الصرف يدوياً: <strong>${sum.can_pay_manually ? 'نعم' : 'لا'}</strong></div>
+        <div>الاستحقاق القادم: <strong>${esc(sum.next_pay_date || '—')}</strong></div>
+      `;
+      $('fAmount').value = sum.amount ? fmt(sum.amount) : '';
+      $('fInvoicesWrap').style.display = 'none';
+      return;
+    }
+    if (movementType === 'supplier_payment') {
+      box.innerHTML = `
+        <div>الاسم: <strong>${esc(sum.name || '')}</strong></div>
+        <div>الهاتف: <strong>${esc(sum.phone || '—')}</strong></div>
+        <div>المتبقي على المورد: <strong>${fmt(sum.balance)} د.ع</strong></div>
+        <div>التوزيع: <strong>أقدم فاتورة أولاً تلقائياً</strong></div>
+      `;
+      $('fInvoicesWrap').style.display = 'none';
+      return;
+    }
+    box.innerHTML = `
+      <div>الاسم: <strong>${esc(sum.name || '')}</strong></div>
+      <div>الهاتف: <strong>${esc(sum.phone || '—')}</strong></div>
+      <div>إجمالي الذمة: <strong>${fmt(sum.balance)} د.ع</strong></div>
+      <div>الفواتير/الطلبات المفتوحة: <strong>${sum.open_count || 0}</strong></div>
+    `;
+    const tb = $('fInvoices');
+    $('fInvoicesWrap').style.display = 'block';
+    tb.innerHTML = (sum.invoices || []).map(inv => `
+      <tr>
+        <td>${esc(inv.invoice_no)}</td><td>${esc(inv.date || '—')}</td>
+        <td>${fmt(inv.total)}</td><td>${fmt(inv.paid_amount)}</td>
+        <td><strong>${fmt(inv.remaining)}</strong></td><td>${esc(inv.status_label || inv.payment_status)}</td>
+        <td class="rc-manual-col"><input class="rc-manual-amount" type="text" inputmode="numeric" data-invoice-id="${Number(inv.id)}" data-max="${Number(inv.remaining || 0)}" placeholder="0"></td>
+      </tr>`).join('') || '<tr><td colspan="7" class="rc-empty">لا توجد مستحقات</td></tr>';
+    toggleManualAllocation();
+    schedulePreview();
+  }
+
+  async function searchSources() {
+    if (movementType === 'expense') return;
+    const q = $('fSourceSearch').value.trim();
+    const kind = partyKindForMode();
+    const box = $('fSourceResults');
+    if (q.length < 1) { box.classList.remove('is-open'); return; }
+    try {
+      const rows = await api(`/api/receipts/search-parties?kind=${encodeURIComponent(kind)}&q=${encodeURIComponent(q)}`);
+      if (!rows.length) {
+        box.innerHTML = '<button type="button" disabled>لا نتائج</button>';
+        box.classList.add('is-open');
+        return;
+      }
+      box.innerHTML = rows.map(r =>
+        `<button type="button" data-id="${Number(r.id)}" data-name="${esc(r.name)}" data-kind="${esc(r.kind || kind)}">${esc(r.name)} ${r.phone ? '— ' + esc(r.phone) : ''}${r.balance != null ? ' — ' + fmt(r.balance) : ''}</button>`
+      ).join('');
+      box.classList.add('is-open');
+    } catch (e) { toast(e.message); }
+  }
+
+  async function pickSource(id, name, kind) {
+    $('fSourceId').value = id;
+    $('fSourceSearch').value = name;
+    $('fSourceResults').classList.remove('is-open');
+    const partyKind = kind || partyKindForMode();
+    selectedSource = { id, name, type: partyKind };
+    const sum = await api(`/api/receipts/party/${encodeURIComponent(partyKind)}/${id}/summary`);
+    renderSummary(sum);
+  }
+
+  async function schedulePreview() {
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(runPreview, 250);
+  }
+
+  async function runPreview() {
+    if (movementType !== 'receipt') return;
+    const amount = parseAmount($('fAmount').value);
+    const box = $('fPreview');
+    if (!selectedSource || amount <= 0) {
+      box.innerHTML = '<div class="rc-empty" style="padding:12px">أدخل المبلغ لمعاينة التوزيع</div>';
+      return;
+    }
+    try {
+      const prev = await api('/api/receipts/preview-allocation', {
+        method: 'POST',
+        body: JSON.stringify({
+          source_type: selectedSource.type,
+          source_id: selectedSource.id,
+          amount,
+          allocation_method: $('fAllocMethod').value,
+          allocations: manualAllocations(),
+        }),
+      });
+      const lines = (prev.allocations || []).map(a =>
+        `<div class="line"><span>${a.reference}</span><span>${fmt(a.amount)} — ${a.status_after}</span></div>`
+      ).join('') || '<div class="line"><span>قبض على الحساب / بدون توزيع</span><span></span></div>';
+      box.innerHTML = `
+        <div class="line"><strong>إجمالي مبلغ القبض</strong><strong>${fmt(prev.amount)} د.ع</strong></div>
+        ${lines}
+        <hr style="border:none;border-top:1px solid var(--border);margin:8px 0">
+        <div class="line"><span>الرصيد السابق</span><span>${fmt(prev.balance_before)}</span></div>
+        <div class="line"><span>المقبوض</span><span>${fmt(prev.amount)}</span></div>
+        <div class="line"><strong>الرصيد بعد العملية</strong><strong>${fmt(prev.balance_after)}</strong></div>
+        ${prev.unallocated ? `<div class="line" style="color:#b91c1c"><strong>غير موزع</strong><strong>${fmt(prev.unallocated)} د.ع</strong></div>` : ''}
+        ${prev.overpay ? `<div class="line" style="color:#b91c1c">المبلغ أكبر من الذمة بمقدار ${fmt(prev.overpay)} د.ع ولن يمكن حفظه</div>` : ''}
+      `;
+    } catch (e) {
+      box.innerHTML = `<div class="rc-empty" style="padding:12px;color:#b91c1c">${e.message}</div>`;
+    }
+  }
+
+  async function submitMovement() {
+    if (submitting) return;
+    submitting = true;
+    $('rcSubmit').disabled = true;
+    try {
+      let payload = { movement_type: movementType };
+      if (movementType === 'receipt') {
+        if (!selectedSource) throw new Error('اختر الجهة أولاً');
+        const amount = parseAmount($('fAmount').value);
+        if (amount <= 0) throw new Error('أدخل مبلغاً صحيحاً');
+        payload = {
+          ...payload,
+          source_type: selectedSource.type,
+          source_id: Number(selectedSource.id),
+          amount,
+          payment_method: $('fPayMethod').value,
+          treasury_account_id: $('fTreasury').value || null,
+          reference_number: $('fRef').value.trim() || null,
+          notes: $('fNotes').value.trim() || null,
+          allocation_method: $('fAllocMethod').value,
+          allocations: manualAllocations(),
+          idempotency_key: idempotencyKey,
+        };
+      } else if (movementType === 'supplier_payment') {
+        if (!selectedSource) throw new Error('اختر المورد أولاً');
+        const amount = parseAmount($('fAmount').value);
+        if (amount <= 0) throw new Error('أدخل مبلغاً صحيحاً');
+        payload = {
+          ...payload,
+          supplier_id: Number(selectedSource.id),
+          amount,
+          treasury_account_id: $('fTreasury').value || null,
+          document_number: $('fRef').value.trim() || null,
+          notes: $('fNotes').value.trim() || null,
+        };
+      } else if (movementType === 'expense') {
+        const title = $('fExpenseTitle').value.trim();
+        const amount = parseAmount($('fAmount').value);
+        if (!title) throw new Error('أدخل عنوان المصروف');
+        if (amount <= 0) throw new Error('أدخل مبلغاً صحيحاً');
+        payload = {
+          ...payload,
+          title,
+          category: $('fExpenseCategory').value || 'salary',
+          amount,
+          treasury_account_id: $('fTreasury').value || null,
+          notes: $('fNotes').value.trim() || null,
+        };
+      } else if (movementType === 'payroll') {
+        if (!selectedSource) throw new Error('اختر المستفيد أولاً');
+        if (!$('fTreasury').value) throw new Error('اختر الحساب المالي لصرف الراتب');
+        payload = {
+          ...payload,
+          payee_type: selectedSource.type,
+          payee_id: Number(selectedSource.id),
+          treasury_account_id: Number($('fTreasury').value),
+          manual: true,
+          notes: $('fNotes').value.trim() || null,
+        };
+      }
+      const result = await api('/api/receipts/settlements', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+      closeModal();
+      toast(result.message || result.label || 'تم حفظ الحركة');
+      await loadList();
+      if (movementType === 'receipt' && result.id && confirm('تم الإنشاء بنجاح. فتح السند للطباعة؟')) {
+        window.open('/receipts/' + result.id + '/print', '_blank');
+      } else if (result.detail_url && movementType !== 'receipt') {
+        // stay on list; detail available via row link
+      }
+    } catch (e) {
+      toast(e.message);
+    } finally {
+      submitting = false;
+      $('rcSubmit').disabled = false;
+    }
+  }
+
+  function resetFormFields() {
+    selectedSource = null;
+    summaryCache = null;
+    $('fSourceId').value = '';
+    $('fSourceSearch').value = '';
+    $('fAmount').value = '';
+    $('fRef').value = '';
+    $('fNotes').value = '';
+    $('fExpenseTitle').value = '';
+    $('fSummary').style.display = 'none';
+    $('fInvoicesWrap').style.display = 'none';
+    $('fPreview').innerHTML = '<div class="rc-empty" style="padding:12px">أدخل المبلغ لمعاينة التوزيع</div>';
+  }
+
+  $('rcPeriod').addEventListener('change', () => {
+    const custom = $('rcPeriod').value === 'custom';
+    $('rcFromWrap').style.display = custom ? '' : 'none';
+    $('rcToWrap').style.display = custom ? '' : 'none';
+    loadList();
+  });
+  ['rcFrom', 'rcTo', 'rcType', 'rcStatus', 'rcKind'].forEach(id => $(id).addEventListener('change', loadList));
+  let searchTimer;
+  $('rcSearch').addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(loadList, 300);
+  });
+  $('rcReload').addEventListener('click', loadList);
+
+  if (canCreate) {
+    $('rcNewBtn').addEventListener('click', async () => {
+      await loadMeta();
+      resetFormFields();
+      applyModeUI();
+      openModal();
+    });
+  }
+  $('rcCloseModal').addEventListener('click', closeModal);
+  $('rcCancelForm').addEventListener('click', closeModal);
+  $('rcOverlay').addEventListener('click', closeModal);
+
+  $('fModeSwitch').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-mode]');
+    if (!btn) return;
+    movementType = btn.dataset.mode;
+    resetFormFields();
+    applyModeUI();
+  });
+
+  let srcTimer;
+  $('fSourceSearch').addEventListener('input', () => {
+    clearTimeout(srcTimer);
+    srcTimer = setTimeout(searchSources, 250);
+  });
+  $('fSourceType').addEventListener('change', () => {
+    selectedSource = null;
+    $('fSourceId').value = '';
+    $('fSourceSearch').value = '';
+    $('fSummary').style.display = 'none';
+    $('fInvoicesWrap').style.display = 'none';
+  });
+  $('fSourceResults').addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-id]');
+    if (!btn) return;
+    pickSource(btn.dataset.id, btn.dataset.name, btn.dataset.kind);
+  });
+  $('fAmount').addEventListener('input', (e) => {
+    const n = parseAmount(e.target.value);
+    e.target.value = n ? fmt(n) : '';
+    schedulePreview();
+  });
+  function manualAllocations() {
+    if ($('fAllocMethod').value !== 'manual') return [];
+    return Array.from(document.querySelectorAll('.rc-manual-amount')).map(input => ({
+      invoice_id: Number(input.dataset.invoiceId),
+      amount: parseAmount(input.value),
+    })).filter(row => row.amount > 0);
+  }
+  function toggleManualAllocation() {
+    const manual = $('fAllocMethod').value === 'manual';
+    $('fInvoicesWrap').classList.toggle('rc-manual-on', manual);
+  }
+
+  $('fAllocMethod').addEventListener('change', () => {
+    toggleManualAllocation();
+    schedulePreview();
+  });
+  $('fInvoices').addEventListener('input', (e) => {
+    if (!e.target.classList.contains('rc-manual-amount')) return;
+    const max = Number(e.target.dataset.max || 0);
+    const value = Math.min(parseAmount(e.target.value), max);
+    e.target.value = value ? fmt(value) : '';
+    schedulePreview();
+  });
+  $('rcSubmit').addEventListener('click', submitMovement);
+
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-cancel]');
+    if (!btn) return;
+    cancelId = btn.dataset.cancel;
+    $('rcCancelLabel').textContent = 'إلغاء السند ' + (btn.dataset.no || '');
+    $('rcCancelReason').value = '';
+    $('rcCancelOverlay').classList.add('is-open');
+    $('rcCancelModal').classList.add('is-open');
+  });
+  $('rcCancelClose').addEventListener('click', () => {
+    $('rcCancelOverlay').classList.remove('is-open');
+    $('rcCancelModal').classList.remove('is-open');
+  });
+  $('rcCancelOverlay').addEventListener('click', () => {
+    $('rcCancelOverlay').classList.remove('is-open');
+    $('rcCancelModal').classList.remove('is-open');
+  });
+  $('rcCancelConfirm').addEventListener('click', async () => {
+    try {
+      await api('/api/receipts/' + cancelId + '/cancel', {
+        method: 'POST',
+        body: JSON.stringify({ reason: $('rcCancelReason').value }),
+      });
+      $('rcCancelOverlay').classList.remove('is-open');
+      $('rcCancelModal').classList.remove('is-open');
+      toast('تم إلغاء السند');
+      loadList();
+    } catch (e) { toast(e.message); }
+  });
+
+  loadList();
+})();
+</script>
+{% endblock %}

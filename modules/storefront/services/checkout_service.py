@@ -14,6 +14,8 @@ from utils.branch_stock_service import BranchStockError
 from utils.order_stock_lock import apply_stock_actions, check_stock_rows, mark_order_stock_locked
 from utils.order_stock_lock import clear_order_stock_lock
 from utils.order_stock_policy import deferred_stock_enabled
+from utils.product_color_service import ProductColorError, effective_color_buy_price
+from utils.trade_in_service import sync_trade_in_receipts
 
 SERVICE_SHIPPING_BARCODE = "__SF_SHIPPING__"
 SERVICE_DISCOUNT_BARCODE = "__SF_DISCOUNT__"
@@ -90,7 +92,7 @@ class StorefrontCheckoutService:
         first_product = Product.query.get(cart_items[0]["id"]) if cart_items else None
         tenant_id = getattr(first_product, "tenant_id", None)
 
-        customer = Customer.query.filter_by(phone=phone).first()
+        customer = Customer.query.filter_by(phone=phone, tenant_id=tenant_id).first()
         if customer:
             customer.name = name
             if city:
@@ -123,10 +125,17 @@ class StorefrontCheckoutService:
             product = Product.query.get(item["id"])
             if not product:
                 return False, f"المنتج غير موجود: {item['name']}", {}
+            from utils.product_options import validate_selection
+            try:
+                validate_selection(product, item.get("color") or "")
+            except ProductColorError as exc:
+                db.session.rollback()
+                return False, str(exc), {}
             stock_rows.append({
                 "product": product,
                 "product_id": product.id,
                 "quantity": int(item["quantity"]),
+                "variant_color": item.get("color") or None,
             })
         defer_stock = deferred_stock_enabled()
         stock_check = check_stock_rows(stock_rows, preferred_branch_id=preferred_branch_id) if not defer_stock else None
@@ -164,17 +173,22 @@ class StorefrontCheckoutService:
             )
             if invoice_branch_id is None:
                 invoice_branch_id = fulfillment_branch_id
-            line_total = int(product.sale_price or 0) * int(item["quantity"])
+            unit_iqd = int(item.get("price_iqd") or item.get("price") or 0)
+            line_total = unit_iqd * int(item["quantity"])
             db.session.add(
                 OrderItem(
                     invoice_id=invoice.id,
                     product_id=product.id,
                     product_name=product.name,
                     quantity=int(item["quantity"]),
-                    price=int(product.sale_price or 0),
-                    cost=int(product.buy_price or 0),
+                    price=unit_iqd,
+                    cost=effective_color_buy_price(product, item.get("color")),
                     total=line_total,
                     fulfillment_branch_id=fulfillment_branch_id,
+                    variant_color=item.get("color") or None,
+                    sale_mode=item.get("sale_mode") or "normal",
+                    trade_in_source_product_id=None,
+                    trade_in_source_product_name=None,
                 )
             )
         if defer_stock:
@@ -184,13 +198,16 @@ class StorefrontCheckoutService:
                 apply_stock_actions(stock_check.actions, invoice=invoice)
                 invoice.stock_is_deducted = True
                 invoice.stock_deducted_at = datetime.utcnow()
-            except BranchStockError as exc:
+            except (BranchStockError, ProductColorError) as exc:
                 db.session.rollback()
                 return False, str(exc), {}
         else:
             mark_order_stock_locked(invoice, stock_check.reason_text)
         if invoice_branch_id:
             invoice.branch_id = invoice_branch_id
+
+        db.session.flush()
+        sync_trade_in_receipts(invoice)
 
         if discount_amount > 0:
             discount_product = _get_or_create_service_product("خصم كوبون", SERVICE_DISCOUNT_BARCODE, tenant_id)

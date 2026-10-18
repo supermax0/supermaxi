@@ -1,6 +1,5 @@
-/* Page-level Finora White Pro refinements. Loaded by base and standalone POS. */
+/* Page-level Finora refinements. Loaded by base and standalone POS. */
 :root,
-:root[data-theme="dark"],
 :root[data-theme="light"] {
   --dashboard-bg: var(--bg-page, #F8FAFD);
   --dashboard-card: var(--surface, #FFFFFF);
@@ -12,6 +11,19 @@
   --orders-border: var(--border, #E4EAF2);
   --orders-text: var(--text-main, #101828);
   --orders-muted: var(--text-secondary, #667085);
+}
+
+:root[data-theme="dark"] {
+  --dashboard-bg: var(--bg-page, #0b1220);
+  --dashboard-card: var(--surface, #121a2a);
+  --dashboard-border: var(--border, rgba(148, 163, 184, 0.18));
+  --dashboard-text: var(--text-main, #e8eef8);
+  --dashboard-muted: var(--text-secondary, #a8b6c9);
+  --orders-bg: var(--bg-page, #0b1220);
+  --orders-card: var(--surface, #121a2a);
+  --orders-border: var(--border, rgba(148, 163, 184, 0.18));
+  --orders-text: var(--text-main, #e8eef8);
+  --orders-muted: var(--text-secondary, #a8b6c9);
 }
 
 .dashboard-hero {

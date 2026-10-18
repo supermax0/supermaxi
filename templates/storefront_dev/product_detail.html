@@ -7,7 +7,8 @@
       {% if product.image_url %}
       <img id="sfMainImage" src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy">
       {% else %}
-      <span style="color:var(--muted)">لا توجد صورة</span>
+      <img id="sfMainImage" alt="{{ product.name }}" hidden>
+      <span id="sfMainPlaceholder" style="color:var(--muted)">لا توجد صورة</span>
       {% endif %}
     </div>
     {% if product.gallery %}
@@ -27,6 +28,7 @@
     <p style="margin:0;color:var(--muted);">{{ product.description or "تفاصيل المنتج الكاملة في هذه الصفحة." }}</p>
     <div class="sf-price" style="font-size:1.8rem;">{{ "{:,.0f}".format(product.price) }} <small>د.ع</small></div>
     <div class="sf-status {{ '' if product.is_available else 'out' }}">{{ "متوفر وجاهز للطلب" if product.is_available else "غير متوفر حالياً" }}</div>
+    {% include "storefront/_color_picker.html" %}
     <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
       <input type="number" min="1" max="999" name="quantity" value="1" form="sfAddForm" style="width:90px;border-radius:10px;border:1px solid var(--line);padding:10px;background:var(--surface);color:var(--text);">
       <form id="sfAddForm" style="display:contents;">

@@ -133,7 +133,23 @@ def store_home():
             settings = TenantTemplateSettings.query.filter(TenantTemplateSettings.tenant_id.in_(lookup_ids)).first()
         active_id = settings.active_template_id if settings else None
 
-        templates = InvoiceTemplate.query.order_by(InvoiceTemplate.price.asc(), InvoiceTemplate.id.asc()).all()
+        template_rows = InvoiceTemplate.query.order_by(InvoiceTemplate.price.asc(), InvoiceTemplate.id.asc()).all()
+        # Do not pass Core ORM rows to Jinja. Global context processors may
+        # rollback the shared session while adding platform branding, which
+        # expires these rows. If Jinja then reloads them after the tenant
+        # context is restored, the query is incorrectly sent to the tenant DB.
+        templates = [
+            SimpleNamespace(
+                id=row.id,
+                name=row.name,
+                description=row.description,
+                is_premium=row.is_premium,
+                price=row.price,
+                html_file_name=row.html_file_name,
+                thumbnail_url=row.thumbnail_url,
+            )
+            for row in template_rows
+        ]
 
         purchases = TenantTemplatePurchase.query.filter(TenantTemplatePurchase.tenant_id.in_(lookup_ids)).all() if lookup_ids else []
         purchased_ids = {}
@@ -143,12 +159,22 @@ def store_home():
             if not old or status_rank.get(p.status, 0) > status_rank.get(old, 0):
                 purchased_ids[p.template_id] = p.status
 
+    # Render only after leaving Core and explicitly bind the tenant for every
+    # context processor used by base.html. Some request paths reach this view
+    # with g.tenant unset even though tenant_slug is present in the session.
+    render_tenant = _session_tenant_slug()
+    previous_tenant = getattr(g, "tenant", None)
+    if render_tenant:
+        g.tenant = render_tenant
+    try:
         return render_template(
             'invoice_templates_store.html',
             templates=templates,
             active_id=active_id,
             purchased_ids=purchased_ids,
         )
+    finally:
+        g.tenant = previous_tenant
 
 
 @invoice_store_bp.route('/admin/invoice_templates', methods=['GET'])
@@ -336,13 +362,15 @@ def seed_templates():
         {'name': 'فاتورة فاخرة (Luxury Invoice)', 'description': 'أبيض رسمي مع لمسة ذهبية للأجهزة الكهربائية — A4 قابل للطباعة.', 'html_file_name': 'LuxuryInvoiceTemplate.html', 'is_premium': False, 'price': 0},
         {'name': 'سوبر ماكس الضريبي', 'description': 'قالب ضريبي فاخر بالأزرق الداكن والذهبي مع بطاقة ضمان مرفقة.', 'html_file_name': 'supermax_tax.html', 'is_premium': False, 'price': 0},
     ]
+    changed = False
     for t in default_templates:
         tmpl = InvoiceTemplate.query.filter_by(html_file_name=t['html_file_name']).first()
         if tmpl:
-            tmpl.name = t['name']
-            tmpl.description = t['description']
-            tmpl.is_premium = t['is_premium']
-            tmpl.price = t['price']
+            desired = (t['name'], t['description'], t['is_premium'], t['price'])
+            current = (tmpl.name, tmpl.description, tmpl.is_premium, tmpl.price)
+            if current != desired:
+                tmpl.name, tmpl.description, tmpl.is_premium, tmpl.price = desired
+                changed = True
         else:
             tmpl = InvoiceTemplate(
                 name=t['name'],
@@ -352,7 +380,11 @@ def seed_templates():
                 price=t['price'],
             )
             db.session.add(tmpl)
-    db.session.commit()
+            changed = True
+    # A no-op commit on every GET expires every ORM object already loaded for
+    # the request, including the employee used by base.html.
+    if changed:
+        db.session.commit()
 
 @invoice_store_bp.route('/admin/invoice-templates/buy/<int:template_id>', methods=['POST'])
 def buy_template(template_id):

@@ -1,0 +1,32 @@
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.buildDir = '../build'
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+}
+subprojects {
+    project.evaluationDependsOn(':app')
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.buildDir
+}
+
+// Older Flutter plugins add -Werror while targeting Java 8. JDK 21 emits an
+// unavoidable obsolete-source warning for those tasks, so keep real warnings
+// visible without turning that toolchain warning into a build failure.
+gradle.projectsEvaluated {
+    subprojects {
+        tasks.withType(JavaCompile).configureEach {
+            options.compilerArgs.removeAll { it == "-Werror" }
+            if (!options.compilerArgs.contains("-Xlint:-options")) {
+                options.compilerArgs.add("-Xlint:-options")
+            }
+        }
+    }
+}

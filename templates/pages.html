@@ -83,11 +83,7 @@
         {% for data in pages_data %}
         <tr>
           <td>
-            {% if can_manage_pages %}
-            <strong class="page-name-display" data-page-id="{{ data.page.id }}">{{ data.page.name }}</strong>
-            {% else %}
-            <strong>{{ data.page.name }}</strong>
-            {% endif %}
+            <a href="{{ url_for('pages.page_detail', page_id=data.page.id) }}" class="page-name-display" data-page-id="{{ data.page.id }}"><strong>{{ data.page.name }}</strong></a>
           </td>
           <td>
             {% for emp in data.employees %}

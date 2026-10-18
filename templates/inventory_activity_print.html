@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>FINORA — حركة المخزون</title>
+<style>
+@page { size: A4 landscape; margin: 12mm; }
+* { box-sizing: border-box; } body { color: #24213f; font: 11px Arial,sans-serif; margin: 0; }
+h1 { color: #6c38d8; font-size: 23px; margin-bottom: 8px; }
+.note { background: #f4f0ff; border-radius: 12px; padding: 10px; line-height: 1.7; }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 15px; }
+thead { display: table-header-group; } tr { break-inside: avoid; }
+th, td { padding: 7px 5px; text-align: right; border-bottom: 1px solid #ddd5ee; overflow-wrap: anywhere; vertical-align: middle; }
+th { background: #f5f1fc; } .num { direction: ltr; unicode-bidi: isolate; white-space: nowrap; font-size: 10px; }
+.money { white-space: normal; overflow-wrap: anywhere; font-size: 9px; }
+.muted { color: #6e6983; font-size: 10px; } .in { color: #059b6a; } .out { color: #df3155; }
+@media print { button { display: none; } }
+</style></head><body>
+<h1>FINORA — حركة المخزون</h1>
+<p>إعداد: {{ actor }} · عدد السجلات: {{ data.total }} · الفترة: {{ filters.from or 'كل التاريخ' }} — {{ filters.to or 'آخر حركة' }}{% if filters.q %} · البحث: {{ filters.q }}{% endif %}</p>
+<p class="note">{{ data.notice }} السجلات المرتبطة بالحركة تظهر مرة واحدة. القيمة بالتكلفة لا تمثل قبضاً أو صرفاً جديداً.</p>
+<button onclick="window.print()">طباعة / PDF</button>
+<table><thead><tr><th style="width:22%">الصنف / الفرع / المتغير</th><th style="width:16%">الحركة / المستند</th><th style="width:9%">الكمية</th><th style="width:8%">قبل</th><th style="width:8%">بعد</th><th style="width:16%">التاريخ</th><th>المنفذ</th>{% if data.can_view_cost %}<th>قيمة الحركة</th>{% endif %}</tr></thead>
+<tbody>{% for row in data['items'] %}<tr><td><strong>{{ row.product_name }}</strong><div class="muted">{{ row.branch_name }} · {{ row.sku }}{% if row.variant %}<br>{{ row.variant }}{% endif %}</div></td>
+<td>{{ row.operation_label }}{% if row.source_id %}<div class="num muted">#{{ row.source_id }}</div>{% endif %}{% if row.reversal %}<div class="muted">عكس حركة</div>{% endif %}</td>
+<td class="num {{ row.direction }}">{{ '+' if row.direction == 'in' else '−' }}{{ '{:,}'.format(row.quantity) }}</td>
+<td class="num">{{ '{:,}'.format(row.before) if row.before is not none else '—' }}</td><td class="num">{{ '{:,}'.format(row.after) if row.after is not none else '—' }}</td>
+<td class="num muted">{{ row.local_time }}</td><td>{{ row.actor_name or 'غير مسجل' }}</td>
+{% if data.can_view_cost %}<td class="num money">{{ '{:,}'.format(row.total_cost|int) if row.total_cost is not none else '—' }}</td>{% endif %}</tr>
+{% else %}<tr><td colspan="{{ 8 if data.can_view_cost else 7 }}">ماكو حركات ضمن التصفية المختارة.</td></tr>{% endfor %}</tbody></table>
+</body></html>

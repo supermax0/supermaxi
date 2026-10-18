@@ -20,6 +20,12 @@ from utils.order_stock_policy import (
     deferred_stock_enabled,
     ensure_policy_initialized,
     set_deferred_stock_policy,
+    packed_stock_deduction_enabled,
+    set_packed_stock_deduction_policy,
+)
+from utils.invoice_mutation_policy import (
+    paid_invoice_mutations_enabled,
+    set_paid_invoice_mutations_enabled,
 )
 
 settings_bp = Blueprint("settings", __name__, url_prefix="/settings")
@@ -72,6 +78,7 @@ def _settings_ctx(nav_key, **extra):
         "permissions": "settings_nav_permissions",
         "fixed_assets": "settings_card_fixed_assets_title",
         "rotating_savings": "settings_card_rotating_savings_title",
+        "pos_api": None,
     }
     title_key = page_titles.get(nav_key)
 
@@ -150,14 +157,40 @@ def settings():
     ensure_invoice_schema()
     invoice_settings = InvoiceSettings.get_settings()
     first_order = Invoice.query.order_by(Invoice.id.desc()).first()
-    social_app_version = os.environ.get("APP_SOCIAL_APK_VERSION", "1.2.0").strip() or "1.2.0"
-    social_app_build = os.environ.get("APP_SOCIAL_APK_BUILD", "3").strip() or "3"
+    # Read the published APK metadata (version.json) so the settings page never
+    # shows a stale hardcoded version after an app update is published.
+    social_meta: dict = {}
+    try:
+        from modules.mobile_app.services.app_update import get_app_update_payload
+
+        social_meta = get_app_update_payload() or {}
+    except Exception:
+        social_meta = {}
+
+    social_app_version = (
+        str(social_meta.get("latest_version") or "").strip()
+        or os.environ.get("APP_SOCIAL_APK_VERSION", "1.2.0").strip()
+        or "1.2.0"
+    )
+    social_app_build = (
+        str(social_meta.get("latest_build") or "").strip()
+        or os.environ.get("APP_SOCIAL_APK_BUILD", "3").strip()
+        or "3"
+    )
     social_app_url = os.environ.get(
         "APP_SOCIAL_APK_URL",
         "/static/downloads/finora-social.apk",
     ).strip()
     social_app_cache_tag = f"{social_app_version}-{social_app_build}"
     social_app_url += ("&" if "?" in social_app_url else "?") + f"v={social_app_cache_tag}"
+
+    phone_app_version = os.environ.get("APP_PHONE_APK_VERSION", "1.0.16").strip() or "1.0.16"
+    phone_app_build = os.environ.get("APP_PHONE_APK_BUILD", "17").strip() or "17"
+    phone_app_url = os.environ.get(
+        "APP_PHONE_APK_URL",
+        "/static/downloads/finora-phone.apk",
+    ).strip()
+    phone_app_url += ("&" if "?" in phone_app_url else "?") + f"v={phone_app_version}-{phone_app_build}"
 
     app_downloads = {
         "webview": os.environ.get("APP_WEBVIEW_APK_URL", "/static/downloads/finora-pos-webview.apk"),
@@ -166,12 +199,20 @@ def settings():
             "APP_DELIVERY_AGENT_APK_URL",
             "/static/downloads/finora-delivery-agent.apk",
         ),
+        "employee_desk": os.environ.get(
+            "APP_EMPLOYEE_DESK_APK_URL",
+            "/static/downloads/finora-employee-desk.apk",
+        ),
+        "phone": phone_app_url,
         "social": social_app_url,
     }
     tenant_slug = _session_tenant_slug()
     portal_base = request.host_url.rstrip("/")
     delivery_agent_portal_url = (
         f"{portal_base}/delivery-agent/login/{tenant_slug}" if tenant_slug else f"{portal_base}/delivery-agent/login"
+    )
+    employee_desk_app_url = (
+        f"{portal_base}/employee-desk/login/{tenant_slug}" if tenant_slug else f"{portal_base}/employee-desk/login"
     )
     return render_template(
         "settings.html",
@@ -182,9 +223,20 @@ def settings():
             app_downloads=app_downloads,
             social_app_version=social_app_version,
             social_app_build=social_app_build,
+            phone_app_version=phone_app_version,
+            phone_app_build=phone_app_build,
             delivery_agent_portal_url=delivery_agent_portal_url,
+            employee_desk_app_url=employee_desk_app_url,
             tenant_slug=tenant_slug,
         ),
+    )
+
+
+@settings_bp.route("/facebook-routing")
+def facebook_routing_settings():
+    return render_template(
+        "settings_facebook_routing.html",
+        **_settings_ctx("system"),
     )
 
 @settings_bp.route("/system")
@@ -206,8 +258,29 @@ def system_settings():
     rbac_roles = Role.query.order_by(Role.name.asc()).all()
     weak_employee_message_settings = get_weak_employee_message_settings()
     from utils.monitor_settings import get_monitor_settings
+    from utils.orders_page_size import get_orders_page_size
+    from utils.supplier_exchange_rate import get_supplier_exchange_rate
 
     monitor_settings = get_monitor_settings()
+    installment_settings = {}
+    try:
+        from modules.order_installment_lifecycle.service import settings_dict
+
+        installment_settings = settings_dict()
+    except Exception:
+        installment_settings = {
+            "enabled": False,
+            "duration_value": 7,
+            "duration_unit": "days",
+            "auto_settle_enabled": True,
+            "allow_return": True,
+            "notify_before_due": False,
+            "confirm_on_create": True,
+            "event_log_enabled": True,
+            "cancel_auto_on_full_return": True,
+            "cancel_auto_on_cancel": True,
+            "cancel_auto_on_manual_settle": True,
+        }
     return render_template(
         "system_settings.html",
         **_settings_ctx(
@@ -217,20 +290,90 @@ def system_settings():
             rbac_roles=rbac_roles,
             weak_employee_message_settings=weak_employee_message_settings,
             monitor_settings=monitor_settings,
+            orders_page_size=get_orders_page_size(),
+            supplier_exchange_rate=get_supplier_exchange_rate(),
             deferred_order_stock_enabled=deferred_stock_enabled(),
+            packed_stock_deduction_enabled=packed_stock_deduction_enabled(),
+            paid_invoice_mutations_enabled=paid_invoice_mutations_enabled(),
+            order_installment_settings=installment_settings,
         ),
     )
 
 
+@settings_bp.route("/system/supplier-exchange-rate", methods=["POST"])
+def update_supplier_exchange_rate():
+    """Save the IQD-per-USD rate used for supplier remaining balances."""
+    try:
+        from utils.supplier_exchange_rate import save_supplier_exchange_rate
+
+        data = request.get_json(silent=True) or {}
+        exchange_rate = save_supplier_exchange_rate(data.get("exchange_rate"))
+        try:
+            log_activity(
+                "update",
+                "settings",
+                "تحديث سعر صرف أرصدة الموردين",
+                entity_type="system_settings",
+                payload={"supplier_exchange_rate": str(exchange_rate)},
+            )
+        except Exception:
+            pass
+        return jsonify({
+            "success": True,
+            "message": "تم حفظ سعر الصرف",
+            "exchange_rate": str(exchange_rate),
+        })
+    except (TypeError, ValueError) as exc:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(exc)}), 400
+    except Exception:
+        db.session.rollback()
+        return jsonify({"success": False, "error": "تعذر حفظ سعر الصرف"}), 500
+
+
+@settings_bp.route("/system/orders-page-size", methods=["POST"])
+def update_orders_page_size():
+    """Save the default number of rows shown on orders pages."""
+    try:
+        from utils.orders_page_size import save_orders_page_size
+
+        data = request.get_json(silent=True) or {}
+        page_size = save_orders_page_size(data.get("page_size"))
+        try:
+            log_activity(
+                "update",
+                "settings",
+                "تحديث حجم صفحة الطلبات",
+                entity_type="system_settings",
+                payload={"orders_page_size": page_size},
+            )
+        except Exception:
+            pass
+        return jsonify({
+            "success": True,
+            "message": "تم حفظ حجم صفحة الطلبات",
+            "page_size": page_size,
+        })
+    except (TypeError, ValueError) as exc:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(exc)}), 400
+    except Exception:
+        db.session.rollback()
+        return jsonify({"success": False, "error": "تعذر حفظ حجم صفحة الطلبات"}), 500
+
+
 @settings_bp.route("/system/order-stock-policy", methods=["POST"])
 def update_order_stock_policy():
-    """Enable/disable deferred deduction for pending unpaid orders."""
+    """Choose whether deduction happens while pending, packed, or later."""
     try:
         ensure_invoice_schema()
         ensure_policy_initialized()
         data = request.get_json(silent=True) or {}
         if "enabled" not in data:
             return jsonify({"success": False, "error": "قيمة التفعيل مطلوبة"}), 400
+        packed_result = {}
+        if "deduct_on_packed" in data:
+            packed_result = set_packed_stock_deduction_policy(bool(data.get("deduct_on_packed")))
         result = set_deferred_stock_policy(bool(data.get("enabled")))
         try:
             log_activity(
@@ -238,11 +381,44 @@ def update_order_stock_policy():
                 "settings",
                 "تحديث سياسة خصم مخزون الطلبات",
                 entity_type="system_settings",
-                payload=result,
+                payload={**result, **packed_result},
             )
         except Exception:
             pass
-        return jsonify({"success": True, "message": "تم حفظ سياسة مخزون الطلبات", **result})
+        return jsonify({
+            "success": True,
+            "message": "تم حفظ سياسة مخزون الطلبات",
+            **result,
+            **packed_result,
+        })
+    except Exception as exc:
+        db.session.rollback()
+        return jsonify({"success": False, "error": str(exc)}), 400
+
+
+@settings_bp.route("/system/paid-invoice-mutations", methods=["POST"])
+def update_paid_invoice_mutations():
+    """Enable the company-level override for editing/deleting paid invoices."""
+    try:
+        data = request.get_json(silent=True) or {}
+        if "enabled" not in data:
+            return jsonify({"success": False, "error": "قيمة التفعيل مطلوبة"}), 400
+        enabled = set_paid_invoice_mutations_enabled(bool(data.get("enabled")))
+        try:
+            log_activity(
+                "update",
+                "settings",
+                "تحديث صلاحية تعديل وحذف الفواتير المسددة",
+                entity_type="system_settings",
+                payload={"allow_paid_invoice_mutations": enabled},
+            )
+        except Exception:
+            pass
+        return jsonify({
+            "success": True,
+            "enabled": enabled,
+            "message": "تم تفعيل الخيار" if enabled else "تم إطفاء الخيار",
+        })
     except Exception as exc:
         db.session.rollback()
         return jsonify({"success": False, "error": str(exc)}), 400
@@ -525,8 +701,79 @@ def storefront_settings():
             card_templates_catalog=card_templates_catalog(),
             card_sizes_catalog=card_sizes_catalog(),
             storefront_product_sections=ui_flags.get("storefront_product_sections", []),
+            store_api=_store_api_panel(),
         ),
     )
+
+
+def _store_api_panel() -> dict | None:
+    slug = (session.get("tenant_slug") or "").strip().lower()
+    if not slug:
+        return None
+    try:
+        from modules.store_api.services.api_keys import list_api_keys, serialize_key
+        from modules.store_api.services.catalog import store_profile
+
+        keys = list_api_keys()
+        profile = store_profile(slug)
+    except Exception:
+        current_app.logger.exception("store api panel failed")
+        return None
+    return {
+        "connected": bool(keys),
+        "store_name": profile["name"],
+        "store_url": profile["url"],
+        "api_base_url": profile["api_base_url"],
+        "api_keys": [serialize_key(row) for row in keys],
+    }
+
+
+@settings_bp.route("/storefront/api/keys", methods=["GET"])
+def storefront_api_keys():
+    if "user_id" not in session:
+        return jsonify({"ok": False, "error": "غير مصرح"}), 401
+    panel = _store_api_panel()
+    if panel is None:
+        return jsonify({"ok": False, "error": "لا توجد شركة محددة"}), 400
+    return jsonify({"ok": True, **panel})
+
+
+@settings_bp.route("/storefront/api/keys", methods=["POST"])
+def storefront_api_key_create():
+    if "user_id" not in session:
+        return jsonify({"ok": False, "error": "غير مصرح"}), 401
+    slug = (session.get("tenant_slug") or "").strip().lower()
+    if not slug:
+        return jsonify({"ok": False, "error": "لا توجد شركة محددة"}), 400
+    from modules.store_api.services.api_keys import issue_api_key, serialize_key
+    from modules.store_api.services.catalog import store_profile
+
+    raw, row = issue_api_key(tenant_slug=slug, created_by=session.get("user_id"), name="Store API")
+    profile = store_profile(slug)
+    response = jsonify(
+        {
+            "ok": True,
+            "api_token": raw,
+            "key": serialize_key(row),
+            "store_name": profile["name"],
+            "store_url": profile["url"],
+            "api_base_url": profile["api_base_url"],
+            "message": "انسخ الرمز الآن. لن يظهر كاملاً مرة ثانية.",
+        }
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@settings_bp.route("/storefront/api/keys/<int:key_id>", methods=["DELETE"])
+def storefront_api_key_revoke(key_id: int):
+    if "user_id" not in session:
+        return jsonify({"ok": False, "error": "غير مصرح"}), 401
+    from modules.store_api.services.api_keys import revoke_api_key
+
+    if not revoke_api_key(key_id):
+        return jsonify({"ok": False, "error": "الرمز غير موجود"}), 404
+    return jsonify({"ok": True})
 
 
 @settings_bp.route("/appearance/update", methods=["POST"])
@@ -961,6 +1208,78 @@ def _require_active_admin():
     return emp
 
 
+@settings_bp.route("/pos-api")
+def pos_api_settings():
+    emp = _require_active_admin()
+    if not emp:
+        return redirect("/")
+    from modules.pos_api.schema_guard import ensure_pos_api_schema
+    from modules.pos_api.services.api_keys import list_api_keys, serialize_key
+
+    ensure_pos_api_schema()
+    tenant_slug = _session_tenant_slug()
+    api_base = request.host_url.rstrip("/") + "/api/v1/pos"
+    return render_template(
+        "settings_pos_api.html",
+        **_settings_ctx(
+            "pos_api",
+            pos_api_keys=[serialize_key(row) for row in list_api_keys()],
+            pos_api_base=api_base,
+            tenant_slug=tenant_slug,
+            settings_page_title="مفتاح API للمساعد",
+        ),
+    )
+
+
+@settings_bp.route("/pos-api/keys", methods=["POST"])
+def pos_api_create_key():
+    emp = _require_active_admin()
+    if not emp:
+        return jsonify({"ok": False, "error": "غير مصرح"}), 403
+    from modules.pos_api.services.api_keys import issue_api_key, serialize_key
+
+    tenant_slug = _session_tenant_slug()
+    if not tenant_slug:
+        return jsonify({"ok": False, "error": "تعذر تحديد الشركة"}), 400
+    data = request.get_json(silent=True) or {}
+    raw, row = issue_api_key(
+        employee_id=emp.id,
+        tenant_slug=tenant_slug,
+        name=str(data.get("name") or "Core Assistant"),
+    )
+    try:
+        log_activity(
+            "create",
+            "settings",
+            "إنشاء مفتاح API للمساعد الصوتي",
+            entity_type="pos_api_key",
+            entity_id=row.id,
+            payload={"name": row.name, "prefix": row.token_prefix},
+        )
+    except Exception:
+        pass
+    return jsonify(
+        {
+            "ok": True,
+            "api_key": raw,
+            "key": serialize_key(row),
+            "tenant_slug": tenant_slug,
+        }
+    )
+
+
+@settings_bp.route("/pos-api/keys/<int:key_id>", methods=["DELETE"])
+def pos_api_revoke_key(key_id: int):
+    emp = _require_active_admin()
+    if not emp:
+        return jsonify({"ok": False, "error": "غير مصرح"}), 403
+    from modules.pos_api.services.api_keys import revoke_api_key
+
+    if not revoke_api_key(key_id):
+        return jsonify({"ok": False, "error": "المفتاح غير موجود"}), 404
+    return jsonify({"ok": True, "revoked": True})
+
+
 @settings_bp.route("/branches")
 def branches_settings():
     from models.branch import Branch
@@ -968,6 +1287,8 @@ def branches_settings():
     from utils.branch_sales import is_sell_from_all_branches_enabled
     from utils.shipping_branch_schedule import get_shipping_branch_schedule_settings
 
+    if not _require_active_admin():
+        return redirect("/")
     try:
         ensure_branch_schema()
         branches = Branch.query.order_by(Branch.is_default.desc(), Branch.name.asc()).all()
@@ -991,6 +1312,8 @@ def branches_shipping_schedule():
     from models.branch import Branch
     from utils.shipping_branch_schedule import set_shipping_branch_schedule
 
+    if not _require_active_admin():
+        return jsonify({"success": False, "error": "غير مصرح"}), 403
     data = request.get_json(silent=True) or {}
     enabled = bool(data.get("shipping_branch_schedule_enabled"))
     day_start = (data.get("shipping_day_start") or "08:00").strip()
@@ -1060,6 +1383,8 @@ def branches_sales_policy():
     """حفظ سياسة البيع عبر الفروع."""
     from utils.branch_sales import set_sell_from_all_branches
 
+    if not _require_active_admin():
+        return jsonify({"success": False, "error": "غير مصرح"}), 403
     data = request.get_json(silent=True) or {}
     enabled = bool(data.get("sell_from_all_branches"))
     try:
@@ -1090,6 +1415,8 @@ def branches_save():
     from models.branch import Branch
     from utils.branch_migration import ensure_branch_schema
 
+    if not _require_active_admin():
+        return jsonify({"success": False, "error": "غير مصرح"}), 403
     ensure_branch_schema()
     data = request.get_json(silent=True) or {}
     branch_id = data.get("id")
@@ -1132,6 +1459,21 @@ def branches_save():
             b.is_default = False
     branch = Branch(code=code, name=name, address=address, phone=phone, is_active=is_active, is_default=is_default)
     db.session.add(branch)
+    db.session.flush()
+    from models.treasury_account import TreasuryAccount
+
+    db.session.add(TreasuryAccount(
+        branch_id=branch.id,
+        name=f"صندوق {branch.name}",
+        account_type="cash",
+        is_default=True,
+        is_active=True,
+    ))
+    from utils.treasury_helpers import sync_bank_accounts_across_branches
+
+    # A newly-created branch immediately receives all existing card/bank
+    # definitions, while keeping its own balances and movements.
+    sync_bank_accounts_across_branches()
     db.session.commit()
     log_mutation("create", "branch", "branch", branch.id, None, branch.to_dict(), f"إضافة فرع {branch.name}")
     return jsonify({"success": True, "branch": branch.to_dict()})
@@ -1140,6 +1482,9 @@ def branches_save():
 @settings_bp.route("/system/update-branch", methods=["POST"])
 def update_employee_branch():
     try:
+        from utils.branch_scope import is_general_admin
+        if not is_general_admin():
+            return jsonify({"success": False, "error": "غير مصرح"}), 403
         from models.branch import Branch
         from models.employee import Employee
 
@@ -1156,6 +1501,8 @@ def update_employee_branch():
             if not branch:
                 return jsonify({"success": False, "error": "الفرع غير موجود"}), 404
         old_branch = employee.branch_id
+        if employee.role != "admin" and not branch_id:
+            return jsonify({"success": False, "error": "فرع الموظف مطلوب"}), 400
         employee.branch_id = int(branch_id) if branch_id else None
         db.session.commit()
         log_mutation(

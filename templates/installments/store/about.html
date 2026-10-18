@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>من نحن | {{ settings.store_name if settings else 'Finora' }}</title>
+  <meta name="description" content="تعرّف على متجر {{ settings.store_name if settings else 'Finora' }} وحلول التقسيط المرنة في العراق.">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installments.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installment_store.css', v='20260812-full-width-2') }}">
+</head>
+<body class="store-body">
+  {% include 'installments/store/_header.html' %}
+
+  <main class="store-info-page">
+    <section class="store-info-hero">
+      <div class="store-shell">
+        <nav class="store-info-crumb" aria-label="مسار الصفحة">
+          <a href="{{ url_for('installments_store.store_index', tenant_slug=tenant_slug) }}">الرئيسية</a>
+          <span>/</span>
+          <strong>من نحن</strong>
+        </nav>
+        <span>قصتنا</span>
+        <h1>متجر أقساط يمنحك راحة الشراء بثقة</h1>
+        <p>{{ settings.store_name if settings else 'Finora' }} منصة تقسيط عراقية تجمع بين المنتجات الأصلية وخطط السداد الواضحة، لتختار ما يناسبك وتدفع على مراحل مرتبة.</p>
+      </div>
+    </section>
+
+    <div class="store-shell store-info-body">
+      <section class="store-info-panel">
+        <div class="store-info-panel__intro">
+          <span>هوية المتجر</span>
+          <h2>نسهّل امتلاك ما تحتاجه دون ضغط مالي</h2>
+          <p>نؤمن أن الجودة يجب ألا تنتظر. لذلك نقدّم أجهزة ومنتجات مختارة مع خطط تقسيط شفافة، ومراجعة طلب سريعة، ومتابعة واضحة من لحظة الإرسال حتى التسليم والسداد.</p>
+        </div>
+        <div class="store-info-stats">
+          <article><b>{% if max_months %}{{ max_months }}{% else %}مرن{% endif %}</b><span>{% if max_months %}شهر تقسيط كحد أقصى{% else %}خطط دفع مرنة{% endif %}</span></article>
+          <article><b>وضوح</b><span>القسط والدفعة قبل التقديم</span></article>
+          <article><b>ثقة</b><span>منتجات أصلية ومتابعة طلب</span></article>
+        </div>
+      </section>
+
+      <section class="store-info-grid">
+        <article>
+          <i>01</i>
+          <h3>منتجات أصلية</h3>
+          <p>نختار منتجات موثوقة من فئات متعددة، مع تفاصيل واضحة لكل جهاز قبل إتمام الطلب.</p>
+        </article>
+        <article>
+          <i>02</i>
+          <h3>تقسيط بخطوات بسيطة</h3>
+          <p>اختر المنتج والخطة المناسبة، أرسل الطلب، وسنراجع بياناتك ثم نُبلغك بالحالة خطوة بخطوة.</p>
+        </article>
+        <article>
+          <i>03</i>
+          <h3>دعم محلي</h3>
+          <p>فريقنا متواجد لمساعدتك في الاستفسارات، تتبع الطلب، أو أي سؤال يتعلق بالحساب والعقد.</p>
+        </article>
+      </section>
+
+      <section class="store-info-cta">
+        <div>
+          <span>جاهز للبدء؟</span>
+          <h2>تصفّح الأقسام واختر خطتك المناسبة</h2>
+          <p>كل منتج يعرض القسط الشهري والدفعة الأولى بوضوح قبل إرسال الطلب.</p>
+        </div>
+        <div class="store-info-cta__actions">
+          <a class="is-primary" href="{{ url_for('installments_store.store_index', tenant_slug=tenant_slug) }}">تسوّق الآن</a>
+          <a href="{{ url_for('installments_store.how_it_works_page', tenant_slug=tenant_slug) }}">كيف يعمل التقسيط؟</a>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  {% include 'installments/store/_footer.html' %}
+</body>
+</html>

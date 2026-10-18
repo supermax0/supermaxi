@@ -1,0 +1,53 @@
+{% extends "storefront_v2/base.html" %}
+{% block legacy_assets %}{% endblock %}
+{% block legacy_scripts %}{% endblock %}
+{% block body_class %} sm-native{% endblock %}
+{% block title %}{{ product.name }} — {{ store_design.store_name }}{% endblock %}
+{% block description %}{{ (product.description or product.name)[:155] }}{% endblock %}
+{% block meta %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<nav class="sm-shell sm-crumbs" aria-label="مسار التنقل">
+  <a href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">الرئيسية</a><span aria-hidden="true">›</span>
+  {% if product.category %}<a href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, badge=product.category) }}">{{ product.category }}</a><span aria-hidden="true">›</span>{% endif %}
+  <span aria-current="page">{{ product.name }}</span>
+</nav>
+
+<section class="sm-shell sm-pd">
+  <div class="sm-pd__gallery">
+    <div class="sm-pd__media">
+      {% if product.image_url %}<img src="{{ product.image_url }}" alt="{{ product.name }}" width="640" height="640" decoding="async">
+      {% else %}<span class="sm-pd__noimg"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m4 17 4.5-4.5 3 3 2-2 6.5 6.5"/></svg>لا توجد صورة لهذا الموديل بعد</span>{% endif %}
+    </div>
+  </div>
+
+  <div class="sm-pd__info">
+    {% if product.brand or product.model %}<p class="sm-card__brand">{{ product.brand }}{% if product.brand and product.model %} · {% endif %}<span dir="ltr">{{ product.model }}</span></p>{% endif %}
+    <h1 class="sm-pd__title">{{ product.name }}</h1>
+    <p class="sm-pd__stock"><span class="sm-stock is-order">غير متوفر في مخزوننا حالياً</span></p>
+    <p class="sm-muted">نوفّره عند الطلب. اترك رقمك ونتصل بك بالسعر وموعد التوفير — هذا ليس طلب شراء ولا يُلزمك بشيء.</p>
+
+    {% if sent %}
+    <p class="sm-alert is-ok" role="status">وصلنا طلبك، سنتواصل معك قريباً.</p>
+    {% else %}
+    {% if error %}<p class="sm-alert is-err" role="alert">{{ error }}</p>{% endif %}
+    <form method="post" class="sm-form" data-sm-request>
+      <label class="sm-field"><span>الاسم</span><input name="customer_name" required maxlength="120" value="{{ form.customer_name }}" autocomplete="name"></label>
+      <label class="sm-field"><span>رقم الهاتف</span><input name="phone" type="tel" required inputmode="tel" dir="ltr" placeholder="07xx xxx xxxx" value="{{ form.phone }}" autocomplete="tel"></label>
+      <label class="sm-field"><span>المحافظة</span>
+        <select name="city"><option value="">—</option>{% for p in store_provinces or [] %}<option value="{{ p }}" {{ 'selected' if form.city == p }}>{{ p }}</option>{% endfor %}</select>
+      </label>
+      <label class="sm-field"><span>ملاحظة (اختياري)</span><input name="note" maxlength="255" value="{{ form.note }}"></label>
+      <button class="sm-btn sm-btn--primary" type="submit">اطلب توفيره</button>
+    </form>
+    {% endif %}
+  </div>
+</section>
+
+{% if product.specs or product.description %}
+<section class="sm-shell sm-section" aria-labelledby="smSpecs">
+  <h2 class="sm-h2" id="smSpecs">المواصفات</h2>
+  {% if product.specs %}<table class="sm-spec-table"><tbody>{% for item in product.specs %}<tr><th scope="row">{{ item.label }}</th><td>{{ item.value }}</td></tr>{% endfor %}</tbody></table>{% endif %}
+  {% if product.description %}<p class="sm-pd__desc">{{ product.description }}</p>{% endif %}
+</section>
+{% endif %}
+{% endblock %}

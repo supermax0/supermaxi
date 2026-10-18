@@ -1,0 +1,22 @@
+{% extends 'superadmin/leads/_base.html' %}
+{% set page_title = 'الأنشطة' %}
+{% set page_subtitle = 'عملاء مصنّفون حسب نوع النشاط التجاري' %}
+{% block header_actions %}
+<a href="{{ url_for('superadmin_leads.settings_page') }}" class="sa-btn sa-btn-secondary"><i class="fas fa-sliders-h"></i> الإعدادات</a>
+{% endblock %}
+{% block leads_content %}
+<div class="lc-activity-grid">
+    {% for a in activity_stats %}
+    <a href="{{ url_for('superadmin_leads.all_leads', activity_id=a.id) }}" class="lc-activity-card" style="--lc-accent: {{ a.color }}">
+        <div class="lc-activity-head"><i class="fas {{ a.icon }}"></i><h3>{{ a.name_ar }}</h3></div>
+        <div class="lc-activity-stats">
+            <div><b>{{ a.total }}</b><small>الكل</small></div>
+            <div><b>{{ a.with_phone }}</b><small>هاتف</small></div>
+            <div><b>{{ a.contacted }}</b><small>تواصل</small></div>
+            <div><b>{{ a.trial }}</b><small>تجربة</small></div>
+            <div><b>{{ a.subscribed }}</b><small>مشترك</small></div>
+        </div>
+    </a>
+    {% endfor %}
+</div>
+{% endblock %}

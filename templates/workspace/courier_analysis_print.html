@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>كشف تسديد {{ courier_company }} — {{ report_number }}</title>
+  <style>
+    :root {
+      --ink: #14213d;
+      --muted: #64748b;
+      --line: #dbe3ef;
+      --brand: #5846e8;
+      --brand-soft: #f0efff;
+      --green: #0d9f6e;
+      --paper: #fff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: #eef2f8;
+      color: var(--ink);
+      font-family: Tahoma, Arial, sans-serif;
+      font-size: 12px;
+    }
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      padding: 12px;
+      background: rgba(20, 33, 61, .94);
+    }
+    .toolbar button {
+      border: 0;
+      border-radius: 9px;
+      padding: 10px 22px;
+      background: #fff;
+      color: var(--ink);
+      font: 700 14px Tahoma, Arial, sans-serif;
+      cursor: pointer;
+    }
+    .sheet {
+      width: min(1120px, calc(100% - 32px));
+      min-height: 760px;
+      margin: 22px auto;
+      padding: 28px 32px 24px;
+      background: var(--paper);
+      border-radius: 16px;
+      box-shadow: 0 18px 50px rgba(15, 23, 42, .12);
+    }
+    .report-head {
+      position: relative;
+      min-height: 112px;
+      padding-bottom: 18px;
+      border-bottom: 3px solid var(--brand);
+    }
+    .company-corner {
+      position: absolute;
+      top: 0;
+      right: 0;
+      max-width: 34%;
+      text-align: right;
+    }
+    .company-corner h1 {
+      margin: 0 0 6px;
+      font-size: 20px;
+      color: var(--ink);
+    }
+    .company-corner p,
+    .report-meta p {
+      margin: 3px 0;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .brand-center {
+      width: 260px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .brand-center img {
+      display: block;
+      max-width: 170px;
+      max-height: 70px;
+      margin: 0 auto 6px;
+      object-fit: contain;
+    }
+    .logo-fallback {
+      display: grid;
+      width: 64px;
+      height: 64px;
+      margin: 0 auto 7px;
+      place-items: center;
+      border-radius: 18px;
+      background: linear-gradient(145deg, #6d5dfc, #4432c7);
+      color: #fff;
+      font-size: 25px;
+      font-weight: 900;
+    }
+    .brand-center h2 {
+      margin: 0;
+      color: var(--brand);
+      font-size: 17px;
+    }
+    .report-meta {
+      position: absolute;
+      top: 0;
+      left: 0;
+      max-width: 31%;
+      text-align: left;
+      direction: rtl;
+    }
+    .report-meta strong { color: var(--ink); }
+    .title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      margin: 18px 0 13px;
+    }
+    .title-row h3 {
+      margin: 0;
+      font-size: 17px;
+    }
+    .count-pill {
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: var(--brand-soft);
+      color: var(--brand);
+      font-weight: 800;
+    }
+    .manual-note {
+      margin-bottom: 12px;
+      padding: 9px 12px;
+      border: 1px solid #f4d58d;
+      border-radius: 9px;
+      background: #fff9e9;
+      color: #875900;
+    }
+    table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: separate;
+      border-spacing: 0;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      direction: rtl;
+    }
+    thead { display: table-header-group; }
+    th {
+      padding: 10px 8px;
+      border-bottom: 1px solid #bfcbe0;
+      background: #e9edff;
+      color: #26345a;
+      font-size: 11px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+    th:nth-child(1), td:nth-child(1) { width: 5%; }
+    th:nth-child(2), td:nth-child(2) { width: 13%; }
+    th:nth-child(3), td:nth-child(3) { width: 20%; }
+    th:nth-child(4), td:nth-child(4) { width: 19%; }
+    th:nth-child(5), td:nth-child(5) { width: 16%; }
+    th:nth-child(6), td:nth-child(6) { width: 16%; }
+    th:nth-child(7), td:nth-child(7) { width: 11%; }
+    td {
+      padding: 8px;
+      border-bottom: 1px solid #e8edf5;
+      text-align: center;
+      font-size: 11px;
+    }
+    tbody tr:nth-child(even) td { background: #f8faff; }
+    tbody tr:last-child td { border-bottom: 0; }
+    .ltr { direction: ltr; unicode-bidi: embed; }
+    .money { font-weight: 800; font-variant-numeric: tabular-nums; }
+    .score {
+      display: inline-block;
+      min-width: 48px;
+      padding: 4px 7px;
+      border-radius: 999px;
+      background: #e8f8f1;
+      color: #087c57;
+      font-weight: 900;
+    }
+    .score.medium { background: #fff4dc; color: #9a6100; }
+    .score.low { background: #ffe8eb; color: #b42336; }
+    .totals {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .total-card {
+      padding: 13px 16px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: #f8faff;
+    }
+    .total-card span {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 11px;
+    }
+    .total-card strong {
+      font-size: 20px;
+      color: var(--ink);
+    }
+    .total-card.net {
+      border-color: #b9ead7;
+      background: #eefbf6;
+    }
+    .total-card.net strong { color: var(--green); }
+    .signatures {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 28px;
+      margin-top: 34px;
+      text-align: center;
+      color: var(--muted);
+    }
+    .signature-line {
+      padding-top: 9px;
+      border-top: 1px dashed #9eabc0;
+    }
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      margin-top: 24px;
+      padding-top: 10px;
+      border-top: 1px solid var(--line);
+      color: #8793a7;
+      font-size: 10px;
+    }
+    @page { size: A4 portrait; margin: 9mm; }
+    @media print {
+      body { background: #fff; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      .no-print { display: none !important; }
+      .sheet {
+        width: 100%;
+        min-height: 0;
+        margin: 0;
+        padding: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      th, td {
+        padding: 6px 4px;
+        font-size: 9px;
+        overflow-wrap: anywhere;
+      }
+      .report-head { min-height: 102px; }
+      .company-corner h1 { font-size: 17px; }
+      .brand-center img { max-width: 145px; max-height: 60px; }
+      .brand-center h2, .title-row h3 { font-size: 15px; }
+      .totals { gap: 8px; }
+      .total-card { padding: 10px 11px; }
+      .total-card strong { font-size: 16px; }
+      tr, .total-card { break-inside: avoid; }
+      .report-head { break-inside: avoid; }
+      .totals, .signatures, .footer { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar no-print">
+    <button type="button" onclick="window.print()">🖨 طباعة الكشف</button>
+    <button type="button" onclick="window.close()">إغلاق</button>
+  </div>
+
+  <main class="sheet">
+    <header class="report-head">
+      <section class="company-corner">
+        <h1>{{ company_name }}</h1>
+        {% if company_address %}<p>{{ company_address }}</p>{% endif %}
+        {% if company_phone %}<p dir="ltr">{{ company_phone }}</p>{% endif %}
+      </section>
+
+      <section class="brand-center">
+        {% if report_logo %}
+          <img src="{{ report_logo }}" alt="{{ company_name }}">
+        {% else %}
+          <div class="logo-fallback">{{ company_name[:2] }}</div>
+        {% endif %}
+        <h2>كشف تسديد شركة النقل</h2>
+      </section>
+
+      <section class="report-meta">
+        <p><strong>شركة النقل:</strong> {{ courier_company }}</p>
+        <p><strong>رقم الكشف:</strong> <span class="ltr">{{ report_number }}</span></p>
+        <p><strong>تاريخ الطباعة:</strong> {{ generated_at.strftime("%Y/%m/%d %H:%M") }}</p>
+      </section>
+    </header>
+
+    <div class="title-row">
+      <h3>تفاصيل الطلبات المطابقة في الكشف</h3>
+      <span class="count-pill">{{ rows|length }} صف</span>
+    </div>
+
+    {% if manual_exclusions %}
+      <div class="manual-note">
+        تم استبعاد {{ manual_exclusions|length }} صف يدوياً، ولا تدخل مبالغه ضمن هذا الكشف.
+      </div>
+    {% endif %}
+
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>رقم الفاتورة</th>
+          <th>باركود شركة النقل</th>
+          <th>رقم الهاتف</th>
+          <th>المبلغ</th>
+          <th>أجرة التوصيل</th>
+          <th>نسبة التطابق</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+          <tr>
+            <td>{{ loop.index }}</td>
+            <td class="ltr">{{ row.invoice_number or "—" }}</td>
+            <td class="ltr">{{ row.courier_barcode or "—" }}</td>
+            <td class="ltr">{{ row.phone or "—" }}</td>
+            <td class="money">{{ "{:,}".format(row.amount) }} د.ع</td>
+            <td class="money">{{ "{:,}".format(row.delivery_fee) }} د.ع</td>
+            <td>
+              <span class="score {% if row.match_score < 45 %}low{% elif row.match_score < 75 %}medium{% endif %}">
+                {{ row.match_score }}%
+              </span>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="7">لا توجد صفوف في هذا الكشف.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <section class="totals">
+      <div class="total-card">
+        <span>المبلغ الكلي</span>
+        <strong>{{ "{:,}".format(total_amount) }} د.ع</strong>
+      </div>
+      <div class="total-card">
+        <span>إجمالي أجور التوصيل</span>
+        <strong>{{ "{:,}".format(total_fees) }} د.ع</strong>
+      </div>
+      <div class="total-card net">
+        <span>الباقي / الصافي</span>
+        <strong>{{ "{:,}".format(total_net) }} د.ع</strong>
+      </div>
+    </section>
+
+    <section class="signatures">
+      <div class="signature-line">توقيع مسؤول الحسابات</div>
+      <div class="signature-line">توقيع شركة النقل</div>
+      <div class="signature-line">المصادقة</div>
+    </section>
+
+    <footer class="footer">
+      <span>{{ company_name }} — كشف رسمي صادر من Finora</span>
+      <span>مرجع التحليل: {{ analysis.id }}</span>
+    </footer>
+  </main>
+</body>
+</html>

@@ -1,0 +1,114 @@
+{% extends 'superadmin/leads/_base.html' %}
+{% from 'superadmin/leads/_macros.html' import status_badge, priority_badge %}
+{% set page_title = lead.business_name %}
+{% set page_subtitle = (lead.governorate or '') ~ ' ' ~ (lead.city or '') ~ ' ' ~ (lead.district or '') %}
+{% block header_actions %}
+<a href="{{ url_for('superadmin_leads.all_leads') }}" class="sa-btn sa-btn-secondary"><i class="fas fa-arrow-right"></i> رجوع</a>
+<a href="{{ url_for('superadmin_leads.edit_lead', lead_id=lead.id) }}" class="sa-btn sa-btn-primary"><i class="fas fa-pen"></i> تعديل</a>
+{% endblock %}
+{% block leads_content %}
+<div class="lc-detail-grid">
+    <section class="lc-card lc-detail-main">
+        <div class="lc-card-body">
+            <div class="lc-detail-header">
+                <div>
+                    <div class="lc-detail-badges">
+                        {{ status_badge(lead.status, status_labels.get(lead.status, lead.status)) }}
+                        {{ priority_badge(lead.priority, priority_labels.get(lead.priority, lead.priority)) }}
+                        {% if lead.activity_name %}<span class="lc-badge lc-badge-muted">{{ lead.activity_name }}</span>{% endif %}
+                    </div>
+                    <h2>{{ lead.business_name }}</h2>
+                    <p class="lc-detail-location"><i class="fas fa-location-dot"></i> {{ lead.governorate or '—' }}{% if lead.city %} · {{ lead.city }}{% endif %}{% if lead.district %} · {{ lead.district }}{% endif %}</p>
+                    {% if lead.owner_name %}<p class="lc-detail-owner"><i class="fas fa-user"></i> {{ lead.owner_name }}</p>{% endif %}
+                </div>
+                <div class="lc-score"><small>التقييم</small>{{ lead.lead_score }}</div>
+            </div>
+
+            <div class="lc-info-grid">
+                <div class="lc-info-item"><label>الهاتف</label><p>{% if lead.primary_phone %}<a href="tel:{{ lead.primary_phone }}">{{ lead.primary_phone }}</a>{% else %}—{% endif %}</p></div>
+                <div class="lc-info-item"><label>Instagram</label><p>{% if lead.instagram_url %}<a href="{{ lead.instagram_url }}" target="_blank" rel="noopener">{{ lead.instagram_url }}</a>{% else %}—{% endif %}</p></div>
+                <div class="lc-info-item"><label>Facebook</label><p>{% if lead.facebook_url %}<a href="{{ lead.facebook_url }}" target="_blank" rel="noopener">{{ lead.facebook_url }}</a>{% else %}—{% endif %}</p></div>
+                <div class="lc-info-item"><label>العنوان</label><p>{{ lead.full_address or '—' }}</p></div>
+                <div class="lc-info-item"><label>المصدر</label><p>{{ lead.source_primary or '—' }}</p></div>
+                <div class="lc-info-item"><label>آخر تواصل</label><p>{{ lead.last_contact_at[:16] if lead.last_contact_at else '—' }}</p></div>
+                <div class="lc-info-item"><label>المتابعة القادمة</label><p>{{ lead.next_follow_up_at[:16] if lead.next_follow_up_at else '—' }}</p></div>
+                <div class="lc-info-item"><label>تاريخ الإضافة</label><p>{{ lead.created_at[:10] if lead.created_at else '—' }}</p></div>
+            </div>
+
+            <div class="lc-actions-bar">
+                <button type="button" class="sa-btn sa-btn-secondary" data-lc-action="call" data-lead-id="{{ lead.id }}"><i class="fas fa-phone"></i> تسجيل اتصال</button>
+                <button type="button" class="sa-btn sa-btn-secondary" data-lc-action="whatsapp" data-lead-id="{{ lead.id }}"><i class="fab fa-whatsapp"></i> واتساب</button>
+                <button type="button" class="sa-btn sa-btn-secondary" data-lc-action="note" data-lead-id="{{ lead.id }}"><i class="fas fa-sticky-note"></i> ملاحظة</button>
+                <button type="button" class="sa-btn sa-btn-primary" data-lc-action="trial" data-lead-id="{{ lead.id }}"><i class="fas fa-flask"></i> بدء تجربة</button>
+                <button type="button" class="sa-btn sa-btn-primary" data-lc-action="subscribe" data-lead-id="{{ lead.id }}"><i class="fas fa-crown"></i> تحويل لمشترك</button>
+            </div>
+
+            <section class="lc-section">
+                <h3><i class="fas fa-stream"></i> السجل الزمني</h3>
+                <div class="lc-timeline">
+                    {% for item in timeline %}
+                    <div class="lc-timeline-item">
+                        <time>{{ item.at[:16] if item.at else '' }}</time>
+                        {% if item.kind == 'interaction' %}
+                        <strong>{{ interaction_labels.get(item.interaction_type, item.interaction_type) }}</strong>
+                        <p>{{ item.note or item.result_status or '' }}</p>
+                        {% else %}
+                        <strong>ملاحظة</strong><p>{{ item.body }}</p>
+                        {% endif %}
+                    </div>
+                    {% else %}
+                    <div class="lc-empty-state"><div class="lc-empty-icon"><i class="fas fa-stream"></i></div><p>لا يوجد سجل بعد — سجّل أول تواصل</p></div>
+                    {% endfor %}
+                </div>
+            </section>
+
+            <section class="lc-section">
+                <h3><i class="fas fa-link"></i> المصادر</h3>
+                <ul class="lc-status-list">
+                    {% for s in lead.sources %}
+                    <li><i class="fas fa-tag"></i> {{ s.source_name }}{% if s.source_detail %} — {{ s.source_detail }}{% endif %}</li>
+                    {% else %}<li>—</li>{% endfor %}
+                </ul>
+            </section>
+        </div>
+    </section>
+
+    <aside class="lc-detail-side">
+        {% if duplicates %}
+        <section class="lc-alert lc-alert-warn">
+            <h4><i class="fas fa-clone"></i> تكرارات محتملة</h4>
+            {% for d in duplicates %}
+            <p>{{ duplicate_labels.get(d.duplicate_level, d.duplicate_level) }} ({{ '%.0f'|format(d.duplicate_score) }}%) — عميل #{{ d.candidate_lead_id if d.lead_id == lead.id else d.lead_id }}</p>
+            {% endfor %}
+            <a href="{{ url_for('superadmin_leads.duplicates_page') }}" class="lc-link-btn">مراجعة التكرارات</a>
+        </section>
+        {% endif %}
+        {% if lead.finora_company_id %}
+        <section class="lc-side-card">
+            <h4><i class="fas fa-building"></i> حساب Finora</h4>
+            <p>رقم الشركة: <strong>{{ lead.finora_company_id }}</strong></p>
+        </section>
+        {% endif %}
+        {% if lead.trial_started_at %}
+        <section class="lc-side-card">
+            <h4><i class="fas fa-flask"></i> التجربة</h4>
+            <p>من {{ lead.trial_started_at[:10] }} إلى {{ lead.trial_ends_at[:10] if lead.trial_ends_at else '—' }}</p>
+        </section>
+        {% endif %}
+        <section class="lc-side-card">
+            <h4><i class="fas fa-phone"></i> أرقام الهاتف</h4>
+            <ul class="lc-status-list">
+                {% for p in lead.phones %}
+                <li>
+                    <i class="fas fa-{{ 'whatsapp' if p.is_whatsapp else 'phone' }}"></i>
+                    {{ p.display or p.phone_original }}
+                    {% if p.is_primary %}<span class="lc-badge lc-badge-muted">أساسي</span>{% endif %}
+                </li>
+                {% else %}
+                <li>—</li>
+                {% endfor %}
+            </ul>
+        </section>
+    </aside>
+</div>
+{% endblock %}

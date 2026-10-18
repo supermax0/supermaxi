@@ -1,0 +1,6 @@
+/* Pages not redesigned yet (cart, checkout, product page, account…) run inside the V2 shell with their own styles.
+   The legacy sheets style a few global elements; these rules keep the new header/footer intact on those pages. */
+body.sm-body.sm-legacy { background: #fff; }
+.sm-legacy .sm-header, .sm-legacy .sm-footer { font-family: var(--sm-font); }
+.sm-legacy .sm-header a, .sm-legacy .sm-footer a { text-decoration: none; }
+.sm-legacy .lux-page { padding-top: 12px; }

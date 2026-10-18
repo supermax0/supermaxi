@@ -164,10 +164,18 @@ def list_feed(
             ).all()
         }
 
-    items = [
-        v.to_feed_dict(liked=v.id in liked_ids, saved=v.id in saved_ids)
-        for v in page
-    ]
+    items = []
+    for v in page:
+        payload = v.to_feed_dict(liked=v.id in liked_ids, saved=v.id in saved_ids)
+        try:
+            from modules.mobile_app.services import catalog as catalog_service
+
+            payload["products"] = catalog_service.products_for_video(
+                v.id, user_id=user_id
+            )
+        except Exception:
+            payload["products"] = payload.get("products") or []
+        items.append(payload)
     return items, next_cursor
 
 

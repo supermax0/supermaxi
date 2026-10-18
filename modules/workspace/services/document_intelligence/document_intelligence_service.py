@@ -23,6 +23,12 @@ from modules.workspace.services.document_intelligence.document_table_extraction_
 from modules.workspace.services.document_intelligence.document_text_extraction_service import (
     DocumentTextExtractionService,
 )
+from modules.workspace.services.document_intelligence.courier_vision_extraction_service import (
+    CourierVisionExtractionService,
+)
+from modules.workspace.services.document_intelligence.purchase_invoice_vision_service import (
+    PurchaseInvoiceVisionService,
+)
 from modules.workspace.services.document_intelligence.extraction_errors import (
     DocumentIntelligenceError,
     DocumentNotFoundError,
@@ -119,7 +125,9 @@ class DocumentIntelligenceService:
                 user_id=user_id,
             )
             DocumentIntelligenceService._set_avatar(
-                session, {"mode": "reading_document", "speech": "أبدأ قراءة المستند مبدئياً."}, user_id
+                session,
+                {"mode": "reading_document", "progress": 12, "speech": "أبدأ قراءة المستند مبدئياً."},
+                user_id,
             )
 
             abs_path = DocumentStorageService.resolve_absolute_path(doc)
@@ -165,6 +173,151 @@ class DocumentIntelligenceService:
             )
             warnings.extend(table_payload.get("warnings") or [])
             tables = table_payload.get("tables") or []
+
+            vision_payload = None
+            vision_service = (
+                PurchaseInvoiceVisionService
+                if session.workflow_type == "purchase_invoice"
+                else CourierVisionExtractionService
+            )
+            supported_docs = [
+                item
+                for item in DocumentStorageService.list_session_documents(session_id)
+                if vision_service.is_supported(
+                    item.mime_type, item.original_filename
+                )
+            ]
+            unique_docs = []
+            seen_document_hashes = set()
+            for item in supported_docs:
+                identity = item.sha256 or item.storage_path or item.id
+                if identity in seen_document_hashes:
+                    continue
+                seen_document_hashes.add(identity)
+                unique_docs.append(item)
+            primary_vision_doc = unique_docs[-1] if unique_docs else doc
+            additional_vision_docs = unique_docs[:-1]
+            page_methods = {
+                str(page.get("method") or "")
+                for page in (text_payload.get("pages") or [])
+            }
+            has_native_pdf_text = (
+                (doc.mime_type or "").lower() == "application/pdf"
+                and text_payload.get("status") == "completed"
+                and bool((text_payload.get("text") or "").strip())
+                and page_methods
+                and page_methods.issubset({"pdf_text"})
+            )
+            should_try_vision = session.workflow_type == "purchase_invoice" or len(unique_docs) > 1 or (
+                not has_native_pdf_text
+                and vision_service.should_try(
+                    doc.mime_type, doc.original_filename, tables
+                )
+            )
+            if should_try_vision and vision_service._enabled():
+                event_bus.emit_event(
+                    session_id,
+                    "document.vision.started",
+                    {"documentId": document_id},
+                    message="بدأت القراءة البصرية الدقيقة للمستند",
+                    user_id=user_id,
+                )
+                additional_files = []
+                for other_doc in additional_vision_docs:
+                    try:
+                        additional_files.append({
+                            "abs_path": DocumentStorageService.resolve_absolute_path(other_doc),
+                            "mime_type": other_doc.mime_type,
+                            "filename": other_doc.original_filename,
+                        })
+                    except (FileNotFoundError, ValueError):
+                        warnings.append(
+                            f"تعذر ضم الملف {other_doc.original_filename} إلى التحليل."
+                        )
+
+                primary_vision_path = DocumentStorageService.resolve_absolute_path(
+                    primary_vision_doc
+                )
+                event_bus.emit_event(
+                    session_id,
+                    "document.preprocessing.started",
+                    {
+                        "documentId": document_id,
+                        "filesCount": 1 + len(additional_files),
+                    },
+                    message="بدأ تجهيز الصور وتدويرها وتحسينها قبل القراءة",
+                    user_id=user_id,
+                )
+                # Analyze each unique uploaded page once, preserving the original
+                # upload order. Duplicate uploads are ignored by content hash.
+                vision_payload = vision_service.extract(
+                    primary_vision_path,
+                    primary_vision_doc.mime_type,
+                    primary_vision_doc.original_filename,
+                    additional_files=[
+                        *additional_files,
+                    ],
+                )
+                preprocessing = vision_payload.get("preprocessing") or []
+                if any(item.get("applied") for item in preprocessing):
+                    event_bus.emit_event(
+                        session_id,
+                        "document.preprocessing.completed",
+                        {
+                            "documentId": document_id,
+                            "files": preprocessing,
+                        },
+                        message="تم تحسين الصور قبل القراءة البصرية",
+                        user_id=user_id,
+                    )
+                    event_bus.emit_event(
+                        session_id,
+                        "report.appended",
+                        {
+                            "line": (
+                                "تم تدوير وتحسين دقة وتباين وحدّة صور الكشف "
+                                "قبل التحليل، مع الاحتفاظ بالملفات الأصلية."
+                            )
+                        },
+                        user_id=user_id,
+                    )
+                warnings.extend(vision_payload.get("warnings") or [])
+                if (
+                    vision_payload.get("status") == "completed"
+                    and vision_payload.get("tables")
+                ):
+                    stored_text, trunc_warnings = DocumentExtractionResult.truncate_text(
+                        vision_payload.get("text") or ""
+                    )
+                    warnings.extend(trunc_warnings)
+                    result.extracted_text = stored_text
+                    result.text_sample = (
+                        vision_payload.get("text_sample")
+                        or DocumentExtractionResult.make_sample(stored_text)
+                    )
+                    result.set_pages(vision_payload.get("pages") or [])
+                    tables = vision_payload.get("tables") or []
+                    table_payload = {
+                        "status": "completed",
+                        "tables": tables,
+                        "warnings": vision_payload.get("warnings") or [],
+                    }
+                    event_bus.emit_event(
+                        session_id,
+                        "document.vision.completed",
+                        {
+                            "documentId": document_id,
+                            "provider": vision_payload.get("provider"),
+                            "model": vision_payload.get("model"),
+                            "rowsCount": sum(
+                                len(table.get("rows") or []) for table in tables
+                            ),
+                            "validation": vision_payload.get("validation"),
+                        },
+                        message="اكتملت القراءة البصرية المنظمة",
+                        user_id=user_id,
+                    )
+
             result.set_tables(tables, table_payload.get("status"), table_payload.get("warnings"))
 
             event_bus.emit_event(
@@ -260,7 +413,14 @@ class DocumentIntelligenceService:
                     "text_status": text_payload.get("status"),
                     "tables_status": table_payload.get("status"),
                     "classification_scores": classification.get("scores"),
+                    "vision_status": vision_payload.get("status") if vision_payload else None,
+                    "vision_provider": vision_payload.get("provider") if vision_payload else None,
+                    "vision_model": vision_payload.get("model") if vision_payload else None,
                 },
+                "vision_validation": vision_payload.get("validation") if vision_payload else None,
+                "image_preprocessing": (
+                    vision_payload.get("preprocessing") if vision_payload else None
+                ),
                 "warnings": warnings,
                 "phase": 4,
             })
@@ -288,7 +448,17 @@ class DocumentIntelligenceService:
             )
             DocumentIntelligenceService._set_avatar(
                 session,
-                {"mode": "success", "speech": "اكتملت القراءة الأولية للمستند."},
+                {
+                    "mode": "matching" if session.workflow_type in {"return_statement", "purchase_invoice"} else "success",
+                    "progress": 58 if session.workflow_type in {"return_statement", "purchase_invoice"} else 100,
+                    "speech": (
+                        "اكتملت القراءة الأولية، وأبدأ مطابقة صفوف كشف الراجع."
+                        if session.workflow_type == "return_statement"
+                        else "اكتملت قراءة فاتورة الشراء، وأبدأ مطابقة المورد والمنتجات."
+                        if session.workflow_type == "purchase_invoice"
+                        else "اكتملت القراءة الأولية للمستند."
+                    ),
+                },
                 user_id,
             )
             return result

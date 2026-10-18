@@ -1,0 +1,172 @@
+{% extends "storefront_v2/base.html" %}
+{% block legacy_assets %}
+{# only the option / colour picker styles of the current product page are reused #}
+<link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/product-detail.css') }}?v=20261010-options-motion">
+{% endblock %}
+{% block legacy_scripts %}{% endblock %}
+{% block body_class %} sm-native sm-pd-page{% endblock %}
+{% block title %}{{ product.name }} — {{ store_design.store_name }}{% endblock %}
+{% block description %}{{ (product.description or (product.name ~ (' — ' ~ product.short_specs if product.short_specs else '')))[:155] }}{% endblock %}
+{% block og_type %}product{% endblock %}
+{% block og_image %}{% if product.image_url %}<meta property="og:image" content="{{ product.image_url if product.image_url.startswith('http') else request.host_url.rstrip('/') ~ product.image_url }}">{% endif %}
+{% if product.price and product.price > 0 %}<meta property="product:price:amount" content="{{ product.price }}"><meta property="product:price:currency" content="{{ 'USD' if product.price_currency == 'USD' else 'IQD' }}">{% endif %}{% endblock %}
+{% block meta %}<link rel="canonical" href="{{ url_for('storefront.product_detail', tenant_slug=shop_tenant_slug, product_id=product.id, _external=True) }}">{% endblock %}
+
+{% block content %}
+{% set gallery_images = product.gallery[:5] if product.gallery else [] %}
+{% set video_url = product.video_url or '' %}
+{% set is_youtube = video_url and ('youtube.com' in video_url or 'youtu.be' in video_url) %}
+{% set youtube_embed = video_url | replace('watch?v=', 'embed/') | replace('youtu.be/', 'youtube.com/embed/') if is_youtube else '' %}
+{% set is_usd = product.price_currency == 'USD' %}
+{% set real_discount = product.old_price and product.old_price > product.price %}
+{% set home_url = url_for('storefront.store_index', tenant_slug=shop_tenant_slug) %}
+{% set category = product.category or product.badge %}
+
+<nav class="sm-shell sm-crumbs" aria-label="مسار التنقل">
+  <a href="{{ home_url }}">الرئيسية</a><span aria-hidden="true">›</span>
+  {% if category %}<a href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, badge=category) }}">{{ category }}</a><span aria-hidden="true">›</span>{% endif %}
+  <span aria-current="page">{{ product.name }}</span>
+</nav>
+
+<section class="sm-shell sm-pd" id="luxProductDetail">
+  <div class="sm-pd__gallery">
+    <div class="sm-pd__media" id="luxPdMedia" data-mode="image">
+      {% if gallery_images %}
+      <img id="sfMainImage" class="lux-pd-main-img" src="{{ gallery_images[0] }}" alt="{{ product.name }}" width="640" height="640" fetchpriority="high" decoding="async">
+      {% else %}
+      <img id="sfMainImage" class="lux-pd-main-img" alt="{{ product.name }}" hidden>
+      <span class="sm-pd__noimg" id="sfMainPlaceholder"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9" r="1.5"/><path d="m4 17 4.5-4.5 3 3 2-2 6.5 6.5"/></svg>لا توجد صورة لهذا المنتج بعد</span>
+      {% endif %}
+      {% if real_discount and product.discount_percent %}<span class="sm-tag sm-tag--sale">-{{ product.discount_percent }}%</span>{% endif %}
+      {% if video_url %}
+      <div class="sm-pd__video" id="sfVideoStage" hidden>
+        {% if is_youtube %}<iframe id="sfVideoFrame" data-src="{{ youtube_embed }}" title="فيديو {{ product.name }}" allowfullscreen loading="lazy"></iframe>
+        {% else %}<video id="sfProductVideo" controls playsinline preload="none" poster="{{ gallery_images[0] if gallery_images else '' }}"><source src="{{ video_url }}" type="video/mp4"></video>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+    {% if gallery_images|length > 1 or video_url %}
+    <div class="sm-pd__thumbs" role="tablist" aria-label="صور وفيديو المنتج">
+      {% for image in gallery_images %}
+      <button class="lux-pd-thumb sf-thumb{{ ' is-active' if loop.first }}" type="button" role="tab" data-media="image" data-full="{{ image }}"
+              aria-label="صورة {{ loop.index }}" aria-selected="{{ 'true' if loop.first else 'false' }}">
+        <img src="{{ image }}" alt="" width="64" height="64" loading="lazy" decoding="async">
+      </button>
+      {% endfor %}
+      {% if video_url %}<button class="lux-pd-thumb" type="button" role="tab" data-media="video" aria-label="فيديو المنتج" aria-selected="false">▶</button>{% endif %}
+    </div>
+    {% endif %}
+  </div>
+
+  <div class="sm-pd__info lux-pd-info">
+    {% if product.brand or product.model %}<p class="sm-card__brand">{{ product.brand }}{% if product.brand and product.model %} · {% endif %}<span dir="ltr">{{ product.model }}</span></p>{% endif %}
+    <h1 class="sm-pd__title">{{ product.name }}</h1>
+    {% if product.sku %}<p class="sm-muted sm-pd__sku">رمز المنتج: <span dir="ltr">{{ product.sku }}</span></p>{% endif %}
+
+    <div class="sm-pd__price">
+      {% if product.price and product.price > 0 %}
+      <strong class="lux-pd-price">{% if is_usd %}${{ "{:,.0f}".format(product.price) }}{% else %}{{ "{:,.0f}".format(product.price) }} <small>د.ع</small>{% endif %}</strong>
+      {% if real_discount %}<s>{{ "{:,.0f}".format(product.old_price) }}</s><span class="sm-pd__save">وفّر {{ "{:,.0f}".format(product.old_price - product.price) }} د.ع</span>{% endif %}
+      {% else %}<strong>السعر عند الطلب</strong>{% endif %}
+    </div>
+
+    <p class="sm-pd__stock">
+      {% if product.is_available %}<span class="sm-stock is-in">متوفر</span>{% if 0 < product.stock <= 5 %} <span class="sm-muted">— بقي {{ product.stock }} فقط</span>{% endif %}
+      {% elif product.is_reservation %}<span class="sm-stock is-order">متاح للطلب</span> <span class="sm-muted">— يُجهَّز بعد التأكيد</span>
+      {% else %}<span class="sm-stock is-out">غير متوفر حالياً</span>{% endif %}
+    </p>
+
+    {% include "storefront_v2/partials/delivery.html" %}
+
+    {% include "storefront/_color_picker.html" %}
+
+    <div class="sm-pd__buy">
+      <div class="sm-qty" data-sm-qty role="group" aria-label="الكمية">
+        <button type="button" data-sm-qty-step="-1" aria-label="تقليل الكمية">−</button>
+        <input id="sfQuantity" type="number" min="1" max="9999" name="quantity" value="1" form="sfAddForm" inputmode="numeric" aria-label="الكمية">
+        <button type="button" data-sm-qty-step="1" aria-label="زيادة الكمية">+</button>
+      </div>
+      <form id="sfAddForm" class="sm-pd__actions" onsubmit="return false">
+        <button class="sm-btn sm-btn--primary sm-pd__add" type="button" data-sf-add-cart="{{ product.id }}" {% if not product.is_available and not product.is_reservation %}disabled{% endif %}>أضف إلى السلة</button>
+        <a class="sm-btn" href="{{ url_for('storefront.cart_page', tenant_slug=shop_tenant_slug) }}">عرض السلة</a>
+      </form>
+      <button class="sm-link sm-pd__compare" type="button" data-sm-compare="{{ product.id }}"
+              data-compare-url="{{ url_for('storefront.compare_page', tenant_slug=shop_tenant_slug) }}" aria-pressed="false">+ أضف للمقارنة</button>
+    </div>
+
+    <ul class="sm-pd__trust">
+      <li>فحص المنتج قبل الدفع</li>
+      <li>توصيل لكل المحافظات</li>
+      <li>الدفع عند الاستلام</li>
+    </ul>
+  </div>
+</section>
+
+{% if product.features or product.specs or product.long_description %}
+<section class="sm-shell sm-section sm-pd__specs" aria-labelledby="smSpecs">
+  <h2 class="sm-h2" id="smSpecs">المواصفات</h2>
+  {% if product.features %}<ul class="sm-pd__features">{% for feature in product.features %}<li>{{ feature }}</li>{% endfor %}</ul>{% endif %}
+  {% if product.specs %}
+  <table class="sm-spec-table"><tbody>
+    {% for item in product.specs %}<tr><th scope="row">{{ item.label }}</th><td>{{ item.value }}</td></tr>{% endfor %}
+  </tbody></table>
+  {% endif %}
+  {% if product.long_description %}<p class="sm-pd__desc">{{ product.long_description }}</p>{% endif %}
+</section>
+{% endif %}
+
+{% set recs = recommendations or {} %}
+{% set main_product = product %}
+{% if recs.accessories %}
+<section class="sm-shell sm-section" aria-labelledby="smAccessories" data-sm-rec="accessories">
+  <h2 class="sm-h2" id="smAccessories">ملحقات متوافقة</h2>
+  <div class="sm-rail">{% for item in recs.accessories %}{% set product = item %}{% include "storefront_v2/partials/product_card.html" %}{% endfor %}</div>
+</section>
+{% endif %}
+{% if recs.bought_together %}
+<section class="sm-shell sm-section" aria-labelledby="smTogether" data-sm-rec="bought_together">
+  <h2 class="sm-h2" id="smTogether">يُشترى عادة معه</h2>
+  <div class="sm-rail">{% for item in recs.bought_together %}{% set product = item %}{% include "storefront_v2/partials/product_card.html" %}{% endfor %}</div>
+</section>
+{% endif %}
+{% if recs.upgrades %}
+<section class="sm-shell sm-section" aria-labelledby="smUpgrades" data-sm-rec="upgrades">
+  <h2 class="sm-h2" id="smUpgrades">خيار أفضل بفرق بسيط</h2>
+  <div class="sm-rail">{% for item in recs.upgrades %}{% set product = item %}{% include "storefront_v2/partials/product_card.html" %}{% endfor %}</div>
+</section>
+{% endif %}
+{% for bundle in recs.bundles or [] %}{% include "storefront_v2/partials/bundle.html" %}{% endfor %}
+{% if related_products %}
+<section class="sm-shell sm-section" aria-labelledby="smRelated" data-sm-rec="similar">
+  <h2 class="sm-h2" id="smRelated">منتجات مشابهة</h2>
+  <div class="sm-rail">{% for item in related_products %}{% set product = item %}{% include "storefront_v2/partials/product_card.html" %}{% endfor %}</div>
+</section>
+{% endif %}
+{% set product = main_product %}
+<section class="sm-shell sm-section" id="smViewed" hidden aria-labelledby="smViewedTitle" data-sm-viewed="{{ product.id }}"
+         data-cards-url="{{ url_for('storefront.api_cards', tenant_slug=shop_tenant_slug) }}">
+  <h2 class="sm-h2" id="smViewedTitle">شاهدتها مؤخراً</h2>
+  <div class="sm-rail" data-sm-viewed-list></div>
+</section>
+
+<div class="sm-buybar" aria-label="شراء سريع">
+  <span class="lux-pd-mobile-bar-price"><strong>{% if product.price and product.price > 0 %}{{ "{:,.0f}".format(product.price) }}{% else %}—{% endif %}</strong> {% if not is_usd %}<small>د.ع</small>{% endif %}</span>
+  <button class="sm-btn sm-btn--primary" type="button" data-sf-add-cart="{{ product.id }}" {% if not product.is_available and not product.is_reservation %}disabled{% endif %}>{{ 'أضف للسلة' if product.is_available or product.is_reservation else 'غير متوفر' }}</button>
+</div>
+
+<script type="application/ld+json">{{ {
+  "@context": "https://schema.org", "@type": "Product", "name": product.name, "sku": product.sku or None,
+  "model": product.model or None, "description": (product.description or None) and product.description[:500],
+  "category": category or None,
+  "brand": ({"@type": "Brand", "name": product.brand} if product.brand else None), "image": gallery_images or None,
+  "offers": ({"@type": "Offer", "price": product.price, "priceCurrency": "USD" if is_usd else "IQD",
+              "availability": "https://schema.org/InStock" if product.is_available else ("https://schema.org/PreOrder" if product.is_reservation else "https://schema.org/OutOfStock"),
+              "url": url_for('storefront.product_detail', tenant_slug=shop_tenant_slug, product_id=product.id, _external=True)} if product.price and product.price > 0 else None)
+}|tojson }}</script>
+<script type="application/ld+json">{{ {
+  "@context": "https://schema.org", "@type": "BreadcrumbList",
+  "itemListElement": [{"@type": "ListItem", "position": 1, "name": "الرئيسية", "item": url_for('storefront.store_index', tenant_slug=shop_tenant_slug, _external=True)}]
+    + ([{"@type": "ListItem", "position": 2, "name": category, "item": url_for('storefront.store_index', tenant_slug=shop_tenant_slug, badge=category, _external=True)}] if category else [])
+    + [{"@type": "ListItem", "position": 3 if category else 2, "name": product.name}]
+}|tojson }}</script>
+{% endblock %}

@@ -28,7 +28,7 @@ def test_validate_post_payload_requires_page_selection(monkeypatch):
     monkeypatch.setattr(posts_api, "PublisherPage", fake_page_model)
     monkeypatch.setattr(posts_api, "PublisherMedia", fake_media_model)
 
-    _, _, _, _, fields = posts_api._validate_post_payload(
+    _, _, _, _, _, fields = posts_api._validate_post_payload(
         {"text": "hello", "page_ids": [], "media_ids": []},
         tenant="tenant-a",
     )
@@ -48,7 +48,7 @@ def test_validate_post_payload_rejects_foreign_media(monkeypatch):
     monkeypatch.setattr(posts_api, "PublisherPage", fake_page_model)
     monkeypatch.setattr(posts_api, "PublisherMedia", fake_media_model)
 
-    _, _, _, _, fields = posts_api._validate_post_payload(
+    _, _, _, _, _, fields = posts_api._validate_post_payload(
         {"text": "", "page_ids": ["123"], "media_ids": [1, 2]},
         tenant="tenant-a",
     )

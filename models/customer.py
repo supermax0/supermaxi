@@ -12,6 +12,7 @@ class Customer(db.Model):
         db.ForeignKey("tenant.id"),
         nullable=True
     )
+    branch_id = db.Column(db.Integer, db.ForeignKey("branch.id"), nullable=True, index=True)
 
     name = db.Column(db.String(150), nullable=False)
     phone = db.Column(db.String(20), nullable=False)

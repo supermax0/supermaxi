@@ -104,7 +104,7 @@ class StorefrontSettingsService:
 
     def design_settings(self) -> dict:
         defaults = {
-            "primary_color": "#4f8cff",
+            "primary_color": "#008f68",
             "shipping_color": "#10b981",
             "card_style": "modern",
             "preset": "custom",

@@ -1,0 +1,9 @@
+<resources>
+    <style name="Theme.FinoraEmployeeDesk" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">@color/finora_wine</item>
+        <item name="colorPrimaryDark">@color/finora_wine_dark</item>
+        <item name="android:statusBarColor">@color/finora_wine</item>
+        <item name="android:navigationBarColor">@color/finora_wine_dark</item>
+        <item name="android:windowBackground">@color/splash_bg</item>
+    </style>
+</resources>

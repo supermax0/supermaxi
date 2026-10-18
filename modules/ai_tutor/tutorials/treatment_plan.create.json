@@ -1,0 +1,270 @@
+{
+  "id": "treatment_plan.create",
+  "version": 1,
+  "status": "verified",
+  "level": 3,
+  "title_ar": "إنشاء خطة علاج",
+  "description_ar": "إنشاء خطة علاج لمريض في زيارة مفتوحة وإضافة أول علاج إليها (أسنان).",
+  "chip_ar": "العلاج",
+  "requires_permissions": [
+    "clinics_clinical",
+    "clinics_visits"
+  ],
+  "availability": {
+    "required_specialty": "dentistry"
+  },
+  "dependencies": [
+    {
+      "fact": {
+        "name": "open_visits_count",
+        "op": "gt",
+        "value": 0
+      },
+      "tutorial": "visit.start",
+      "message_ar": "خطة العلاج تُنشأ داخل زيارة مفتوحة. نبدأ زيارة أولاً ثم نرجع.",
+      "action_label_ar": "بدء زيارة الآن"
+    }
+  ],
+  "next_lessons": ["invoice.create"],
+  "curriculum": {"group": "operations", "order": 6},
+  "result": "treatment_plan.created",
+  "completion_validator": "treatment_plan.item_added_since_start",
+  "steps": [
+    {
+      "id": "open-visits-menu",
+      "type": "wait_click",
+      "target": {
+        "action": "nav.visits"
+      },
+      "reveal": [
+        {
+          "action": "nav.menu.open"
+        },
+        {
+          "section": "nav.group.patients"
+        }
+      ],
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "action": "visit.tab.treatment"
+          }
+        }
+      },
+      "nav_message_ar": "جاري فتح الزيارات",
+      "message_ar": "نبدأ من الزيارات. اضغط «الزيارات»."
+    },
+    {
+      "id": "on-visits-page",
+      "type": "navigate",
+      "route": "/clinics/visits",
+      "page": "visits",
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "action": "visit.tab.treatment"
+          }
+        }
+      },
+      "message_ar": "نفتح الآن صفحة الزيارات."
+    },
+    {
+      "id": "open-visit",
+      "type": "wait_click",
+      "page": "visits",
+      "target": {
+        "action": "visit.open"
+      },
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "action": "visit.tab.treatment"
+          }
+        }
+      },
+      "nav_message_ar": "جاري فتح الزيارة",
+      "message_ar": "اضغط على زر الزيارة المفتوحة لفتح مساحة عمل الطبيب."
+    },
+    {
+      "id": "open-treatment-tab",
+      "type": "wait_click",
+      "page": "doctor",
+      "target": {
+        "action": "visit.tab.treatment"
+      },
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "action": "treatment_plan.create"
+          }
+        }
+      },
+      "message_ar": "خطة العلاج في تبويب «العلاج» (لزيارات الأسنان). اضغط عليه."
+    },
+    {
+      "id": "click-create-plan",
+      "type": "wait_click",
+      "page": "doctor",
+      "target": {
+        "action": "treatment_plan.create"
+      },
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "section": "treatment_plan.form"
+          }
+        }
+      },
+      "message_ar": "اضغط «إنشاء خطة علاج» لفتح نموذج الخطة."
+    },
+    {
+      "id": "plan-form-open",
+      "type": "wait_modal",
+      "page": "doctor",
+      "target": {
+        "section": "treatment_plan.form"
+      },
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "section": "treatment_plan.form"
+          }
+        }
+      },
+      "message_ar": "ننتظر ظهور نموذج الخطة."
+    },
+    {
+      "id": "plan-name",
+      "type": "wait_input",
+      "page": "doctor",
+      "target": {
+        "field": "treatment_plan.name"
+      },
+      "condition": {
+        "min_length": 3
+      },
+      "message_ar": "اسم الخطة (3 أحرف على الأقل). يمكنك إبقاء الاسم المقترح أو تغييره."
+    },
+    {
+      "id": "plan-notes",
+      "type": "highlight",
+      "page": "doctor",
+      "target": {
+        "field": "treatment_plan.notes"
+      },
+      "message_ar": "الملاحظات اختيارية: أي ملاحظة عامة عن الخطة. اضغط «فهمت»."
+    },
+    {
+      "id": "save-plan",
+      "type": "wait_api_success",
+      "page": "doctor",
+      "allow_back": false,
+      "target": {
+        "action": "treatment_plan.save"
+      },
+      "match": {
+        "method": "POST",
+        "url": "^/clinics/api/patients/\\d+/dental-treatment-plans$"
+      },
+      "reconcile": {
+        "kind": "backend",
+        "validator": "treatment_plan.created_since_start"
+      },
+      "success_ar": "تم إنشاء الخطة.",
+      "message_ar": "اضغط «حفظ» لإنشاء الخطة."
+    },
+    {
+      "id": "verify-plan",
+      "type": "wait_state",
+      "allow_back": false,
+      "validator": "treatment_plan.created_since_start",
+      "message_ar": "نتأكد الآن من إنشاء الخطة في النظام…"
+    },
+    {
+      "id": "add-item",
+      "type": "wait_click",
+      "page": "doctor",
+      "target": {
+        "action": "treatment_plan.add_item"
+      },
+      "message_ar": "الخطة جاهزة لكنها فارغة. اضغط «+ علاج عام» لإضافة أول علاج إليها."
+    },
+    {
+      "id": "item-form-open",
+      "type": "wait_modal",
+      "page": "doctor",
+      "target": {
+        "section": "treatment_plan.item_form"
+      },
+      "message_ar": "ننتظر ظهور نموذج العلاج."
+    },
+    {
+      "id": "item-tooth",
+      "type": "highlight",
+      "page": "doctor",
+      "target": {
+        "field": "treatment_plan.tooth"
+      },
+      "message_ar": "السن اختياري: اكتب رقم السن إن كان العلاج لسن محدد (مثل 16، 15) أو فعّل «العلاج يشمل الفم بالكامل». اضغط «فهمت»."
+    },
+    {
+      "id": "item-service",
+      "type": "highlight",
+      "page": "doctor",
+      "target": {
+        "field": "treatment_plan.service"
+      },
+      "message_ar": "الخدمة اختيارية. اختيارها يملأ العنوان والجلسات والسعر تلقائياً. اضغط «فهمت»."
+    },
+    {
+      "id": "item-title",
+      "type": "wait_input",
+      "page": "doctor",
+      "target": {
+        "field": "treatment_plan.title"
+      },
+      "condition": {
+        "min_length": 2
+      },
+      "message_ar": "اكتب عنوان العلاج (أو اختر خدمة لتملأه)."
+    },
+    {
+      "id": "save-item",
+      "type": "wait_api_success",
+      "page": "doctor",
+      "allow_back": false,
+      "target": {
+        "action": "treatment_plan.item.save"
+      },
+      "match": {
+        "method": "POST",
+        "url": "^/clinics/api/dental-treatment-plans/\\d+/items$"
+      },
+      "reconcile": {
+        "kind": "backend",
+        "validator": "treatment_plan.item_added_since_start"
+      },
+      "success_ar": "تمت إضافة العلاج.",
+      "message_ar": "راجع البيانات ثم اضغط «حفظ»."
+    },
+    {
+      "id": "verify-item",
+      "type": "wait_state",
+      "allow_back": false,
+      "validator": "treatment_plan.item_added_since_start",
+      "message_ar": "نتأكد الآن من إضافة العلاج للخطة…"
+    },
+    {
+      "id": "done",
+      "type": "complete",
+      "allow_back": false,
+      "message_ar": "تم إنشاء خطة العلاج وإضافة أول علاج إليها، وتأكدنا من ذلك داخل النظام."
+    }
+  ]
+}

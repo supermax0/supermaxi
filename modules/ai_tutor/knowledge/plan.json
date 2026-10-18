@@ -1,0 +1,16 @@
+{
+  "groups": [
+    {
+      "id": "setup",
+      "title_ar": "إعداد العيادة"
+    },
+    {
+      "id": "operations",
+      "title_ar": "تشغيل العيادة"
+    },
+    {
+      "id": "collections",
+      "title_ar": "التحصيل"
+    }
+  ]
+}

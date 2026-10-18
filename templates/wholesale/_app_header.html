@@ -1,0 +1,111 @@
+{% set path = request.path %}
+<header class="ws-app-header" dir="rtl" lang="ar">
+  <div class="ws-app-header__inner">
+    <a href="/wholesale/ops" class="ws-brand" aria-label="تجارة الجملة">
+      <span class="ws-brand__icon"><i class="fa fa-boxes-packing"></i></span>
+      <span class="ws-brand__text">
+        <b>Finora Wholesale</b>
+        <small>تجارة الجملة</small>
+      </span>
+    </a>
+
+    <nav class="ws-quick-nav" aria-label="صفحات تجارة الجملة">
+      {% if business_allows('wholesale_ops') %}
+      <a href="/wholesale/ops" class="ws-nav-ops {{ 'active' if ws_page in ['ops','receipt','payment'] or path.endswith('/ops') or path == '/wholesale' or path == '/wholesale/' else '' }}">
+        <i class="fa fa-layer-group"></i><span>العمليات</span>
+      </a>
+      {% endif %}
+      {% if business_allows('wholesale_sales') %}
+      <a href="/wholesale/sales" class="{{ 'active' if ws_page == 'sales' or path.startswith('/wholesale/sales') else '' }}">
+        <i class="fa fa-file-invoice-dollar"></i><span>المبيعات</span>
+      </a>
+      {% endif %}
+      {% if business_allows('wholesale_purchases') %}
+      <a href="/wholesale/purchases" class="{{ 'active' if ws_page == 'purchases' or path.startswith('/wholesale/purchases') else '' }}">
+        <i class="fa fa-cart-plus"></i><span>المشتريات</span>
+      </a>
+      {% endif %}
+      {% if business_allows('wholesale_customers') %}
+      <a href="/wholesale/customers" class="{{ 'active' if ws_page == 'customers' or path.startswith('/wholesale/customers') else '' }}">
+        <i class="fa fa-users"></i><span>العملاء</span>
+      </a>
+      {% endif %}
+      {% if business_allows('wholesale_suppliers') %}
+      <a href="/wholesale/suppliers" class="{{ 'active' if ws_page == 'suppliers' or path.startswith('/wholesale/suppliers') else '' }}">
+        <i class="fa fa-industry"></i><span>الموردون</span>
+      </a>
+      {% endif %}
+      {% if business_allows('wholesale_products') %}
+      <a href="/wholesale/products" class="{{ 'active' if ws_page == 'products' or path.startswith('/wholesale/products') else '' }}">
+        <i class="fa fa-box"></i><span>المنتجات</span>
+      </a>
+      {% endif %}
+      {% if business_allows('wholesale_warehouses') %}
+      <a href="/wholesale/warehouses" class="{{ 'active' if ws_page in ['warehouses','transfers'] or path.startswith('/wholesale/warehouses') or path.startswith('/wholesale/transfers') else '' }}">
+        <i class="fa fa-warehouse"></i><span>المخازن</span>
+      </a>
+      {% endif %}
+      {% if business_allows('wholesale_accounts') %}
+      <a href="/wholesale/accounts" class="{{ 'active' if ws_page == 'accounts' or path.startswith('/wholesale/accounts') else '' }}">
+        <i class="fa fa-vault"></i><span>الصناديق</span>
+      </a>
+      {% endif %}
+      {% if business_allows('wholesale_statement') %}
+      <a href="/wholesale/statement" class="{{ 'active' if ws_page == 'statement' or path.startswith('/wholesale/statement') else '' }}">
+        <i class="fa fa-file-lines"></i><span>كشف حساب</span>
+      </a>
+      {% endif %}
+      {% if business_allows('wholesale_expenses') %}
+      <a href="/wholesale/expenses" class="{{ 'active' if ws_page == 'expenses' or path.startswith('/wholesale/expenses') else '' }}">
+        <i class="fa fa-receipt"></i><span>مصروفات</span>
+      </a>
+      {% endif %}
+      {% if business_allows('wholesale_reports') %}
+      <a href="/wholesale/reports" class="{{ 'active' if ws_page == 'reports' or path.startswith('/wholesale/reports') else '' }}">
+        <i class="fa fa-chart-pie"></i><span>تقارير</span>
+      </a>
+      {% endif %}
+      {% if business_allows('wholesale_settings') %}
+      <a href="/wholesale/settings" class="{{ 'active' if ws_page == 'settings' or path.startswith('/wholesale/settings') else '' }}">
+        <i class="fa fa-sliders"></i><span>إعدادات</span>
+      </a>
+      {% endif %}
+    </nav>
+
+    <div class="ws-header-tools">
+      {% if session.get("user_id") and branches and independent_branches_enabled and can_switch_branch %}
+      <label class="ws-branch-pick" title="الفرع الحالي">
+        <i class="fa fa-code-branch"></i>
+        <select id="globalBranchSelect" aria-label="الفرع الحالي">
+          <option value="all" {% if view_all_branches %}selected{% endif %}>كل الفروع</option>
+          {% for b in branches %}
+          <option value="{{ b.id }}" {% if current_branch and current_branch.id == b.id and not view_all_branches %}selected{% endif %}>{{ b.name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      {% elif current_branch %}
+      <span class="ws-branch-label"><i class="fa fa-code-branch"></i> {{ current_branch.name }}</span>
+      {% endif %}
+
+      <button type="button" class="ws-tool-btn" onclick="FinoraTopbar && FinoraTopbar.run('profit')" title="ربح اليوم">
+        <i class="fa fa-chart-line"></i>
+      </button>
+      <button type="button" class="ws-tool-btn ws-tool-btn--expense" onclick="FinoraTopbar && FinoraTopbar.run('expense')" title="مصروف">
+        <i class="fa fa-plus"></i>
+      </button>
+
+      {% if session.get("user_id") %}
+      <button type="button" class="ws-user-chip" onclick="openProfileModal()" title="{{ session.get('name') }}">
+        <span class="ws-user-avatar">
+          {% if current_employee and current_employee.profile_pic %}
+          <img src="/{{ current_employee.profile_pic }}" alt="">
+          {% else %}
+          {{ (session.get("name") or "U")[0] }}
+          {% endif %}
+        </span>
+        <span class="ws-user-name">{{ session.get("name") }}</span>
+      </button>
+      {% endif %}
+    </div>
+  </div>
+</header>

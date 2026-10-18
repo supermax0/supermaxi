@@ -178,7 +178,7 @@
                     <span>الطلبات الشهرية: <strong>{{ plan.max_orders_monthly if plan.max_orders_monthly else 'غير
                             محدود' }}</strong></span>
                 </li>
-                {% set feats = plan.get_features() %}
+                {% set feats = effective_plan_features.get(plan.id, {}) %}
                 <li class="feature-item {% if feats.pos %}feature-enabled{% else %}feature-disabled{% endif %}">
                     <i class="fas {% if feats.pos %}fa-check-circle{% else %}fa-times-circle{% endif %}"></i>
                     <span>نقطة البيع (POS)</span>

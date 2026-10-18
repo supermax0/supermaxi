@@ -7,6 +7,7 @@
         android:id="@+id/setupPanel"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
+        android:background="@color/splash_bg"
         android:gravity="center"
         android:orientation="vertical"
         android:padding="24dp"
@@ -17,6 +18,7 @@
             android:layout_height="wrap_content"
             android:gravity="center"
             android:text="@string/setup_title"
+            android:textColor="@android:color/white"
             android:textSize="20sp"
             android:textStyle="bold" />
 
@@ -27,6 +29,7 @@
             android:layout_marginBottom="20dp"
             android:gravity="center"
             android:text="@string/setup_desc"
+            android:textColor="#C9D4EA"
             android:textSize="14sp" />
 
         <EditText
@@ -35,6 +38,9 @@
             android:layout_height="wrap_content"
             android:hint="@string/setup_server_hint"
             android:inputType="textUri"
+            android:background="#182236"
+            android:textColor="@android:color/white"
+            android:textColorHint="#9AADC8"
             android:padding="12dp" />
 
         <EditText
@@ -44,6 +50,9 @@
             android:layout_marginTop="12dp"
             android:hint="@string/setup_tenant_hint"
             android:inputType="text"
+            android:background="#182236"
+            android:textColor="@android:color/white"
+            android:textColorHint="#9AADC8"
             android:padding="12dp" />
 
         <Button
@@ -75,7 +84,10 @@
                 android:layout_width="match_parent"
                 android:layout_height="4dp"
                 android:layout_gravity="top"
-                android:indeterminate="true"
+                android:max="100"
+            android:progress="0"
+                android:indeterminate="false"
+                android:progressTint="@color/finora_blue"
                 android:visibility="gone" />
 
             <LinearLayout

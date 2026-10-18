@@ -6,7 +6,7 @@
 {% set ui_flags = settings.get_ui_flags() if settings else {} %}
 {% set storefront_shipping = ui_flags.get('storefront_shipping_by_city', {}) %}
 {% set storefront_default_shipping = ui_flags.get('storefront_shipping_default_fee', 7000) %}
-{% set storefront_primary_color = ui_flags.get('storefront_primary_color', '#4f8cff') %}
+{% set storefront_primary_color = ui_flags.get('storefront_primary_color', '#008f68') %}
 {% set storefront_shipping_color = ui_flags.get('storefront_shipping_color', '#10b981') %}
 {% set storefront_card_style = ui_flags.get('storefront_product_card_style', 'modern') %}
 {% set storefront_theme_preset = ui_flags.get('storefront_theme_preset', 'custom') %}
@@ -25,7 +25,7 @@
 {% set storefront_theme_mode = ui_flags.get('storefront_theme_mode', 'light') %}
 {% set storefront_ai_enabled = ui_flags.get('storefront_ai_assistant_enabled', true) %}
 {% set storefront_ai_name = ui_flags.get('storefront_ai_assistant_name', 'مساعد المتجر') %}
-{% set storefront_ai_greeting = ui_flags.get('storefront_ai_assistant_greeting', 'مرحباً! أنا مساعد المتجر الذكي. اسألني عن المنتجات، السلة، الشحن، أو تتبع طلبك وسأساعدك فوراً.') %}
+{% set storefront_ai_greeting = ui_flags.get('storefront_ai_assistant_greeting', 'أهلاً بك 👋 شنو المنتج اللي تبحث عنه؟ أساعدك بالسعر والتوفر والطلب.') %}
 {% set _store_tslug = session.get('tenant_slug') or config.get('STOREFRONT_DEFAULT_TENANT_SLUG', '') %}
 {% set storefront_cities = ['بغداد', 'البصرة', 'نينوى', 'أربيل', 'النجف', 'كربلاء', 'ذي قار', 'السليمانية', 'دهوك', 'كركوك', 'ديالى', 'الأنبار', 'صلاح الدين', 'واسط', 'بابل', 'القادسية', 'ميسان', 'المثنى'] %}
 
@@ -40,6 +40,7 @@
     <button type="button" class="settings-inner-tab" data-tab="hero" role="tab">Hero والشرائح</button>
     <button type="button" class="settings-inner-tab" data-tab="sections" role="tab">الأقسام والمساعد</button>
     <button type="button" class="settings-inner-tab" data-tab="shipping" role="tab">الشحن والمعاينة</button>
+    <button type="button" class="settings-inner-tab" data-tab="api" role="tab">ربط API</button>
   </div>
 
   <div class="settings-inner-panel active" data-tab-panel="general">
@@ -175,6 +176,14 @@
   </div>
   <div class="settings-grid" style="margin-bottom:14px;">
     <div class="settings-field">
+      <label class="settings-field-label" for="storefrontV2Enabled">التصميم الجديد للمتجر (V2)</label>
+      <select id="storefrontV2Enabled" class="settings-select">
+        <option value="0" {% if not ui_flags.get('storefront_v2') %}selected{% endif %}>التصميم الحالي</option>
+        <option value="1" {% if ui_flags.get('storefront_v2') %}selected{% endif %}>التصميم الجديد لكل الزوار</option>
+      </select>
+      <small class="settings-hint">جرّبه أولاً بنفسك: افتح المتجر مع <code>?v2=1</code> (و <code>?v2=0</code> للعودة) دون أن يتغير شيء للزوار.</small>
+    </div>
+    <div class="settings-field">
       <label class="settings-field-label" for="storefrontAiEnabled">تفعيل المساعد الذكي</label>
       <select id="storefrontAiEnabled" class="settings-select">
         <option value="1" {% if storefront_ai_enabled %}selected{% endif %}>مفعّل</option>
@@ -256,6 +265,68 @@
     </div>
   </div>
   </div>
+
+  <div class="settings-inner-panel" data-tab-panel="api">
+    <div class="settings-section-header">
+      <h2><i class="fas fa-plug"></i> ربط المتجر</h2>
+      <p>انسخ هذه القيم إلى إعدادات Store API في الأداة الخارجية حتى تسحب منتجات المتجر الظاهرة فقط.</p>
+    </div>
+    {% if store_api %}
+    <p class="store-api-status" id="storeApiStatus">
+      <span class="store-api-dot {% if store_api.connected %}is-on{% endif %}"></span>
+      <strong id="storeApiStatusText">{% if store_api.connected %}متصل{% else %}غير متصل{% endif %}</strong>
+      <span>اختبر الاتصال من الأداة بعد لصق الرمز.</span>
+    </p>
+    <div class="store-api-token" id="storeApiFresh" hidden>
+      <label class="settings-field-label" for="storeApiFreshToken">API Token</label>
+      <div class="store-api-copyline">
+        <input id="storeApiFreshToken" class="settings-input" type="text" readonly>
+        <button type="button" class="settings-btn settings-btn-primary" data-copy="storeApiFreshToken">نسخ الرمز</button>
+      </div>
+      <div class="settings-field-help">انسخ الرمز الآن. لن يظهر كاملاً مرة ثانية.</div>
+    </div>
+    <div class="store-api-fields">
+      <div class="settings-field">
+        <label class="settings-field-label" for="storeApiBase">API Base URL</label>
+        <div class="store-api-copyline">
+          <input id="storeApiBase" class="settings-input" type="text" readonly value="{{ store_api.api_base_url }}">
+          <button type="button" class="settings-btn settings-btn-secondary" data-copy="storeApiBase">نسخ</button>
+        </div>
+      </div>
+      <div class="settings-field">
+        <label class="settings-field-label" for="storeApiName">Store Name</label>
+        <div class="store-api-copyline">
+          <input id="storeApiName" class="settings-input" type="text" readonly value="{{ store_api.store_name }}">
+          <button type="button" class="settings-btn settings-btn-secondary" data-copy="storeApiName">نسخ</button>
+        </div>
+      </div>
+      <div class="settings-field">
+        <label class="settings-field-label" for="storeApiUrl">Store URL</label>
+        <div class="store-api-copyline">
+          <input id="storeApiUrl" class="settings-input" type="text" readonly value="{{ store_api.store_url }}">
+          <button type="button" class="settings-btn settings-btn-secondary" data-copy="storeApiUrl">نسخ</button>
+        </div>
+      </div>
+    </div>
+    <div class="settings-actions-bar">
+      <button type="button" class="settings-btn settings-btn-primary" id="storeApiIssueBtn">إصدار رمز API</button>
+    </div>
+    <div id="storeApiKeys" class="store-api-keys">
+      {% for key in store_api.api_keys %}
+      <div class="store-api-key" data-key-id="{{ key.id }}">
+        <div>
+          <strong>{{ key.token_prefix }}</strong>
+          <span>{{ key.name or 'Store API' }}</span>
+        </div>
+        <button type="button" class="settings-btn settings-btn-secondary" data-revoke-key="{{ key.id }}">إلغاء</button>
+      </div>
+      {% endfor %}
+    </div>
+    <p class="settings-field-help">الرمز يتحكم بالمنتجات والأقسام وطلبات المتجر وزبائنها وإعدادات الواجهة. التفاصيل في <code>modules/store_api/README.md</code>. الحذف يخفي المنتج من المتجر ويبقيه في المخزون.</p>
+    {% else %}
+    <p class="settings-field-help">افتح الإعدادات من داخل الشركة حتى يظهر ربط المتجر.</p>
+    {% endif %}
+  </div>
 </div>
 {% endblock %}
 
@@ -268,6 +339,21 @@
     </button>
   </div>
 </div>
+{% endblock %}
+
+{% block settings_extra_style %}
+<style>
+  .store-api-status { display: flex; align-items: center; gap: 8px; margin: 0 0 16px; }
+  .store-api-dot { width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; display: inline-block; }
+  .store-api-dot.is-on { background: #10b981; }
+  .store-api-token { margin-bottom: 16px; padding: 12px; border: 1px solid var(--border, #d7deea); border-radius: 10px; }
+  .store-api-fields { display: flex; flex-direction: column; gap: 12px; max-width: 720px; }
+  .store-api-copyline { display: flex; gap: 8px; align-items: center; }
+  .store-api-copyline .settings-input { flex: 1; }
+  .store-api-keys { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; max-width: 720px; }
+  .store-api-key { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .store-api-key span { display: block; color: #64748b; font-size: 13px; }
+</style>
 {% endblock %}
 
 {% block settings_extra_script %}
@@ -301,7 +387,7 @@ function updateStorePreview() {
   const titleInput = document.getElementById("storefrontHeroTitle");
   const subtitleInput = document.getElementById("storefrontHeroSubtitle");
 
-  preview.style.setProperty("--preview-primary", primaryInput.value || "#4f8cff");
+  preview.style.setProperty("--preview-primary", primaryInput.value || "#008f68");
   preview.style.setProperty("--preview-shipping", shippingInput.value || "#10b981");
   document.getElementById("storePreviewTitle").textContent = titleInput.value || "واجهة متجر احترافية";
   document.getElementById("storePreviewSubtitle").textContent = subtitleInput.value || "وصف مختصر للمتجر";
@@ -665,7 +751,7 @@ document.getElementById("saveStorefrontBtn").addEventListener("click", function 
   const heroSlides = getHeroSlides().filter(s => s && (String(s.image_url || "").trim().length > 0));
 
   const ui_flags = {
-    storefront_primary_color: document.getElementById("storefrontPrimaryColor").value || "#4f8cff",
+    storefront_primary_color: document.getElementById("storefrontPrimaryColor").value || "#008f68",
     storefront_shipping_color: document.getElementById("storefrontShippingColor").value || "#10b981",
     storefront_product_card_style: document.getElementById("storefrontProductCardStyle").value || "modern",
     storefront_theme_preset: document.getElementById("storefrontThemePreset").value || "custom",
@@ -683,6 +769,7 @@ document.getElementById("saveStorefrontBtn").addEventListener("click", function 
     storefront_logo_url: (document.getElementById("storefrontLogoUrl").value || "").trim(),
     storefront_whatsapp: (document.getElementById("storefrontWhatsapp").value || "").trim(),
     storefront_theme_mode: document.getElementById("storefrontThemeMode").value || "light",
+    storefront_v2: document.getElementById("storefrontV2Enabled").value === "1",
     storefront_ai_assistant_enabled: document.getElementById("storefrontAiEnabled").value === "1",
     storefront_ai_assistant_name: (document.getElementById("storefrontAiName").value || "").trim() || "مساعد المتجر",
     storefront_ai_assistant_greeting: (document.getElementById("storefrontAiGreeting").value || "").trim()
@@ -718,6 +805,95 @@ document.getElementById("saveStorefrontBtn").addEventListener("click", function 
       btn.disabled = false;
       showToast("خطأ في الاتصال بالخادم", "error");
     });
+});
+
+document.querySelectorAll("[data-copy]").forEach((button) => {
+  button.addEventListener("click", async () => {
+    const input = document.getElementById(button.dataset.copy);
+    const value = input ? input.value : "";
+    if (!value) return;
+    try {
+      await navigator.clipboard.writeText(value);
+      showToast("تم النسخ", "success");
+    } catch (err) {
+      input.select();
+      showToast("حدّد النص وانسخه", "error");
+    }
+  });
+});
+
+const storeApiIssueBtn = document.getElementById("storeApiIssueBtn");
+if (storeApiIssueBtn) {
+  storeApiIssueBtn.addEventListener("click", async () => {
+    storeApiIssueBtn.disabled = true;
+    try {
+      const response = await fetch("/settings/storefront/api/keys", { method: "POST" });
+      const data = await response.json();
+      if (!response.ok || !data.ok) {
+        showToast(data.error || "تعذر إصدار الرمز", "error");
+        return;
+      }
+      const fresh = document.getElementById("storeApiFresh");
+      const tokenInput = document.getElementById("storeApiFreshToken");
+      fresh.hidden = false;
+      tokenInput.value = data.api_token || "";
+      const statusText = document.getElementById("storeApiStatusText");
+      const dot = document.querySelector("#storeApiStatus .store-api-dot");
+      if (statusText) statusText.textContent = "متصل";
+      if (dot) dot.classList.add("is-on");
+      const list = document.getElementById("storeApiKeys");
+      if (list && data.key) {
+        const row = document.createElement("div");
+        row.className = "store-api-key";
+        row.dataset.keyId = String(data.key.id);
+        row.innerHTML = `<div><strong></strong><span>Store API</span></div>`;
+        row.querySelector("strong").textContent = data.key.token_prefix || "";
+        const revoke = document.createElement("button");
+        revoke.type = "button";
+        revoke.className = "settings-btn settings-btn-secondary";
+        revoke.dataset.revokeKey = String(data.key.id);
+        revoke.textContent = "إلغاء";
+        revoke.addEventListener("click", () => revokeStoreKey(revoke));
+        row.appendChild(revoke);
+        list.prepend(row);
+      }
+      showToast(data.message || "تم إصدار الرمز", "success");
+    } catch (err) {
+      showToast("خطأ في الاتصال بالخادم", "error");
+    } finally {
+      storeApiIssueBtn.disabled = false;
+    }
+  });
+}
+
+async function revokeStoreKey(button) {
+  const keyId = button.dataset.revokeKey;
+  if (!keyId || !window.confirm("إلغاء هذا الرمز؟ الأداة التي تستخدمه ستنفصل.")) return;
+  button.disabled = true;
+  try {
+    const response = await fetch("/settings/storefront/api/keys/" + keyId, { method: "DELETE" });
+    const data = await response.json();
+    if (!response.ok || !data.ok) {
+      showToast(data.error || "تعذر الإلغاء", "error");
+      button.disabled = false;
+      return;
+    }
+    const row = button.closest(".store-api-key");
+    if (row) row.remove();
+    if (!document.querySelector(".store-api-key")) {
+      const statusText = document.getElementById("storeApiStatusText");
+      const dot = document.querySelector("#storeApiStatus .store-api-dot");
+      if (statusText) statusText.textContent = "غير متصل";
+      if (dot) dot.classList.remove("is-on");
+    }
+  } catch (err) {
+    button.disabled = false;
+    showToast("خطأ في الاتصال بالخادم", "error");
+  }
+}
+
+document.querySelectorAll("[data-revoke-key]").forEach((button) => {
+  button.addEventListener("click", () => revokeStoreKey(button));
 });
 </script>
 {% endblock %}

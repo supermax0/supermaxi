@@ -1,0 +1,450 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Keep the movement table useful on short desktop windows. Full explanations
+   remain available through the adjacent help button. */
+@media (max-height: 800px) and (min-width: 1000px) {
+  .stock-activity {
+    gap: 0.5rem;
+  }
+  .stock-activity-intro,
+  .stock-activity-notice {
+    display: none;
+  }
+  .stock-activity-filters {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+  .stock-activity-filter-fields {
+    display: contents;
+  }
+  .stock-activity-filters > .stock-activity-search {
+    grid-column: span 2;
+    align-self: end;
+    margin-top: 0;
+  }
+}
+
+/* Supplier workbench: account on the RTL start edge, table beside it. */
+.supplier-details {
+  width: 34%;
+  max-width: 470px;
+  min-width: 365px;
+  flex-shrink: 0;
+}
+.supplier-stats > * {
+  gap: 8px;
+  padding: 14px 12px;
+  border: 1px solid rgb(var(--line) / 0.55);
+}
+.supplier-stats p:first-child {
+  font-size: 11px;
+}
+.supplier-stats .ltr-isolate {
+  font-size: clamp(16px, 1.5vw, 22px);
+}
+.supplier-stats > * > span {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+}
+.supplier-filters [role="tablist"] button {
+  padding-inline: 10px;
+  font-size: 12px;
+}
+.supplier-main > div > label select {
+  height: 30px;
+  width: auto;
+  padding-inline: 8px;
+  font-size: 11px;
+}
+@media (max-width: 1279px) {
+  .supplier-details {
+    position: absolute;
+    inset-block: 0;
+    inset-inline-start: 0;
+    z-index: 25;
+    width: 440px;
+    max-width: 95%;
+    min-width: 0;
+  }
+}
+
+/* FINORA light glass palette — RGB channels so Tailwind can apply alpha. */
+:root {
+  --ink: 30 27 58;
+  --ink-soft: 88 84 120;
+  --ink-faint: 142 139 172;
+  --surface: 255 255 255;
+  --surface-sunken: 246 245 252;
+  --line: 226 222 244;
+
+  --maroon: 122 31 61;
+  --maroon-soft: 253 236 242;
+  --violet: 124 77 246;
+  --violet-deep: 96 52 214;
+  --violet-soft: 240 235 255;
+  --azure: 59 125 246;
+  --azure-soft: 232 241 255;
+  --cyan: 54 190 214;
+  --cyan-soft: 228 249 252;
+
+  --success: 22 163 106;
+  --success-soft: 226 248 238;
+  --warning: 222 128 18;
+  --warning-soft: 255 241 222;
+  --danger: 220 60 84;
+  --danger-soft: 255 233 237;
+
+  --nav-height: 76px;
+  --stage-inset: 22px;
+
+  color-scheme: light;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    overflow: hidden;
+    font-family: theme("fontFamily.sans");
+    color: rgb(var(--ink));
+    background-color: #f4f4fb;
+    background-image:
+      radial-gradient(1200px 700px at 88% -10%, rgb(206 196 255 / 0.55), transparent 60%),
+      radial-gradient(900px 600px at -5% 105%, rgb(186 222 255 / 0.55), transparent 60%),
+      radial-gradient(700px 500px at 50% 120%, rgb(244 208 230 / 0.4), transparent 65%),
+      linear-gradient(180deg, #f7f6fd 0%, #eef0fb 100%);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    user-select: none;
+  }
+
+  input,
+  textarea {
+    user-select: text;
+  }
+
+  button {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Slim, quiet scrollbars instead of the Windows default. */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgb(var(--ink-faint) / 0.35);
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: rgb(var(--ink-faint) / 0.6);
+  }
+  ::-webkit-scrollbar-button {
+    display: none;
+  }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--violet) / 0.55);
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Opaque-ish glass without backdrop-filter: the backdrop is a static gradient, so blurring it only costs frames. */
+  .glass {
+    background: linear-gradient(160deg, rgb(255 255 255 / 0.86) 0%, rgb(250 249 255 / 0.76) 100%);
+    border: 1px solid rgb(255 255 255 / 0.9);
+    box-shadow: theme("boxShadow.glass");
+  }
+
+  /* Floating panels sit over other content, so they must stay legible. */
+  .glass-solid {
+    background: linear-gradient(160deg, rgb(255 255 255 / 0.98) 0%, rgb(251 250 255 / 0.97) 100%);
+    border: 1px solid rgb(255 255 255 / 0.95);
+    box-shadow:
+      0 0 0 1px rgb(var(--violet) / 0.07),
+      theme("boxShadow.float");
+  }
+
+  .glass-outline {
+    box-shadow:
+      0 0 0 1px rgb(var(--violet) / 0.08),
+      theme("boxShadow.glass");
+  }
+
+  .drag-region {
+    -webkit-app-region: drag;
+  }
+
+  .no-drag {
+    -webkit-app-region: no-drag;
+  }
+
+  /* Numbers, phones, SKUs and IDs keep their own direction inside RTL text. */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .ltr-isolate {
+    direction: ltr;
+    unicode-bidi: isolate;
+    font-family: theme("fontFamily.num");
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@keyframes boot {
+  0% {
+    transform: translateX(120%);
+  }
+  100% {
+    transform: translateX(-320%);
+  }
+}
+
+/* ───────── «المزيد» navigation hub — grows out of the top bar (transform / opacity only) ───────── */
+.more-panel {
+  top: calc(var(--nav-height) - 6px);
+  right: 24px;
+  max-width: calc(100vw - 48px);
+  border-radius: 22px;
+  background: linear-gradient(165deg, rgb(255 255 255 / 0.992) 0%, rgb(251 249 255 / 0.985) 100%);
+  border: 1px solid rgb(var(--violet) / 0.13);
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.95) inset,
+    0 30px 70px -32px rgb(60 40 120 / 0.34),
+    0 10px 24px -14px rgb(60 40 120 / 0.18),
+    0 0 0 1px rgb(var(--violet) / 0.03);
+  transform-origin: calc(100% - var(--more-notch)) 0;
+  animation: more-in 200ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.more-panel[data-state="closing"] {
+  pointer-events: none;
+  animation: more-out 150ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.more-notch {
+  position: absolute;
+  top: -6px;
+  right: calc(var(--more-notch) - 6px);
+  width: 12px;
+  height: 12px;
+  transform: rotate(45deg);
+  border-radius: 3px 0 0 0;
+  background: rgb(255 255 255);
+  border-top: 1px solid rgb(var(--violet) / 0.13);
+  border-left: 1px solid rgb(var(--violet) / 0.13);
+}
+.more-content {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - var(--nav-height) - 48px);
+  padding: 20px 22px 14px;
+  animation: more-content-in 220ms cubic-bezier(0.22, 1, 0.36, 1) 40ms both;
+}
+.more-search {
+  display: flex;
+  height: 48px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 10px;
+  padding-inline: 14px 10px;
+  border-radius: 14px;
+  background: rgb(var(--surface-sunken) / 0.7);
+  border: 1px solid rgb(var(--line));
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease,
+    background-color 150ms ease;
+}
+.more-search:focus-within {
+  background: rgb(255 255 255);
+  border-color: rgb(var(--violet) / 0.42);
+  box-shadow: 0 0 0 4px rgb(var(--violet) / 0.1);
+}
+.more-search :focus-visible {
+  outline: none;
+}
+.more-body {
+  min-height: 0;
+  margin-top: 14px;
+  margin-inline: -6px;
+  padding-inline: 6px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--violet) / 0.2) transparent;
+}
+.more-section + .more-section,
+.more-section + .more-grid {
+  margin-top: 14px;
+}
+.more-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 4px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgb(var(--ink-faint));
+}
+.more-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--more-cols), minmax(0, 1fr));
+  gap: 14px 18px;
+}
+.more-grid > .more-section + .more-section {
+  margin-top: 0;
+}
+.more-fav-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 2px 10px;
+}
+.more-row > button:first-child {
+  transition: background-color 140ms ease;
+}
+.more-row-icon {
+  background: rgb(var(--violet-soft) / 0.7);
+  color: rgb(var(--violet) / 0.75);
+  transition:
+    color 140ms ease,
+    background-color 140ms ease;
+}
+.more-row-arrow {
+  opacity: 0;
+  transform: translateX(4px);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+}
+.more-row-star {
+  opacity: 0;
+  transition:
+    opacity 140ms ease,
+    background-color 140ms ease;
+}
+.more-row-star.is-on {
+  opacity: 1;
+}
+.more-row-star:hover {
+  background: rgb(var(--warning-soft));
+}
+.more-row:hover > button:first-child,
+.more-row[data-highlighted] > button:first-child {
+  background: rgb(var(--violet-soft) / 0.75);
+}
+.more-row:hover .more-row-icon,
+.more-row[data-highlighted] .more-row-icon {
+  background: rgb(255 255 255);
+  color: rgb(var(--violet-deep));
+}
+.more-row:hover .more-row-arrow,
+.more-row[data-highlighted] .more-row-arrow {
+  opacity: 1;
+  transform: none;
+}
+.more-row:hover .more-row-star,
+.more-row[data-highlighted] .more-row-star {
+  opacity: 1;
+}
+.more-chip {
+  display: inline-flex;
+  max-width: 180px;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding-inline: 12px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  color: rgb(var(--ink-soft));
+  background: rgb(var(--surface-sunken) / 0.8);
+  border: 1px solid rgb(var(--line) / 0.8);
+  transition:
+    background-color 140ms ease,
+    color 140ms ease;
+}
+.more-chip:hover {
+  background: rgb(var(--violet-soft));
+  color: rgb(var(--violet-deep));
+}
+.more-trigger[aria-expanded="true"] {
+  background: rgb(var(--violet-soft));
+  color: rgb(var(--violet-deep));
+}
+
+@keyframes more-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.965);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes more-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+}
+@keyframes more-content-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .more-panel,
+  .more-panel[data-state="closing"],
+  .more-content {
+    animation-duration: 1ms;
+    animation-delay: 0ms;
+  }
+}
+.more-panel[data-reduced],
+.more-panel[data-reduced] .more-content {
+  animation-duration: 1ms;
+  animation-delay: 0ms;
+}
+
+/* Small landscape/short windows keep every audit control reachable. */
+@media (max-height: 650px) {
+  .audit-workspace {
+    display: block;
+    overflow-y: auto;
+  }
+  .audit-workspace > * + * {
+    margin-top: 0.75rem;
+  }
+  .audit-scroll {
+    min-height: 240px;
+    max-height: 380px;
+  }
+}

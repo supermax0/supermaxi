@@ -1,0 +1,150 @@
+{
+  "revision": 1,
+  "phase": "internal_review",
+  "brief": {
+    "title": "حجز الملاعب",
+    "kind": "mobile_app",
+    "goal": "تنظيم حجز ملاعب كرة القدم",
+    "audience": "الزبائن ومالكو الملاعب",
+    "platforms": [
+      "Android",
+      "iOS"
+    ],
+    "requirements": [
+      {
+        "text": "الحجز والدفع عند الحضور",
+        "evidence": "اريد تطبيق لحجز ملاعب كرة قدم، الزبون يحجز والمالك يدير الملاعب، اندرويد وايفون ودفع عند الحضور"
+      }
+    ],
+    "suggestions": [
+      {
+        "title": "تذكير بالحجز",
+        "benefit": "تقليل عدم الحضور"
+      }
+    ],
+    "pages": [
+      {
+        "id": "venues",
+        "name": "الملاعب",
+        "purpose": "عرض الملاعب المتاحة",
+        "features": [
+          "بحث",
+          "صور",
+          "وقت متاح"
+        ],
+        "links": [
+          "booking"
+        ],
+        "roles": [
+          "زبون"
+        ],
+        "phase": "mvp",
+        "acceptance": [
+          "البحث يعرض الملاعب المتاحة فقط"
+        ]
+      },
+      {
+        "id": "booking",
+        "name": "الحجز",
+        "purpose": "حجز وقت بدون تعارض",
+        "features": [
+          "اختيار وقت",
+          "تأكيد",
+          "إلغاء"
+        ],
+        "links": [
+          "venues"
+        ],
+        "roles": [
+          "زبون",
+          "مالك"
+        ],
+        "phase": "mvp",
+        "acceptance": [
+          "يمنع حجز نفس الموعد مرتين"
+        ]
+      }
+    ],
+    "roles": [
+      {
+        "name": "زبون",
+        "permissions": [
+          "حجز وإلغاء حجوزه فقط"
+        ]
+      },
+      {
+        "name": "مالك",
+        "permissions": [
+          "إدارة ملاعبه وحجوزاتها فقط"
+        ]
+      }
+    ],
+    "entities": [
+      {
+        "name": "ملعب",
+        "fields": [
+          "الاسم",
+          "العنوان"
+        ],
+        "relatedTo": [
+          "حجز"
+        ]
+      },
+      {
+        "name": "حجز",
+        "fields": [
+          "الوقت",
+          "الزبون"
+        ],
+        "relatedTo": [
+          "ملعب"
+        ]
+      }
+    ],
+    "integrations": [],
+    "milestones": [
+      {
+        "name": "نسخة أولية",
+        "deliverables": [
+          "بحث وحجز وإدارة"
+        ]
+      },
+      {
+        "name": "تسليم",
+        "deliverables": [
+          "اختبارات وتشغيل"
+        ]
+      }
+    ],
+    "assumptions": [
+      "العميل يوفر المحتوى",
+      "تكلفة متاجر التطبيقات والاستضافة منفصلة"
+    ],
+    "exclusions": [
+      "دفع إلكتروني"
+    ],
+    "risks": [
+      "تعارض الحجز يحتاج اختبار"
+    ],
+    "questions": [],
+    "ready": true,
+    "estimate": {
+      "amount": 1000000,
+      "currency": "IQD",
+      "days": 30,
+      "mvpDays": 10,
+      "basis": "تحليل وتصميم وحجز وصلاحيات واختبارات؛ تقدير غير معتمد"
+    }
+  },
+  "terms": {
+    "amount": 1000000,
+    "currency": "IQD",
+    "days": 30,
+    "mvpDays": 10
+  },
+  "scopeConsent": "scope-message",
+  "customerConsent": null,
+  "paymentClaim": null,
+  "paymentReference": null,
+  "depositVerified": false
+}

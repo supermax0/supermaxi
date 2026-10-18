@@ -7,6 +7,7 @@ from sqlalchemy import func, or_
 
 from extensions import db
 from models.daily_audit import DailyAudit
+from utils.business_time import business_date, business_datetime
 from models.invoice import Invoice
 from models.order_item import OrderItem
 from models.product import Product
@@ -20,9 +21,9 @@ from utils.order_status import CANCELED_STATUSES, RETURN_STATUSES
 from utils.order_stock_lock import stock_unlocked_filter
 from utils.treasury_calculations import (
     calculate_treasury_balance,
-    get_treasury_movements,
     list_treasury_accounts,
 )
+from utils.cash_calculations import get_cash_movements
 from utils.treasury_helpers import get_default_cash_account
 
 
@@ -41,7 +42,7 @@ def _int(value) -> int:
 
 def _movement_date(value) -> date:
     if isinstance(value, datetime):
-        return value.date()
+        return business_date(value)
     if isinstance(value, date):
         return value
     if isinstance(value, str):
@@ -69,28 +70,90 @@ def _movement_datetime(value) -> datetime:
 
 
 def _movement_minute(movement: dict) -> int:
-    movement_dt = _movement_datetime(movement.get("datetime") or movement.get("date"))
+    movement_dt = business_datetime(_movement_datetime(movement.get("datetime") or movement.get("date")))
     return movement_dt.hour * 60 + movement_dt.minute
 
 
 def _movement_time_label(movement: dict) -> str:
-    return _movement_datetime(movement.get("datetime") or movement.get("date")).strftime("%H:%M")
+    return business_datetime(_movement_datetime(movement.get("datetime") or movement.get("date"))).strftime("%H:%M")
 
 
 def _summarize_by_reason(movements: list[dict]) -> list[dict]:
     totals: dict[str, int] = defaultdict(int)
     for movement in movements:
         reason = movement.get("reason") or "غير محدد"
-        totals[reason] += _int(movement.get("amount"))
+        from utils.cash_movement_values import movement_amount
+        totals[reason] += movement_amount(movement)
     return [
         {"reason": reason, "amount": amount}
         for reason, amount in sorted(totals.items(), key=lambda item: item[1], reverse=True)
     ]
 
 
+def _summarize_shipping_collections(movements: list[dict]) -> list[dict]:
+    grouped: dict[tuple[int | None, str], dict] = {}
+    for movement in movements:
+        if movement.get("reason") != "قبض من شركة نقل":
+            continue
+        company_id = movement.get("shipping_company_id")
+        try:
+            company_id = int(company_id) if company_id is not None else None
+        except (TypeError, ValueError):
+            company_id = None
+        company_name = (movement.get("shipping_company_name") or "").strip() or (
+            f"شركة #{company_id}" if company_id else "شركة نقل"
+        )
+        key = (company_id, company_name)
+        row = grouped.setdefault(
+            key,
+            {
+                "shipping_company_id": company_id,
+                "shipping_company_name": company_name,
+                "amount": 0,
+                "movement_count": 0,
+            },
+        )
+        row["amount"] += _int(movement.get("amount"))
+        row["movement_count"] += 1
+    return sorted(grouped.values(), key=lambda item: item["amount"], reverse=True)
+
+
+def _summarize_agent_collections(movements: list[dict]) -> list[dict]:
+    grouped: dict[tuple[int | None, str], dict] = {}
+    for movement in movements:
+        if movement.get("reason") not in {"قبض من مندوب التوصيل", "تعديل تحصيل مندوب"}:
+            continue
+        agent_id = movement.get("delivery_agent_id")
+        try:
+            agent_id = int(agent_id) if agent_id is not None else None
+        except (TypeError, ValueError):
+            agent_id = None
+        agent_name = (movement.get("delivery_agent_name") or "").strip() or (
+            f"مندوب #{agent_id}" if agent_id else "مندوب التوصيل"
+        )
+        key = (agent_id, agent_name)
+        row = grouped.setdefault(
+            key,
+            {
+                "delivery_agent_id": agent_id,
+                "delivery_agent_name": agent_name,
+                "amount": 0,
+                "movement_count": 0,
+            },
+        )
+        # تعديل التحصيل (سالب في الصندوق) يظهر كـ cash_out مع سبب تعديل
+        from utils.cash_movement_values import signed_movement_amount
+        signed = signed_movement_amount(movement)
+        row["amount"] += signed
+        row["movement_count"] += 1
+    return sorted(grouped.values(), key=lambda item: item["amount"], reverse=True)
+
+
 def _cash_summary_for_day(report_date: date) -> dict:
     cash_account = get_default_cash_account()
-    all_movements = get_treasury_movements(cash_account.id)
+    # Uses the same visible branch scope as the cash and accounts pages:
+    # one selected branch => its cash ledger; all branches => merged ledgers.
+    all_movements = get_cash_movements()
     all_movements.sort(key=lambda row: (_movement_datetime(row.get("datetime") or row.get("date")), row.get("reference_type") or "", row.get("reference_id") or 0))
 
     opening_balance = 0
@@ -104,11 +167,27 @@ def _cash_summary_for_day(report_date: date) -> dict:
 
     cash_in_movements = [row for row in day_movements if row.get("type") == "cash_in"]
     cash_out_movements = [row for row in day_movements if row.get("type") == "cash_out"]
-    cash_in = sum(_int(row.get("amount")) for row in cash_in_movements)
-    cash_out = sum(_int(row.get("amount")) for row in cash_out_movements)
+    from utils.cash_movement_values import movement_amount
+    cash_in = sum(movement_amount(row) for row in cash_in_movements)
+    cash_out = sum(movement_amount(row) for row in cash_out_movements)
     closing_balance = opening_balance + cash_in - cash_out
     if day_movements:
         closing_balance = _int(day_movements[-1].get("balance_after"))
+
+    shipping_collections = _summarize_shipping_collections(cash_in_movements)
+    agent_day_movements = [
+        row
+        for row in day_movements
+        if row.get("reason") in {"قبض من مندوب التوصيل", "تعديل تحصيل مندوب"}
+    ]
+    agent_collections = _summarize_agent_collections(agent_day_movements)
+    direct_sale_total = sum(
+        _int(row.get("amount"))
+        for row in cash_in_movements
+        if row.get("reason") == "بيع مباشر"
+    )
+    shipping_collection_total = sum(row["amount"] for row in shipping_collections)
+    agent_collection_total = sum(row["amount"] for row in agent_collections)
 
     treasury_accounts = []
     for account in list_treasury_accounts():
@@ -134,6 +213,11 @@ def _cash_summary_for_day(report_date: date) -> dict:
         "cash_out_movements": cash_out_movements,
         "cash_in_by_reason": _summarize_by_reason(cash_in_movements),
         "cash_out_by_reason": _summarize_by_reason(cash_out_movements),
+        "shipping_collections": shipping_collections,
+        "shipping_collection_total": shipping_collection_total,
+        "agent_collections": agent_collections,
+        "agent_collection_total": agent_collection_total,
+        "direct_sale_total": direct_sale_total,
         "timeline_movements": [
             {
                 "minute": _movement_minute(row),

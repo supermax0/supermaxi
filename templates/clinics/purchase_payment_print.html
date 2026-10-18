@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <title>سند دفع {{ payment.payment_number }}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: "IBM Plex Sans Arabic", Tahoma, sans-serif; margin: 24px; color: #15282c; font-size: 13px; }
+    h1 { margin: 0 0 4px; font-size: 20px; }
+    .meta { color: #6d8085; margin-bottom: 18px; font-size: 12px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+    .box { border: 1px solid #dfe7ea; border-radius: 8px; padding: 12px; }
+    .box b { display: block; margin-bottom: 6px; }
+    .totals { margin-top: 16px; width: 320px; margin-inline-start: auto; }
+    .totals div { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #e1e8eb; }
+    .totals .grand { font-weight: 800; font-size: 15px; border-bottom: 0; padding-top: 8px; }
+    @media print { body { margin: 12mm; } button { display: none; } }
+  </style>
+</head>
+<body>
+  <button onclick="window.print()" style="margin-bottom:12px;padding:8px 14px;cursor:pointer">طباعة</button>
+  <h1>سند دفع مورد</h1>
+  <div class="meta">{{ payment.payment_number }} — {{ payment.payment_date }}</div>
+  <div class="grid">
+    <div class="box"><b>المورد</b>{{ payment.supplier_name }}<br>فاتورة الشراء: {{ payment.purchase_number }}<br>فاتورة المورد: {{ payment.supplier_invoice_no or '—' }}</div>
+    <div class="box"><b>تفاصيل الدفع</b>الطريقة: {{ payment.payment_method }}<br>الحساب: {{ payment.account_name or '—' }}<br>المرجع: {{ payment.reference_no or '—' }}<br>بواسطة: {{ payment.created_by_name or '—' }}</div>
+  </div>
+  <div class="totals">
+    <div class="grand"><span>المبلغ المدفوع</span><span>{{ "{:,}".format(payment.amount) }} د.ع</span></div>
+    <div><span>إجمالي الفاتورة</span><span>{{ "{:,}".format(payment.purchase_total) }} د.ع</span></div>
+    <div><span>المدفوع الكلي</span><span>{{ "{:,}".format(payment.purchase_paid) }} د.ع</span></div>
+    <div><span>المتبقي</span><span>{{ "{:,}".format(payment.purchase_balance) }} د.ع</span></div>
+  </div>
+  {% if payment.notes %}<p style="margin-top:18px"><b>ملاحظات:</b> {{ payment.notes }}</p>{% endif %}
+</body>
+</html>

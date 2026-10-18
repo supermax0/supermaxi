@@ -1,0 +1,191 @@
+{
+  "id": "invoice.create",
+  "version": 1,
+  "status": "verified",
+  "level": 3,
+  "title_ar": "إنشاء فاتورة",
+  "description_ar": "إصدار فاتورة من بنود خطة علاج المريض (بدون تسجيل دفعة).",
+  "chip_ar": "الفواتير",
+  "requires_permissions": [
+    "clinics_billing",
+    "clinics_clinical",
+    "clinics_visits"
+  ],
+  "dependencies": [
+    {
+      "fact": {
+        "name": "treatment_items_count",
+        "op": "gt",
+        "value": 0
+      },
+      "tutorial": "treatment_plan.create",
+      "message_ar": "الفاتورة تُصدر من بنود خطة علاج. ننشئ خطة وأول علاج فيها ثم نرجع.",
+      "action_label_ar": "إنشاء خطة علاج الآن"
+    }
+  ],
+  "curriculum": {"group": "operations", "order": 7},
+  "next_lessons": ["payment.record"],
+  "result": "invoice.created",
+  "completion_validator": "invoice.created_since_start",
+  "steps": [
+    {
+      "id": "open-visits-menu",
+      "type": "wait_click",
+      "target": {
+        "action": "nav.visits"
+      },
+      "reveal": [
+        {
+          "action": "nav.menu.open"
+        },
+        {
+          "section": "nav.group.patients"
+        }
+      ],
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "action": "invoice.create"
+          }
+        }
+      },
+      "nav_message_ar": "جاري فتح الزيارات",
+      "message_ar": "الفاتورة تُنشأ من خطة علاج الزيارة. نبدأ من «الزيارات»."
+    },
+    {
+      "id": "on-visits-page",
+      "type": "navigate",
+      "route": "/clinics/visits",
+      "page": "visits",
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "action": "invoice.create"
+          }
+        }
+      },
+      "message_ar": "نفتح الآن صفحة الزيارات."
+    },
+    {
+      "id": "open-visit",
+      "type": "wait_click",
+      "page": "visits",
+      "target": {
+        "action": "visit.open"
+      },
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "action": "invoice.create"
+          }
+        }
+      },
+      "nav_message_ar": "جاري فتح الزيارة",
+      "message_ar": "اضغط على زر الزيارة المفتوحة لفتح مساحة عمل الطبيب."
+    },
+    {
+      "id": "open-treatment-tab",
+      "type": "wait_click",
+      "page": "doctor",
+      "target": {
+        "action": "visit.tab.treatment"
+      },
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "action": "invoice.create"
+          }
+        }
+      },
+      "message_ar": "خطة العلاج وفاتورتها في تبويب «العلاج». اضغط عليه."
+    },
+    {
+      "id": "click-create-invoice",
+      "type": "wait_click",
+      "page": "doctor",
+      "target": {
+        "action": "invoice.create"
+      },
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "section": "invoice.form"
+          }
+        }
+      },
+      "message_ar": "اضغط «إنشاء فاتورة» لإصدار فاتورة من بنود الخطة."
+    },
+    {
+      "id": "invoice-form-open",
+      "type": "wait_modal",
+      "page": "doctor",
+      "target": {
+        "section": "invoice.form"
+      },
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "section": "invoice.form"
+          }
+        }
+      },
+      "message_ar": "ننتظر ظهور نموذج الفاتورة."
+    },
+    {
+      "id": "invoice-mode",
+      "type": "highlight",
+      "page": "doctor",
+      "target": {
+        "field": "invoice.mode"
+      },
+      "message_ar": "نوع الفاتورة: «الخطة كاملة» تشمل كل البنود، «بنود محددة» تختار منها، «مبلغ مخصص» فاتورة بمبلغ تكتبه. اضغط «فهمت»."
+    },
+    {
+      "id": "invoice-items",
+      "type": "highlight",
+      "page": "doctor",
+      "target": {
+        "section": "invoice.items"
+      },
+      "message_ar": "هذه بنود الخطة. تُحتسب في الفاتورة عند اختيار «الخطة كاملة» أو «بنود محددة». اضغط «فهمت»."
+    },
+    {
+      "id": "save-invoice",
+      "type": "wait_api_success",
+      "page": "doctor",
+      "allow_back": false,
+      "target": {
+        "action": "invoice.save"
+      },
+      "match": {
+        "method": "POST",
+        "url": "^/clinics/api/dental-treatment-plans/\\d+/invoice$"
+      },
+      "reconcile": {
+        "kind": "backend",
+        "validator": "invoice.created_since_start"
+      },
+      "success_ar": "تم إنشاء الفاتورة.",
+      "message_ar": "اضغط «حفظ» لإنشاء الفاتورة. لن تُسجَّل أي دفعة الآن."
+    },
+    {
+      "id": "verify",
+      "type": "wait_state",
+      "allow_back": false,
+      "validator": "invoice.created_since_start",
+      "message_ar": "نتأكد الآن من إنشاء الفاتورة في النظام…"
+    },
+    {
+      "id": "done",
+      "type": "complete",
+      "allow_back": false,
+      "message_ar": "تم إنشاء الفاتورة وتأكدنا من ذلك. لم تُسجَّل أي دفعة؛ تسجيل الدفع خطوة منفصلة."
+    }
+  ]
+}

@@ -13,6 +13,10 @@ class ProductColorVariant(db.Model):
     )
     color_name = db.Column(db.String(80), nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=0)
+    buy_price = db.Column(db.Integer, nullable=True)
+    sale_price = db.Column(db.Integer, nullable=True)
+    # Sell price for non-primary provinces when dual_region_pricing is on.
+    governorate_sale_price = db.Column(db.Integer, nullable=True)
 
     product = db.relationship("Product", backref=db.backref("color_variants", lazy="dynamic"))
 

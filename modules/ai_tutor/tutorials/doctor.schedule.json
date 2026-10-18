@@ -1,0 +1,182 @@
+{
+  "id": "doctor.schedule",
+  "version": 1,
+  "status": "verified",
+  "level": 2,
+  "title_ar": "جدول دوام الطبيب",
+  "description_ar": "تحديد أيام وأوقات استقبال طبيب (وفترة الاستراحة).",
+  "chip_ar": "الدوام",
+  "requires_permissions": [
+    "clinics_admin"
+  ],
+  "dependencies": [
+    {
+      "fact": {
+        "name": "doctors_count",
+        "op": "gt",
+        "value": 0
+      },
+      "tutorial": "doctor.create",
+      "message_ar": "الدوام يُحدَّد لطبيب مسجل. نضيف طبيباً أولاً ثم نرجع.",
+      "action_label_ar": "إضافة طبيب الآن"
+    }
+  ],
+  "curriculum": {"group": "setup", "order": 3},
+  "result": "schedule.created",
+  "completion_validator": "schedule.created_since_start",
+  "steps": [
+    {
+      "id": "open-schedules-menu",
+      "type": "wait_click",
+      "target": {
+        "action": "nav.schedules"
+      },
+      "reveal": [
+        {
+          "action": "nav.menu.open"
+        },
+        {
+          "section": "nav.group.admin"
+        }
+      ],
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "page": "schedules"
+        }
+      },
+      "nav_message_ar": "جاري فتح جداول الدوام",
+      "message_ar": "أوقات استقبال الأطباء تُحدَّد من هنا. اضغط «جداول الدوام»."
+    },
+    {
+      "id": "on-schedules-page",
+      "type": "navigate",
+      "route": "/clinics/schedules",
+      "page": "schedules",
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "page": "schedules"
+        }
+      },
+      "message_ar": "نفتح الآن صفحة جداول الدوام."
+    },
+    {
+      "id": "click-add-schedule",
+      "type": "wait_click",
+      "page": "schedules",
+      "target": {
+        "action": "schedule.create"
+      },
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "section": "schedule.form"
+          }
+        }
+      },
+      "message_ar": "اضغط «إضافة دوام» لفتح النموذج."
+    },
+    {
+      "id": "form-open",
+      "type": "wait_modal",
+      "page": "schedules",
+      "target": {
+        "section": "schedule.form"
+      },
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "section": "schedule.form"
+          }
+        }
+      },
+      "message_ar": "ننتظر ظهور نموذج الدوام."
+    },
+    {
+      "id": "doctor",
+      "type": "wait_input",
+      "page": "schedules",
+      "target": {
+        "field": "schedule.doctor"
+      },
+      "condition": {
+        "min_length": 1
+      },
+      "message_ar": "اختر الطبيب الذي تريد تحديد دوامه."
+    },
+    {
+      "id": "day",
+      "type": "wait_input",
+      "page": "schedules",
+      "target": {
+        "field": "schedule.day"
+      },
+      "condition": {
+        "min_length": 1
+      },
+      "message_ar": "اختر اليوم. كل يوم له دوامه؛ ويمكنك إضافة أكثر من دوام للطبيب. وإن لم تضف دواماً ليوم ما فالنظام يعتبر الطبيب متاحاً فيه."
+    },
+    {
+      "id": "from",
+      "type": "highlight",
+      "page": "schedules",
+      "target": {
+        "field": "schedule.start"
+      },
+      "message_ar": "وقت بداية استقبال المرضى. عدّله إن لزم ثم اضغط «فهمت»."
+    },
+    {
+      "id": "to",
+      "type": "highlight",
+      "page": "schedules",
+      "target": {
+        "field": "schedule.end"
+      },
+      "message_ar": "وقت نهاية الاستقبال، ويجب أن يكون بعد البداية. اضغط «فهمت»."
+    },
+    {
+      "id": "break",
+      "type": "highlight",
+      "page": "schedules",
+      "target": {
+        "field": "schedule.break_start"
+      },
+      "message_ar": "الاستراحة اختيارية: حدد بدايتها ونهايتها معاً داخل فترة الدوام، ولا تُحجز فيها مواعيد. اضغط «فهمت»."
+    },
+    {
+      "id": "save",
+      "type": "wait_api_success",
+      "page": "schedules",
+      "allow_back": false,
+      "target": {
+        "action": "schedule.save"
+      },
+      "match": {
+        "method": "POST",
+        "url": "^/clinics/api/schedules$"
+      },
+      "reconcile": {
+        "kind": "backend",
+        "validator": "schedule.created_since_start"
+      },
+      "success_ar": "تم حفظ الدوام.",
+      "message_ar": "راجع الأوقات ثم اضغط «حفظ»."
+    },
+    {
+      "id": "verify",
+      "type": "wait_state",
+      "allow_back": false,
+      "validator": "schedule.created_since_start",
+      "message_ar": "نتأكد الآن من حفظ الدوام في النظام…"
+    },
+    {
+      "id": "done",
+      "type": "complete",
+      "allow_back": false,
+      "message_ar": "تم حفظ دوام الطبيب وتأكدنا من ذلك. المواعيد الجديدة ستلتزم بهذه الأوقات."
+    }
+  ]
+}

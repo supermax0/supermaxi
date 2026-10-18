@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import base64
 import mimetypes
+import subprocess
 import uuid
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from .openai_service import (
     AIServiceError,
     create_response,
     generate_speech_file,
+    get_ffmpeg_binary,
     settings_for_profile,
     transcribe_file,
 )
@@ -170,6 +172,112 @@ def analyze_image(message: AISalesMessage, *, profile: AISalesAgentProfile | Non
         )
     )
     return analysis
+
+
+def _video_duration_seconds(ffmpeg: str, path: Path) -> float | None:
+    ffprobe = ffmpeg.replace("ffmpeg", "ffprobe") if "ffmpeg" in ffmpeg else None
+    if not ffprobe or not Path(ffprobe).is_file():
+        return None
+    try:
+        result = subprocess.run(
+            [ffprobe, "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", str(path)],
+            capture_output=True, text=True, timeout=30, check=False,
+        )
+        seconds = float((result.stdout or "").strip() or "0")
+        return seconds if seconds > 0 else None
+    except (OSError, ValueError):
+        return None
+
+
+def _extract_video_frames(path: Path, *, count: int = 3) -> list[Path]:
+    """Pull `count` evenly-spaced JPEG frames from a video using ffmpeg (same binary already required for voice mastering)."""
+    ffmpeg = get_ffmpeg_binary()
+    duration = _video_duration_seconds(ffmpeg, path) or 0.0
+    fractions = [0.15, 0.5, 0.85][:count] if count <= 3 else [i / (count + 1) for i in range(1, count + 1)]
+    frames: list[Path] = []
+    for index, fraction in enumerate(fractions):
+        timestamp = max(duration * fraction, 0.1) if duration else 0.5 + index
+        frame_path = path.with_name(f"{path.stem}_frame{index}.jpg")
+        result = subprocess.run(
+            [ffmpeg, "-y", "-ss", f"{timestamp:.2f}", "-i", str(path), "-vframes", "1", "-q:v", "2", str(frame_path)],
+            capture_output=True, text=True, timeout=45, check=False,
+        )
+        if result.returncode == 0 and frame_path.exists() and frame_path.stat().st_size > 0:
+            frames.append(frame_path)
+    if not frames:
+        raise AIServiceError("video_frames_failed", "vision", "تعذر استخراج لقطات من الفيديو")
+    return frames
+
+
+def analyze_video(message: AISalesMessage, *, profile: AISalesAgentProfile | None = None, max_seconds: int = 60) -> str:
+    """Analyze a customer video by sampling a few frames with the same vision model used for images.
+
+    Raises AIServiceError (too long / ffmpeg missing / extraction failed) or any
+    OpenAI error — callers must fall back to human handoff on failure, exactly
+    like the pre-existing behavior this replaces, since there is no safe guess
+    to make about unseen video content.
+    """
+    path = Path(download_inbound_media(message))
+    settings = settings_for_profile(profile or _active_profile())
+    ffmpeg = get_ffmpeg_binary()
+    duration = _video_duration_seconds(ffmpeg, path)
+    if duration and duration > max_seconds:
+        raise AIServiceError("video_too_long", "vision", f"الفيديو أطول من {max_seconds} ثانية")
+    frames = _extract_video_frames(path, count=3)
+    try:
+        vision_model = settings.vision_model
+        data_urls = [
+            f"data:image/jpeg;base64,{base64.b64encode(frame.read_bytes()).decode('ascii')}"
+            for frame in frames
+        ]
+        response = create_response(
+            model=vision_model,
+            instructions=(
+                "حلل مقطع فيديو أرسله الزبون كمساعد مبيعات عراقي لمتجر أجهزة. "
+                "ستشاهد عدة لقطات متسلسلة من نفس الفيديو بالترتيب الزمني، اعتبرها مشهداً واحداً متصلاً. "
+                "اقرأ أي نص ظاهر بدقة (السعر، العملة، اسم المنتج، الماركة، الحجم، اللون، الموديل)، "
+                "ولاحظ أي عطل أو مشكلة تظهر في الفيديو إذا كان العرض يوثق مشكلة بمنتج. "
+                "لا تخمن تفاصيل غير واضحة، لكن استخرج كلمات بحث مفيدة. أرجع وصفاً عربياً منظماً قصيراً."
+            ),
+            input=[
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "input_text", "text": message.text_content or "أريد تحليل هذا الفيديو"},
+                        *[{"type": "input_image", "image_url": url, "detail": "low"} for url in data_urls],
+                    ],
+                }
+            ],
+            max_output_tokens=420,
+            store=False,
+            timeout=60,
+        )
+        analysis = (response.output_text or "").strip()
+        metadata = message.get_media_metadata()
+        metadata["vision_analysis"] = analysis
+        metadata["vision_model"] = vision_model
+        metadata["video_frames_analyzed"] = len(frames)
+        message.set_media_metadata(metadata)
+        usage = getattr(response, "usage", None)
+        db.session.add(
+            AISalesUsageLog(
+                conversation_id=message.conversation_id,
+                message_id=message.id,
+                provider="openai",
+                model=vision_model,
+                operation="vision",
+                input_tokens=int(getattr(usage, "input_tokens", 0) or 0),
+                output_tokens=int(getattr(usage, "output_tokens", 0) or 0),
+                image_count=len(frames),
+            )
+        )
+        return analysis
+    finally:
+        for frame in frames:
+            try:
+                frame.unlink(missing_ok=True)
+            except OSError:
+                pass
 
 
 def generate_speech(

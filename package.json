@@ -8,6 +8,8 @@
   "scripts": {
     "test": "playwright test",
     "test:ui": "playwright test --headed",
-    "report": "playwright show-report"
+    "report": "playwright show-report",
+    "analyze-ai-tutor": "python scripts/analyze_ai_tutor.py",
+    "test:ai-tutor-unit": "node --test tests/ai-tutor/engine-core.unit.mjs tests/ai-tutor/positioner.unit.mjs"
   }
 }

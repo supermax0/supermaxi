@@ -1,0 +1,64 @@
+{% extends 'superadmin/leads/_base.html' %}
+{% set page_title = 'عميل محتمل جديد' if mode == 'new' else 'تعديل عميل محتمل' %}
+{% set page_subtitle = 'أدخل بيانات العميل — سيتم فحص التكرار تلقائياً' %}
+{% block header_actions %}
+<a href="{{ url_for('superadmin_leads.all_leads') }}" class="sa-btn sa-btn-secondary"><i class="fas fa-arrow-right"></i> رجوع</a>
+{% endblock %}
+{% block leads_content %}
+{% if duplicate_error %}
+<div class="lc-alert lc-alert-warn">
+    <p><strong><i class="fas fa-exclamation-triangle"></i> تكرار مكتشف:</strong> {{ duplicate_error.duplicate.reason if duplicate_error.duplicate else '' }}</p>
+    {% if duplicate_error.existing_lead %}
+    <p>عميل موجود: <a href="{{ url_for('superadmin_leads.lead_detail', lead_id=duplicate_error.existing_lead.id) }}">{{ duplicate_error.existing_lead.business_name }}</a></p>
+    {% endif %}
+</div>
+{% endif %}
+
+<section class="lc-card">
+    <header class="lc-card-header">
+        <div><h2><i class="fas fa-user-plus lc-card-icon"></i> بيانات العميل</h2></div>
+    </header>
+    <div class="lc-card-body">
+        <form method="post" class="lc-form">
+            <div class="lc-form-grid">
+                <label>اسم الشركة *<input name="business_name" required value="{{ (form_data or {}).get('business_name', lead.business_name if lead else '') }}" placeholder="مثال: أزياء الملك"></label>
+                <label>النشاط *
+                    <select name="activity_id" required>
+                        {% for a in activities %}<option value="{{ a.id }}" {% if (form_data or {}).get('activity_id', lead.activity_id if lead else '')|string == a.id|string %}selected{% endif %}>{{ a.name_ar }}</option>{% endfor %}
+                    </select>
+                </label>
+                <label>اسم المالك<input name="owner_name" value="{{ (form_data or {}).get('owner_name', lead.owner_name if lead else '') }}"></label>
+                <label>الهاتف *<input name="phone" value="{{ (form_data or {}).get('phone', '') }}" placeholder="07XXXXXXXXX"></label>
+                <label>المحافظة
+                    <select name="governorate">
+                        <option value="">—</option>
+                        {% for g in governorates %}<option value="{{ g }}" {% if (form_data or {}).get('governorate', lead.governorate if lead else '') == g %}selected{% endif %}>{{ g }}</option>{% endfor %}
+                    </select>
+                </label>
+                <label>المدينة<input name="city" value="{{ (form_data or {}).get('city', lead.city if lead else '') }}"></label>
+                <label>المنطقة<input name="district" value="{{ (form_data or {}).get('district', lead.district if lead else '') }}"></label>
+                <label>الحالة
+                    <select name="status">
+                        {% for s in statuses %}<option value="{{ s.code }}" {% if (form_data or {}).get('status', lead.status if lead else 'NEW') == s.code %}selected{% endif %}>{{ s.label_ar }}</option>{% endfor %}
+                    </select>
+                </label>
+                <label>الأولوية
+                    <select name="priority">
+                        {% for code, label in priorities %}<option value="{{ code }}" {% if (form_data or {}).get('priority', lead.priority if lead else 'MEDIUM') == code %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                    </select>
+                </label>
+                <label>المصدر<input name="source_primary" value="{{ (form_data or {}).get('source_primary', lead.source_primary if lead else '') }}" placeholder="يدوي، Excel، إحالة..."></label>
+                <label>Instagram<input name="instagram_url" value="{{ (form_data or {}).get('instagram_url', lead.instagram_url if lead else '') }}" placeholder="https://instagram.com/..."></label>
+                <label class="lc-span-2">العنوان<textarea name="full_address" rows="3">{{ (form_data or {}).get('full_address', lead.full_address if lead else '') }}</textarea></label>
+            </div>
+            {% if duplicate_error and duplicate_error.get('error') == 'possible_duplicate' %}
+            <label style="margin-top:1rem;display:flex;align-items:center;gap:0.5rem;"><input type="checkbox" name="force" value="1"> إنشاء رغم التكرار المحتمل</label>
+            {% endif %}
+            <div class="lc-form-actions">
+                <button type="submit" class="sa-btn sa-btn-primary"><i class="fas fa-save"></i> حفظ</button>
+                <a href="{{ url_for('superadmin_leads.all_leads') }}" class="sa-btn sa-btn-secondary">إلغاء</a>
+            </div>
+        </form>
+    </div>
+</section>
+{% endblock %}

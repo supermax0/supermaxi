@@ -1,0 +1,86 @@
+{
+  "products": 3000,
+  "workers": 4,
+  "think_seconds": "5,15",
+  "threads_per_worker": 16,
+  "machine": {
+    "cpu": 12,
+    "ram_gb": 15.7
+  },
+  "levels": [
+    {
+      "users": 200,
+      "seconds": 59.7,
+      "requests": 942,
+      "errors": 0,
+      "error_rate_pct": 0.0,
+      "throughput_rps": 15.8,
+      "by_page": {
+        "home": {
+          "count": 317,
+          "p50_ms": 709.1,
+          "p95_ms": 1728.9,
+          "p99_ms": 1865.8
+        },
+        "search": {
+          "count": 227,
+          "p50_ms": 1688.7,
+          "p95_ms": 3383.6,
+          "p99_ms": 3865.4
+        },
+        "suggest": {
+          "count": 200,
+          "p50_ms": 37.9,
+          "p95_ms": 405.0,
+          "p99_ms": 728.9
+        },
+        "product": {
+          "count": 198,
+          "p50_ms": 240.7,
+          "p95_ms": 629.3,
+          "p99_ms": 932.3
+        }
+      },
+      "servers_cpu_pct_avg": 103.3,
+      "servers_cpu_pct_max": 257.0,
+      "servers_rss_mb_max": 1372
+    },
+    {
+      "users": 300,
+      "seconds": 59.1,
+      "requests": 721,
+      "errors": 12,
+      "error_rate_pct": 1.66,
+      "throughput_rps": 12.2,
+      "by_page": {
+        "home": {
+          "count": 288,
+          "p50_ms": 26473.6,
+          "p95_ms": 28371.7,
+          "p99_ms": 30625.5
+        },
+        "search": {
+          "count": 299,
+          "p50_ms": 1535.7,
+          "p95_ms": 3612.4,
+          "p99_ms": 5901.3
+        },
+        "suggest": {
+          "count": 117,
+          "p50_ms": 195.2,
+          "p95_ms": 1545.1,
+          "p99_ms": 1863.6
+        },
+        "product": {
+          "count": 5,
+          "p50_ms": 330.0,
+          "p95_ms": 1333.5,
+          "p99_ms": 1333.5
+        }
+      },
+      "servers_cpu_pct_avg": 105.7,
+      "servers_cpu_pct_max": 289.2,
+      "servers_rss_mb_max": 1474
+    }
+  ]
+}

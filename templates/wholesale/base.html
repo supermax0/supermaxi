@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block body_class %}wholesale-app-mode{% endblock %}
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='wholesale/wholesale_shell.css') }}?v=ws-shell-20260829">
+<link rel="stylesheet" href="{{ url_for('static', filename='wholesale/operations_center.css') }}?v=ws-ops-20260829">
+{% endblock %}
+{% block content %}
+{% include "wholesale/_app_header.html" %}
+<main class="ws-shell" dir="rtl" lang="ar" data-ws-page="{{ ws_page|default('') }}">
+  {% block ws_content %}{% endblock %}
+</main>
+{% endblock %}

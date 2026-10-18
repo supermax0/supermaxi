@@ -1,0 +1,203 @@
+{
+  "id": "service.create",
+  "version": 1,
+  "status": "verified",
+  "level": 2,
+  "title_ar": "إضافة خدمة",
+  "description_ar": "إضافة خدمة طبية بسعر ومدة وربطها بالاختصاص.",
+  "chip_ar": "الخدمات",
+  "requires_permissions": [
+    "clinics_admin"
+  ],
+  "dependencies": [
+    {
+      "fact": {
+        "name": "specialties_count",
+        "op": "gt",
+        "value": 0
+      },
+      "tutorial": "specialty.create",
+      "message_ar": "الخدمة تُربط باختصاص. نضيف اختصاصاً واحداً على الأقل أولاً ثم نرجع.",
+      "action_label_ar": "إضافة اختصاص الآن"
+    }
+  ],
+  "curriculum": {"group": "setup", "order": 6},
+  "result": "service.created",
+  "completion_validator": "service.created_since_start",
+  "steps": [
+    {
+      "id": "open-services-menu",
+      "type": "wait_click",
+      "target": {
+        "action": "nav.services"
+      },
+      "reveal": [
+        {
+          "action": "nav.menu.open"
+        },
+        {
+          "section": "nav.group.admin"
+        }
+      ],
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "page": "services"
+        }
+      },
+      "nav_message_ar": "جاري فتح الخدمات",
+      "message_ar": "خدمات العيادة وأسعارها تُدار من هنا. اضغط «الخدمات»."
+    },
+    {
+      "id": "on-services-page",
+      "type": "navigate",
+      "route": "/clinics/services",
+      "page": "services",
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "page": "services"
+        }
+      },
+      "message_ar": "نفتح الآن صفحة الخدمات."
+    },
+    {
+      "id": "click-add-service",
+      "type": "wait_click",
+      "page": "services",
+      "target": {
+        "action": "service.create"
+      },
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "section": "service.form"
+          }
+        }
+      },
+      "message_ar": "اضغط «خدمة جديدة» لفتح نموذج الخدمة."
+    },
+    {
+      "id": "form-open",
+      "type": "wait_modal",
+      "page": "services",
+      "target": {
+        "section": "service.form"
+      },
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "section": "service.form"
+          }
+        }
+      },
+      "message_ar": "ننتظر ظهور نموذج الخدمة."
+    },
+    {
+      "id": "name",
+      "type": "wait_input",
+      "page": "services",
+      "target": {
+        "field": "service.name"
+      },
+      "condition": {
+        "min_length": 2
+      },
+      "message_ar": "اكتب اسم الخدمة، مثل «كشف عام». الاسم لا يتكرر."
+    },
+    {
+      "id": "category",
+      "type": "highlight",
+      "page": "services",
+      "target": {
+        "field": "service.category"
+      },
+      "message_ar": "التصنيف اختياري (كشف، إجراء، متابعة…) ويساعد على ترتيب الخدمات. اضغط «فهمت»."
+    },
+    {
+      "id": "duration",
+      "type": "highlight",
+      "page": "services",
+      "target": {
+        "field": "service.duration"
+      },
+      "message_ar": "مدة الخدمة بالدقائق؛ تُستخدم لتحديد طول الموعد عند اختيارها. عدّلها إن لزم ثم اضغط «فهمت»."
+    },
+    {
+      "id": "price",
+      "type": "highlight",
+      "page": "services",
+      "target": {
+        "field": "service.price"
+      },
+      "message_ar": "سعر الخدمة بالدينار؛ يظهر في الموعد والفاتورة. اكتب السعر ثم اضغط «فهمت»."
+    },
+    {
+      "id": "specialty",
+      "type": "wait_select",
+      "page": "services",
+      "target": {
+        "section": "service.specialties"
+      },
+      "watch": {
+        "field": "service.specialty"
+      },
+      "condition": {
+        "min_checked": 1
+      },
+      "message_ar": "اختر اختصاصاً واحداً على الأقل. الخدمة لا تظهر عند حجز موعد لاختصاص لم تربطها به."
+    },
+    {
+      "id": "doctors",
+      "type": "highlight",
+      "page": "services",
+      "target": {
+        "section": "service.doctors"
+      },
+      "message_ar": "الأطباء اختياري: إن لم تختر أحداً تظهر الخدمة لكل أطباء الاختصاص. اضغط «فهمت»."
+    },
+    {
+      "id": "options",
+      "type": "highlight",
+      "page": "services",
+      "target": {
+        "section": "service.options"
+      },
+      "message_ar": "خيارات إضافية: غرفة، سن، عدة أسنان، جلسات متعددة. فعّلها فقط إن كانت الخدمة تحتاجها. اضغط «فهمت»."
+    },
+    {
+      "id": "save",
+      "type": "wait_api_success",
+      "page": "services",
+      "allow_back": false,
+      "target": {
+        "action": "service.save"
+      },
+      "match": {
+        "method": "POST",
+        "url": "^/clinics/api/services$"
+      },
+      "reconcile": {
+        "kind": "backend",
+        "validator": "service.created_since_start"
+      },
+      "success_ar": "تمت إضافة الخدمة.",
+      "message_ar": "راجع البيانات ثم اضغط «حفظ»."
+    },
+    {
+      "id": "verify",
+      "type": "wait_state",
+      "allow_back": false,
+      "validator": "service.created_since_start",
+      "message_ar": "نتأكد الآن من إضافة الخدمة في النظام…"
+    },
+    {
+      "id": "done",
+      "type": "complete",
+      "allow_back": false,
+      "message_ar": "تمت إضافة الخدمة وتأكدنا من ذلك داخل النظام."
+    }
+  ]
+}

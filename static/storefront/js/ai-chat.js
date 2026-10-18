@@ -17,6 +17,8 @@
   const form = document.getElementById("sfAiForm");
   const input = document.getElementById("sfAiInput");
   const sendBtn = document.getElementById("sfAiSend");
+  const statusEl = document.getElementById("sfAiStatus");
+  const clearBtn = document.getElementById("sfAiClear");
   const suggestionsEl = document.getElementById("sfAiSuggestions");
   const trackForm = document.getElementById("sfAiTrackForm");
   const trackInvoice = document.getElementById("sfAiTrackInvoice");
@@ -27,11 +29,108 @@
   const videoBackdrop = document.getElementById("sfAiVideoBackdrop");
   const videoClose = document.getElementById("sfAiVideoClose");
   const videoBody = document.getElementById("sfAiVideoBody");
+  const detailModal = document.getElementById("sfAiDetailModal");
+  const detailBackdrop = document.getElementById("sfAiDetailBackdrop");
+  const detailClose = document.getElementById("sfAiDetailClose");
+  const detailTitle = document.getElementById("sfAiDetailTitle");
+  const detailContent = document.getElementById("sfAiDetailContent");
 
   if (!fab || !panel || !messagesEl || !form) return;
 
   const chatHistory = [];
+  const conversationEntries = [];
+  const storageKey = `finora:storefront-chat:v1:${encodeURIComponent(slug || "default")}`;
   let greeted = false;
+
+  const storedProductKeys = [
+    "id", "name", "price", "old_price", "discount_percent", "category", "brand",
+    "model", "sku", "description", "long_description", "features", "image_url",
+    "gallery", "video_url", "specs", "short_specs", "badge", "stock",
+    "is_available", "is_reservation", "url", "has_colors", "colors",
+    "exchange_sale_price", "has_exchange_sale", "sale_options",
+  ];
+
+  function productForStorage(product) {
+    const stored = {};
+    storedProductKeys.forEach((key) => {
+      if (Object.prototype.hasOwnProperty.call(product || {}, key)) stored[key] = product[key];
+    });
+    return stored;
+  }
+
+  function persistConversation() {
+    try {
+      localStorage.setItem(storageKey, JSON.stringify({
+        version: 1,
+        updatedAt: Date.now(),
+        entries: conversationEntries.slice(-30),
+      }));
+    } catch (error) {
+      // Browsing in private mode or a full storage quota should never break chat.
+    }
+  }
+
+  function rememberEntry(entry) {
+    const saved = {
+      role: entry.role === "user" ? "user" : "assistant",
+      content: String(entry.content || "").slice(0, 1200),
+      at: Date.now(),
+    };
+    if (saved.role === "assistant") {
+      saved.products = (entry.products || []).slice(0, 4).map(productForStorage);
+      if (entry.track && entry.track.found) saved.track = entry.track;
+    }
+    conversationEntries.push(saved);
+    if (conversationEntries.length > 30) conversationEntries.splice(0, conversationEntries.length - 30);
+    persistConversation();
+  }
+
+  function savedConversation() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(storageKey) || "null");
+      if (!parsed || parsed.version !== 1 || !Array.isArray(parsed.entries)) return [];
+      return parsed.entries.slice(-30).filter((entry) =>
+        entry && (entry.role === "user" || entry.role === "assistant") && String(entry.content || "").trim()
+      );
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function restoreConversation() {
+    const entries = savedConversation();
+    entries.forEach((entry) => {
+      const content = String(entry.content || "");
+      if (entry.role === "user") {
+        addUserMessage(content);
+      } else {
+        addAssistantPayload(content, entry.products || [], entry.track || {});
+      }
+      chatHistory.push({ role: entry.role, content });
+      conversationEntries.push(entry);
+    });
+    return entries.length > 0;
+  }
+
+  function clearConversation() {
+    if (conversationEntries.length && !window.confirm("تريد تمسح المحادثة وتبدأ من جديد؟")) return;
+    try { localStorage.removeItem(storageKey); } catch (error) {}
+    conversationEntries.length = 0;
+    chatHistory.length = 0;
+    messagesEl.innerHTML = "";
+    closeProductDetails();
+    hideTrackForm();
+    addAssistantMessage(cfg.aiGreeting || "أهلاً بك 👋 شلون أگدر أساعدك؟");
+    renderSuggestions(cfg.aiSuggestions || []);
+  }
+
+  function setAssistantState(isTyping) {
+    if (!statusEl) return;
+    statusEl.classList.toggle("is-typing", Boolean(isTyping));
+    statusEl.innerHTML = isTyping
+      ? '<span class="sf-ai-online-dot"></span> يكتب الآن...'
+      : '<span class="sf-ai-online-dot"></span> جاهز لمساعدتك';
+  }
 
   function escapeHtml(text) {
     return String(text || "")
@@ -57,6 +156,7 @@
     if (!greeted) {
       greeted = true;
       addAssistantMessage(cfg.aiGreeting || "مرحباً! كيف يمكنني مساعدتك؟");
+      restoreConversation();
       renderSuggestions(cfg.aiSuggestions || []);
     }
     setTimeout(() => input && input.focus(), 250);
@@ -83,43 +183,61 @@
   }
 
   function addUserMessage(text) {
-    const div = document.createElement("div");
-    div.className = "sf-ai-msg user";
-    div.textContent = text;
-    messagesEl.appendChild(div);
+    const row = document.createElement("div");
+    row.className = "sf-ai-row user";
+    const bubble = document.createElement("div");
+    bubble.className = "sf-ai-msg user";
+    bubble.textContent = text;
+    row.appendChild(bubble);
+    messagesEl.appendChild(row);
     scrollMessages();
   }
 
   function addAssistantMessage(text, extraNode) {
-    const wrap = document.createElement("div");
-    wrap.className = "sf-ai-msg assistant";
-    wrap.innerHTML = formatAssistant(text);
-    if (extraNode) wrap.appendChild(extraNode);
-    messagesEl.appendChild(wrap);
+    const row = document.createElement("div");
+    row.className = "sf-ai-row assistant";
+
+    const avatar = document.createElement("div");
+    avatar.className = "sf-ai-message-avatar";
+    avatar.setAttribute("aria-hidden", "true");
+    avatar.textContent = (cfg.assistantName || "م").trim().slice(0, 1);
+
+    const content = document.createElement("div");
+    content.className = "sf-ai-message-content";
+    const bubble = document.createElement("div");
+    bubble.className = "sf-ai-msg assistant";
+    bubble.innerHTML = formatAssistant(text);
+    content.appendChild(bubble);
+    if (extraNode) content.appendChild(extraNode);
+
+    row.appendChild(avatar);
+    row.appendChild(content);
+    messagesEl.appendChild(row);
     scrollMessages();
-    return wrap;
+    return bubble;
   }
 
   function addErrorMessage(text) {
-    const div = document.createElement("div");
-    div.className = "sf-ai-msg assistant error";
-    div.textContent = text;
-    messagesEl.appendChild(div);
-    scrollMessages();
+    addAssistantMessage(text).classList.add("error");
   }
 
   function showTyping() {
-    const div = document.createElement("div");
-    div.className = "sf-ai-msg assistant typing";
-    div.innerHTML = '<span class="sf-ai-typing-dots"><span></span><span></span><span></span></span>';
-    div.id = "sfAiTyping";
-    messagesEl.appendChild(div);
+    setAssistantState(true);
+    const row = document.createElement("div");
+    row.className = "sf-ai-row assistant";
+    row.id = "sfAiTyping";
+    row.innerHTML = `
+      <div class="sf-ai-message-avatar" aria-hidden="true">${escapeHtml((cfg.assistantName || "م").trim().slice(0, 1))}</div>
+      <div class="sf-ai-msg assistant typing"><span class="sf-ai-typing-dots"><span></span><span></span><span></span></span></div>
+    `;
+    messagesEl.appendChild(row);
     scrollMessages();
   }
 
   function hideTyping() {
     const typing = document.getElementById("sfAiTyping");
     if (typing) typing.remove();
+    setAssistantState(false);
   }
 
   function renderSuggestions(items) {
@@ -145,7 +263,9 @@
   function buildProductCards(products) {
     if (!products || !products.length) return null;
     const wrap = document.createElement("div");
-    wrap.className = "sf-ai-product-cards";
+    wrap.className = "sf-ai-product-results";
+    const cards = document.createElement("div");
+    cards.className = "sf-ai-product-cards";
 
     products.forEach((product) => {
       const card = document.createElement("article");
@@ -165,27 +285,6 @@
         mainImg.alt = product.name || "";
         mainImg.loading = "lazy";
         media.appendChild(mainImg);
-
-        if (gallery.length > 1) {
-          const thumbs = document.createElement("div");
-          thumbs.className = "sf-ai-product-thumbs";
-          gallery.slice(0, 6).forEach((src, index) => {
-            const btn = document.createElement("button");
-            btn.type = "button";
-            if (index === 0) btn.classList.add("active");
-            const img = document.createElement("img");
-            img.src = src;
-            img.alt = "";
-            btn.appendChild(img);
-            btn.addEventListener("click", () => {
-              mainImg.src = src;
-              thumbs.querySelectorAll("button").forEach((node) => node.classList.remove("active"));
-              btn.classList.add("active");
-            });
-            thumbs.appendChild(btn);
-          });
-          media.appendChild(thumbs);
-        }
         card.appendChild(media);
       }
 
@@ -194,8 +293,8 @@
       body.innerHTML = `
         <h4>${escapeHtml(product.name || "")}</h4>
         <div class="sf-ai-product-price">${Number(product.price || 0).toLocaleString("ar-IQ")} د.ع</div>
-        <div class="sf-ai-product-status ${product.is_available ? "ok" : "out"}">
-          ${product.is_available ? `متوفر — الكمية: ${product.stock || 0}` : "غير متوفر حالياً"}
+        <div class="sf-ai-product-status ${product.is_available || product.is_reservation ? "ok" : "out"}">
+          <span></span>${product.is_available ? "متوفر الآن" : (product.is_reservation ? "متاح بالطلب" : "غير متوفر حالياً")}
         </div>
       `;
 
@@ -209,15 +308,14 @@
       const actions = document.createElement("div");
       actions.className = "sf-ai-product-actions";
 
-      if (product.url) {
-        const detail = document.createElement("a");
-        detail.className = "ghost";
-        detail.href = product.url;
-        detail.textContent = "عرض التفاصيل";
-        actions.appendChild(detail);
-      }
+      const detail = document.createElement("button");
+      detail.type = "button";
+      detail.className = "ghost";
+      detail.textContent = "التفاصيل";
+      detail.addEventListener("click", () => openProductDetails(product));
+      actions.appendChild(detail);
 
-      if (product.is_available) {
+      if (product.is_available || product.is_reservation) {
         const addBtn = document.createElement("button");
         addBtn.type = "button";
         addBtn.className = "primary";
@@ -230,16 +328,17 @@
         const videoBtn = document.createElement("button");
         videoBtn.type = "button";
         videoBtn.className = "video";
-        videoBtn.textContent = "شاهد الفيديو";
+        videoBtn.textContent = "فيديو";
         videoBtn.addEventListener("click", () => openVideo(product.video_url));
         actions.appendChild(videoBtn);
       }
 
       body.appendChild(actions);
       card.appendChild(body);
-      wrap.appendChild(card);
+      cards.appendChild(card);
     });
 
+    wrap.appendChild(cards);
     return wrap;
   }
 
@@ -274,6 +373,101 @@
       wrap.appendChild(link);
     }
     return wrap;
+  }
+
+  function addAssistantPayload(text, products, track) {
+    const extra = document.createElement("div");
+    const productsNode = buildProductCards(products);
+    const trackNode = buildTrackTimeline(track);
+    if (productsNode) extra.appendChild(productsNode);
+    if (trackNode) extra.appendChild(trackNode);
+    addAssistantMessage(text || "", extra.childNodes.length ? extra : null);
+  }
+
+  function detailValue(value) {
+    return String(value || "").trim();
+  }
+
+  function openProductDetails(product) {
+    if (!detailModal || !detailContent || !detailTitle || !product) return;
+    const gallery = Array.isArray(product.gallery) && product.gallery.length
+      ? product.gallery.filter(Boolean).slice(0, 5)
+      : product.image_url ? [product.image_url] : [];
+    const specs = Array.isArray(product.specs) ? product.specs.filter((row) => row && row.value) : [];
+    const features = Array.isArray(product.features) ? product.features.filter(Boolean).slice(0, 8) : [];
+    const description = detailValue(product.long_description || product.description);
+    const price = Number(product.price || 0).toLocaleString("ar-IQ");
+    const oldPrice = Number(product.old_price || 0);
+    const available = Boolean(product.is_available || product.is_reservation);
+    const status = product.is_available ? "متوفر الآن" : (product.is_reservation ? "متاح بالطلب" : "غير متوفر حالياً");
+    const facts = [
+      ["العلامة", product.brand],
+      ["التصنيف", product.category || product.badge],
+      ["الموديل", product.model],
+      ["رمز المنتج", product.sku],
+    ].filter((row) => detailValue(row[1]));
+
+    detailTitle.textContent = detailValue(product.name) || "تفاصيل المنتج";
+    detailContent.innerHTML = `
+      <div class="sf-ai-detail-layout">
+        <div class="sf-ai-detail-gallery">
+          <div class="sf-ai-detail-main-image">
+            ${gallery[0]
+              ? `<img id="sfAiDetailMainImage" src="${escapeHtml(gallery[0])}" alt="${escapeHtml(product.name || "")}">`
+              : '<div class="sf-ai-detail-image-empty">لا توجد صورة حالياً</div>'}
+          </div>
+          ${gallery.length > 1 ? `<div class="sf-ai-detail-thumbs">${gallery.map((src, index) => `
+            <button type="button" class="${index === 0 ? "active" : ""}" data-sf-detail-image="${escapeHtml(src)}" aria-label="عرض الصورة ${index + 1}">
+              <img src="${escapeHtml(src)}" alt="">
+            </button>`).join("")}</div>` : ""}
+        </div>
+        <div class="sf-ai-detail-info">
+          <div class="sf-ai-detail-badges">
+            ${detailValue(product.brand) ? `<span>${escapeHtml(product.brand)}</span>` : ""}
+            ${detailValue(product.category || product.badge) ? `<span>${escapeHtml(product.category || product.badge)}</span>` : ""}
+          </div>
+          <h2>${escapeHtml(product.name || "")}</h2>
+          <div class="sf-ai-detail-price-row">
+            <strong>${price} د.ع</strong>
+            ${oldPrice > Number(product.price || 0) ? `<del>${oldPrice.toLocaleString("ar-IQ")} د.ع</del>` : ""}
+          </div>
+          <div class="sf-ai-detail-availability ${available ? "ok" : "out"}"><span></span>${status}</div>
+          ${description ? `<div class="sf-ai-detail-section"><h4>عن المنتج</h4><p>${escapeHtml(description)}</p></div>` : ""}
+          ${features.length ? `<div class="sf-ai-detail-section"><h4>أبرز المميزات</h4><ul>${features.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul></div>` : ""}
+          ${specs.length || facts.length ? `<div class="sf-ai-detail-section"><h4>المواصفات</h4><dl class="sf-ai-detail-specs">
+            ${facts.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}
+            ${specs.map((row) => `<div><dt>${escapeHtml(row.label || "مواصفة")}</dt><dd>${escapeHtml(row.value)}</dd></div>`).join("")}
+          </dl></div>` : ""}
+          ${product.has_colors && Array.isArray(product.colors) && product.colors.length ? `<div class="sf-ai-detail-section"><h4>الألوان المتوفرة</h4><div class="sf-ai-detail-colors">${product.colors.map((color) => `<span>${escapeHtml(color.color_name || color.name || color)}</span>`).join("")}</div></div>` : ""}
+          <div class="sf-ai-detail-actions">
+            ${available ? `<button type="button" class="primary" data-sf-add-cart="${escapeHtml(product.id)}">أضف للسلة</button>` : ""}
+            ${product.url ? `<a href="${escapeHtml(product.url)}">فتح صفحة المنتج</a>` : ""}
+          </div>
+        </div>
+      </div>
+    `;
+
+    detailContent.querySelectorAll("[data-sf-detail-image]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const mainImage = document.getElementById("sfAiDetailMainImage");
+        if (mainImage) mainImage.src = button.getAttribute("data-sf-detail-image") || "";
+        detailContent.querySelectorAll("[data-sf-detail-image]").forEach((node) => node.classList.remove("active"));
+        button.classList.add("active");
+      });
+    });
+
+    detailModal.hidden = false;
+    detailModal.setAttribute("aria-hidden", "false");
+    document.documentElement.classList.add("sf-ai-modal-open");
+    setTimeout(() => detailClose && detailClose.focus(), 0);
+  }
+
+  function closeProductDetails() {
+    if (!detailModal) return;
+    detailModal.hidden = true;
+    detailModal.setAttribute("aria-hidden", "true");
+    document.documentElement.classList.remove("sf-ai-modal-open");
+    if (detailContent) detailContent.innerHTML = "";
   }
 
   function openVideo(url) {
@@ -333,13 +527,14 @@
         addErrorMessage(data.error || "حدث خطأ. جرّب لاحقاً.");
         return;
       }
-      const extra = document.createElement("div");
-      const productsNode = buildProductCards(data.products);
-      const trackNode = buildTrackTimeline(data.track);
-      if (productsNode) extra.appendChild(productsNode);
-      if (trackNode) extra.appendChild(trackNode);
-      addAssistantMessage(data.reply || "", extra.childNodes.length ? extra : null);
+      addAssistantPayload(data.reply || "", data.products || [], data.track || {});
       chatHistory.push({ role: "assistant", content: data.reply || "" });
+      rememberEntry({
+        role: "assistant",
+        content: data.reply || "",
+        products: data.products || [],
+        track: data.track || {},
+      });
       if (data.suggestions) renderSuggestions(data.suggestions);
       if (data.cart && typeof data.cart.count === "number") {
         document.querySelectorAll("[data-sf-cart-count]").forEach((node) => {
@@ -364,6 +559,7 @@
     hideTrackForm();
     addUserMessage(`تتبع الطلب ${invoiceId}`);
     chatHistory.push({ role: "user", content: `تتبع الطلب ${invoiceId}` });
+    rememberEntry({ role: "user", content: `تتبع الطلب ${invoiceId}` });
     showTyping();
     sendBtn.disabled = true;
     try {
@@ -374,11 +570,9 @@
       });
       const data = await res.json();
       hideTyping();
-      const extra = document.createElement("div");
-      const trackNode = buildTrackTimeline(data.track);
-      if (trackNode) extra.appendChild(trackNode);
-      addAssistantMessage(data.reply || "", extra.childNodes.length ? extra : null);
+      addAssistantPayload(data.reply || "", [], data.track || {});
       chatHistory.push({ role: "assistant", content: data.reply || "" });
+      rememberEntry({ role: "assistant", content: data.reply || "", track: data.track || {} });
     } catch (err) {
       hideTyping();
       addErrorMessage("تعذّر تتبع الطلب.");
@@ -389,7 +583,10 @@
 
   fab.addEventListener("click", openPanel);
   if (closeBtn) closeBtn.addEventListener("click", closePanel);
+  if (clearBtn) clearBtn.addEventListener("click", clearConversation);
   if (overlay) overlay.addEventListener("click", closePanel);
+  if (detailBackdrop) detailBackdrop.addEventListener("click", closeProductDetails);
+  if (detailClose) detailClose.addEventListener("click", closeProductDetails);
   if (videoBackdrop) videoBackdrop.addEventListener("click", closeVideo);
   if (videoClose) videoClose.addEventListener("click", closeVideo);
   if (trackSubmit) trackSubmit.addEventListener("click", submitTrack);
@@ -400,13 +597,19 @@
     const text = (input.value || "").trim();
     if (!text) return;
     input.value = "";
+    input.style.height = "auto";
     hideTrackForm();
     addUserMessage(text);
     chatHistory.push({ role: "user", content: text });
+    rememberEntry({ role: "user", content: text });
     sendChat(text);
   });
 
   if (input) {
+    input.addEventListener("input", () => {
+      input.style.height = "auto";
+      input.style.height = `${Math.min(input.scrollHeight, 96)}px`;
+    });
     input.addEventListener("keydown", (event) => {
       if (event.key === "Enter" && !event.shiftKey) {
         event.preventDefault();
@@ -414,4 +617,13 @@
       }
     });
   }
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    if (detailModal && !detailModal.hidden) {
+      closeProductDetails();
+      return;
+    }
+    if (videoModal && !videoModal.hidden) closeVideo();
+  });
 })();

@@ -11,14 +11,16 @@ android {
         applicationId = "iq.finora.deliveryagent"
         minSdk = 24
         targetSdk = 34
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 5
+        versionName = "1.1.3"
         buildConfigField("String", "DEFAULT_BASE_URL", "\"https://www.finora.company\"")
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
+            // Internal distribution: sign release with the debug keystore so phones can install it.
+            signingConfig = signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

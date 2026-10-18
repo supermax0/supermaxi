@@ -64,7 +64,7 @@
         {% for it in purchase.items %}
         <tr>
           <td>{{ loop.index }}</td>
-          <td>{{ it.product.name if it.product else "-" }}</td>
+          <td>{{ it.product.name if it.product else "-" }}{% if it.variant_color %}<div class="muted">الخيار: {{ it.variant_color }}</div>{% endif %}</td>
           <td>{{ it.quantity }}</td>
           <td>{{ "{:,}".format(it.unit_cost_before_discount or 0) }}</td>
           <td>{{ "{:,}".format(it.discount_value or 0) }}</td>
@@ -93,6 +93,16 @@
           <td>{{ p.paid_at.strftime("%Y-%m-%d %H:%M") if p.paid_at else "-" }}</td>
         </tr>
         {% endfor %}
+        {% for allocation in purchase.supplier_payment_allocations %}
+        <tr>
+          <td>مورد-{{ allocation.supplier_payment_id }}</td>
+          <td>{{ "{:,}".format(allocation.amount or 0) }}</td>
+          <td>{{ allocation.supplier_payment.payment_method or "cash" }}</td>
+          <td>{{ allocation.supplier_payment.treasury_account.name if allocation.supplier_payment.treasury_account else "-" }}</td>
+          <td>{{ allocation.supplier_payment.note or "دفعة مورد موزعة تلقائياً" }}</td>
+          <td>{{ allocation.supplier_payment.created_at.strftime("%Y-%m-%d %H:%M") if allocation.supplier_payment.created_at else "-" }}</td>
+        </tr>
+        {% endfor %}
       </tbody>
     </table>
   </div>
@@ -102,8 +112,14 @@
     <div class="box"><div class="muted">الخصم</div><strong>{{ "{:,}".format(purchase.discount_value or 0) }} د.ع</strong></div>
     <div class="box"><div class="muted">الشحن</div><strong>{{ "{:,}".format(purchase.shipping_extra or 0) }} د.ع</strong></div>
     <div class="box"><div class="muted">الإجمالي النهائي</div><strong>{{ "{:,}".format(purchase.grand_total or purchase.total or 0) }} د.ع</strong></div>
-    <div class="box"><div class="muted">المدفوع</div><strong>{{ "{:,}".format(purchase.paid_total or 0) }} د.ع</strong></div>
-    <div class="box"><div class="muted">المتبقي</div><strong>{{ "{:,}".format(purchase.remaining_total or 0) }} د.ع</strong></div>
+    <div class="box">
+      <div class="muted">المدفوع</div>
+      <strong>{{ "{:,}".format(effective_paid_total) }} د.ع</strong>
+      {% if later_paid_total %}
+      <small>منها {{ "{:,}".format(later_paid_total) }} د.ع من دفعات المورد اللاحقة</small>
+      {% endif %}
+    </div>
+    <div class="box"><div class="muted">المتبقي</div><strong>{{ "{:,}".format(effective_remaining_total) }} د.ع</strong></div>
   </div>
 </body>
 </html>

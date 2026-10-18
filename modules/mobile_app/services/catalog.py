@@ -293,3 +293,60 @@ def link_product_to_video(
     db.session.add(row)
     db.session.commit()
     return row
+
+
+def unlink_product_from_video(*, video_id: int, product_id: int) -> bool:
+    row = MobileVideoProduct.query.filter_by(
+        video_id=video_id, product_id=product_id
+    ).first()
+    if row is None:
+        return False
+    db.session.delete(row)
+    db.session.commit()
+    return True
+
+
+def list_video_product_links(*, limit: int = 200) -> list[dict]:
+    links = (
+        MobileVideoProduct.query.order_by(
+            MobileVideoProduct.id.desc()
+        )
+        .limit(min(500, max(1, limit)))
+        .all()
+    )
+    if not links:
+        return []
+    video_ids = {link.video_id for link in links}
+    product_ids = {link.product_id for link in links}
+    videos = {
+        v.id: v
+        for v in MobileVideo.query.filter(
+            MobileVideo.id.in_(video_ids),
+            MobileVideo.deleted_at.is_(None),
+        ).all()
+    }
+    products = {
+        p.id: p
+        for p in Product.query.filter(Product.id.in_(product_ids)).all()
+    }
+    result = []
+    for link in links:
+        video = videos.get(link.video_id)
+        product = products.get(link.product_id)
+        if video is None or product is None:
+            continue
+        result.append(
+            {
+                "id": link.id,
+                "video_id": video.id,
+                "video_title": video.title or f"فيديو #{video.id}",
+                "video_status": video.status,
+                "product_id": product.id,
+                "product_name": product.name,
+                "product_price": int(product.sale_price or 0),
+                "custom_title": link.custom_title,
+                "custom_cta": link.custom_cta,
+                "special_price": link.special_price,
+            }
+        )
+    return result

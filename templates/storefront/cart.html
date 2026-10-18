@@ -1,4 +1,4 @@
-{% extends "storefront/base.html" %}
+{% extends storefront_base|default("storefront/base.html") %}
 {% block title %}السلة - {{ store_design.store_name }}{% endblock %}
 {% block content %}
 
@@ -28,6 +28,12 @@
 {% if coupon_success %}<div class="lux-cart-alert lux-cart-alert--ok" role="status">{{ coupon_success }}</div>{% endif %}
 {% if coupon_error %}<div class="lux-cart-alert lux-cart-alert--err" role="alert">{{ coupon_error }}</div>{% endif %}
 
+{% if store_account %}
+<div class="store-account-notice"><span>✓</span><div><strong>السلة مرتبطة بحساب {{ store_account.customer.name }}</strong><small>سيتم استخدام اسمك ورقم هاتفك تلقائياً عند إكمال الطلب.</small></div><a href="{{ url_for('storefront.account_page', tenant_slug=shop_tenant_slug) }}">عرض حسابي</a></div>
+{% else %}
+<div class="store-account-notice is-guest"><span>i</span><div><strong>سجّل الدخول قبل إكمال الطلب</strong><small>استخدم نفس حساب متجر الأقساط واحفظ بياناتك وطلباتك في مكان واحد.</small></div><a href="{{ url_for('storefront.account_page', tenant_slug=shop_tenant_slug) }}">تسجيل الدخول</a></div>
+{% endif %}
+
 {% if cart_items %}
 <section class="lux-cart-layout" id="luxCartPage"
   data-subtotal="{{ subtotal }}"
@@ -37,7 +43,7 @@
     <form id="luxCartForm" class="lux-cart-form" method="post" action="{{ url_for('storefront.cart_update', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.cart_update', tenant_slug=shop_tenant_slug) }}">
       <ul class="lux-cart-list">
         {% for item in cart_items %}
-        <li class="lux-cart-item" data-lux-cart-item data-product-id="{{ item.id }}" data-unit-price="{{ item.price }}" data-stock="{{ item.stock }}">
+        <li class="lux-cart-item" data-lux-cart-item data-product-id="{{ item.id }}" data-line-key="{{ item.line_key }}" data-unit-price="{{ item.price }}" data-currency="{{ item.price_currency or 'IQD' }}" data-stock="{{ item.stock }}">
           <a class="lux-cart-item-media" href="{{ item.url }}{% if request.args.get('dev') %}?dev=1{% endif %}">
             {% if item.image_url %}
             <img src="{{ item.image_url }}" alt="{{ item.name }}" loading="lazy">
@@ -57,12 +63,18 @@
             {% endif %}
             <p class="lux-cart-item-unit">
               {% if item.price and item.price > 0 %}
-              {{ "{:,.0f}".format(item.price) }} <small>د.ع / قطعة</small>
+              <span class="lux-money{% if item.price_currency == 'USD' %} is-usd{% endif %}">{% if item.price_currency == 'USD' %}<b class="lux-usd-mark">$</b>{% endif %}{{ "{:,.0f}".format(item.price) }}{% if item.price_currency != 'USD' %}<small>{{ item.currency_label or 'د.ع' }}</small>{% endif %}</span> <small>/ قطعة</small>
               {% else %}
               <span class="lux-cart-price-na">السعر غير متوفر</span>
               {% endif %}
             </p>
-            {% if item.stock <= 5 and item.stock > 0 %}
+            <p class="lux-cart-item-meta">
+              {% if item.color %}<span>الخيار: {{ item.color }}</span>{% endif %}
+              <span>{{ 'استبدال' if item.sale_mode == 'exchange' else 'بيع' }}</span>
+            </p>
+            {% if item.is_reservation %}
+            <p class="lux-cart-item-low cash-reservation-note">متاح للطلب — سيتم تأكيد موعد التجهيز معك</p>
+            {% elif item.stock <= 5 and item.stock > 0 %}
             <p class="lux-cart-item-low">بقي {{ item.stock }} فقط في المخزون</p>
             {% endif %}
           </div>
@@ -71,14 +83,15 @@
             <span class="lux-cart-qty-label">الكمية</span>
             <div class="lux-pd-qty" role="group" aria-label="كمية {{ item.name }}">
               <button type="button" class="lux-pd-qty-btn" data-lux-cart-qty-minus aria-label="تقليل">−</button>
-              <input class="lux-pd-qty-input lux-cart-qty-input" type="number" min="1" max="{{ item.stock }}" name="qty_{{ item.id }}" value="{{ item.quantity }}" aria-label="الكمية">
+              <input type="hidden" name="line_key[]" value="{{ item.line_key }}">
+              <input class="lux-pd-qty-input lux-cart-qty-input" type="number" min="1" max="9999" name="line_qty[]" value="{{ item.quantity }}" aria-label="الكمية">
               <button type="button" class="lux-pd-qty-btn" data-lux-cart-qty-plus aria-label="زيادة">+</button>
             </div>
           </div>
 
           <div class="lux-cart-item-total">
             <span class="lux-cart-total-label">المجموع</span>
-            <strong class="lux-cart-line-total" data-lux-line-total>{{ "{:,.0f}".format(item.line_total) }} <small>د.ع</small></strong>
+            <strong class="lux-cart-line-total{% if item.price_currency == 'USD' %} is-usd{% endif %}" data-lux-line-total data-currency="{{ item.price_currency or 'IQD' }}">{% if item.price_currency == 'USD' %}<b class="lux-usd-mark">$</b>{% endif %}{{ "{:,.0f}".format(item.price * item.quantity) }}{% if item.price_currency != 'USD' %} <small>{{ item.currency_label or 'د.ع' }}</small>{% endif %}</strong>
           </div>
 
           <button class="lux-cart-remove" type="button" data-lux-cart-remove aria-label="حذف {{ item.name }}">

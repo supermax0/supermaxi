@@ -22,7 +22,12 @@ class Employee(db.Model):
     name = db.Column(db.String(100), nullable=False)
     username = db.Column(db.String(50), nullable=False)
     password = db.Column(db.String(200), nullable=False)
+    # One-time credentials (provisioning / reset) must be replaced at first login. Only the hash is ever stored.
+    # Deferred + no Python default: legacy tenant DBs without the column keep working for every SELECT/INSERT;
+    # the code paths that use it call services.tenant_provisioning.ensure_password_policy_column first.
+    must_change_password = db.deferred(db.Column(db.Boolean, nullable=True))
     phone = db.Column(db.String(20), nullable=True)
+    transfer_number = db.Column(db.String(50), nullable=True)  # رقم التحويل (زين كاش / حوالة)
 
     __table_args__ = (
         db.UniqueConstraint('tenant_id', 'username', name='_username_tenant_uc'),
@@ -72,6 +77,15 @@ class Employee(db.Model):
         db.Integer,
         db.ForeignKey("branch.id"),
         nullable=True,
+    )
+    default_warehouse_id = db.Column(
+        db.Integer,
+        # Food POS uses the existing Branch table as its sale warehouse.
+        # Keeping this FK branch-based also preserves legacy/test metadata
+        # that does not load the optional wholesale Warehouse model.
+        db.ForeignKey("branch.id"),
+        nullable=True,
+        index=True,
     )
 
     # =====================
@@ -151,6 +165,11 @@ class Employee(db.Model):
         """التحقق مما إذا كان الموظف لديه صلاحية معينة عبر أدواره"""
         if self.role == 'admin':
             return True
+        from utils.permission_overrides import override_decision
+
+        decided = override_decision(self, permission_name)
+        if decided is not None:
+            return decided
         for role in self.roles:
             for perm in role.permissions:
                 if perm.name == permission_name:

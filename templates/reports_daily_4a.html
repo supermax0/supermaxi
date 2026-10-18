@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title }} — {{ report_date_label }}</title>
+  <style>
+    :root {
+      --ink: #0b1f3a;
+      --ink-soft: #1e3a5f;
+      --line: #c5d0de;
+      --line-strong: #0b1f3a;
+      --head: #0b2a4a;
+      --head-text: #ffffff;
+      --zebra: #f3f6fa;
+      --accent: #e8eef5;
+      --paper: #ffffff;
+      --muted: #5b6b7c;
+    }
+
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #e8edf3;
+      color: var(--ink);
+      font-family: "Segoe UI", "Tahoma", "Arial", sans-serif;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding: 12px 18px;
+      background: #0b1f3a;
+      color: #fff;
+      box-shadow: 0 8px 24px rgba(11, 31, 58, 0.25);
+    }
+    .toolbar h1 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 800;
+    }
+    .toolbar p {
+      margin: 2px 0 0;
+      font-size: 12px;
+      opacity: 0.85;
+    }
+    .toolbar-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .tb-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 38px;
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid transparent;
+      font-weight: 800;
+      font-size: 13px;
+      text-decoration: none;
+      cursor: pointer;
+      color: #0b1f3a;
+      background: #fff;
+    }
+    .tb-btn.primary {
+      background: #2563eb;
+      border-color: #2563eb;
+      color: #fff;
+    }
+    .tb-btn.ghost {
+      background: transparent;
+      border-color: rgba(255,255,255,.35);
+      color: #fff;
+    }
+
+    .sheet-wrap {
+      padding: 18px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .sheet {
+      width: 297mm;
+      min-height: 210mm;
+      background: var(--paper);
+      border: 1px solid #d5dee8;
+      box-shadow: 0 18px 40px rgba(15, 23, 42, 0.12);
+      padding: 10mm 10mm 8mm;
+      display: grid;
+      grid-template-columns: 1fr 58mm;
+      grid-template-rows: auto 1fr auto;
+      gap: 5mm;
+      direction: rtl;
+    }
+
+    .main-col {
+      display: flex;
+      flex-direction: column;
+      gap: 4.5mm;
+      min-width: 0;
+    }
+
+    .notes-col {
+      border: 1.6px solid var(--line-strong);
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      min-height: 0;
+    }
+    .notes-col .block-head {
+      border-radius: 0;
+    }
+    .notes-col .form-table {
+      flex: 1;
+      height: 100%;
+      background: #fff;
+    }
+    .notes-col .form-table td {
+      background: #fff !important;
+      height: 22px;
+      border-color: #c5d0de;
+    }
+
+    .header {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: end;
+      gap: 8px;
+      padding-bottom: 2mm;
+      border-bottom: 2px solid var(--ink);
+    }
+    .meta {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .meta-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .meta-row span {
+      color: var(--muted);
+      min-width: 42px;
+    }
+    .meta-row strong {
+      border-bottom: 1.5px solid var(--line);
+      min-width: 110px;
+      padding: 2px 6px;
+      text-align: center;
+    }
+    .brand {
+      text-align: center;
+    }
+    .brand-ornament {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 4px;
+      color: var(--ink-soft);
+    }
+    .brand-ornament::before,
+    .brand-ornament::after {
+      content: "";
+      height: 2px;
+      width: 48px;
+      background: linear-gradient(90deg, transparent, var(--ink-soft), transparent);
+    }
+    .brand h2 {
+      margin: 0;
+      font-size: 26px;
+      font-weight: 900;
+      letter-spacing: 0.5px;
+      color: var(--ink);
+    }
+    .brand .code {
+      display: inline-block;
+      margin-top: 3px;
+      padding: 2px 10px;
+      border-radius: 999px;
+      background: var(--accent);
+      color: var(--ink-soft);
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .header-side {
+      text-align: left;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 700;
+      align-self: center;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1.15fr 0.85fr;
+      gap: 4.5mm;
+      min-height: 0;
+    }
+    .grid-2.bottom {
+      grid-template-columns: 1fr 1.15fr;
+      flex: 1;
+    }
+
+    .block {
+      border: 1.6px solid var(--line-strong);
+      border-radius: 6px;
+      overflow: hidden;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .block-head {
+      background: var(--head);
+      color: var(--head-text);
+      text-align: center;
+      font-weight: 900;
+      font-size: 14px;
+      padding: 7px 10px;
+      letter-spacing: 0.3px;
+    }
+
+    table.form-table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+      font-size: 11.5px;
+      flex: 1;
+    }
+    table.form-table th,
+    table.form-table td {
+      border: 1px solid var(--line);
+      padding: 5px 6px;
+      vertical-align: middle;
+      height: 26px;
+    }
+    table.form-table thead th {
+      background: #eef3f8;
+      color: var(--ink-soft);
+      font-weight: 900;
+      text-align: center;
+      font-size: 11px;
+    }
+    table.form-table tbody tr:nth-child(even) td {
+      background: var(--zebra);
+    }
+    table.form-table .num {
+      width: 28px;
+      text-align: center;
+      font-weight: 800;
+      color: var(--muted);
+    }
+    table.form-table .amt,
+    table.form-table .pay {
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+      direction: ltr;
+    }
+    table.form-table .pay {
+      background: #fffef5 !important;
+      min-width: 70px;
+    }
+    table.form-table .name {
+      text-align: right;
+      font-weight: 700;
+    }
+
+    .cash-rows {
+      display: flex;
+      flex-direction: column;
+      padding: 8px;
+      gap: 8px;
+      flex: 1;
+      justify-content: space-evenly;
+    }
+    .cash-row {
+      display: grid;
+      grid-template-columns: 1fr 1.1fr;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+    }
+    .cash-row.total {
+      background: var(--accent);
+      border-color: #9eb2c9;
+      font-weight: 900;
+    }
+    .cash-row label {
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--ink-soft);
+      text-align: right;
+    }
+    .cash-row .value {
+      min-height: 34px;
+      border: 1.5px solid var(--line-strong);
+      border-radius: 4px;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 900;
+      direction: ltr;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .expenses-split {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      flex: 1;
+    }
+    .expenses-split .col-b {
+      border-right: 1.5px solid var(--line-strong);
+    }
+
+    .footer-signs {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 4.5mm;
+    }
+    .sign-box {
+      border: 1.4px solid var(--line-strong);
+      border-radius: 6px;
+      padding: 8px 12px 14px;
+      min-height: 52px;
+    }
+    .sign-box h4 {
+      margin: 0 0 10px;
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--ink-soft);
+      text-align: center;
+    }
+    .sign-line {
+      border-bottom: 1.5px dotted #8fa0b3;
+      height: 22px;
+    }
+
+    .sheet-foot {
+      grid-column: 1 / -1;
+      text-align: center;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+      padding-top: 1mm;
+    }
+    .sheet-foot .flourish {
+      display: inline-block;
+      width: 70px;
+      height: 8px;
+      margin-bottom: 2px;
+      background:
+        radial-gradient(circle at 50% 50%, var(--ink-soft) 1.5px, transparent 2px) center/14px 8px,
+        linear-gradient(90deg, transparent, var(--ink-soft), transparent);
+      opacity: 0.55;
+    }
+
+    @page {
+      size: A4 landscape;
+      margin: 6mm;
+    }
+
+    @media print {
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      html, body {
+        background: #fff !important;
+        width: 100%;
+        height: auto;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden;
+      }
+      .toolbar,
+      .no-print { display: none !important; }
+      .sheet-wrap {
+        padding: 0 !important;
+        margin: 0 !important;
+        display: block !important;
+      }
+      .sheet {
+        width: 285mm !important;
+        height: 198mm !important;
+        max-width: 285mm !important;
+        max-height: 198mm !important;
+        min-height: 0 !important;
+        margin: 0 auto !important;
+        padding: 3mm !important;
+        gap: 2.5mm !important;
+        border: 1px solid var(--line-strong) !important;
+        box-shadow: none !important;
+        grid-template-columns: 1fr 42mm !important;
+        grid-template-rows: auto 1fr auto !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        overflow: hidden !important;
+      }
+      .main-col {
+        gap: 2.2mm !important;
+      }
+      .grid-2,
+      .grid-2.bottom {
+        grid-template-columns: 1.15fr 0.85fr !important;
+        gap: 2.2mm !important;
+      }
+      .grid-2.bottom {
+        grid-template-columns: 1fr 1.15fr !important;
+      }
+      .header {
+        gap: 4px !important;
+        padding-bottom: 1.5mm !important;
+      }
+      .brand h2 { font-size: 18px !important; }
+      .brand .code { font-size: 9px !important; margin-top: 1px !important; }
+      .brand-ornament { margin-bottom: 0 !important; }
+      .brand-ornament::before,
+      .brand-ornament::after { width: 28px !important; }
+      .meta { font-size: 10px !important; gap: 3px !important; }
+      .meta-row strong { min-width: 90px !important; padding: 1px 4px !important; }
+      .header-side { font-size: 9px !important; }
+      .block-head {
+        font-size: 11px !important;
+        padding: 4px 6px !important;
+      }
+      table.form-table { font-size: 9.5px !important; }
+      table.form-table th,
+      table.form-table td {
+        padding: 2px 4px !important;
+        height: 17px !important;
+      }
+      table.form-table .num { width: 20px !important; }
+      .cash-rows {
+        padding: 4px !important;
+        gap: 4px !important;
+      }
+      .cash-row {
+        padding: 4px 6px !important;
+        gap: 6px !important;
+      }
+      .cash-row label { font-size: 10px !important; }
+      .cash-row .value {
+        min-height: 22px !important;
+        font-size: 11px !important;
+      }
+      .footer-signs {
+        gap: 2.2mm !important;
+      }
+      .sign-box {
+        padding: 4px 8px 6px !important;
+        min-height: 28px !important;
+      }
+      .sign-box h4 {
+        margin: 0 0 4px !important;
+        font-size: 10px !important;
+      }
+      .sign-line { height: 12px !important; }
+      .notes-col {
+        min-height: 0 !important;
+        background: #fff !important;
+      }
+      .notes-col .form-table,
+      .notes-col .form-table td {
+        background: #fff !important;
+        color: #000 !important;
+        height: 15px !important;
+        padding: 2px 4px !important;
+      }
+      .sheet-foot {
+        font-size: 8px !important;
+        padding-top: 0 !important;
+      }
+      .sheet-foot .flourish {
+        width: 40px !important;
+        height: 5px !important;
+        margin-bottom: 0 !important;
+      }
+      .block,
+      .notes-col,
+      .sign-box,
+      .grid-2,
+      .main-col {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+      }
+    }
+
+    @media screen and (max-width: 1100px) {
+      .sheet-wrap { padding: 10px; }
+      .sheet {
+        width: 100%;
+        min-height: auto;
+        grid-template-columns: 1fr;
+      }
+      .notes-col { min-height: 220px; }
+      .grid-2,
+      .grid-2.bottom { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar no-print">
+    <div>
+      <h1>{{ title }} ({{ form_code }})</h1>
+      <p>نموذج A4 أفقي — عند الطباعة اختر الاتجاه: أفقي (Landscape) · صفحة واحدةحدة</p>
+    </div>
+    <div class="toolbar-actions">
+      <a class="tb-btn ghost" href="/reports/daily?date={{ report_date.isoformat() }}">رجوع للتقرير</a>
+      <button class="tb-btn primary" type="button" onclick="window.print()">طباعة / تنزيل PDF</button>
+    </div>
+  </div>
+
+  <div class="sheet-wrap">
+    <div class="sheet">
+      <header class="header">
+        <div class="meta">
+          <div class="meta-row"><span>التاريخ</span><strong>{{ report_date_label }}</strong></div>
+          <div class="meta-row"><span>اليوم</span><strong>{{ weekday_label }}</strong></div>
+        </div>
+        <div class="brand">
+          <div class="brand-ornament">✦</div>
+          <h2>{{ title }}</h2>
+          <div class="code">نموذج {{ form_code }}</div>
+        </div>
+        <div class="header-side">ورقة يومية للصندوق والموردين</div>
+      </header>
+
+      <div class="main-col">
+        <div class="grid-2">
+          <section class="block">
+            <div class="block-head">الموردين</div>
+            <table class="form-table">
+              <thead>
+                <tr>
+                  <th class="num">ت</th>
+                  <th>اسم المورد</th>
+                  <th style="width:22%">رقم المستند</th>
+                  <th style="width:20%">تسديد</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in suppliers %}
+                <tr>
+                  <td class="num">{{ loop.index }}</td>
+                  <td class="name">{{ row.name }}</td>
+                  <td>{{ row.document_no }}</td>
+                  <td class="pay">{{ row.payment }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </section>
+
+          <section class="block">
+            <div class="block-head">الصندوق / القاصة</div>
+            <div class="cash-rows">
+              <div class="cash-row">
+                <label>المبلغ الموجود في القاصة</label>
+                <div class="value">{{ safe_amount_label }}</div>
+              </div>
+              <div class="cash-row">
+                <label>إجمالي الصرفيات</label>
+                <div class="value">{{ total_expenses_label }}</div>
+              </div>
+              <div class="cash-row total">
+                <label>الباقي في نهاية اليوم</label>
+                <div class="value">{{ remaining_label }}</div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="grid-2 bottom">
+          <section class="block">
+            <div class="block-head">المشتريات</div>
+            <table class="form-table">
+              <thead>
+                <tr>
+                  <th class="num">ت</th>
+                  <th>اسم المورد</th>
+                  <th style="width:28%">المبلغ</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for row in purchases %}
+                <tr>
+                  <td class="num">{{ loop.index }}</td>
+                  <td class="name">{{ row.supplier_name }}</td>
+                  <td class="amt">{{ row.amount }}</td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </section>
+
+          <section class="block">
+            <div class="block-head">الصرفيات</div>
+            <div class="expenses-split">
+              {# في RTL العمود الأول يظهر يميناً: 1..N ثم العمود الثاني #}
+              <div class="col-a">
+                <table class="form-table">
+                  <thead>
+                    <tr>
+                      <th class="num">ت</th>
+                      <th>البيان</th>
+                      <th style="width:32%">المبلغ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for row in expense_left %}
+                    <tr>
+                      <td class="num">{{ loop.index }}</td>
+                      <td class="name">{{ row.description }}</td>
+                      <td class="amt">{{ row.amount }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+              <div class="col-b">
+                <table class="form-table">
+                  <thead>
+                    <tr>
+                      <th class="num">ت</th>
+                      <th>البيان</th>
+                      <th style="width:32%">المبلغ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for row in expense_right %}
+                    <tr>
+                      <td class="num">{{ loop.index + expense_left|length }}</td>
+                      <td class="name">{{ row.description }}</td>
+                      <td class="amt">{{ row.amount }}</td>
+                    </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="footer-signs">
+          <div class="sign-box">
+            <h4>توقيع المحاسب</h4>
+            <div class="sign-line"></div>
+          </div>
+          <div class="sign-box">
+            <h4>توقيع المدير</h4>
+            <div class="sign-line"></div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="notes-col">
+        <div class="block-head">الملاحظات</div>
+        <table class="form-table">
+          <tbody>
+            {% for i in range(notes_lines) %}
+            <tr>
+              <td>&nbsp;</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </aside>
+
+      <div class="sheet-foot">
+        <div class="flourish"></div>
+        <div>{{ title }} — {{ form_code }} · {{ report_date_label }}</div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

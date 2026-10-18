@@ -9,6 +9,7 @@
     <title>فاتورة ضريبية #{{ order.id }}</title>
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/css/supermax-invoice-stamps.css?v=20261015">
     {% set warranty_background = settings|attr('warranty_card_background')|default('linear-gradient(135deg, #031021 0%, #1f2e42 100%)', true) if settings else 'linear-gradient(135deg, #031021 0%, #1f2e42 100%)' %}
     <style>
         :root {
@@ -593,6 +594,41 @@
             font-weight: 700;
         }
 
+        .notes-card .rich-text,
+        .warranty-terms .rich-text {
+            text-align: right;
+            direction: rtl;
+        }
+
+        .notes-card .rich-text p {
+            margin: 0 0 6px;
+        }
+
+        .notes-card .rich-text ul,
+        .warranty-terms .rich-text ul {
+            margin: 0 0 8px;
+            padding: 0 18px 0 0;
+            list-style: disc;
+        }
+
+        .notes-card .rich-text li,
+        .warranty-terms .rich-text li {
+            margin-bottom: 4px;
+        }
+
+        .notes-card .rich-text h4,
+        .warranty-terms .rich-text h4 {
+            margin: 0 0 8px;
+            color: var(--ink);
+            font-size: 14px;
+            font-weight: 900;
+        }
+
+        .notes-card .rich-text strong,
+        .warranty-terms .rich-text strong {
+            font-weight: 900;
+        }
+
         .service-strip {
             margin-top: 22px;
             border-top: 1px solid var(--line);
@@ -836,25 +872,29 @@
             line-height: 1.8;
         }
 
+        .warranty-terms p {
+            margin: 0 0 6px;
+            color: #111827;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1.8;
+        }
+
         .stamp {
             margin-top: 16px;
             display: grid;
-            grid-template-columns: 1fr 90px;
+            grid-template-columns: 1fr 112px;
             gap: 12px;
             align-items: end;
             font-weight: 900;
         }
 
-        .stamp-circle {
-            width: 88px;
-            height: 88px;
-            border: 2px solid #2563eb;
-            border-radius: 50%;
-            color: #2563eb;
-            display: grid;
-            place-items: center;
-            font-weight: 900;
-            transform: rotate(-12deg);
+        .stamp-seal {
+            width: 112px;
+            height: 112px;
+            object-fit: contain;
+            display: block;
+            justify-self: end;
         }
 
         {% if template_styles and template_styles.custom_css %}
@@ -1088,7 +1128,7 @@
                         <td>{{ '%02d'|format(loop.index) }}</td>
                         <td>
                             <div class="product-cell">
-                                <span class="product-name">{{ item.product_name or (item.product.name if item.product else 'منتج') }}</span>
+                                <span class="product-name">{{ item.display_name }}</span>
                                 <span class="product-code">{{ item.product.sku if item.product and item.product.sku else (item.product.barcode if item.product and item.product.barcode else ('SM-' ~ ('%04d'|format(loop.index)))) }}</span>
                             </div>
                         </td>
@@ -1113,8 +1153,7 @@
                 </div>
                 <div class="notes-card">
                     <h3>ملاحظات</h3>
-                    <p>{{ order.note if order.note else 'شكراً لتعاملكم معنا' }}</p>
-                    <p>تقبلوا فائق الاحترام والتقدير</p>
+                    <div class="rich-text">{{ (order.note if order.note else 'شكراً لتعاملكم معنا\nتقبلوا فائق الاحترام والتقدير')|invoice_rich_text }}</div>
                 </div>
             </div>
 
@@ -1134,6 +1173,7 @@
             </div>
 
             <div class="brand-footer">SUPER MAX ELECTRONICS TRADING</div>
+            {% include 'partials/supermax_invoice_stamps.html' %}
         </section>
     </main>
 
@@ -1155,15 +1195,19 @@
             <div class="warranty-card">
                 <div class="warranty-terms">
                     <h3>الشروط والأحكام</h3>
+                    {% if settings and settings.warranty_notes %}
+                    <div class="rich-text">{{ settings.warranty_notes|invoice_rich_text }}</div>
+                    {% else %}
                     <ul>
                         <li>سارية المفعول من تاريخ الشراء.</li>
                         <li>تغطي عيوب الصناعة فقط.</li>
                         <li>لا تغطي سوء الاستخدام أو الكسر أو التلف الناتج عن عوامل خارجية.</li>
                         <li>يجب إبراز الفاتورة الأصلية مع بطاقة الضمان للاستفادة من الخدمة.</li>
                     </ul>
+                    {% endif %}
                     <div class="stamp">
                         <span>ختم الشركة</span>
-                        <div class="stamp-circle">SUPER<br>MAX</div>
+                        <img class="stamp-seal" src="/static/images/supermax-stamp-clean.png" alt="ختم الشركة">
                     </div>
                 </div>
                 <div class="warranty-sep"></div>

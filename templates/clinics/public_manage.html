@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>إدارة الموعد — Finora Clinics</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='clinics/booking.css') }}?v=clinics-tablet-20260909a">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body class="bk-body">
+<main class="bk-shell">
+  <header class="bk-hero"><div class="bk-hero__badge"><i class="fa fa-shield-heart"></i> Finora Clinics</div><h1>إدارة موعدك</h1><p>{{ clinic.clinic_name if clinic else 'Finora Clinics' }}</p></header>
+  <section class="bk-card" id="manageApp" data-slug="{{ tenant_slug }}" data-token="{{ token }}" data-appointment-id="{{ appointment.id if appointment else '' }}">
+  {% if error %}<div class="bk-error">{{ error }}</div>{% else %}
+    <div class="bk-success" style="display:block"><i class="fa fa-calendar-check"></i><h2>{{ appointment.booking_number }}</h2></div>
+    <div class="bk-summary">
+      <p><strong>المريض:</strong> {{ appointment.patient_name }}</p>
+      <p><strong>الطبيب:</strong> {{ appointment.doctor_name }}</p>
+      <p><strong>الخدمة:</strong> {{ appointment.service_name or 'موعد عيادة' }}</p>
+      <p><strong>الموعد:</strong> <span id="currentDate">{{ appointment.appointment_date }} · {{ appointment.start_time }}</span></p>
+      <p><strong>الحالة:</strong> <span id="currentStatus">{{ appointment.status }}</span></p>
+    </div>
+    <div class="bk-actions">
+      <button class="bk-btn bk-btn--primary" id="rescheduleBtn"><i class="fa fa-calendar-days"></i> إعادة جدولة</button>
+      <button class="bk-btn" id="cancelBtn"><i class="fa fa-calendar-xmark"></i> إلغاء الموعد</button>
+      {% if clinic.whatsapp_number %}<a class="bk-btn" href="https://wa.me/{{ clinic.whatsapp_number|replace('+','')|replace(' ','') }}" rel="noopener"><i class="fab fa-whatsapp"></i> مراسلة العيادة</a>{% endif %}
+    </div>
+    <div id="rescheduleBox" class="bk-form" hidden>
+      <div class="bk-field"><label>التاريخ</label><input type="date" id="newDate"></div>
+      <div class="bk-field"><label>الوقت المتاح</label><select id="newTime"><option value="">اختر</option></select></div>
+      <button class="bk-btn bk-btn--primary" id="confirmReschedule">تأكيد الوقت الجديد</button>
+    </div>
+    <div id="manageError" class="bk-error" hidden></div>
+  {% endif %}
+  </section>
+</main>
+{% if not error %}<script>
+(() => {
+  const app=document.getElementById('manageApp'),slug=app.dataset.slug,token=app.dataset.token,excludeId=app.dataset.appointmentId||'';
+  const err=(message)=>{const e=document.getElementById('manageError');e.textContent=message;e.hidden=false};
+  const box=document.getElementById('rescheduleBox'),date=document.getElementById('newDate'),time=document.getElementById('newTime');
+  date.min=new Date().toISOString().slice(0,10);date.value='{{ appointment.appointment_date }}';
+  let slotsSeq=0;
+  async function slots(){
+    const seq=++slotsSeq;
+    const keep=time.value;
+    time.innerHTML='<option value="">جاري التحميل…</option>';
+    time.disabled=true;
+    try{
+      const qs=new URLSearchParams({
+        doctor_id:'{{ appointment.doctor_id or "" }}',
+        service_id:'{{ appointment.service_id or "" }}',
+        date:date.value
+      });
+      if(excludeId) qs.set('exclude_appointment_id', excludeId);
+      const r=await fetch(`/c/${slug}/api/slots?${qs}`);
+      const d=await r.json();
+      if(seq!==slotsSeq) return; // stale response — ignore
+      time.innerHTML='<option value="">اختر الوقت</option>';
+      (d.data||[]).forEach(x=>time.add(new Option(x,x)));
+      if(keep && Array.from(time.options).some(o=>o.value===keep)) time.value=keep;
+    }catch(e){
+      if(seq!==slotsSeq) return;
+      time.innerHTML='<option value="">تعذر التحميل</option>';
+    }finally{
+      if(seq===slotsSeq) time.disabled=false;
+    }
+  }
+  document.getElementById('rescheduleBtn').onclick=()=>{box.hidden=false;slots()};
+  date.onchange=slots;
+  document.getElementById('confirmReschedule').onclick=async()=>{
+    if(!date.value||!time.value){err('اختر التاريخ والوقت');return;}
+    try{
+      const r=await fetch(`/c/${slug}/api/manage/${token}/reschedule`,{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({appointment_date:date.value,start_time:time.value})
+      });
+      const d=await r.json();
+      if(!r.ok||!d.ok) throw Error(d.error||'فشل التعديل');
+      location.reload();
+    }catch(e){err(e.message)}
+  };
+  document.getElementById('cancelBtn').onclick=async()=>{
+    const reason=prompt('سبب الإلغاء (اختياري)')||'';
+    if(!confirm('هل تؤكد إلغاء الموعد؟'))return;
+    try{
+      const r=await fetch(`/c/${slug}/api/manage/${token}/cancel`,{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({reason})
+      });
+      const d=await r.json();
+      if(!r.ok||!d.ok) throw Error(d.error||'فشل الإلغاء');
+      location.reload();
+    }catch(e){err(e.message)}
+  };
+})();
+</script>{% endif %}
+</body>
+</html>

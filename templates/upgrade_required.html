@@ -1,14 +1,10 @@
-{% extends "base.html" %}
-{% from "payment_flow/_macros.html" import pf_topbar %}
+{% extends "public_flow/base.html" %}
+{% from "payment_flow/_macros.html" import pf_topbar with context %}
 {% block title %}ترقية الخطة — Finora{% endblock %}
-{% block page_title %}{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/payment-flow.css') }}">
 <div class="pf-page">
-  {% if not session.get('user_id') %}
   {{ pf_topbar('/', 'العودة') }}
-  {% endif %}
 
   <div class="pf-wrap">
     {% set active_plan = plan or current_plan or {'name': 'الأساسية', 'key': 'basic'} %}

@@ -3,6 +3,8 @@
   const PRICES = cfg.prices || {};
   let currentPlan = cfg.initialPlan || 'free';
   let currentBilling = cfg.initialBilling || 'monthly';
+  const welcomeOfferAvailable = Boolean(cfg.welcomeOfferAvailable);
+  const freeTrialDays = Math.max(1, Number(cfg.freeTrialDays) || 14);
   let emailVerified = false;
   let verifiedEmail = '';
 
@@ -14,11 +16,73 @@
   const verifyBox = document.getElementById('emailVerifyBox');
   const btnSubmit = document.getElementById('btnSignupSubmit');
   const signupHint = document.getElementById('signupHint');
+  const codeRow = document.getElementById('codeRow');
+  const btnChangeEmail = document.getElementById('btnChangeEmail');
+  const emailStepState = document.getElementById('emailStepState');
+  const planPicker = document.getElementById('planPicker');
+  const phoneInput = document.getElementById('phone');
+  const discoverySource = document.getElementById('discovery_source');
+  const discoveryOtherWrap = document.getElementById('discoveryOtherWrap');
+  const discoveryOtherInput = document.getElementById('discovery_source_other');
+  const whatsappConfirmed = document.getElementById('whatsapp_confirmed');
+  const whatsappStepState = document.getElementById('whatsappStepState');
 
   function fmt(n) { return Number(n).toLocaleString('ar-IQ'); }
 
   function isValidEmail(v) {
     return /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/.test((v || '').trim());
+  }
+
+  function normalizeIraqiPhone(value) {
+    let digits = String(value || '').replace(/\D/g, '');
+    if (digits.indexOf('00964') === 0) digits = '0' + digits.slice(5);
+    else if (digits.indexOf('964') === 0) digits = '0' + digits.slice(3);
+    else if (digits.length === 10 && digits.charAt(0) === '7') digits = '0' + digits;
+    return digits;
+  }
+
+  function validatePhone(showError) {
+    if (!phoneInput) return false;
+    const normalized = normalizeIraqiPhone(phoneInput.value);
+    const valid = /^07\d{9}$/.test(normalized);
+    phoneInput.classList.toggle('valid', valid);
+    phoneInput.classList.toggle('invalid', Boolean(showError) && !valid);
+    phoneInput.setAttribute('aria-invalid', valid ? 'false' : 'true');
+    if (valid && phoneInput.value !== normalized) phoneInput.value = normalized;
+    return valid;
+  }
+
+  if (phoneInput) {
+    phoneInput.addEventListener('input', function () {
+      phoneInput.value = phoneInput.value.replace(/[^0-9+\s()-]/g, '');
+      if (phoneInput.classList.contains('invalid')) validatePhone(true);
+    });
+    phoneInput.addEventListener('blur', function () { validatePhone(true); });
+  }
+
+  function updateDiscoverySource(showError) {
+    if (!discoverySource) return false;
+    const hasSource = Boolean(discoverySource.value);
+    const needsOther = discoverySource.value === 'other';
+    const hasOther = !needsOther || Boolean(discoveryOtherInput && discoveryOtherInput.value.trim());
+
+    discoverySource.classList.toggle('valid', hasSource);
+    discoverySource.classList.toggle('invalid', Boolean(showError) && !hasSource);
+    if (discoveryOtherWrap) discoveryOtherWrap.hidden = !needsOther;
+    if (discoveryOtherInput) {
+      discoveryOtherInput.required = needsOther;
+      discoveryOtherInput.disabled = !needsOther;
+      discoveryOtherInput.classList.toggle('invalid', Boolean(showError) && needsOther && !hasOther);
+      discoveryOtherInput.classList.toggle('valid', needsOther && hasOther);
+    }
+    return hasSource && hasOther;
+  }
+
+  if (discoverySource) {
+    discoverySource.addEventListener('change', function () { updateDiscoverySource(false); });
+  }
+  if (discoveryOtherInput) {
+    discoveryOtherInput.addEventListener('input', function () { updateDiscoverySource(false); });
   }
 
   function setVerifyStatus(msg, kind) {
@@ -28,25 +92,31 @@
   }
 
   function updateSubmitState() {
-    const canSubmit = emailVerified && emailInput && emailInput.value.trim().toLowerCase() === verifiedEmail;
+    const canSubmit = Boolean(whatsappConfirmed && whatsappConfirmed.checked);
     if (btnSubmit) btnSubmit.disabled = !canSubmit;
     if (signupHint) {
-      signupHint.textContent = canSubmit
-        ? 'يمكنك الآن إكمال بياناتك وإنشاء الحساب'
-        : 'تحقق من بريدك الإلكتروني أولاً لتفعيل زر التسجيل';
+      signupHint.innerHTML = canSubmit
+        ? '<i class="fas fa-circle-check"></i> جاهز لحفظ الحساب وإرسال طلب التفعيل'
+        : '<i class="fas fa-lock"></i> أكد أن الرقم مرتبط بواتساب أولاً';
     }
-    if (verifyBox) {
-      verifyBox.classList.toggle('verified', canSubmit);
-    }
-    if (emailInput) {
-      emailInput.readOnly = canSubmit;
+    if (whatsappStepState) {
+      whatsappStepState.textContent = canSubmit ? 'تم التأكيد' : 'مطلوب';
+      whatsappStepState.classList.toggle('done', canSubmit);
     }
   }
+
+  if (whatsappConfirmed) whatsappConfirmed.addEventListener('change', updateSubmitState);
 
   function resetEmailVerification() {
     emailVerified = false;
     verifiedEmail = '';
     if (codeInput) codeInput.value = '';
+    if (codeRow) codeRow.hidden = true;
+    if (btnSend) {
+      btnSend.hidden = false;
+      btnSend.innerHTML = '<i class="fas fa-paper-plane"></i> إرسال الرمز';
+    }
+    if (btnChangeEmail) btnChangeEmail.hidden = true;
     updateSubmitState();
   }
 
@@ -57,6 +127,18 @@
         resetEmailVerification();
         setVerifyStatus('تم تغيير البريد — أعد إرسال رمز التحقق', 'info');
       }
+    });
+  }
+
+  if (btnChangeEmail) {
+    btnChangeEmail.addEventListener('click', function () {
+      if (emailInput) {
+        emailInput.readOnly = false;
+        emailInput.focus();
+        emailInput.select();
+      }
+      resetEmailVerification();
+      setVerifyStatus('عدّل البريد ثم أرسل رمز تحقق جديداً.', 'info');
     });
   }
 
@@ -87,6 +169,8 @@
           let msg = data.message || 'تم إرسال الرمز';
           if (data.dev_code) msg += ' (تطوير: ' + data.dev_code + ')';
           setVerifyStatus(msg, 'ok');
+          if (codeRow) codeRow.hidden = false;
+          btnSend.innerHTML = '<i class="fas fa-rotate"></i> إعادة الإرسال';
           if (codeInput) codeInput.focus();
         } else {
           setVerifyStatus(data.message || 'تعذّر إرسال الرمز', 'err');
@@ -148,12 +232,23 @@
       const el = document.getElementById('p_' + k);
       const note = document.getElementById('pn_' + k);
       let html = '';
-      if (orig != null && orig > pr) {
+      if (k === 'free') {
+        if (p.original_monthly != null && p.original_monthly > 0) {
+          html += '<span class="pf-strike">' + fmt(p.original_monthly * Math.ceil(freeTrialDays / 30)) + '</span> ';
+        }
+        html += '0 <small>د.ع/' + freeTrialDays + ' يوم</small>';
+      } else if (orig != null && orig > pr) {
         html += '<span class="pf-strike">' + fmt(orig) + '</span> ';
       }
-      html += fmt(pr) + ' <small>د.ع/' + (yearly ? 'سنة' : 'شهر') + '</small>';
+      if (!(k === 'free')) {
+        html += fmt(pr) + ' <small>د.ع/' + (yearly ? 'سنة' : 'شهر') + '</small>';
+      }
       if (el) el.innerHTML = html;
-      if (note) note.textContent = yearly ? 'يُدفع سنوياً — وفّر شهرين!' : 'يُدفع شهرياً';
+      if (note) {
+        note.textContent = k === 'free'
+          ? freeTrialDays + ' يوماً للتجربة'
+          : (yearly ? 'يُدفع سنوياً' : 'يُدفع شهرياً');
+      }
     });
     const p = PRICES[currentPlan];
     if (!p) return;
@@ -163,21 +258,38 @@
     const sumPeriod = document.getElementById('sum_period');
     const sumTotal = document.getElementById('sum_total');
     const billingInput = document.getElementById('billing_input');
-    if (sumPlan) sumPlan.textContent = p.name;
-    if (sumBilling) sumBilling.textContent = yearly ? 'سنوي' : 'شهري';
-    if (sumPeriod) sumPeriod.textContent = yearly ? '12 شهر' : 'شهر واحد';
+    const welcomeSelected = currentPlan === 'free';
+    if (sumPlan) sumPlan.textContent = welcomeSelected ? 'الخطة المجانية — ' + freeTrialDays + ' يوم' : p.name;
+    if (sumBilling) sumBilling.textContent = welcomeSelected ? 'تجربة مجانية' : (yearly ? 'سنوي' : 'شهري');
+    if (sumPeriod) sumPeriod.textContent = welcomeSelected ? freeTrialDays + ' يوم' : (yearly ? '12 شهر' : 'شهر واحد');
     if (sumTotal) sumTotal.textContent = fmt(total) + ' د.ع';
     if (billingInput) billingInput.value = currentBilling;
   }
 
   window.selectPlan = function (key, el) {
     currentPlan = key;
-    document.querySelectorAll('.pf-plan-opt').forEach(function (x) { x.classList.remove('selected'); });
+    document.querySelectorAll('.pf-plan-opt').forEach(function (x) {
+      const selected = x === el;
+      x.classList.toggle('selected', selected);
+      x.setAttribute('aria-checked', selected ? 'true' : 'false');
+    });
     if (el) el.classList.add('selected');
     const inp = document.getElementById('plan_key_input');
     if (inp) inp.value = key;
     updateUI();
+    if (planPicker && window.matchMedia('(max-width: 768px)').matches) {
+      planPicker.open = false;
+    }
   };
+
+  document.querySelectorAll('.pf-plan-opt').forEach(function (option) {
+    option.addEventListener('keydown', function (event) {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        window.selectPlan(option.dataset.plan, option);
+      }
+    });
+  });
 
   document.querySelectorAll('input[name="billing_ui"]').forEach(function (inp) {
     inp.addEventListener('change', function () {
@@ -209,16 +321,27 @@
     }
   };
 
+  document.querySelectorAll('[data-password-toggle]').forEach(function (button) {
+    button.addEventListener('click', function () {
+      const input = document.getElementById(button.dataset.passwordToggle);
+      if (!input) return;
+      const showing = input.type === 'text';
+      input.type = showing ? 'password' : 'text';
+      button.setAttribute('aria-label', showing ? 'إظهار كلمة المرور' : 'إخفاء كلمة المرور');
+      button.innerHTML = showing ? '<i class="fas fa-eye"></i>' : '<i class="fas fa-eye-slash"></i>';
+    });
+  });
+
   window.validateForm = function () {
-    if (!emailVerified) {
-      setVerifyStatus('يجب التحقق من البريد الإلكتروني قبل التسجيل', 'err');
+    if (!whatsappConfirmed || !whatsappConfirmed.checked) {
+      if (whatsappConfirmed) whatsappConfirmed.focus();
       return false;
     }
     let ok = true;
     [
       { id: 'company_name', min: 1 },
       { id: 'contact_name', min: 1 },
-      { id: 'email', min: 3 },
+      { id: 'phone', min: 10 },
       { id: 'username', min: 3 },
       { id: 'password', min: 6 }
     ].forEach(function (f) {
@@ -228,9 +351,11 @@
         ok = false;
       }
     });
-    if (!isValidEmail(emailInput && emailInput.value)) {
+    if (emailInput && emailInput.value.trim() && !isValidEmail(emailInput.value)) {
       if (emailInput) emailInput.classList.add('invalid');
       ok = false;
+    } else if (emailInput) {
+      emailInput.classList.remove('invalid');
     }
     const p1 = document.getElementById('password');
     const p2 = document.getElementById('password2');
@@ -238,9 +363,19 @@
       p2.classList.add('invalid');
       ok = false;
     }
+    if (!validatePhone(true)) ok = false;
+    if (!updateDiscoverySource(true)) ok = false;
+    if (!ok) {
+      const firstInvalid = document.querySelector('.pf-signup-form .invalid');
+      if (firstInvalid) {
+        firstInvalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstInvalid.focus({ preventScroll: true });
+      }
+    }
     return ok;
   };
 
   updateUI();
   updateSubmitState();
+  updateDiscoverySource(false);
 })();

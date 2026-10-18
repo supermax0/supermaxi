@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Finora</title>
+  <desc id="desc">Finora blue mark on a dark rounded square</desc>
+  <defs>
+    <linearGradient id="finoraBlue" x1="96" y1="80" x2="406" y2="430" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#39a8ff"/>
+      <stop offset="0.55" stop-color="#1670f8"/>
+      <stop offset="1" stop-color="#4f46e5"/>
+    </linearGradient>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="18" stdDeviation="18" flood-color="#020617" flood-opacity=".28"/>
+    </filter>
+  </defs>
+  <rect x="28" y="28" width="456" height="456" rx="112" fill="#07111f" filter="url(#softShadow)"/>
+  <path d="M104 155 258 76l150 78-64 33-86-44-90 46z" fill="url(#finoraBlue)"/>
+  <path d="m104 251 154-79 107 55-64 33-43-22-90 46z" fill="url(#finoraBlue)" opacity=".92"/>
+  <path d="m104 347 154-79 64 33-64 33-90 46z" fill="url(#finoraBlue)" opacity=".82"/>
+</svg>

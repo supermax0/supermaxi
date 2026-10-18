@@ -1,0 +1,5 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "types": ["node"], "lib": ["ES2022", "DOM"] },
+  "include": ["e2e-live", "e2e-settings", "playwright.live.config.ts", "playwright.settings.config.ts"]
+}

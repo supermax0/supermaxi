@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+{% block title %}إعدادات الأقساط - Finora{% endblock %}
+{% block content %}
+<main class="ins-wrap ins-settings">
+  {% include "installments/admin/_nav.html" %}
+
+  <div class="ins-heading">
+    <div>
+      <span class="ins-eyebrow">تهيئة المتجر</span>
+      <h1>إعدادات متجر الأقساط</h1>
+      <p class="ins-muted">الهوية، متطلبات الطلب، سياسة السداد، والربط المحاسبي في مكان واحد.</p>
+    </div>
+    {% if settings.enabled %}
+      <span class="ins-badge active">المتجر مفعّل</span>
+    {% else %}
+      <span class="ins-badge disabled">المتجر متوقف</span>
+    {% endif %}
+  </div>
+
+  {% if request.args.get('saved') %}
+    <div class="ins-message success">تم حفظ الإعدادات بنجاح{% if request.args.get('generated', '0')|int %} — تم إنشاء {{ request.args.get('generated') }} خطة للمدد المسموحة تلقائياً{% endif %}{% if request.args.get('deactivated', '0')|int %} — تم تعطيل {{ request.args.get('deactivated') }} خطة بمدة غير مسموحة{% endif %}</div>
+  {% endif %}
+
+  <form method="post" enctype="multipart/form-data" class="ins-settings-form">
+    <div class="ins-settings-grid">
+
+      <section class="ins-card ins-settings-card">
+        <div class="ins-card-title">
+          <div>
+            <span class="ins-card-title__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M3 9.5 12 3l9 6.5V21H3z"></path><path d="M9 21v-8h6v8"></path></svg>
+            </span>
+            <div>
+              <h2>المتجر والهوية</h2>
+              <p>اسم المتجر، الشعار، وبيانات التواصل الظاهرة للعملاء</p>
+            </div>
+          </div>
+        </div>
+
+        <label class="ins-switch">
+          <input type="checkbox" name="enabled" {% if settings.enabled %}checked{% endif %}>
+          <span class="ins-switch__track" aria-hidden="true"><span class="ins-switch__thumb"></span></span>
+          <span class="ins-switch__copy">
+            <strong>تفعيل المتجر العام</strong>
+            <small>إظهار متجر الأقساط للزوار عبر الرابط العام</small>
+          </span>
+        </label>
+
+        <div class="ins-fields-2">
+          <div class="ins-field">
+            <label>اسم المتجر<input name="store_name" value="{{ settings.store_name }}" required></label>
+          </div>
+          <div class="ins-field">
+            <label>العملة<input name="currency" value="{{ settings.currency }}" maxlength="10" dir="ltr"></label>
+          </div>
+        </div>
+
+        <div class="ins-media-upload-grid">
+          <div class="ins-media-upload">
+            <div class="ins-media-upload__meta">
+              <strong>الشعار</strong>
+              <small>JPEG / PNG / WebP — يُفضّل خلفية شفافة أو بيضاء</small>
+            </div>
+            <label class="ins-file-btn">
+              <input type="file" name="logo" accept="image/jpeg,image/png,image/webp">
+              <span>اختيار ملف</span>
+            </label>
+            {% if settings.logo_path %}
+              <img class="ins-settings-preview" src="{{ url_for('static', filename=settings.logo_path) }}" alt="الشعار الحالي">
+            {% else %}
+              <div class="ins-media-placeholder">لا يوجد شعار حالياً</div>
+            {% endif %}
+          </div>
+          <div class="ins-media-upload">
+            <div class="ins-media-upload__meta">
+              <strong>صورة الغلاف</strong>
+              <small>تظهر في أعلى صفحة المتجر العامة</small>
+            </div>
+            <label class="ins-file-btn">
+              <input type="file" name="banner" accept="image/jpeg,image/png,image/webp">
+              <span>اختيار ملف</span>
+            </label>
+            {% if settings.banner_path %}
+              <img class="ins-settings-preview wide" src="{{ url_for('static', filename=settings.banner_path) }}" alt="الغلاف الحالي">
+            {% else %}
+              <div class="ins-media-placeholder wide">لا توجد صورة غلاف</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="ins-fields-2">
+          <div class="ins-field">
+            <label>هاتف التواصل<input name="contact_phone" value="{{ settings.contact_phone or '' }}" dir="ltr"></label>
+          </div>
+          <div class="ins-field">
+            <label>واتساب<input name="whatsapp" value="{{ settings.whatsapp or '' }}" dir="ltr"></label>
+          </div>
+        </div>
+
+        <div class="ins-field">
+          <label>العنوان<input name="address" value="{{ settings.address or '' }}"></label>
+        </div>
+
+        <div class="ins-field">
+          <label>رابط الموقع على الخريطة<input name="map_url" value="{{ settings.map_url or '' }}" dir="ltr" placeholder="https://maps.google.com/?q=..."></label>
+          <small class="ins-field-help">افتح الموقع في خرائط Google ثم انسخ الرابط والصقه هنا ليظهر زر الخريطة للعملاء.</small>
+        </div>
+
+        <div class="ins-field">
+          <label>الشروط والأحكام<textarea name="terms" rows="5" placeholder="اكتب شروط التقسيط الظاهرة للعميل…">{{ settings.terms or '' }}</textarea></label>
+        </div>
+      </section>
+
+      <section class="ins-card ins-settings-card">
+        <div class="ins-card-title">
+          <div>
+            <span class="ins-card-title__icon tone-docs" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M7 3h8l4 4v14H7z"></path><path d="M15 3v4h4M10 12h6M10 16h4"></path></svg>
+            </span>
+            <div>
+              <h2>متطلبات الطلب والخطط</h2>
+              <p>حدد ما يُطلب من العميل قبل قبول طلب التقسيط</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="ins-check-grid">
+          <label class="ins-check-tile">
+            <input type="checkbox" name="second_phone_required" {% if settings.second_phone_required %}checked{% endif %}>
+            <span>
+              <strong>الهاتف الثاني مطلوب</strong>
+              <small>رقم إضافي للتواصل أو التحقق</small>
+            </span>
+          </label>
+          <label class="ins-check-tile">
+            <input type="checkbox" name="employment_required" {% if settings.employment_required %}checked{% endif %}>
+            <span>
+              <strong>جهة العمل مطلوبة</strong>
+              <small>اسم ومعلومات جهة العمل</small>
+            </span>
+          </label>
+          <label class="ins-check-tile">
+            <input type="checkbox" name="guarantor_required" {% if settings.guarantor_required %}checked{% endif %}>
+            <span>
+              <strong>الكفيل مطلوب</strong>
+              <small>بيانات كفيل مع المستند الداعم</small>
+            </span>
+          </label>
+        </div>
+
+        <div class="ins-fields-2">
+          <div class="ins-field">
+            <label>المدد المسموحة (أشهر)<input name="allowed_durations" value="{{ allowed_durations }}" placeholder="3, 6, 9, 12" dir="ltr"></label>
+            <p class="ins-field-help">افصل الأشهر بفاصلة، مثال: 3, 6, 9, 12. الخطط التي مدتها خارج هذه القائمة ستُعطّل ولن تظهر للعملاء.</p>
+          </div>
+          <div class="ins-field">
+            <label>الحد الأدنى للدفعة الأولى %
+              <span class="ins-input-suffix">
+                <input name="minimum_down_payment_percentage" type="number" min="0" max="100" step="0.001" value="{{ settings.minimum_down_payment_percentage }}">
+                <span>%</span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div class="ins-docs-block">
+          <div class="ins-docs-block__head">
+            <strong>المستندات المطلوبة</strong>
+            <small>اختر ما يجب رفعه مع كل طلب</small>
+          </div>
+          <div class="ins-check-grid docs">
+            {% for value, label in [('national_id','البطاقة الوطنية'),('residence_card','بطاقة السكن'),('salary_proof','إثبات الدخل'),('guarantor','مستند الكفيل')] %}
+              <label class="ins-check-tile">
+                <input type="checkbox" name="documents" value="{{ value }}" {% if value in selected_documents %}checked{% endif %}>
+                <span><strong>{{ label }}</strong></span>
+              </label>
+            {% endfor %}
+          </div>
+        </div>
+      </section>
+
+      <section class="ins-card ins-settings-card">
+        <div class="ins-card-title">
+          <div>
+            <span class="ins-card-title__icon tone-pay" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 10h18M8 15h3"></path></svg>
+            </span>
+            <div>
+              <h2>سياسة السداد والمخزون</h2>
+              <p>يوم الاستحقاق، أيام السماح، وتوقيت حجز المخزون</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="ins-fields-2">
+          <div class="ins-field">
+            <label>يوم الاستحقاق<input name="payment_day" type="number" min="1" max="28" value="{{ settings.payment_day }}"></label>
+            <p class="ins-field-help">من 1 إلى 28 من كل شهر</p>
+          </div>
+          <div class="ins-field">
+            <label>أيام السماح<input name="grace_days" type="number" min="0" max="90" value="{{ settings.grace_days }}"></label>
+            <p class="ins-field-help">قبل اعتبار القسط متأخراً</p>
+          </div>
+        </div>
+
+        <div class="ins-field">
+          <label>حجز المخزون
+            <select name="reservation_policy">
+              <option value="on_application" {% if settings.reservation_policy=='on_application' %}selected{% endif %}>عند تقديم الطلب</option>
+              <option value="on_approval" {% if settings.reservation_policy=='on_approval' %}selected{% endif %}>عند الموافقة</option>
+              <option value="on_delivery" {% if settings.reservation_policy=='on_delivery' %}selected{% endif %}>عند التسليم</option>
+            </select>
+          </label>
+        </div>
+
+        <label class="ins-switch">
+          <input type="checkbox" name="allow_advance_payment" {% if settings.allow_advance_payment %}checked{% endif %}>
+          <span class="ins-switch__track" aria-hidden="true"><span class="ins-switch__thumb"></span></span>
+          <span class="ins-switch__copy">
+            <strong>السماح بالدفع المقدم</strong>
+            <small>تمكين العميل من تسديد أقساط قبل موعدها</small>
+          </span>
+        </label>
+      </section>
+
+      <section class="ins-card ins-settings-card">
+        <div class="ins-card-title">
+          <div>
+            <span class="ins-card-title__icon tone-ledger" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"></path><path d="M8 9h8M8 13h5M8 17h6"></path></svg>
+            </span>
+            <div>
+              <h2>الربط المحاسبي</h2>
+              <p>حسابات القيد التلقائي لعمليات التقسيط والتحصيل</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="ins-fields-2">
+          {% for field, label in [('receivable_account_id','حساب الذمم المدينة'),('sales_account_id','حساب المبيعات'),('cash_account_id','حساب النقدية'),('bank_account_id','الحساب المصرفي'),('fee_account_id','حساب الرسوم')] %}
+            <div class="ins-field">
+              <label>{{ label }}
+                <select name="{{ field }}">
+                  <option value="">بدون قيد تلقائي</option>
+                  {% for a in accounts %}
+                    <option value="{{ a.id }}" {% if settings|attr(field)==a.id %}selected{% endif %}>{{ a.code }} — {{ a.name }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+            </div>
+          {% endfor %}
+        </div>
+      </section>
+    </div>
+
+    <div class="ins-settings-footer">
+      <div>
+        <strong>جاهز للحفظ؟</strong>
+        <small>سيتم تطبيق التغييرات فوراً على المتجر والطلبات الجديدة</small>
+      </div>
+      <button class="ins-btn" type="submit">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><path d="M17 21v-8H7v8M7 3v5h8"></path></svg>
+        حفظ الإعدادات
+      </button>
+    </div>
+  </form>
+</main>
+{% endblock %}

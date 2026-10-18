@@ -1,0 +1,54 @@
+{% extends "wholesale/base.html" %}
+{% block title %}إعدادات الجملة{% endblock %}
+{% block page_title %}إعدادات الجملة{% endblock %}
+
+{% block ws_content %}
+<div class="ws-ops">
+  <header class="ws-page-head">
+    <div class="ws-page-head__identity">
+      <span class="ws-page-head__icon"><i class="fa fa-sliders"></i></span>
+      <div>
+        <span class="ws-page-kicker">تجارة الجملة</span>
+        <h1>الإعدادات</h1>
+        <p>افتراضيات العملة وسعر الصرف والمخزن لمركز العمليات</p>
+      </div>
+    </div>
+  </header>
+
+  <div class="ws-panel" style="max-width:720px">
+    <h3>افتراضيات العمليات</h3>
+    <p class="ws-ops-sub" style="margin-bottom:14px">العملة وسعر الصرف يُحفظان داخل كل حركة عند التنفيذ ولا يُعدَّلان بأثر رجعي.</p>
+    <div class="ws-grid-top" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+      <label>العملة الافتراضية<select id="defCur"><option>IQD</option><option>USD</option></select></label>
+      <label>سعر صرف USD→IQD الافتراضي<input type="number" id="defRate" value="1500"></label>
+      <label class="ws-span-2">المخزن الافتراضي للمستخدم<select id="defWarehouse"><option value="">— بدون تحديد —</option></select></label>
+    </div>
+    <div class="ws-actions">
+      <button class="ws-btn primary" type="button" id="saveLocal"><i class="fa fa-check"></i> حفظ الإعدادات</button>
+      <a class="ws-btn" href="/wholesale/ops"><i class="fa fa-layer-group"></i> العودة للعمليات</a>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+saveLocal.onclick = () => {
+  localStorage.setItem('ws_default_currency', defCur.value);
+  localStorage.setItem('ws_default_rate', defRate.value);
+  fetch('/api/wholesale/settings/default-warehouse', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({warehouse_id: defWarehouse.value || null})})
+    .then(r => r.json()).then(j => { if (!j.ok) throw new Error(j.error || 'فشل الحفظ'); alert('تم الحفظ'); })
+    .catch(e => alert(e.message));
+};
+defCur.value = localStorage.getItem('ws_default_currency') || 'IQD';
+defRate.value = localStorage.getItem('ws_default_rate') || '1500';
+(async () => {
+  try {
+    const r = await (await fetch('/api/wholesale/context')).json();
+    const d = r.data || {};
+    defWarehouse.innerHTML = '<option value="">— بدون تحديد —</option>' + (d.warehouses || []).map(w => `<option value="${w.id}">${w.name}</option>`).join('');
+    if (d.default_warehouse_id) defWarehouse.value = d.default_warehouse_id;
+  } catch (_) {}
+})();
+</script>
+{% endblock %}

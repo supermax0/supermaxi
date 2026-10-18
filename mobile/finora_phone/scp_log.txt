@@ -1,0 +1,4 @@
+﻿apk_scp_exit=0
+settings_scp_exit=0
+active
+restart_exit=0

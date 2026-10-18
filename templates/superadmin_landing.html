@@ -1,139 +1,121 @@
 {% extends "superadmin_base.html" %}
 {% block title %}إدارة صفحة الهبوط — Finora Superadmin{% endblock %}
-{% block page_title %}إدارة صفحة الهبوط{% endblock %}
-{% block breadcrumb_current %}إدارة صفحة الهبوط{% endblock %}
+{% block page_title %}محرر صفحة الهبوط{% endblock %}
+{% block breadcrumb_current %}المحتوى والاشتراكات{% endblock %}
 
 {% block extra_style %}
 <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin_landing.css') }}">
 {% endblock %}
 
 {% block content %}
-<div class="landing-admin-shell">
-    <div class="landing-admin-hero">
-        <div>
-            <span>Mini CMS</span>
-            <h2>تحكم بمحتوى صفحة Finora Cloud بدون تعديل الكود</h2>
-            <p>كل تعديل يحفظ كمسودة. اضغط معاينة قبل النشر، ثم انشر لتظهر التغييرات للزوار.</p>
+<div class="landing-admin-shell" id="landingAdminShell">
+    <section class="landing-admin-hero">
+        <div class="landing-hero-copy">
+            <span class="landing-draft-badge"><i class="fas fa-pen-ruler"></i> نسخة العمل</span>
+            <h2>ابنِ صفحة Finora وأدر العرض المجاني</h2>
+            <p>عدّل المحتوى، راجع المعاينة، ثم انشر عندما تكون الصفحة جاهزة للزوار.</p>
+            <div class="landing-workflow" aria-label="مراحل النشر">
+                <span class="active"><b>1</b> تعديل</span><i class="fas fa-chevron-left"></i><span><b>2</b> معاينة</span><i class="fas fa-chevron-left"></i><span><b>3</b> نشر</span>
+            </div>
         </div>
         <div class="landing-admin-actions">
-            <a href="/landing/preview" target="_blank" class="btn-secondary"><i class="fas fa-eye"></i>معاينة</a>
-            <a href="/landing" target="_blank" class="btn-secondary"><i class="fas fa-globe"></i>الصفحة العامة</a>
-            <button type="button" id="publishLandingBtn" class="btn-primary"><i class="fas fa-paper-plane"></i>نشر التغييرات</button>
+            <a href="/landing/preview" target="_blank" rel="noopener" class="btn-secondary"><i class="fas fa-eye"></i><span>معاينة المسودة</span></a>
+            <a href="/landing" target="_blank" rel="noopener" class="btn-secondary"><i class="fas fa-arrow-up-right-from-square"></i><span>الصفحة العامة</span></a>
+            <button type="button" id="publishLandingBtn" class="btn-primary"><i class="fas fa-paper-plane"></i><span>نشر التغييرات</span></button>
         </div>
-    </div>
+    </section>
 
-    <div id="landingAdminAlert" class="landing-admin-alert" hidden></div>
+    <div id="landingAdminAlert" class="landing-admin-alert" role="status" hidden></div>
 
     <div class="landing-admin-layout">
         <aside class="landing-admin-tabs" aria-label="أقسام إدارة صفحة الهبوط">
-            <button data-tab="overview" class="active"><i class="fas fa-gauge"></i>نظرة عامة</button>
-            <button data-tab="settings"><i class="fas fa-sliders"></i>معلومات الصفحة</button>
-            <button data-tab="sections"><i class="fas fa-layer-group"></i>الأقسام</button>
-            <button data-tab="features"><i class="fas fa-stars"></i>المميزات</button>
-            <button data-tab="modules"><i class="fas fa-table-cells-large"></i>الموديلات</button>
-            <button data-tab="pricing"><i class="fas fa-tags"></i>الخطط والأسعار</button>
-            <button data-tab="faqs"><i class="fas fa-circle-question"></i>FAQ</button>
-            <button data-tab="testimonials"><i class="fas fa-comment-dots"></i>آراء العملاء</button>
-            <button data-tab="ctas"><i class="fas fa-bullhorn"></i>الأزرار</button>
-            <button data-tab="media"><i class="fas fa-photo-film"></i>الوسائط</button>
-            <button data-tab="seo"><i class="fas fa-magnifying-glass-chart"></i>SEO</button>
-            <button data-tab="theme"><i class="fas fa-palette"></i>الثيم</button>
+            <label class="landing-nav-search"><i class="fas fa-magnifying-glass"></i><input type="search" id="landingNavSearch" placeholder="ابحث عن إعداد…" autocomplete="off"></label>
+            <div class="landing-nav-group">
+                <span>الرئيسية</span>
+                <button data-tab="overview" class="active"><i class="fas fa-gauge-high"></i><span><b>نظرة عامة</b><small>ملخص المحتوى</small></span></button>
+                <button data-tab="free-plan" class="free-plan-nav"><i class="fas fa-gift"></i><span><b>الاشتراك المجاني</b><small>المدة والمزايا</small></span><em>مهم</em></button>
+                <button data-tab="settings"><i class="fas fa-sliders"></i><span><b>معلومات الصفحة</b><small>العنوان والتواصل</small></span></button>
+            </div>
+            <div class="landing-nav-group">
+                <span>محتوى الصفحة</span>
+                <button data-tab="sections"><i class="fas fa-layer-group"></i><span><b>الأقسام</b><small>بنية الصفحة</small></span></button>
+                <button data-tab="features"><i class="fas fa-stars"></i><span><b>المميزات</b><small>نقاط القوة</small></span></button>
+                <button data-tab="modules"><i class="fas fa-table-cells-large"></i><span><b>الموديلات</b><small>وحدات النظام</small></span></button>
+                <button data-tab="pricing"><i class="fas fa-tags"></i><span><b>الخطط والأسعار</b><small>العروض المدفوعة</small></span></button>
+                <button data-tab="faqs"><i class="fas fa-circle-question"></i><span><b>الأسئلة الشائعة</b><small>إجابات الزوار</small></span></button>
+                <button data-tab="testimonials"><i class="fas fa-comment-dots"></i><span><b>آراء العملاء</b><small>الثقة الاجتماعية</small></span></button>
+            </div>
+            <div class="landing-nav-group">
+                <span>الظهور والتسويق</span>
+                <button data-tab="ctas"><i class="fas fa-bullhorn"></i><span><b>الأزرار والروابط</b><small>دعوات الإجراء</small></span></button>
+                <button data-tab="media"><i class="fas fa-photo-film"></i><span><b>الوسائط</b><small>الصور والفيديو</small></span></button>
+                <button data-tab="seo"><i class="fas fa-magnifying-glass-chart"></i><span><b>SEO والمشاركة</b><small>محركات البحث</small></span></button>
+                <button data-tab="theme"><i class="fas fa-palette"></i><span><b>الألوان والخط</b><small>هوية الصفحة</small></span></button>
+            </div>
         </aside>
 
         <main class="landing-admin-panels">
             <section data-panel="overview" class="landing-panel active">
+                <div class="landing-panel-heading"><div><span>لوحة المحتوى</span><h3>نظرة عامة</h3><p>راقب مكونات الصفحة وانتقل بسرعة إلى القسم الذي تريد تعديله.</p></div><span class="draft-status"><i class="fas fa-circle"></i> مسودة قابلة للتعديل</span></div>
                 <div class="landing-metrics" id="landingMetrics"></div>
-                <div class="landing-help-card">
-                    <h3>مسار العمل</h3>
-                    <p>عدّل أي قسم، احفظ المسودة، افتح المعاينة، ثم انشر. الصفحة العامة لا تتغير إلا بعد النشر.</p>
+                <div class="landing-overview-grid">
+                    <article class="landing-help-card workflow-card"><span class="overview-card-icon blue"><i class="fas fa-route"></i></span><div><h4>طريقة العمل</h4><p>كل حفظ يذهب إلى المسودة. افتح المعاينة، ثم استخدم «نشر التغييرات» فقط بعد التأكد.</p></div></article>
+                    <article class="landing-help-card free-card" data-jump-tab="free-plan"><span class="overview-card-icon purple"><i class="fas fa-gift"></i></span><div><h4>مدة الاشتراك المجاني</h4><p>حدّد عدد الأيام والمزايا والحدود للحسابات الجديدة.</p><button type="button">ضبط الاشتراك <i class="fas fa-arrow-left"></i></button></div></article>
+                    <article class="landing-help-card plans-card"><span class="overview-card-icon orange"><i class="fas fa-layer-group"></i></span><div><h4>الخطط المدفوعة</h4><p>تغيير الأسعار وحدود الخطط الفعلية يتم من مركز خطط الاشتراك.</p><a href="/superadmin/plans">إدارة الخطط <i class="fas fa-arrow-left"></i></a></div></article>
                 </div>
             </section>
 
-            <section data-panel="settings" class="landing-panel">
-                <form id="settingsForm" class="landing-form-grid"></form>
-            </section>
-
-            <section data-panel="sections" class="landing-panel">
-                <div class="panel-toolbar">
-                    <h3>أقسام الصفحة</h3>
-                    <button type="button" class="btn-secondary" data-add="sections"><i class="fas fa-plus"></i>إضافة قسم</button>
-                </div>
-                <div id="sectionsList" class="landing-edit-list"></div>
-            </section>
-
-            <section data-panel="features" class="landing-panel">
-                <div class="panel-toolbar">
-                    <h3>المميزات</h3>
-                    <button type="button" class="btn-secondary" data-add="features"><i class="fas fa-plus"></i>إضافة ميزة</button>
-                </div>
-                <div id="featuresList" class="landing-edit-list"></div>
-            </section>
-
-            <section data-panel="modules" class="landing-panel">
-                <div class="panel-toolbar">
-                    <h3>الموديلات</h3>
-                    <button type="button" class="btn-secondary" data-add="modules"><i class="fas fa-plus"></i>إضافة موديل</button>
-                </div>
-                <div id="modulesList" class="landing-edit-list"></div>
-            </section>
-
-            <section data-panel="pricing" class="landing-panel">
-                <div class="panel-toolbar">
-                    <h3>الخطط والأسعار</h3>
-                    <button type="button" class="btn-secondary" data-add="pricing"><i class="fas fa-plus"></i>إضافة خطة</button>
-                </div>
-                <div id="pricingList" class="landing-edit-list"></div>
-            </section>
-
-            <section data-panel="faqs" class="landing-panel">
-                <div class="panel-toolbar">
-                    <h3>الأسئلة الشائعة</h3>
-                    <button type="button" class="btn-secondary" data-add="faqs"><i class="fas fa-plus"></i>إضافة سؤال</button>
-                </div>
-                <div id="faqsList" class="landing-edit-list"></div>
-            </section>
-
-            <section data-panel="testimonials" class="landing-panel">
-                <div class="panel-toolbar">
-                    <h3>آراء العملاء</h3>
-                    <button type="button" class="btn-secondary" data-add="testimonials"><i class="fas fa-plus"></i>إضافة رأي</button>
-                </div>
-                <div id="testimonialsList" class="landing-edit-list"></div>
-            </section>
-
-            <section data-panel="ctas" class="landing-panel">
-                <div class="panel-toolbar">
-                    <h3>الأزرار والروابط</h3>
-                    <button type="button" class="btn-secondary" data-add="ctas"><i class="fas fa-plus"></i>إضافة زر</button>
-                </div>
-                <div id="ctasList" class="landing-edit-list"></div>
-            </section>
-
-            <section data-panel="media" class="landing-panel">
-                <div class="panel-toolbar">
-                    <h3>مكتبة الوسائط</h3>
-                </div>
-                <form id="mediaUploadForm" class="media-upload-box">
-                    <input type="file" name="file" accept=".jpg,.jpeg,.png,.webp,.svg,.mp4" required>
-                    <input type="text" name="title" placeholder="عنوان الوسيط">
-                    <input type="text" name="alt_text" placeholder="Alt text">
-                    <button type="submit" class="btn-primary"><i class="fas fa-upload"></i>رفع</button>
+            <section data-panel="free-plan" class="landing-panel">
+                <div class="landing-panel-heading"><div><span>العرض الافتتاحي</span><h3>الاشتراك المجاني</h3><p>هذه الإعدادات تطبّق على الحسابات الجديدة. الحسابات القديمة لها تاريخ نهاية مستقل.</p></div><a href="/superadmin/tenants" class="panel-link"><i class="fas fa-building"></i> تعديل شركة حالية</a></div>
+                <form id="freePlanForm" class="free-plan-layout">
+                    <div class="free-plan-settings">
+                        <article class="free-plan-section activation-section">
+                            <div class="free-section-head"><span class="free-section-icon green"><i class="fas fa-power-off"></i></span><div><h4>حالة العرض</h4><p>عند إيقافه لن يستطيع أي حساب جديد اختيار الخطة المجانية.</p></div></div>
+                            <label class="switch-control"><input type="checkbox" name="enabled" id="freePlanEnabled"><span></span><b id="freePlanEnabledLabel">مفعّل</b></label>
+                        </article>
+                        <article class="free-plan-section">
+                            <div class="free-section-head"><span class="free-section-icon blue"><i class="fas fa-calendar-days"></i></span><div><h4>مدة التجربة</h4><p>اختر مدة جاهزة أو اكتب عدد الأيام يدوياً.</p></div></div>
+                            <div class="trial-presets" role="group" aria-label="مدة التجربة"><button type="button" data-trial-days="7">7 أيام</button><button type="button" data-trial-days="14">14 يوماً</button><button type="button" data-trial-days="30">30 يوماً</button><button type="button" data-trial-days="60">60 يوماً</button></div>
+                            <label class="landing-field trial-days-field"><span>المدة بالأيام</span><div><input type="number" name="trial_days" id="freeTrialDays" min="1" max="365" required><b>يوم</b></div><small>من يوم واحد إلى 365 يوماً.</small></label>
+                        </article>
+                        <article class="free-plan-section">
+                            <div class="free-section-head"><span class="free-section-icon purple"><i class="fas fa-id-card"></i></span><div><h4>الاسم والحدود</h4><p>تحكّم بما يراه الزائر وبالحدود الفعلية داخل النظام.</p></div></div>
+                            <div class="landing-form-grid compact"><label class="landing-field"><span>اسم الخطة</span><input type="text" name="name" id="freePlanName" required></label><label class="landing-field"><span>حد المستخدمين</span><input type="number" name="max_users" id="freePlanMaxUsers" min="1" placeholder="بلا حد"></label><label class="landing-field"><span>حد الطلبات الشهري</span><input type="number" name="max_orders_monthly" id="freePlanMaxOrders" min="1" placeholder="بلا حد"></label><label class="landing-field"><span>شارة العرض</span><input type="text" name="badge_text" id="freePlanBadge"></label></div>
+                        </article>
+                        <article class="free-plan-section">
+                            <div class="free-section-head"><span class="free-section-icon orange"><i class="fas fa-list-check"></i></span><div><h4>المزايا المتاحة</h4><p>هذه الخيارات تحدد ما يستطيع المشترك المجاني فتحه داخل النظام.</p></div></div>
+                            <div class="free-features-grid" id="freePlanFeatures"></div>
+                        </article>
+                        <article class="free-plan-section">
+                            <div class="free-section-head"><span class="free-section-icon pink"><i class="fas fa-store"></i></span><div><h4>عرض الخطة في صفحة الهبوط</h4><p>النص التسويقي الذي يظهر داخل بطاقة الخطة.</p></div></div>
+                            <div class="landing-form-grid compact"><label class="landing-field full"><span>وصف الخطة</span><textarea name="description" id="freePlanDescription"></textarea></label><label class="landing-field"><span>نص الزر</span><input type="text" name="cta_text" id="freePlanCta"></label><label class="landing-field full"><span>مزايا بطاقة العرض</span><textarea name="landing_features" id="freePlanLandingFeatures" placeholder="ميزة واحدة في كل سطر"></textarea><small>اكتب كل ميزة في سطر مستقل.</small></label></div>
+                        </article>
+                        <div class="free-plan-savebar"><div><i class="fas fa-circle-info"></i><span>حفظ الإعداد يطبّق المدة على التسجيلات الجديدة مباشرةً.</span></div><button class="btn-primary" type="submit" id="saveFreePlanBtn"><i class="fas fa-floppy-disk"></i> حفظ الاشتراك المجاني</button></div>
+                    </div>
+                    <aside class="free-plan-preview-wrap">
+                        <span class="preview-label"><i class="fas fa-eye"></i> معاينة البطاقة</span>
+                        <article class="free-plan-preview" id="freePlanPreview"><span class="preview-badge" id="freePreviewBadge">تجربة مجانية</span><div class="preview-gift"><i class="fas fa-gift"></i></div><h4 id="freePreviewName">الخطة المجانية</h4><div class="preview-price"><b>0</b><span>د.ع</span></div><p id="freePreviewDescription"></p><strong id="freePreviewDuration">14 يوماً مجاناً</strong><ul id="freePreviewFeatures"></ul><button type="button" id="freePreviewCta">ابدأ مجاناً</button></article>
+                        <div class="free-plan-note"><i class="fas fa-lightbulb"></i><p><b>ملاحظة</b> لتغيير مدة شركة مسجلة سابقاً، افتح «الشركات المسجلة» وعدّل تاريخ نهاية اشتراكها.</p></div>
+                    </aside>
                 </form>
-                <div id="mediaList" class="landing-media-grid"></div>
             </section>
 
-            <section data-panel="seo" class="landing-panel">
-                <form id="seoForm" class="landing-form-grid"></form>
-            </section>
-
-            <section data-panel="theme" class="landing-panel">
-                <form id="themeForm" class="landing-form-grid"></form>
-            </section>
+            <section data-panel="settings" class="landing-panel"><div class="landing-panel-heading"><div><span>الهوية</span><h3>معلومات الصفحة</h3><p>الاسم، العنوان، وروابط التواصل العامة.</p></div></div><form id="settingsForm" class="landing-form-grid"></form></section>
+            <section data-panel="sections" class="landing-panel"><div class="panel-toolbar"><div><span>بنية الصفحة</span><h3>الأقسام</h3><p>رتّب وحرّر الأقسام التي تظهر للزائر.</p></div><button type="button" class="btn-secondary" data-add="sections"><i class="fas fa-plus"></i>إضافة قسم</button></div><div id="sectionsList" class="landing-edit-list"></div></section>
+            <section data-panel="features" class="landing-panel"><div class="panel-toolbar"><div><span>نقاط القوة</span><h3>المميزات</h3><p>اعرض أهم ما يحصل عليه عملاؤك.</p></div><button type="button" class="btn-secondary" data-add="features"><i class="fas fa-plus"></i>إضافة ميزة</button></div><div id="featuresList" class="landing-edit-list"></div></section>
+            <section data-panel="modules" class="landing-panel"><div class="panel-toolbar"><div><span>وحدات فينورا</span><h3>الموديلات</h3><p>عرّف الزائر بمكونات النظام الرئيسية.</p></div><button type="button" class="btn-secondary" data-add="modules"><i class="fas fa-plus"></i>إضافة موديل</button></div><div id="modulesList" class="landing-edit-list"></div></section>
+            <section data-panel="pricing" class="landing-panel"><div class="panel-toolbar"><div><span>عروض الصفحة</span><h3>الخطط والأسعار</h3><p>هذه البطاقات تظهر في صفحة الهبوط. الخطط الفعلية تُدار من مركز الخطط.</p></div><div class="toolbar-actions"><a href="/superadmin/plans" class="btn-secondary"><i class="fas fa-gear"></i>الخطط الفعلية</a><button type="button" class="btn-secondary" data-add="pricing"><i class="fas fa-plus"></i>إضافة بطاقة</button></div></div><div id="pricingList" class="landing-edit-list"></div></section>
+            <section data-panel="faqs" class="landing-panel"><div class="panel-toolbar"><div><span>مساعدة الزوار</span><h3>الأسئلة الشائعة</h3><p>اختصر الأسئلة المتكررة بإجابات واضحة.</p></div><button type="button" class="btn-secondary" data-add="faqs"><i class="fas fa-plus"></i>إضافة سؤال</button></div><div id="faqsList" class="landing-edit-list"></div></section>
+            <section data-panel="testimonials" class="landing-panel"><div class="panel-toolbar"><div><span>آراء حقيقية</span><h3>آراء العملاء</h3><p>أضف تجارب العملاء لتعزيز الثقة.</p></div><button type="button" class="btn-secondary" data-add="testimonials"><i class="fas fa-plus"></i>إضافة رأي</button></div><div id="testimonialsList" class="landing-edit-list"></div></section>
+            <section data-panel="ctas" class="landing-panel"><div class="panel-toolbar"><div><span>التحويل</span><h3>الأزرار والروابط</h3><p>تحكّم بأزرار التجربة، الدخول، والتواصل.</p></div><button type="button" class="btn-secondary" data-add="ctas"><i class="fas fa-plus"></i>إضافة زر</button></div><div id="ctasList" class="landing-edit-list"></div></section>
+            <section data-panel="media" class="landing-panel"><div class="panel-toolbar"><div><span>مكتبة الملفات</span><h3>الوسائط</h3><p>ارفع صورة أو فيديو واستخدم الرابط في الأقسام.</p></div></div><form id="mediaUploadForm" class="media-upload-box"><label class="media-file-picker"><i class="fas fa-cloud-arrow-up"></i><span><b>اختر ملفاً</b><small>JPG, PNG, WebP, SVG أو MP4</small></span><input type="file" name="file" accept=".jpg,.jpeg,.png,.webp,.svg,.mp4" required></label><input type="text" name="title" placeholder="عنوان الوسيط"><input type="text" name="alt_text" placeholder="وصف الصورة"><button type="submit" class="btn-primary"><i class="fas fa-upload"></i>رفع</button></form><div id="mediaList" class="landing-media-grid"></div></section>
+            <section data-panel="seo" class="landing-panel"><div class="landing-panel-heading"><div><span>الظهور في البحث</span><h3>SEO وبطاقات المشاركة</h3><p>العناوين والأوصاف التي تظهر في Google ومنصات التواصل.</p></div></div><form id="seoForm" class="landing-form-grid"></form></section>
+            <section data-panel="theme" class="landing-panel"><div class="landing-panel-heading"><div><span>هوية فينورا</span><h3>الألوان والخط</h3><p>اختر الألوان الرئيسية وخط صفحة الهبوط.</p></div></div><form id="themeForm" class="landing-form-grid"></form></section>
         </main>
     </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/superadmin_landing.js') }}"></script>
+<script src="{{ url_for('static', filename='js/superadmin_landing.js', v='20260821-free-plan-sync') }}"></script>
 {% endblock %}

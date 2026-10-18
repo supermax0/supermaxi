@@ -24,14 +24,16 @@ const AssistantNotesWindow = {
     }
     wrap.appendChild(ul);
 
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "ws-notes-details-btn";
-    btn.textContent = "عرض التفاصيل";
-    btn.addEventListener("click", () => {
-      window.dispatchEvent(new CustomEvent("ws:show-issues-details"));
-    });
-    wrap.appendChild(btn);
+    if ((spec.props || {}).showDetails !== false) {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "ws-notes-details-btn";
+      btn.textContent = "عرض التفاصيل";
+      btn.addEventListener("click", () => {
+        window.dispatchEvent(new CustomEvent("ws:show-issues-details"));
+      });
+      wrap.appendChild(btn);
+    }
 
     container.appendChild(wrap);
   },

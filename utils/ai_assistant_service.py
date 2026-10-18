@@ -55,6 +55,7 @@ from utils.branch_stock_service import (
     transfer_receive,
 )
 from utils.inventory_movements import get_product_inventory_movements
+from utils.leon_presentation import build_leon_presentation
 from utils.order_item_costs import exclude_delivery_fee_items
 from utils.activity_logger import log_activity
 from utils.ai_assistant_tools import (
@@ -240,7 +241,10 @@ def _assistant_read_scope(employee_id: int | None = None) -> dict:
         "suppliers": is_admin or employee_can(employee, "manage_suppliers"),
         "shipping": is_admin or employee_can(employee, "view_shipping") or employee_can(employee, "manage_shipping"),
         "assets": is_admin or employee_can(employee, "view_fixed_assets") or employee_can(employee, "manage_fixed_assets"),
-        "order_manage": is_admin or employee_can(employee, "manage_orders"),
+        "order_manage": is_admin or any(
+            employee_can(employee, permission)
+            for permission in ("manage_orders", "pay_orders", "return_orders", "delete_orders")
+        ),
     }
 
 
@@ -1631,6 +1635,7 @@ def _call_openai_narrative(
     session_id: int | None = None,
     employee_id: int | None = None,
     period_hint: dict | None = None,
+    tool_runs: list[dict] | None = None,
 ) -> tuple[bool, str]:
     key = _get_openai_key()
     if not key:
@@ -1710,6 +1715,8 @@ def _call_openai_narrative(
                 except (TypeError, json.JSONDecodeError):
                     tool_args = {}
                 result = execute_tool(tool_name, tool_args, scope)
+                if tool_runs is not None:
+                    tool_runs.append({"name": tool_name, "arguments": tool_args, "result": result})
                 _log_tool(
                     f"ai.{tool_name}",
                     session_id=session_id,
@@ -1749,7 +1756,7 @@ def _call_openai_narrative(
         return False, ""
 
 
-def _chat_history_messages(chat: AIChatSession, limit: int = 12) -> list[dict]:
+def _chat_history_messages(chat: AIChatSession, limit: int = 30) -> list[dict]:
     """آخر رسائل الجلسة (ذاكرة المحادثة) بصيغة OpenAI messages."""
     rows = (
         AIChatMessage.query.filter_by(session_id=chat.id)
@@ -1769,6 +1776,70 @@ def _chat_history_messages(chat: AIChatSession, limit: int = 12) -> list[dict]:
     return history
 
 
+def _is_employee_performance_query(message: str | None) -> bool:
+    """Return True when the user is asking for employee/team performance data."""
+    text = (message or "").strip().lower()
+    if not text:
+        return False
+    employee_terms = (
+        "موظف",
+        "الموظفين",
+        "الموظفون",
+        "الموظفات",
+        "موضف",
+        "الموضفين",
+        "الموضفون",
+        "العاملين",
+        "الكادر",
+        "الفريق",
+        "كاشير",
+        "staff",
+        "employee",
+        "employees",
+        "team performance",
+    )
+    performance_terms = (
+        "أداء",
+        "اداء",
+        "تفاصيل",
+        "طلبات",
+        "مبيعات",
+        "حركات",
+        "تقييم",
+        "إنتاجية",
+        "انتاجية",
+        "performance",
+        "details",
+        "sales",
+        "orders",
+    )
+    has_employee_term = any(term in text for term in employee_terms)
+    has_performance_term = any(term in text for term in performance_terms)
+    return has_employee_term and (has_performance_term or len(text.split()) <= 5)
+
+
+def _employee_performance_arguments(
+    period: str | None,
+    date_from: str | None,
+    date_to: str | None,
+) -> dict[str, str]:
+    if date_from or date_to:
+        return {
+            key: value
+            for key, value in {"date_from": date_from, "date_to": date_to}.items()
+            if value
+        }
+    if not period:
+        return {}
+    try:
+        from utils.date_periods import get_period_dates
+
+        start, end = get_period_dates(period)
+        return {"date_from": start.isoformat(), "date_to": end.isoformat()}
+    except (TypeError, ValueError):
+        return {}
+
+
 def handle_chat_send(
     *,
     employee_id: int | None,
@@ -1782,6 +1853,8 @@ def handle_chat_send(
 ) -> dict:
     chat = get_or_create_chat_session(employee_id, session_id)
     history = _chat_history_messages(chat)
+    if not history and (not chat.title or chat.title == "محادثة مساعد Finora"):
+        chat.title = (message or "محادثة LEON").strip()[:80] or "محادثة LEON"
     add_chat_message(chat, "user", message, {"upload_ids": upload_ids or []})
     upload_ids = [int(x) for x in (upload_ids or []) if str(x).isdigit()]
     period_hint = {
@@ -1798,6 +1871,24 @@ def handle_chat_send(
     scope = _assistant_read_scope(employee_id)
     snapshot = collect_system_snapshot(employee_id=employee_id)
     local_findings: dict[str, Any] = {"snapshot": snapshot}
+    if _is_employee_performance_query(message):
+        employee_args = _employee_performance_arguments(period, date_from, date_to)
+        employee_performance = execute_tool("get_employees_performance", employee_args, scope)
+        local_findings["employee_performance"] = employee_performance
+        _log_tool(
+            "assistant.get_employees_performance",
+            session_id=chat.id,
+            employee_id=employee_id,
+            input_data=employee_args,
+            output_data={
+                "employees_count": employee_performance.get("employees_count", 0),
+                "rows_count": len(employee_performance.get("performance") or []),
+                "restricted": bool(employee_performance.get("restricted")),
+                "error": employee_performance.get("error"),
+            },
+            status="error" if employee_performance.get("error") else "success",
+            error=employee_performance.get("error"),
+        )
     query_evidence = _collect_query_evidence(message or "", scope)
     if query_evidence.get("products") or query_evidence.get("low_stock_samples"):
         local_findings["query_evidence"] = query_evidence
@@ -1883,6 +1974,7 @@ def handle_chat_send(
     elif any(word in (message or "") for word in ("محاسبي", "حساب", "هامش", "سالب", "تقرير", "اخطاء", "أخطاء", "صندوق", "كاش", "نقد", "فروقات")):
         local_findings["accounting_audit"] = {"restricted": True, "message": "التدقيق المحاسبي يحتاج صلاحية التقارير أو المالية."}
 
+    tool_runs: list[dict] = []
     ok, ai_text = _call_openai_narrative(
         message,
         snapshot,
@@ -1892,6 +1984,7 @@ def handle_chat_send(
         session_id=chat.id,
         employee_id=employee_id,
         period_hint=period_hint,
+        tool_runs=tool_runs,
     )
     if not ok or not (ai_text or "").strip():
         ai_text = _local_fallback_answer(message, scope, local_findings)
@@ -1901,14 +1994,33 @@ def handle_chat_send(
     if plan:
         ai_text = f"{ai_text}\n\nتم إنشاء خطة تنفيذ #{plan.id}: {plan.summary}"
 
-    add_chat_message(chat, "assistant", ai_text, {"action_plan_id": plan.id if plan else None, "local_findings": local_findings})
+    serialized_plan = _serialize_plan(plan)
+    presentation = build_leon_presentation(
+        session_id=chat.id,
+        message=message,
+        reply=ai_text,
+        tool_runs=tool_runs,
+        local_findings=local_findings,
+        action_plan=serialized_plan,
+    )
+    add_chat_message(
+        chat,
+        "assistant",
+        ai_text,
+        {
+            "action_plan_id": plan.id if plan else None,
+            "local_findings": local_findings,
+            "presentation": presentation,
+        },
+    )
     db.session.commit()
     return {
         "success": True,
         "session_id": chat.id,
         "reply": ai_text,
-        "action_plan": _serialize_plan(plan),
+        "action_plan": serialized_plan,
         "local_findings": local_findings,
+        "presentation": presentation,
     }
 
 
@@ -1919,6 +2031,22 @@ def _local_fallback_answer(message: str, scope: dict, local_findings: dict) -> s
 
     def _fmt(value) -> str:
         return f"{int(value or 0):,} د.ع"
+
+    employee_data = local_findings.get("employee_performance") or {}
+    if isinstance(employee_data, dict) and not employee_data.get("error") and not employee_data.get("restricted"):
+        rows = employee_data.get("performance") or []
+        total_orders = sum(int(row.get("orders") or 0) for row in rows)
+        total_sales = sum(int(row.get("total_sales") or 0) for row in rows)
+        active_rows = [row for row in rows if row.get("is_active") is not False]
+        top_employee = max(rows, key=lambda row: int(row.get("total_sales") or 0), default=None)
+        lines.append(
+            f"جهزت لوحة أداء {len(active_rows)} موظف للفترة المحددة: {total_orders:,} طلب بإجمالي {_fmt(total_sales)}."
+        )
+        if top_employee and int(top_employee.get("total_sales") or 0) > 0:
+            lines.append(
+                f"الأعلى بالمبيعات: {top_employee.get('name') or 'غير محدد'} بقيمة {_fmt(top_employee.get('total_sales'))}."
+            )
+        lines.append("ستجد التفاصيل والرسوم ومؤشرات كل موظف في نافذة أداء الموظفين.")
 
     if any(w in text for w in ("صندوق", "كاش", "نقد", "خزين", "سيولة")) and scope.get("financial"):
         data = execute_tool("get_cash_movements", {}, scope)
@@ -2311,6 +2439,15 @@ def _execute_action_item(item: AIActionItem, *, employee_id: int) -> dict:
             raise ValueError("الطلب غير موجود")
         before = {"status": invoice.status, "payment_status": invoice.payment_status, "paid_amount": invoice.paid_amount}
         action = payload.get("action")
+        employee = Employee.query.get(employee_id)
+        permission_by_action = {
+            "mark_paid": "pay_orders",
+            "cancel": "delete_orders",
+            "return": "return_orders",
+        }
+        required_permission = permission_by_action.get(action, "manage_orders")
+        if not employee_can(employee, required_permission):
+            raise PermissionError("ليست لديك صلاحية تنفيذ هذا الإجراء على الطلب")
         prev_effective_paid = _effective_paid_amount(invoice)
         if action == "mark_paid":
             ensure_stock_for_transition(invoice, target_status="تم التوصيل", target_payment_status="مسدد")

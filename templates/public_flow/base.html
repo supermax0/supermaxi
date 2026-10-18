@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#faf8f5">
+  <meta name="robots" content="{% block robots %}noindex,follow{% endblock %}">
+  <title>{% block title %}Finora{% endblock %}</title>
+  {% if not is_clinics_business %}{% include '_google_tag.html' %}{% endif %}
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/landing/finora-mark.svg') }}">
+  <link rel="preload" href="{{ url_for('static', filename='fonts/landing/ibm-plex-arabic-regular.woff2') }}" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" media="print" onload="this.media='all'">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/payment-flow.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/public-flow.css', v='20261018') }}">
+  {% block head_extra %}{% endblock %}
+</head>
+<body class="finora-flow {% block body_class %}{% endblock %}">
+  <a class="flow-skip" href="#flow-main">انتقل إلى المحتوى</a>
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}<div class="flow-flashes" aria-live="polite">{% for category, message in messages %}<div class="flow-flash" role="alert">{{ message }}</div>{% endfor %}</div>{% endif %}
+  {% endwith %}
+  <main id="flow-main">{% block content %}{% endblock %}</main>
+  <footer class="flow-footer"><a href="/">FINORA <span>مساحة واحدة لإدارة أعمالك</span></a><nav aria-label="روابط المساعدة"><a href="/terms">شروط الاستخدام</a><a href="/privacy">الخصوصية</a><a href="/landing#contact">تواصل معنا</a></nav></footer>
+  <script src="{{ url_for('static', filename='js/public-flow.js', v='20261018') }}" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

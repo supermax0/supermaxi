@@ -9,17 +9,33 @@
   <title>نقطة البيع — Finora POS</title>
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <script>
+    (function () {
+      try {
+        var saved = localStorage.getItem("theme");
+        var pref = {{ ((employee.theme_preference if employee and employee.theme_preference in ['dark', 'light'] else '') or '')|tojson }};
+        var theme = (saved === "light" || saved === "dark")
+          ? saved
+          : ((pref === "light" || pref === "dark")
+            ? pref
+            : (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"));
+        document.documentElement.setAttribute("data-theme", theme);
+      } catch (e) {
+        document.documentElement.setAttribute("data-theme", "dark");
+      }
+    })();
+  </script>
   <script src="/static/js/no-zoom.js"></script>
-  <script src="/static/js/print-utils.js"></script>
+  <script src="/static/js/print-utils.js?v=20260826-no-login-print"></script>
   <script src="/static/js/digits-enforcer.js"></script>
 
   <link rel="icon" type="image/png" href="{{ platform_logo_url }}">
 
-  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Tajawal:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/pos-white-pro.css') }}?v=20260721-order-notif">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/pos-white-pro.css') }}?v=20261018-save-safety">
 
 </head>
 
@@ -42,70 +58,66 @@
   <div class="pos-app">
 
     <header class="pos-header">
+      {% set is_admin = session.get("role") == "admin" or (current_employee and current_employee.role == "admin") %}
+      {% set pos_return = namespace(url='') %}
+      {% if is_admin or can_view_dashboard %}
+        {% set pos_return.url = '/' %}
+      {% elif can_see_orders %}
+        {% set pos_return.url = '/orders' %}
+      {% elif can_manage_inventory %}
+        {% set pos_return.url = '/inventory' %}
+      {% elif can_see_shipping %}
+        {% set pos_return.url = '/shipping' %}
+      {% elif can_see_expenses %}
+        {% set pos_return.url = '/expenses' %}
+      {% elif can_see_accounts %}
+        {% set pos_return.url = '/accounts' %}
+      {% elif can_see_reports %}
+        {% set pos_return.url = '/reports' %}
+      {% elif can_see_messages %}
+        {% set pos_return.url = '/messages' %}
+      {% elif can_manage_customers %}
+        {% set pos_return.url = '/customers' %}
+      {% elif can_manage_suppliers %}
+        {% set pos_return.url = '/suppliers' %}
+      {% elif can_see_agents %}
+        {% set pos_return.url = '/agents' %}
+      {% elif can_see_pages %}
+        {% set pos_return.url = '/pages' %}
+      {% elif can_manage_employees %}
+        {% set pos_return.url = '/employees' %}
+      {% elif can_manage_settings %}
+        {% set pos_return.url = '/settings' %}
+      {% endif %}
 
-      <div class="pos-header-start">
-
-        <button type="button" class="pos-btn-icon" title="الملف الشخصي" onclick="openPosProfileModal()" aria-label="الملف الشخصي">
-
-          <i class="fas fa-user-circle"></i>
-
-        </button>
-
-        <div class="pos-header-title-wrap">
-
-          <h1>نقطة البيع <span class="pos-badge">POS</span></h1>
-
-          <div class="pos-header-meta pos-desktop-only">
-
-            {{ cashier_name or 'موظف' }}{% if role %} · {{ role }}{% endif %}
-
-            {% if company_name %} · {{ company_name }}{% endif %}
-
-          </div>
-
+      <div class="pos-header-brand">
+        {% if pos_return.url %}
+        <a href="{{ pos_return.url }}" class="pos-btn-icon pos-header-back" title="رجوع" aria-label="رجوع"><i class="fas fa-arrow-right"></i></a>
+        {% endif %}
+        <div class="pos-header-title-inline">
+          <h1>نقطة البيع</h1>
+          <span class="pos-badge">POS v2.4</span>
+          <span class="pos-live-pill pos-desktop-only">
+            <span class="pos-live-dot" aria-hidden="true"></span>
+            المتجر المباشر: {{ company_name or 'الفرع الرئيسي' }}
+          </span>
         </div>
-
       </div>
 
       <div class="pos-header-end">
-        {% set is_admin = session.get("role") == "admin" or (current_employee and current_employee.role == "admin") %}
-        {% set pos_return = namespace(url='') %}
-        {% if is_admin or can_view_dashboard %}
-          {% set pos_return.url = '/' %}
-        {% elif can_see_orders %}
-          {% set pos_return.url = '/orders' %}
-        {% elif can_manage_inventory %}
-          {% set pos_return.url = '/inventory' %}
-        {% elif can_see_shipping %}
-          {% set pos_return.url = '/shipping' %}
-        {% elif can_see_expenses %}
-          {% set pos_return.url = '/expenses' %}
-        {% elif can_see_accounts %}
-          {% set pos_return.url = '/accounts' %}
-        {% elif can_see_reports %}
-          {% set pos_return.url = '/reports' %}
-        {% elif can_see_messages %}
-          {% set pos_return.url = '/messages' %}
-        {% elif can_manage_customers %}
-          {% set pos_return.url = '/customers' %}
-        {% elif can_manage_suppliers %}
-          {% set pos_return.url = '/suppliers' %}
-        {% elif can_see_agents %}
-          {% set pos_return.url = '/agents' %}
-        {% elif can_see_pages %}
-          {% set pos_return.url = '/pages' %}
-        {% elif can_manage_employees %}
-          {% set pos_return.url = '/employees' %}
-        {% elif can_manage_settings %}
-          {% set pos_return.url = '/settings' %}
-        {% endif %}
-
-        <button type="button" class="pos-btn-icon pos-desktop-only" title="بحث (Ctrl+K)" onclick="document.getElementById('searchProduct').focus()">
-
-          <i class="fas fa-search"></i>
-
+        {% set _oil = order_installment_ui or {} %}
+        {% if _oil.get('can_toggle') and not order_data %}
+        <button type="button"
+          id="installmentModeToggleBtn"
+          class="pos-installment-toggle {% if _oil.get('mode_on') %}is-on{% else %}is-off{% endif %}"
+          title="فعّل هذا الوضع حتى يتم تسجيل الطلبات الجديدة ضمن دورة الأقساط."
+          aria-pressed="{% if _oil.get('mode_on') %}true{% else %}false{% endif %}"
+          onclick="PosWP.toggleInstallmentOrderMode()">
+          <span>نظام الأقساط</span>
+          <span class="pos-installment-switch" aria-hidden="true"></span>
+          <span id="installmentModeToggleLabel" class="pos-sr-only">{% if _oil.get('mode_on') %}ON{% else %}OFF{% endif %}</span>
         </button>
-
+        {% endif %}
         {% if can_view_my_orders %}
         <a href="{{ url_for('pos.my_orders') }}" class="pos-my-orders-link" title="طلباتي" aria-label="طلباتي">
           <i class="fas fa-receipt"></i>
@@ -113,13 +125,22 @@
         </a>
         {% endif %}
 
-        {% if pos_return.url %}
-        <a href="{{ pos_return.url }}" class="pos-btn-icon" title="رجوع" aria-label="رجوع"><i class="fas fa-arrow-right"></i></a>
-        {% endif %}
-
+        <button type="button" class="pos-user-chip" title="الملف الشخصي" onclick="openPosProfileModal()" aria-label="الملف الشخصي">
+          <span class="pos-user-meta">
+            <span class="pos-user-name">{{ cashier_name or 'موظف' }}</span>
+            <span class="pos-user-sub"><span class="pos-user-online" aria-hidden="true"></span> كاشير معتمد</span>
+          </span>
+          <span class="pos-user-avatar" aria-hidden="true">{{ (cashier_name or 'م')[0] }}</span>
+        </button>
       </div>
 
     </header>
+    {% if can_print_invoice %}
+    <div id="posSavedInvoice" class="pos-saved-invoice" hidden aria-live="polite">
+      <span id="posSavedInvoiceLabel"></span>
+      <a id="posSavedInvoiceLink" target="_blank" rel="noopener">فتح الفاتورة للطباعة</a>
+    </div>
+    {% endif %}
 
 
 
@@ -134,7 +155,14 @@
 
     {% endif %}
 
-
+    {% set _oil = order_installment_ui or {} %}
+    {% if _oil.get('can_toggle') and not order_data %}
+    <div class="edit-banner" id="installmentModeBanner" style="display:{% if _oil.get('mode_on') %}block{% else %}none{% endif %};background:#fff4d6;border:2px solid #c9a227;color:#5c4300;">
+      ⚠ وضع الأقساط مفعّل — هذا الطلب سيُسجَّل كطلب أقساط لمدة
+      {{ _oil.get('settings', {}).get('duration_value', 7) }}
+      {% if _oil.get('settings', {}).get('duration_unit') == 'hours' %}ساعات{% else %}أيام{% endif %}.
+    </div>
+    {% endif %}
 
     <div class="pos-layout">
 
@@ -143,12 +171,38 @@
         <div class="pos-card pos-card--cart">
 
           <h2 class="pos-card-title pos-desktop-only">
-
-            <span><i class="fas fa-shopping-cart"></i> السلة / الفاتورة</span>
-
-            <span id="itemCount" class="pos-badge">0 منتج</span>
-
+            <span class="pos-cart-title-main">
+              <span class="pos-cart-title-icon"><i class="fas fa-shopping-cart"></i></span>
+              <span>
+                <strong>السلة / الفاتورة الحالية</strong>
+                <small id="posInvoiceHint">جاهز للمحاسبة الفورية</small>
+              </span>
+            </span>
+            <span class="pos-cart-title-actions">
+              <span id="itemCount" class="pos-badge">0 أصناف</span>
+              <button type="button" class="pos-btn-clear-cart" onclick="PosWP.openClearCartDialog()" title="تفريغ السلة" aria-label="تفريغ السلة"><i class="far fa-trash-alt"></i></button>
+            </span>
           </h2>
+
+
+          {% set selected_pos_branch_id = order_data.get('branch_id') if order_data else default_branch_id %}
+          {% if independent_branches_enabled %}
+          <div class="pos-block-branch">
+            <label for="posBranchSelect" class="pos-branch-label">
+              <i class="fas fa-code-branch"></i> فرع خصم المخزون
+            </label>
+            <select id="posBranchSelect" class="pos-input"{% if not is_admin or order_data %} disabled{% endif %}>
+              {% for branch in branches %}
+                {% if is_admin or branch.id == default_branch_id %}
+                <option value="{{ branch.id }}"{% if branch.id == selected_pos_branch_id %} selected{% endif %}>{{ branch.name }}</option>
+                {% endif %}
+              {% endfor %}
+            </select>
+            <small class="pos-branch-help">
+              {% if is_admin %}يُخصم مخزون جميع أصناف الطلب من هذا الفرع{% else %}محدد تلقائياً حسب فرع الموظف{% endif %}
+            </small>
+          </div>
+          {% endif %}
 
 
 
@@ -174,7 +228,7 @@
 
             </div>
 
-            <div id="selectedCustomer" class="pos-selected-customer">لم يتم اختيار زبون</div>
+            <div id="selectedCustomer" class="pos-selected-customer">الزبون المختار: لم يتم اختيار زبون (نقدي عام)</div>
 
           </div>
 
@@ -183,18 +237,24 @@
           <div class="pos-block-cart">
 
             <div class="pos-cart-header-mobile pos-mobile-only">
-
-              <span><i class="fas fa-shopping-cart"></i> السلة</span>
-
-              <span id="itemCountMobile" class="pos-badge">0 منتج</span>
-
+              <span class="pos-cart-title-main">
+                <span class="pos-cart-title-icon"><i class="fas fa-shopping-cart"></i></span>
+                <span>
+                  <strong>السلة / الفاتورة الحالية</strong>
+                  <small>جاهز للمحاسبة الفورية</small>
+                </span>
+              </span>
+              <span class="pos-cart-title-actions">
+                <span id="itemCountMobile" class="pos-badge">0 أصناف</span>
+                <button type="button" class="pos-btn-clear-cart" onclick="PosWP.openClearCartDialog()" title="تفريغ">تفريغ</button>
+              </span>
             </div>
 
 
 
             <div class="pos-cart-table-wrap pos-desktop-only">
 
-              <table class="pos-cart-table">
+              <table class="pos-cart-table" hidden>
 
                 <thead>
 
@@ -217,6 +277,12 @@
                 <tbody id="orderItems"></tbody>
 
               </table>
+
+              <div id="cartEmptyState" class="pos-cart-empty">
+                <i class="fas fa-shopping-cart"></i>
+                <p><strong>السلة فارغة</strong></p>
+                <p class="pos-empty-hint">ابدأ بإضافة منتجات</p>
+              </div>
 
             </div>
 
@@ -244,14 +310,17 @@
             </div>
 
             <div class="pos-actions pos-desktop-only">
+              <div class="pos-actions-secondary">
+                <button type="button" class="pos-btn-danger-soft" onclick="PosWP.openClearCartDialog()">
+                  <i class="fas fa-trash-alt"></i> إلغاء السلة
+                </button>
+                <button type="button" class="pos-btn-secondary" onclick="PosWP.openScheduleModal()">
+                  <i class="fas fa-clock"></i> تأجيل الطلب
+                </button>
+              </div>
               <button type="button" id="btnExecute" class="pos-btn-primary" disabled onclick="PosWP.openOrderNotesModal()">
-                <i class="fas fa-{% if order_data %}save{% else %}print{% endif %}"></i> {% if order_data %}حفظ التعديل{% else %}تنفيذ و طباعة{% endif %}
-              </button>
-              <button type="button" class="pos-btn-secondary" onclick="PosWP.openScheduleModal()">
-                <i class="fas fa-clock"></i> تأجيل الطلب
-              </button>
-              <button type="button" class="pos-btn-danger-soft" onclick="PosWP.openClearCartDialog()">
-                <i class="fas fa-trash-alt"></i> إلغاء السلة
+                <i class="fas fa-{% if order_data %}save{% elif can_print_invoice %}print{% else %}check{% endif %}"></i>
+                {% if order_data %}حفظ التعديل{% elif can_print_invoice %}تنفيذ وطباعة الفاتورة (F9){% else %}تنفيذ{% endif %}
               </button>
             </div>
 
@@ -392,19 +461,20 @@
   <!-- Mobile fixed footer: discount + total + actions -->
   <div class="pos-mobile-fixed-bar pos-mobile-only">
     <button type="button" class="pos-mobile-discount-row" onclick="PosWP.openDiscountModal()">
-      <span class="pos-mobile-discount-label"><i class="fas fa-tag"></i> خصم</span>
+      <span class="pos-mobile-discount-label"><i class="fas fa-tag"></i> إضافة خصم</span>
       <span id="summaryDiscountFixed">0 د.ع</span>
     </button>
     <div class="pos-mobile-fixed-total">
-      <span>المطلوب</span>
+      <span>المجموع المطلوب: <em>(شامل الضريبة)</em></span>
       <strong id="summaryTotalFixed">0 د.ع</strong>
     </div>
     <div class="pos-mobile-fixed-actions">
-      <button type="button" class="pos-btn-danger-soft" onclick="PosWP.openClearCartDialog()">
-        <i class="fas fa-trash-alt"></i> إلغاء
-      </button>
       <button type="button" id="btnExecuteMobile" class="pos-btn-primary" disabled onclick="PosWP.openOrderNotesModal()">
-        <i class="fas fa-print"></i> تنفيذ
+        <i class="fas fa-{% if can_print_invoice %}print{% else %}check{% endif %}"></i>
+        {% if can_print_invoice %}تنفيذ وطباعة{% else %}تنفيذ{% endif %}
+      </button>
+      <button type="button" class="pos-btn-danger-soft" onclick="PosWP.openClearCartDialog()">
+        <i class="fas fa-trash-alt"></i> إلغاء / تعليق
       </button>
     </div>
   </div>
@@ -548,7 +618,7 @@
         {% for p in products %}
         {% set pos_stock = product_pos_stock_map.get(p.id, p.quantity or 0) %}
 
-        <div class="inventory-card pos-product-card" data-id="{{ p.id }}" data-name="{{ p.name|lower }}"
+        <div class="inventory-card pos-product-card" data-id="{{ p.id }}" data-branch-id="{{ p.branch_id or '' }}" data-name="{{ p.name|lower }}"
 
           data-price="{{ p.sale_price or 0 }}" data-stock="{{ pos_stock }}"
 
@@ -601,16 +671,65 @@
 
 
   <!-- Color picker modal -->
-  <div id="colorPickerModal" class="pos-modal">
-    <div class="pos-modal-content">
-      <div class="pos-modal-header">
-        <span>اختر اللون</span>
-        <button type="button" class="pos-modal-close" onclick="PosWP.closeColorPickerModal()">&times;</button>
+  <div id="colorPickerModal" class="pos-modal pos-choice-modal">
+    <div class="pos-modal-content pos-choice-modal-content">
+      <div class="pos-choice-modal-header">
+        <div class="pos-choice-modal-heading">
+          <span class="pos-choice-modal-icon pos-choice-modal-icon--color"><i class="fas fa-palette"></i></span>
+          <div>
+            <span class="pos-choice-eyebrow">خيارات المنتج</span>
+            <h3>اختر اللون</h3>
+          </div>
+        </div>
+        <button type="button" class="pos-modal-close pos-choice-close" onclick="PosWP.closeColorPickerModal()" aria-label="إغلاق">&times;</button>
       </div>
       <div id="colorPickerProductName" class="pos-modal-subtitle"></div>
       <div id="colorPickerList" class="pos-color-picker-list"></div>
-      <div class="pos-modal-actions">
-        <button type="button" class="pos-btn-secondary" onclick="PosWP.closeColorPickerModal()">إلغاء</button>
+      <div class="pos-choice-footer">
+        <span><i class="fas fa-info-circle"></i> الكمية المعروضة هي المتوفرة حالياً لكل لون</span>
+        <button type="button" class="pos-btn-secondary pos-choice-cancel" onclick="PosWP.closeColorPickerModal()">إلغاء</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Sale mode / trade-in picker -->
+  <div id="saleModePickerModal" class="pos-modal pos-choice-modal">
+    <div class="pos-modal-content pos-choice-modal-content">
+      <div class="pos-choice-modal-header">
+        <div class="pos-choice-modal-heading">
+          <span class="pos-choice-modal-icon"><i class="fas fa-shopping-cart"></i></span>
+          <div>
+            <span class="pos-choice-eyebrow">طريقة احتساب السعر</span>
+            <h3>اختر العملية</h3>
+          </div>
+        </div>
+        <button type="button" class="pos-modal-close pos-choice-close" onclick="PosWP.closeSaleModePickerModal()" aria-label="إغلاق">&times;</button>
+      </div>
+      <div id="saleModeProductName" class="pos-modal-subtitle"></div>
+      <div class="pos-sale-choice-grid">
+        <button type="button" class="pos-sale-choice-card pos-sale-choice-card--normal" onclick="PosWP.selectSaleMode('normal')">
+          <span class="pos-sale-choice-icon"><i class="fas fa-shopping-bag"></i></span>
+          <span class="pos-sale-choice-copy">
+            <strong>بيع</strong>
+            <small>اعتماد السعر الاعتيادي للمنتج</small>
+          </span>
+          <span class="pos-sale-choice-price" id="normalSaleModePrice">—</span>
+          <i class="fas fa-arrow-left pos-sale-choice-arrow"></i>
+        </button>
+        <button type="button" class="pos-sale-choice-card pos-sale-choice-card--exchange" onclick="PosWP.selectSaleMode('exchange')">
+          <span class="pos-sale-choice-icon"><i class="fas fa-sync-alt"></i></span>
+          <span class="pos-sale-choice-copy">
+            <strong>استبدال</strong>
+            <small>إضافة القطعة المستلمة إلى مخزون «استبدال»</small>
+          </span>
+          <span class="pos-sale-choice-price" id="exchangeSaleModePrice">—</span>
+          <i class="fas fa-arrow-left pos-sale-choice-arrow"></i>
+        </button>
+      </div>
+      <div class="pos-choice-footer">
+        <span><i class="fas fa-shield-alt"></i> السعر النهائي يُحتسب من النظام تلقائياً</span>
+        <button type="button" class="pos-btn-secondary pos-choice-cancel" onclick="PosWP.closeSaleModePickerModal()">إلغاء</button>
       </div>
     </div>
   </div>
@@ -758,6 +877,17 @@
           </div>
           {% endif %}
         </dl>
+        <div class="pos-profile-theme">
+          <span class="pos-profile-theme-label">المظهر</span>
+          <div class="pos-profile-theme-row" data-setting-group="theme">
+            <button type="button" class="pos-theme-option" data-theme-value="dark" onclick="setPosTheme('dark', this)">
+              <i class="fas fa-moon"></i> داكن
+            </button>
+            <button type="button" class="pos-theme-option" data-theme-value="light" onclick="setPosTheme('light', this)">
+              <i class="fas fa-sun"></i> فاتح
+            </button>
+          </div>
+        </div>
       </div>
       <div class="pos-modal-actions pos-profile-actions">
         <a href="/logout" class="pos-btn-danger pos-btn-block">
@@ -773,19 +903,68 @@
 
     "canEditPrice": {{ can_edit_price|tojson }},
 
+    "canPrintInvoice": {{ can_print_invoice|tojson }},
+
+    "isAdmin": {{ is_admin|tojson }},
+
+    "independentBranches": {{ independent_branches_enabled|tojson }},
+
+    "branches": {{ branch_options|tojson }},
+
+    "currentBranchId": {{ default_branch_id|tojson }},
+
     "orderData": {{ order_data|tojson }},
+
+    "orderInstallmentUi": {{ (order_installment_ui or {})|tojson }},
 
     "cashBalance": {{ cash_balance|tojson }},
 
-    "products": {{ bootstrap_products|tojson }}
+    "products": {{ bootstrap_products|tojson }},
+
+    "primaryProvince": {{ (primary_province or "بغداد")|tojson }}
 
   }</script>
 
   <script src="{{ url_for('static', filename='js/notification-sound-presets.js') }}?v=20260722-sounds50"></script>
   <script src="{{ url_for('static', filename='js/notification-sound.js') }}?v=20260722-sounds50"></script>
-  <script src="{{ url_for('static', filename='js/pos-white-pro.js') }}?v=20260721-order-notif"></script>
+  <script src="{{ url_for('static', filename='js/pos-white-pro.js') }}?v=20261018-save-safety"></script>
   <script>
+    function syncPosThemeButtons(theme) {
+      var group = document.querySelector('#posProfileModal [data-setting-group="theme"]');
+      if (!group) return;
+      group.querySelectorAll('.pos-theme-option').forEach(function (item) {
+        item.classList.toggle('active', item.getAttribute('data-theme-value') === theme);
+      });
+    }
+
+    function setPosTheme(theme, el) {
+      if (theme !== 'dark' && theme !== 'light') return;
+      document.documentElement.setAttribute('data-theme', theme);
+      try { localStorage.setItem('theme', theme); } catch (e) { }
+      if (el) {
+        var group = el.closest('[data-setting-group="theme"]');
+        if (group) {
+          group.querySelectorAll('.pos-theme-option').forEach(function (item) {
+            item.classList.remove('active');
+          });
+        }
+        el.classList.add('active');
+      } else {
+        syncPosThemeButtons(theme);
+      }
+      try {
+        window.dispatchEvent(new CustomEvent('finora:themechange', { detail: { theme: theme } }));
+      } catch (e) { }
+      fetch('/employees/profile/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ theme: theme })
+      }).catch(function () { });
+    }
+
     function openPosProfileModal() {
+      var theme = document.documentElement.getAttribute('data-theme') || 'dark';
+      syncPosThemeButtons(theme);
       document.getElementById('posProfileModal')?.classList.add('show');
     }
     function closePosProfileModal() {
@@ -794,6 +973,7 @@
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') closePosProfileModal();
     });
+    syncPosThemeButtons(document.documentElement.getAttribute('data-theme') || 'dark');
   </script>
 
   {% set is_admin = session.get("role") == "admin" or (current_employee and current_employee.role == "admin") %}

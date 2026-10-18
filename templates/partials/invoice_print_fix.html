@@ -1,4 +1,5 @@
-{# Shared professional print rules for all invoice templates #}
+{# Shared print hygiene for A4 invoice templates.
+   Thermal templates must keep a later <style id="thermalPrintOverrides"> with @page 80mm. #}
 <style id="finoraInvoicePrintFix">
   @media print {
     html, body {
@@ -34,10 +35,10 @@
       page-break-before: avoid;
       break-before: avoid;
     }
+  }
 
-    @page {
-      size: auto;
-      margin: 8mm;
-    }
+  @page {
+    size: auto;
+    margin: 8mm;
   }
 </style>

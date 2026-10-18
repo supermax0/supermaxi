@@ -1,0 +1,45 @@
+<article class="store-product-card {{ 'is-reservation' if product.is_reservation else ('is-unavailable' if not product.is_available) }}">
+  <div class="store-product-card__badges">
+    <span class="store-duration"><i>✓</i> شراء نقدي</span>
+    {% if product.featured or product.is_new %}<span class="store-featured-badge">{{ 'مميز' if product.featured else 'جديد' }}</span>{% endif %}
+  </div>
+  <button class="cash-favorite-button {{ 'is-active' if product.id in favorite_ids }}" type="button"
+          data-favorite-toggle="{{ url_for('storefront.favorite_toggle', tenant_slug=shop_tenant_slug, product_id=product.id) }}"
+          aria-label="{{ 'إزالة من المفضلة' if product.id in favorite_ids else 'إضافة إلى المفضلة' }}">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"></path></svg>
+  </button>
+  <a class="store-product-card__media" href="{{ product.url }}">
+    {% if product.image_url %}
+      <span class="store-card-image-loader" aria-hidden="true"><i></i></span>
+      <img src="{{ product.image_url }}" alt="{{ product.name }}" loading="lazy" decoding="async" data-store-card-image>
+    {% else %}<span class="store-product-card__empty-image"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9" r="1.5"></circle><path d="m4 17 4.5-4.5 3 3 2-2 6.5 6.5"></path></svg><b>صورة المنتج غير متوفرة</b></span>{% endif %}
+  </a>
+  <div class="store-product-card__body">
+    <div class="store-product-card__meta"><span>{{ product.category or 'منتجات المتجر' }}</span>{% if product.sku %}<small dir="ltr">{{ product.sku }}</small>{% endif %}</div>
+    <h3><a href="{{ product.url }}">{{ product.name }}</a></h3>
+    <p>{{ product.description or 'منتج أصلي بسعر نقدي واضح وتوصيل سريع.' }}</p>
+    {% set specs_preview = product.features[:2] if product.features else [] %}
+    {% if not specs_preview and product.specs %}
+      {% set specs_preview = product.specs[:2] %}
+    {% endif %}
+    {% if specs_preview %}
+    <ul class="store-product-card__specs" aria-label="مواصفات مختصرة">
+      {% for spec in specs_preview %}
+        <li>{% if spec is mapping %}{{ spec.value }}{% else %}{{ spec }}{% endif %}</li>
+      {% endfor %}
+    </ul>
+    {% endif %}
+    <div class="store-monthly">
+      <span>السعر النقدي</span>
+      <div class="{% if product.price_currency == 'USD' %}is-usd{% endif %}">{% if product.price_currency == 'USD' %}<b class="lux-usd-mark">$</b>{% endif %}<strong>{{ product.price|toLocaleString }}</strong>{% if product.price_currency != 'USD' %}<small>{{ product.currency_label or 'د.ع' }}</small>{% endif %}</div>
+    </div>
+    <div class="store-product-card__footer">
+      {% if product.is_available or product.is_reservation %}
+        <span class="store-stock-status{% if product.is_reservation %} is-reservation{% endif %}"><i></i> {{ 'متوفر' if product.is_available else 'متاح للطلب' }}</span>
+        <button class="store-product-card__button" type="button" data-sf-add-cart="{{ product.id }}"><span>أضف للسلة</span><b>←</b></button>
+      {% else %}
+        <span class="store-stock-status is-out"><i></i> غير متوفر</span><span class="store-product-card__button is-disabled">غير متاح</span>
+      {% endif %}
+    </div>
+  </div>
+</article>

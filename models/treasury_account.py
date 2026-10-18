@@ -7,6 +7,7 @@ class TreasuryAccount(db.Model):
     __tablename__ = "treasury_account"
 
     id = db.Column(db.Integer, primary_key=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey("branch.id"), nullable=True, index=True)
     name = db.Column(db.String(120), nullable=False)
     account_type = db.Column(db.String(20), nullable=False, default="bank")  # cash | bank
     is_default = db.Column(db.Boolean, default=False, nullable=False)

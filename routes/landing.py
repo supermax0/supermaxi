@@ -19,7 +19,9 @@ from models.core.landing_content import (
     LandingSection,
     LandingTestimonial,
 )
-from utils.landing_content import ensure_landing_seed, get_landing_payload, publish_landing
+from models.core.global_setting import GlobalSetting
+from models.core.subscription_plan import SubscriptionPlan
+from utils.landing_content import clear_landing_cache, ensure_landing_seed, get_landing_payload, publish_landing
 from utils.landing_content import log_landing_audit
 
 
@@ -44,6 +46,11 @@ URL_FIELDS = {
     "thumbnail_url",
 }
 VIDEO_HOST_RE = re.compile(r"^(https?://|/).+", re.IGNORECASE)
+FREE_PLAN_FEATURE_KEYS = {
+    "orders", "pos", "inventory", "customers", "cashflow", "printing",
+    "expenses", "suppliers", "purchases", "shipping", "reports_adv",
+    "rbac", "agents", "accounts", "ai_assistant", "ai_workspace", "messages",
+}
 
 
 def _is_superadmin():
@@ -270,6 +277,128 @@ def api_superadmin_landing():
     if denied:
         return denied
     return jsonify({"success": True, "data": get_landing_payload("draft", include_hidden=True)})
+
+
+def _global_setting_value(key, default):
+    row = GlobalSetting.query.filter_by(key=key).first()
+    return row.value if row else default
+
+
+def _set_global_setting_value(key, value, description):
+    row = GlobalSetting.query.filter_by(key=key).first()
+    if row:
+        row.value = str(value)
+        row.description = description
+    else:
+        db.session.add(GlobalSetting(key=key, value=str(value), description=description))
+
+
+def _free_plan_payload():
+    enabled = str(_global_setting_value("FREE_PLAN_ENABLED", "1")).strip().lower() in {"1", "true", "yes", "on"}
+    try:
+        trial_days = max(1, min(365, int(_global_setting_value("TRIAL_DAYS", "14"))))
+    except (TypeError, ValueError):
+        trial_days = 14
+    system_plan = SubscriptionPlan.query.filter_by(plan_key="free").first()
+    landing_plan = LandingPricingPlan.query.filter_by(scope="draft", slug="free").first()
+    system_features = system_plan.get_features() if system_plan else {}
+    return {
+        "enabled": enabled,
+        "trial_days": trial_days,
+        "name": (system_plan.name if system_plan else None) or (landing_plan.name if landing_plan else None) or "الخطة المجانية",
+        "max_users": system_plan.max_users if system_plan else 2,
+        "max_orders_monthly": system_plan.max_orders_monthly if system_plan else 100,
+        "system_features": {key: bool(system_features.get(key, False)) for key in sorted(FREE_PLAN_FEATURE_KEYS)},
+        "description": (landing_plan.description if landing_plan else "جرّب أساسيات فينورا مجاناً قبل اختيار الخطة المناسبة."),
+        "badge_text": (landing_plan.badge_text if landing_plan else "تجربة مجانية"),
+        "cta_text": (landing_plan.cta_text if landing_plan else "ابدأ مجاناً"),
+        "landing_features": (landing_plan.to_dict().get("features", []) if landing_plan else ["إدارة الطلبات", "نقطة البيع", "تقارير أساسية"]),
+    }
+
+
+@landing_bp.route("/api/superadmin/landing/free-plan", methods=["GET", "PUT"])
+@landing_bp.route("/api/super-admin/landing/free-plan", methods=["GET", "PUT"])
+def api_landing_free_plan():
+    denied = _require_superadmin_json()
+    if denied:
+        return denied
+    if request.method == "GET":
+        return jsonify({"success": True, "item": _free_plan_payload()})
+
+    data = _payload()
+    try:
+        trial_days = int(data.get("trial_days", 14))
+    except (TypeError, ValueError):
+        return jsonify({"success": False, "error": "مدة التجربة يجب أن تكون رقماً صحيحاً"}), 400
+    if not 1 <= trial_days <= 365:
+        return jsonify({"success": False, "error": "مدة التجربة يجب أن تكون بين يوم واحد و365 يوماً"}), 400
+
+    name = str(data.get("name") or "").strip()
+    if not name:
+        return jsonify({"success": False, "error": "اسم الخطة المجانية مطلوب"}), 400
+
+    def optional_limit(key, default):
+        value = data.get(key)
+        if value in (None, ""):
+            return None
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            raise ValueError(f"القيمة غير صالحة: {key}")
+        if parsed < 1:
+            raise ValueError("الحدود يجب أن تكون رقماً موجباً أو تترك فارغة لغير المحدود")
+        return parsed
+
+    try:
+        max_users = optional_limit("max_users", 2)
+        max_orders = optional_limit("max_orders_monthly", 100)
+    except ValueError as exc:
+        return jsonify({"success": False, "error": str(exc)}), 400
+
+    enabled = _bool_value(data.get("enabled"))
+    requested_features = data.get("system_features") if isinstance(data.get("system_features"), dict) else {}
+    system_features = {key: bool(requested_features.get(key, False)) for key in FREE_PLAN_FEATURE_KEYS}
+    landing_features = data.get("landing_features") if isinstance(data.get("landing_features"), list) else []
+    landing_features = [str(item).strip()[:160] for item in landing_features if str(item).strip()][:20]
+
+    old_value = _free_plan_payload()
+    _set_global_setting_value("FREE_PLAN_ENABLED", "1" if enabled else "0", "تفعيل الاشتراك المجاني للتسجيلات الجديدة")
+    _set_global_setting_value("TRIAL_DAYS", trial_days, "عدد أيام التجربة المجانية للشركات")
+
+    system_plan = SubscriptionPlan.query.filter_by(plan_key="free").first()
+    if not system_plan:
+        system_plan = SubscriptionPlan(plan_key="free", name=name)
+        db.session.add(system_plan)
+    system_plan.name = name
+    system_plan.price_monthly = 0
+    system_plan.price_yearly = 0
+    system_plan.max_users = max_users
+    system_plan.max_orders_monthly = max_orders
+    system_plan.set_features(system_features)
+
+    landing_plan = LandingPricingPlan.query.filter_by(scope="draft", slug="free").first()
+    if not landing_plan:
+        landing_plan = LandingPricingPlan(scope="draft", slug="free", sort_order=5)
+        db.session.add(landing_plan)
+    landing_plan.name = name
+    landing_plan.price = 0
+    landing_plan.currency = "د.ع"
+    landing_plan.billing_period = f"{trial_days} يوم"
+    landing_plan.description = str(data.get("description") or "").strip()[:255]
+    landing_plan.features_json = _json_text(landing_features, [])
+    landing_plan.limits_json = _json_text({"trial_days": trial_days, "max_users": max_users, "max_orders_monthly": max_orders}, {})
+    landing_plan.cta_text = str(data.get("cta_text") or "ابدأ مجاناً").strip()[:120]
+    landing_plan.cta_url = "/signup?plan=free&billing=monthly"
+    landing_plan.badge_text = str(data.get("badge_text") or "تجربة مجانية").strip()[:120]
+    landing_plan.is_visible = enabled
+    landing_plan.last_edited_by = session.get("superadmin_id")
+
+    db.session.flush()
+    new_value = _free_plan_payload()
+    _audit("update_free_plan", "free_plan", landing_plan, old_value, new_value)
+    db.session.commit()
+    clear_landing_cache()
+    return jsonify({"success": True, "item": _free_plan_payload()})
 
 
 @landing_bp.route("/api/superadmin/landing/preview", methods=["GET"])

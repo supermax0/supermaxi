@@ -6,6 +6,7 @@ class PurchasePayment(db.Model):
     __tablename__ = "purchase_payment"
 
     id = db.Column(db.Integer, primary_key=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey("branch.id"), nullable=True, index=True)
     purchase_id = db.Column(db.Integer, db.ForeignKey("purchase.id"), nullable=False, index=True)
     amount = db.Column(db.Integer, nullable=False, default=0)
     paid_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)

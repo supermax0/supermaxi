@@ -73,6 +73,24 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
   }
 
   // ==================== Employee Form Submit ====================
+  function toggleEmployeeBranchField() {
+    const role = document.getElementById('emp_role')?.value;
+    const field = document.getElementById('empBranchField');
+    const select = document.getElementById('emp_branch_id');
+    if (!field || !select) return;
+    const isAdmin = role === 'admin';
+    field.hidden = isAdmin;
+    select.required = !isAdmin;
+    if (isAdmin) select.value = '';
+  }
+
+  function filterEmployeesByBranch(branchId) {
+    const url = new URL(window.location.href);
+    if (branchId) url.searchParams.set('branch_id', branchId);
+    else url.searchParams.delete('branch_id');
+    window.location.href = url.toString();
+  }
+
   function handleEmployeeSubmit(event) {
     event.preventDefault();
 
@@ -210,6 +228,18 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
       phoneField.style.display = data.is_delivery ? 'none' : '';
       phoneInput.value = data.phone || '';
     }
+    const transferField = document.getElementById('editEmpTransferField');
+    const transferInput = document.getElementById('editEmpTransferNumber');
+    if (transferField && transferInput) {
+      transferField.style.display = data.is_delivery ? 'none' : '';
+      transferInput.value = data.transfer_number || '';
+    }
+    const branchField = document.getElementById('editEmpBranchField');
+    const branchInput = document.getElementById('editEmpBranch');
+    if (branchField && branchInput) {
+      branchField.style.display = (data.is_delivery || data.role === 'admin') ? 'none' : '';
+      branchInput.value = data.branch_id || '';
+    }
     document.getElementById('editEmpSalary').value = data.salary || 0;
     const payTypeEl = document.getElementById('editEmpPayType');
     const payDayEl = document.getElementById('editEmpPayDay');
@@ -225,11 +255,25 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
     }
     document.getElementById('editEmpPassword').value = '';
     document.getElementById('editEmployeeModalTitle').textContent = data.is_delivery ? 'تعديل مندوب' : 'تعديل موظف';
+    const editSubtitle = document.querySelector('#editEmployeeModal .emp-edit-modal__subtitle');
+    if (editSubtitle) {
+      editSubtitle.textContent = data.is_delivery
+        ? 'حدّث بيانات المندوب والراتب وجدول الصرف'
+        : 'حدّث بيانات الموظف والراتب وجدول الصرف';
+    }
     document.getElementById('editEmployeeModal').classList.add('is-open');
   }
   function closeEditEmployeeModal() {
     document.getElementById('editEmployeeModal').classList.remove('is-open');
   }
+  document.getElementById('editEmployeeModal')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeEditEmployeeModal();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape') return;
+    const modal = document.getElementById('editEmployeeModal');
+    if (modal?.classList.contains('is-open')) closeEditEmployeeModal();
+  });
   async function saveEditEmployee() {
     const id = document.getElementById('editEmpId').value;
     const isDelivery = document.getElementById('editEmpIsDelivery').value === '1';
@@ -243,10 +287,14 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
     if (!isDelivery) {
       const phoneInput = document.getElementById('editEmpPhone');
       if (phoneInput) body.phone = phoneInput.value.trim();
+      const transferInput = document.getElementById('editEmpTransferNumber');
+      if (transferInput) body.transfer_number = transferInput.value.trim();
       const commissionInput = document.getElementById('editEmpCommission');
       if (commissionInput) {
         body.commission = commissionInput.value;
       }
+      const branchInput = document.getElementById('editEmpBranch');
+      if (branchInput && branchInput.offsetParent !== null) body.branch_id = branchInput.value;
     }
     const pwd = document.getElementById('editEmpPassword').value.trim();
     if (pwd) body.password = pwd;
@@ -455,10 +503,28 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
         headerName: __t('employees_col_name'),
         field: "name",
         flex: 1.5,
-        minWidth: 150,
-        cellRenderer: params => `<strong>${params.value}</strong>`
+        minWidth: 180,
+        cellRenderer: params => {
+          const name = String(params.value || '').replace(/^🚚\s*/, '');
+          const initial = (name.trim().charAt(0) || '?').toUpperCase();
+          const active = params.data.status === 'active' ? ' is-active' : '';
+          const idLabel = params.data.is_delivery ? '' : `<small>#${params.data.id}</small>`;
+          return `<div class="emp-name-cell">
+            <span class="emp-name-avatar${active}" aria-hidden="true">${initial}</span>
+            <span class="emp-name-copy">
+              <strong>${params.value || ''}${idLabel}</strong>
+              <span>${params.data.role_name || ''}</span>
+            </span>
+          </div>`;
+        }
       },
       { headerName: __t('employees_col_username'), field: "username", width: 120 },
+      {
+        headerName: "الفرع",
+        field: "branch_name",
+        width: 130,
+        cellRenderer: params => `<span class="role-badge">${params.value || 'غير محدد'}</span>`
+      },
       { headerName: "الأدوار", field: "role_labels", width: 140, valueFormatter: p => (p.value || []).join(', ') || p.data.role_name },
       {
         headerName: "البيجات",
@@ -571,9 +637,10 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
     const gridOptions = {
       columnDefs: columnDefs,
       rowData: rowData,
-      rowHeight: 60,
+      rowHeight: 64,
       headerHeight: 48,
-      suppressRowClickSelection: true,
+      rowSelection: 'single',
+      suppressRowClickSelection: false,
       pagination: true,
       paginationPageSize: 20,
       paginationPageSizeSelector: [10, 20, 50, 100],
@@ -598,15 +665,24 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
       },
       onGridReady: (params) => {
         gridApi = params.api;
+        const first = params.api.getDisplayedRowAtIndex(0);
+        if (first && first.data) {
+          first.setSelected(true);
+          selectEmployeeDetail(first.data);
+        }
+      },
+      onRowClicked: (event) => {
+        if (!event.data) return;
+        selectEmployeeDetail(event.data);
       },
       isExternalFilterPresent: () => {
-        const roleFilter = document.getElementById('filterRole').value;
-        const statusFilter = document.getElementById('filterStatus').value;
+        const roleFilter = document.getElementById('filterRole')?.value || '';
+        const statusFilter = document.getElementById('filterStatus')?.value || '';
         return roleFilter !== '' || statusFilter !== '';
       },
       doesExternalFilterPass: (node) => {
-        const roleFilter = document.getElementById('filterRole').value;
-        const statusFilter = document.getElementById('filterStatus').value;
+        const roleFilter = document.getElementById('filterRole')?.value || '';
+        const statusFilter = document.getElementById('filterStatus')?.value || '';
         const matchesRole = !roleFilter || node.data.role === roleFilter;
         const matchesStatus = !statusFilter || node.data.status === statusFilter;
         return matchesRole && matchesStatus;
@@ -1037,6 +1113,158 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
       });
   }
 
+  // ==================== Stitch detail panel ====================
+  let selectedEmployeeRow = null;
+
+  function empMoney(value) {
+    const n = Number(value || 0);
+    return `${n.toLocaleString()} ${__t('employees_currency_iqd')}`;
+  }
+
+  function openAddEmployeeSection() {
+    const section = document.getElementById('groupAddEmployee');
+    if (!section) return;
+    section.classList.remove('collapsed');
+    try {
+      const states = JSON.parse(localStorage.getItem('employees_sections_states') || '{}');
+      states.groupAddEmployee = false;
+      localStorage.setItem('employees_sections_states', JSON.stringify(states));
+    } catch (e) { /* ignore */ }
+    section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    document.getElementById('emp_name')?.focus();
+  }
+
+  function setEmpDetailTab(tab) {
+    document.querySelectorAll('[data-emp-tab]').forEach((btn) => {
+      const active = btn.getAttribute('data-emp-tab') === tab;
+      btn.classList.toggle('is-active', active);
+      btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    document.querySelectorAll('[data-emp-tabpane]').forEach((pane) => {
+      const active = pane.getAttribute('data-emp-tabpane') === tab;
+      pane.hidden = !active;
+      pane.classList.toggle('is-active', active);
+    });
+  }
+
+  function selectEmployeeDetail(row) {
+    selectedEmployeeRow = row || null;
+    const panel = document.getElementById('empDetailPanel');
+    const empty = document.getElementById('empDetailEmpty');
+    const body = document.getElementById('empDetailBody');
+    if (!panel || !empty || !body) return;
+
+    if (!row) {
+      panel.setAttribute('data-empty', '1');
+      empty.hidden = false;
+      body.hidden = true;
+      return;
+    }
+
+    panel.setAttribute('data-empty', '0');
+    empty.hidden = true;
+    body.hidden = false;
+
+    const cleanName = String(row.name || '').replace(/^🚚\s*/, '');
+    const initial = (cleanName.trim().charAt(0) || '?').toUpperCase();
+    const currency = __t('employees_currency_iqd');
+    const isActive = row.status === 'active';
+
+    const setText = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    };
+
+    setText('empDetailAvatar', initial);
+    setText('empDetailName', row.name || '—');
+    setText('empDetailRole', row.role_name || '—');
+    setText('empDetailId', row.is_delivery ? `مندوب #${row.id}` : `#${row.id}`);
+    setText('empDetailPhone', row.phone || '—');
+    setText('empDetailUsername', row.username || '—');
+    setText('empDetailBranch', row.branch_name || '—');
+    setText('empDetailRoleMeta', row.role_name || '—');
+    setText(
+      'empDetailCommission',
+      row.is_delivery || row.role === 'admin' ? '—' : empMoney(row.commission)
+    );
+    setText('empDetailSalary', empMoney(row.salary));
+    setText(
+      'empDetailDue',
+      row.is_delivery || row.role === 'admin' ? '—' : empMoney(row.total_due)
+    );
+    setText('empDetailOrders', String(row.orders ?? 0));
+    setText('empDetailSales', empMoney(row.sales));
+    setText('empDetailPages', String(row.pages_count ?? 0));
+    setText('empDetailPagesCount', String(row.pages_count ?? 0));
+    setText(
+      'empDetailRate',
+      row.is_delivery || row.role === 'admin'
+        ? '—'
+        : `${Number(row.commission_rate || 0).toLocaleString()} ${currency}`
+    );
+    setText(
+      'empDetailRoleLabels',
+      (row.role_labels && row.role_labels.length)
+        ? row.role_labels.join(' · ')
+        : (row.role_name || '—')
+    );
+
+    const badge = document.getElementById('empDetailStatusBadge');
+    if (badge) {
+      badge.textContent = isActive
+        ? (__t('employees_status_active') || 'نشط')
+        : (__t('employees_status_inactive') || 'موقوف');
+      badge.classList.toggle('is-active', isActive);
+    }
+
+    const moreBtn = document.getElementById('empDetailMoreBtn');
+    if (moreBtn) moreBtn.setAttribute('data-grid-id', String(row.grid_id));
+
+    const rolesLink = document.getElementById('empDetailRolesLink');
+    if (rolesLink) {
+      if (row.is_delivery) {
+        rolesLink.setAttribute('href', '/delivery-agent/login');
+        rolesLink.target = '_blank';
+        rolesLink.innerHTML = `<i class="fas fa-truck"></i> ${__t('employees_action_agent_page') || 'صفحة المندوب'}`;
+      } else {
+        rolesLink.setAttribute('href', `/admin/permissions/employee/${encodeURIComponent(row.id)}/roles`);
+        rolesLink.removeAttribute('target');
+        rolesLink.innerHTML = `<i class="fas fa-user-shield"></i> ${__t('employees_action_roles') || 'فتح إدارة الصلاحيات'}`;
+      }
+    }
+
+    setEmpDetailTab('overview');
+  }
+
+  function initEmpDetailPanel() {
+    const editBtn = document.getElementById('empDetailEditBtn');
+    editBtn?.addEventListener('click', () => {
+      if (!selectedEmployeeRow) return;
+      openEditEmployeeModal(selectedEmployeeRow.grid_id);
+    });
+
+    document.getElementById('empDetailPagesBtn')?.addEventListener('click', () => {
+      if (!selectedEmployeeRow || selectedEmployeeRow.is_delivery) return;
+      openPagesModal(selectedEmployeeRow.id, selectedEmployeeRow.name);
+    });
+
+    document.getElementById('empDetailLogBtn')?.addEventListener('click', () => {
+      if (!selectedEmployeeRow || selectedEmployeeRow.is_delivery) return;
+      viewEmployeeOrders(selectedEmployeeRow.id, selectedEmployeeRow.name);
+    });
+
+    document.querySelectorAll('[data-emp-tab]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const tab = btn.getAttribute('data-emp-tab');
+        setEmpDetailTab(tab);
+        if (!selectedEmployeeRow) return;
+        if (tab === 'pages' && !selectedEmployeeRow.is_delivery) {
+          /* keep tab content; modal opened via button */
+        }
+      });
+    });
+  }
+
   // ==================== Collapsible Sections Logic ====================
   function toggleSection(sectionId) {
     const section = document.getElementById(sectionId);
@@ -1074,8 +1302,10 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
 
   // Initialize on page load
   document.addEventListener('DOMContentLoaded', function () {
+    toggleEmployeeBranchField();
     restoreSectionStates();
     initCommissionStatementMonth();
+    initEmpDetailPanel();
     if (document.getElementById('employeesTable')) {
       initAgGrid();
     }

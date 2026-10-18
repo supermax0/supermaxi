@@ -1,4 +1,4 @@
-{% extends "storefront/base.html" %}
+{% extends storefront_base|default("storefront/base.html") %}
 {% block title %}{{ product.name }} - {{ store_design.store_name }}{% endblock %}
 {% block content %}
 
@@ -22,20 +22,21 @@
   <span class="lux-pd-breadcrumb-current">{{ product.name }}</span>
 </nav>
 
-<section class="lux-pd lux-pd--stack" id="luxProductDetail">
+<section class="lux-pd lux-pd--stack lux-pd--refined" id="luxProductDetail">
   {# —— 1) معرض كبير أولاً —— #}
   <div class="lux-pd-gallery-wrap">
     <div class="lux-pd-gallery">
       <div class="lux-pd-badges" aria-label="شارات المنتج">
         {% if product.discount_percent %}<span class="lux-badge lux-badge-sale">-{{ product.discount_percent }}%</span>{% endif %}
         {% if product.is_new %}<span class="lux-badge lux-badge-new">جديد</span>{% endif %}
-        {% if not product.is_available %}<span class="lux-badge lux-badge-out">غير متوفر</span>{% endif %}
+        {% if product.is_reservation %}<span class="lux-badge lux-badge-reservation">متاح للطلب</span>{% elif not product.is_available %}<span class="lux-badge lux-badge-out">غير متوفر</span>{% endif %}
       </div>
 
       <div class="lux-pd-media" id="luxPdMedia" data-mode="image">
         {% if gallery_images %}
         <img id="sfMainImage" class="lux-pd-main-img" src="{{ gallery_images[0] }}" alt="{{ product.name }}" loading="eager">
         {% else %}
+        <img id="sfMainImage" class="lux-pd-main-img" alt="{{ product.name }}" hidden>
         <span class="lux-pd-placeholder" id="sfMainPlaceholder">{{ product.name[:1] }}</span>
         {% endif %}
 
@@ -105,7 +106,7 @@
 
     <div class="lux-pd-prices">
       {% if product.price and product.price > 0 %}
-      <span class="lux-pd-price">{{ "{:,.0f}".format(product.price) }} <small>د.ع</small></span>
+      <span class="lux-pd-price{% if product.price_currency == 'USD' %} is-usd{% endif %}">{% if product.price_currency == 'USD' %}<b class="lux-usd-mark">$</b>{% endif %}{{ "{:,.0f}".format(product.price) }}{% if product.price_currency != 'USD' %} <small>{{ product.currency_label or 'د.ع' }}</small>{% endif %}</span>
       {% if product.old_price and product.old_price > product.price %}
       <span class="lux-pd-old-price">{{ "{:,.0f}".format(product.old_price) }} د.ع</span>
       {% if product.discount_percent %}<span class="lux-pd-save">وفّر {{ "{:,.0f}".format(product.old_price - product.price) }} د.ع</span>{% endif %}
@@ -116,7 +117,7 @@
     </div>
 
     <div class="lux-pd-stock">
-      <span class="lux-pd-stock-dot {{ 'in' if product.is_available else 'out' }}" aria-hidden="true"></span>
+      <span class="lux-pd-stock-dot {{ 'in' if product.is_available else ('reservation' if product.is_reservation else 'out') }}" aria-hidden="true"></span>
       {% if product.is_available %}
       <span class="lux-pd-stock-text">متوفر — جاهز للشحن</span>
       {% if product.stock <= 5 and product.stock > 0 %}
@@ -124,39 +125,26 @@
       {% elif product.stock > 0 %}
       <span class="lux-pd-stock-qty">{{ product.stock }} قطعة بالمخزون</span>
       {% endif %}
+      {% elif product.is_reservation %}
+      <span class="lux-pd-stock-text reservation">متاح للطلب — اختر الكمية التي تريدها</span>
       {% else %}
       <span class="lux-pd-stock-text out">غير متوفر حالياً</span>
       {% endif %}
     </div>
 
-    {% if product.specs %}
-    <div class="lux-pd-specs lux-pd-specs--inline">
-      <h2>المواصفات التقنية</h2>
-      <table class="lux-pd-spec-table">
-        <tbody>
-          {% for item in product.specs %}
-          <tr class="lux-pd-spec-row">
-            <th scope="row" class="lux-pd-spec-label">{{ item.label }}</th>
-            <td class="lux-pd-spec-value">{{ item.value }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
-    {% endif %}
-
+    {% include "storefront/_color_picker.html" %}
     {# —— الشراء —— #}
     <div class="lux-pd-buy" id="luxPdBuy">
       <div class="lux-pd-qty-wrap">
         <span class="lux-pd-qty-label">الكمية</span>
         <div class="lux-pd-qty" role="group" aria-label="الكمية">
           <button type="button" class="lux-pd-qty-btn" data-lux-qty-minus aria-label="تقليل الكمية">−</button>
-          <input id="sfQuantity" class="lux-pd-qty-input" type="number" min="1" max="{{ product.stock if product.is_available else 1 }}" name="quantity" value="1" form="sfAddForm" aria-label="الكمية">
+          <input id="sfQuantity" class="lux-pd-qty-input" type="number" min="1" max="9999" name="quantity" value="1" form="sfAddForm" aria-label="الكمية">
           <button type="button" class="lux-pd-qty-btn" data-lux-qty-plus aria-label="زيادة الكمية">+</button>
         </div>
       </div>
       <form id="sfAddForm" class="lux-pd-actions">
-        <button class="lux-btn-cart lux-pd-add-cart" type="button" data-sf-add-cart="{{ product.id }}" {% if not product.is_available %}disabled{% endif %}>أضف إلى السلة</button>
+        <button class="lux-btn-cart lux-pd-add-cart" type="button" data-sf-add-cart="{{ product.id }}" {% if not product.is_available and not product.is_reservation %}disabled{% endif %}>أضف إلى السلة</button>
         <a class="lux-pd-checkout" href="{{ url_for('storefront.cart_page', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.cart_page', tenant_slug=shop_tenant_slug) }}">عرض السلة</a>
       </form>
       <a class="lux-pd-back" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, dev=request.args.get('dev')) if request.args.get('dev') else url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">← متابعة التسوق</a>
@@ -168,20 +156,49 @@
       <li><span aria-hidden="true">↩</span> إرجاع سهل</li>
       <li><span aria-hidden="true">☎</span> دعم عملاء</li>
     </ul>
+
+    {% if product.specs or product.features or product.long_description %}
+    <div class="lux-pd-specs lux-pd-specs--inline">
+      <h2>مواصفات المنتج</h2>
+      {% if product.features %}
+      <ul class="cash-pd-features" aria-label="أبرز مواصفات المنتج">
+        {% for feature in product.features %}
+        <li><span aria-hidden="true">✓</span><b>{{ feature }}</b></li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+      {% if product.long_description %}
+      <p class="cash-pd-description">{{ product.long_description }}</p>
+      {% endif %}
+      {% if product.specs %}
+      <table class="lux-pd-spec-table">
+        <tbody>
+          {% for item in product.specs %}
+          <tr class="lux-pd-spec-row">
+            <th scope="row" class="lux-pd-spec-label">{{ item.label }}</th>
+            <td class="lux-pd-spec-value">{{ item.value }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% endif %}
+    </div>
+    {% endif %}
+
   </div>
 </section>
 
 {# شريط شراء ثابت للهاتف #}
 <div class="lux-pd-mobile-bar" id="luxPdMobileBar" aria-label="شراء سريع">
-  <div class="lux-pd-mobile-bar-price">
+  <div class="lux-pd-mobile-bar-price{% if product.price_currency == 'USD' %} is-usd{% endif %}">
     {% if product.price and product.price > 0 %}
-    <strong>{{ "{:,.0f}".format(product.price) }}</strong> <span>د.ع</span>
+    {% if product.price_currency == 'USD' %}<b class="lux-usd-mark">$</b>{% endif %}<strong>{{ "{:,.0f}".format(product.price) }}</strong>{% if product.price_currency != 'USD' %} <span>{{ product.currency_label or 'د.ع' }}</span>{% endif %}
     {% else %}
     <strong>السعر لاحقاً</strong>
     {% endif %}
   </div>
-  <button class="lux-btn-cart lux-pd-mobile-add" type="button" data-sf-add-cart="{{ product.id }}" {% if not product.is_available %}disabled{% endif %}>
-    {% if product.is_available %}أضف للسلة{% else %}غير متوفر{% endif %}
+  <button class="lux-btn-cart lux-pd-mobile-add" type="button" data-sf-add-cart="{{ product.id }}" {% if not product.is_available and not product.is_reservation %}disabled{% endif %}>
+    {% if product.is_available or product.is_reservation %}أضف للسلة{% else %}غير متوفر{% endif %}
   </button>
 </div>
 

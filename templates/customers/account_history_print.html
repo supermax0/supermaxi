@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>كشف الحساب التاريخي</title>
+<style>
+@page { size: A4 landscape; margin: 12mm; }
+* { box-sizing: border-box; } body { color: #24213f; font: 12px Arial,sans-serif; margin: 0; }
+h1 { font-size: 23px; color: #6c38d8; } .summary { display: flex; gap: 12px; margin: 16px 0; }
+.summary div { flex: 1; border: 1px solid #ddd5ee; border-radius: 12px; padding: 12px; }
+.summary strong { display: block; margin-top: 8px; font-size: 18px; }
+.note { padding: 12px; background: #f4f0ff; border-radius: 12px; line-height: 1.8; }
+.warning { background: #fff4db; } table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+thead { display: table-header-group; } tr { break-inside: avoid; } th { background: #f5f1fc; }
+th,td { text-align: right; padding: 9px 6px; border-bottom: 1px solid #ddd5ee; }
+.number { direction: ltr; unicode-bidi: isolate; white-space: nowrap; }
+.muted { color: #6e6983; font-size: 10px; } @media print { button { display: none; } }
+</style></head><body>
+<h1>FINORA — كشف الحساب التاريخي</h1>
+<p>{{ customer.name }} · كما في {{ as_of }} · الفترة: {{ coverage.date_from or 'كل التاريخ' }} — {{ coverage.date_to or 'آخر حركة' }}</p>
+<div class="summary"><div>الدين الحالي<strong class="number">{{ '{:,}'.format(summary.debt) }}</strong></div>
+<div>المقدم الحالي<strong class="number">{{ '{:,}'.format(summary.advance) }}</strong></div>
+<div>صافي المستحق الحالي<strong class="number">{{ '{:,}'.format(summary.net_due) }}</strong></div>
+<div>رصيد بداية الفترة<strong class="number">{{ '{:,}'.format(summary.opening_net) if summary.opening_net is not none else 'غير مثبت' }}</strong></div>
+<div>رصيد نهاية الفترة<strong class="number">{{ '{:,}'.format(summary.closing_net) if summary.closing_net is not none else 'غير مثبت' }}</strong></div></div>
+<p class="note {{ '' if coverage.complete else 'warning' }}">{% if coverage.complete %}السجل يطابق الرصيد الحالي. يظهر الرصيد على آخر حركة في كل يوم؛ لا يفترض ترتيباً داخل اليوم بين مستندات مؤرخة باليوم فقط.{% else %}التاريخ المتاح غير مكتمل؛ الأرصدة التاريخية غير مثبتة. تظهر الحركات الموثقة فقط دون اختراع تاريخ أو رصيد افتتاحي. أصل غير مكتمل: {{ coverage.missing_origins }} · مستندات مؤرشفة: {{ coverage.archived_documents }} · حركات غير مؤرخة: {{ coverage.undated_movements }} · فرق دين غير موزع: {{ coverage.unplaced_debt }}.{% endif %}</p>
+<table><thead><tr><th>التاريخ</th><th>الحركة / المستند</th><th>تغير الدين</th><th>تغير المقدم</th><th>حركة النقد</th><th>رصيد نهاية اليوم</th></tr></thead><tbody>
+{% for row in rows %}<tr><td>{{ row.date or 'غير محدد' }}</td><td>{{ row.description }}<div class="muted">{{ row.document }}</div></td>
+<td class="number">{{ '{:,}'.format(row.debt_change) }}</td><td class="number">{{ '{:,}'.format(row.advance_change) }}</td>
+<td class="number">{{ '{:,}'.format(row.cash) if row.cash is not none else 'غير محدد' }}</td>
+<td class="number">{{ '{:,}'.format(row.net_balance) if row.net_balance is not none else '—' }}</td></tr>
+{% else %}<tr><td colspan="6">لا توجد حركات موثقة ضمن الفترة.</td></tr>{% endfor %}
+</tbody></table><p class="muted">قراءة الكشف وطباعته لا تنشئ قبضاً أو صرفاً أو ديناً جديداً. أقساط الفاتورة لا تكرر أصلها.</p>
+</body></html>

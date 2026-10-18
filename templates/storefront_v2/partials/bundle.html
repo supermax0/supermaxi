@@ -1,0 +1,13 @@
+{# One bundle: its products (available first), the CURRENT total of what can be bought, one button for all of it. #}
+<section class="sm-shell sm-section sm-bundle" aria-label="باقة {{ bundle.title }}" data-sm-rec="bundles">
+  <div class="sm-section__head">
+    <h2 class="sm-h2">{{ bundle.title }}</h2>
+  </div>
+  {% if bundle.description %}<p class="sm-muted">{{ bundle.description }}</p>{% endif %}
+  <div class="sm-rail">{% for product in bundle.cards %}{% include "storefront_v2/partials/product_card.html" %}{% endfor %}</div>
+  <div class="sm-bundle__buy">
+    <p class="sm-bundle__total">مجموع المتوفر منها: <strong>{{ bundle.total|toLocaleString }} د.ع</strong>
+      {% if bundle.missing %}<span class="sm-muted">— {{ bundle.missing }} من منتجاتها غير متوفر حالياً ولن يُضاف</span>{% endif %}</p>
+    <button class="sm-btn sm-btn--primary" type="button" data-sm-add-bundle="{{ bundle.id }}">أضف الباقة للسلة</button>
+  </div>
+</section>

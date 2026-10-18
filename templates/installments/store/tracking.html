@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>متابعة طلب التقسيط | {{ settings.store_name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installments.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installment_store.css', v='20260812-full-width-2') }}">
+</head>
+<body class="store-body">
+  {% include 'installments/store/_header.html' %}
+  <main class="store-tracking-page">
+    <section class="store-tracking-hero"><div class="store-shell"><span>متابعة آمنة وسريعة</span><h1>وين وصل طلبك؟</h1><p>أدخل رمز المتابعة ورقم الهاتف المستخدم عند تقديم طلب التقسيط.</p></div></section>
+    <div class="store-shell store-tracking-layout">
+      <section class="store-tracking-card">
+        <div class="store-tracking-card__icon"><svg viewBox="0 0 24 24"><path d="M6 3h12v18H6z"></path><path d="M9 8h6M9 12h6M9 16h4"></path></svg></div>
+        <div class="store-tracking-card__heading"><h2>متابعة الطلب</h2><p>ستجد رمز المتابعة في رسالة نجاح الطلب بعد الإرسال.</p></div>
+        {% if error %}<div class="store-track-error">{{ error }}</div>{% endif %}
+        <form method="post" class="store-track-form"><label>رمز المتابعة<input name="tracking_token" dir="ltr" required autocomplete="off" placeholder="ألصق رمز المتابعة هنا"></label><label>رقم الهاتف<input name="phone" dir="ltr" required inputmode="tel" placeholder="07xxxxxxxxx"></label><button type="submit">عرض حالة الطلب</button></form>
+        <div class="store-track-privacy"><span>⌾</span><p><strong>بياناتك محفوظة</strong><small>لا يمكن عرض الطلب إلا باستخدام الرمز ورقم الهاتف المطابق.</small></p></div>
+      </section>
+
+      {% if application %}
+        <section class="store-track-result">
+          <div class="store-track-result__check">✓</div><span>تم العثور على الطلب</span><h2>{{ application.number }}</h2><div class="store-track-result__status"><small>الحالة الحالية</small><strong class="ins-badge {{ application.status }}">{{ application.status }}</strong></div>
+          <div class="store-track-steps"><div class="is-done"><i>✓</i><span><strong>تم استلام الطلب</strong><small>تم تسجيل بياناتك بنجاح</small></span></div><div class="{{ 'is-done' if application.status not in ['new','rejected','cancelled'] }}"><i>2</i><span><strong>المراجعة</strong><small>تدقيق البيانات والمستندات</small></span></div><div class="{{ 'is-done' if application.contract_number }}"><i>3</i><span><strong>العقد والتنفيذ</strong><small>{{ application.contract_number or 'بانتظار اكتمال الموافقة' }}</small></span></div></div>
+          {% if application.rejection_reason %}<div class="store-track-note"><strong>ملاحظة المراجعة</strong><p>{{ application.rejection_reason }}</p></div>{% endif %}
+        </section>
+      {% else %}
+        <aside class="store-tracking-help"><span>؟</span><h2>تحتاج مساعدة؟</h2><p>تأكد من نسخ الرمز كاملاً واستخدام نفس رقم الهاتف الذي سجلت به الطلب.</p><ul><li>راجع رسالة تأكيد الطلب</li><li>اكتب رقم الهاتف بدون مسافات</li><li>تواصل مع المتجر عند فقدان الرمز</li></ul>{% if settings.contact_phone %}<a dir="ltr" href="tel:{{ settings.contact_phone }}">{{ settings.contact_phone }}</a>{% endif %}</aside>
+      {% endif %}
+    </div>
+  </main>
+  {% include 'installments/store/_footer.html' %}
+</body>
+</html>

@@ -1,0 +1,194 @@
+{
+  "id": "permissions.manage",
+  "version": 1,
+  "status": "verified",
+  "level": 3,
+  "title_ar": "إدارة الصلاحيات",
+  "description_ar": "تعديل دور وصلاحيات حساب موظف (تعليم فقط، بدون تغيير صلاحيات حسابك).",
+  "chip_ar": "الصلاحيات",
+  "requires_permissions": [
+    "clinics_admin"
+  ],
+  "dependencies": [
+    {
+      "fact": {
+        "name": "staff_accounts_count",
+        "op": "gt",
+        "value": 0
+      },
+      "tutorial": "employee.create",
+      "message_ar": "لا يوجد موظف يمكن تعديل صلاحياته. نضيف موظفاً أولاً ثم نرجع.",
+      "action_label_ar": "إضافة موظف الآن"
+    }
+  ],
+  "curriculum": {"group": "setup", "order": 5},
+  "result": "staff.permissions.updated",
+  "completion_validator": "staff.permissions_updated_since_start",
+  "steps": [
+    {
+      "id": "open-staff-menu",
+      "type": "wait_click",
+      "target": {
+        "action": "nav.doctors"
+      },
+      "reveal": [
+        {
+          "action": "nav.menu.open"
+        },
+        {
+          "section": "nav.group.admin"
+        }
+      ],
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "page": "staff"
+        }
+      },
+      "nav_message_ar": "جاري فتح الأطباء والموظفين",
+      "message_ar": "صلاحيات الموظفين تُدار من هنا. اضغط «الأطباء والموظفون»."
+    },
+    {
+      "id": "on-staff-page",
+      "type": "navigate",
+      "route": "/clinics/staff",
+      "page": "staff",
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "page": "staff"
+        }
+      },
+      "message_ar": "نفتح الآن صفحة الأطباء والموظفين."
+    },
+    {
+      "id": "click-edit",
+      "type": "wait_click",
+      "page": "staff",
+      "target": {
+        "action": "staff.edit"
+      },
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "section": "staff.permissions"
+          }
+        }
+      },
+      "message_ar": "اضغط «تعديل وصلاحيات» على حساب الموظف الذي تريد ضبط صلاحياته. لا تعدّل حسابك الحالي بهذا الدرس."
+    },
+    {
+      "id": "form-open",
+      "type": "wait_modal",
+      "page": "staff",
+      "target": {
+        "section": "staff.permissions"
+      },
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "section": "staff.permissions"
+          }
+        }
+      },
+      "message_ar": "ننتظر ظهور نموذج الحساب."
+    },
+    {
+      "id": "role",
+      "type": "highlight",
+      "page": "staff",
+      "target": {
+        "field": "staff.role"
+      },
+      "message_ar": "الدور الوظيفي هو نقطة البداية: كل دور له مجموعة صلاحيات جاهزة تُطبَّق عند تغييره. اضغط «فهمت»."
+    },
+    {
+      "id": "apply-role",
+      "type": "highlight",
+      "page": "staff",
+      "target": {
+        "action": "staff.role.apply"
+      },
+      "message_ar": "«إعادة تطبيق الدور» يرجّع الصلاحيات إلى الإعداد الافتراضي للدور المختار، ويلغي تعديلاتك اليدوية. اضغط «فهمت»."
+    },
+    {
+      "id": "group-daily",
+      "type": "highlight",
+      "page": "staff",
+      "target": {
+        "section": "permissions.group.daily"
+      },
+      "message_ar": "«التشغيل اليومي»: لوحة العيادة، الاستقبال، المواعيد، ملفات المرضى والزيارات. اضغط «فهمت»."
+    },
+    {
+      "id": "group-clinical",
+      "type": "highlight",
+      "page": "staff",
+      "target": {
+        "section": "permissions.group.clinical"
+      },
+      "message_ar": "«العمل السريري»: السجل الطبي والوصفات ووحدة الأسنان (المخطط والخطط والجلسات والصور). اضغط «فهمت»."
+    },
+    {
+      "id": "group-finance",
+      "type": "highlight",
+      "page": "staff",
+      "target": {
+        "section": "permissions.group.finance"
+      },
+      "message_ar": "«المالية والمخزون»: الفواتير والمدفوعات والتقارير والمخزون والمشتريات. امنحها بحذر. اضغط «فهمت»."
+    },
+    {
+      "id": "group-communication",
+      "type": "highlight",
+      "page": "staff",
+      "target": {
+        "section": "permissions.group.communication"
+      },
+      "message_ar": "«التواصل»: عرض الرسائل والرد عليها وتعيين المحادثات وطلبات الحجز. اضغط «فهمت»."
+    },
+    {
+      "id": "group-admin",
+      "type": "highlight",
+      "page": "staff",
+      "target": {
+        "section": "permissions.group.admin"
+      },
+      "message_ar": "«الإدارة»: إعدادات العيادة والحسابات والصلاحيات نفسها. أعطِها لمن يدير العيادة فقط. اضغط «فهمت»."
+    },
+    {
+      "id": "save",
+      "type": "wait_api_success",
+      "page": "staff",
+      "allow_back": false,
+      "target": {
+        "action": "staff.save.edit"
+      },
+      "match": {
+        "method": "PATCH",
+        "url": "^/clinics/api/staff/\\d+$"
+      },
+      "reconcile": {
+        "kind": "backend",
+        "validator": "staff.permissions_updated_since_start"
+      },
+      "success_ar": "تم حفظ الصلاحيات.",
+      "message_ar": "عدّل الصلاحيات حسب الحاجة ثم اضغط «حفظ». الحفظ يطبّق التغيير فوراً على حساب الموظف."
+    },
+    {
+      "id": "verify",
+      "type": "wait_state",
+      "allow_back": false,
+      "validator": "staff.permissions_updated_since_start",
+      "message_ar": "نتأكد الآن من حفظ التعديل في سجل النظام…"
+    },
+    {
+      "id": "done",
+      "type": "complete",
+      "allow_back": false,
+      "message_ar": "تم حفظ صلاحيات الحساب وتأكدنا من ذلك داخل النظام."
+    }
+  ]
+}

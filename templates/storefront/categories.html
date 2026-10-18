@@ -1,0 +1,15 @@
+{% extends storefront_base|default("storefront/base.html") %}
+{% block title %}الأقسام | {{ store_design.store_name }}{% endblock %}
+{% block content %}
+<main class="store-category-showcase-page">
+  <h1 class="store-visually-hidden">أقسام {{ store_design.store_name }}</h1>
+  <div class="store-shell store-category-showcase-shell"><section class="store-category-page-grid{% if categories|length >= 4 %} is-mosaic{% endif %}" aria-label="أقسام المتجر">
+  {% for row in categories %}
+    <a class="store-category-page-card" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, badge=row.name) }}" aria-label="{{ row.name }} — {{ row.count }} منتج">
+      <div class="store-category-page-card__media">{% if row.category_image %}<img src="{{ url_for('static', filename=row.category_image, v='20260815-category-art') }}" alt="{{ row.name }}" loading="{{ 'eager' if loop.first else 'lazy' }}" decoding="async"{% if loop.first %} fetchpriority="high"{% endif %}>{% elif row.preview.image_url %}<img src="{{ row.preview.image_url }}" alt="{{ row.name }}" loading="lazy" decoding="async">{% else %}<span>{{ row.name[:1] }}</span>{% endif %}</div>
+      <div class="store-category-page-card__body"><strong>{{ row.name }}</strong><small>{{ row.count }} منتج</small></div>
+    </a>
+  {% else %}<div class="store-account-empty"><span>⌕</span><h3>لا توجد أقسام منشورة حالياً</h3><p>ستظهر الأقسام هنا فور نشر المنتجات.</p></div>{% endfor %}
+  </section></div>
+</main>
+{% endblock %}

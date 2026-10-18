@@ -1,0 +1,99 @@
+<footer class="store-footer" id="about">
+  <div class="store-shell store-footer__grid">
+    <section>
+      <div class="store-footer__brand"><span class="store-brand__mark"><i></i><i></i><i></i></span><strong>{{ store_design.store_name }}</strong></div>
+      <h4>متجر النقد</h4>
+      <p>منتجات أصلية بأسعار واضحة، طلب سريع ودفع نقدي عند الاستلام.</p>
+    </section>
+    <section>
+      <h3>روابط المتجر</h3>
+      <a href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">الرئيسية</a>
+      <a href="{{ url_for('storefront.categories_page', tenant_slug=shop_tenant_slug) }}">الأقسام</a>
+      <a href="{{ url_for('storefront.offers_page', tenant_slug=shop_tenant_slug) }}">العروض</a>
+      <a href="{{ url_for('storefront.about_page', tenant_slug=shop_tenant_slug) }}">عن المتجر</a>
+    </section>
+    <section>
+      <h3>مساعدة العملاء</h3>
+      <a href="{{ url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug) }}">تتبع الطلب</a>
+      <a href="{{ url_for('storefront.cart_page', tenant_slug=shop_tenant_slug) }}">السلة</a>
+      <a href="{{ url_for('storefront.account_page', tenant_slug=shop_tenant_slug) }}">حسابي</a>
+      <a href="{{ url_for('storefront.shopping_benefits_page', tenant_slug=shop_tenant_slug) }}">مزايا التسوق</a>
+      <a href="{{ url_for('storefront.faq_page', tenant_slug=shop_tenant_slug) }}">الأسئلة الشائعة</a>
+      <a href="{{ url_for('storefront.terms_page', tenant_slug=shop_tenant_slug) }}">الشروط وسياسة الطلب</a>
+    </section>
+    <section id="contact">
+      <h3>تواصل معنا</h3>
+      {% if store_design.whatsapp %}<a dir="ltr" href="https://wa.me/{{ store_design.whatsapp|replace('+','')|replace(' ','') }}">WhatsApp: {{ store_design.whatsapp }}</a>{% endif %}
+      <p>الدفع نقداً عند الاستلام</p>
+      <a href="{{ url_for('storefront.contact_page', tenant_slug=shop_tenant_slug) }}">جميع وسائل التواصل</a>
+    </section>
+  </div>
+  <div class="store-shell store-footer__bottom">
+    <span>العراق (د.ع)</span>
+    <small>جميع الحقوق محفوظة © {{ current_year }} {{ store_design.store_name }}</small>
+    <div class="store-payments"><b>نقداً</b><b>عند الاستلام</b></div>
+  </div>
+</footer>
+<script>
+  (function () {
+    const toggle = document.querySelector('[data-menu-toggle]');
+    const drawer = document.querySelector('[data-drawer]');
+    const menu = document.querySelector('[data-menu]');
+    if (!toggle || !menu) return;
+    const setOpen = (open) => {
+      toggle.classList.toggle('is-open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      menu.classList.toggle('is-open', open);
+      drawer?.classList.toggle('is-open', open);
+      document.body.classList.toggle('store-drawer-open', open);
+    };
+    toggle.addEventListener('click', () => setOpen(!menu.classList.contains('is-open')));
+    document.querySelectorAll('[data-menu-close]').forEach((button) => button.addEventListener('click', () => setOpen(false)));
+    menu.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => setOpen(false)));
+    document.addEventListener('keydown', (event) => { if (event.key === 'Escape') setOpen(false); });
+  })();
+
+  (function () {
+    document.querySelectorAll('[data-favorite-toggle]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        if (button.disabled) return;
+        button.disabled = true;
+        try {
+          const response = await fetch(button.dataset.favoriteToggle, {
+            method: 'POST',
+            headers: {'X-Requested-With': 'XMLHttpRequest'}
+          });
+          const data = await response.json();
+          if (!response.ok || !data.success) throw new Error(data.error || 'تعذر تحديث المفضلة');
+          button.classList.toggle('is-active', data.added);
+          button.setAttribute('aria-label', data.added ? 'إزالة من المفضلة' : 'إضافة إلى المفضلة');
+          document.querySelectorAll('[data-favorite-count]').forEach((badge) => {
+            badge.textContent = data.count;
+            badge.hidden = !data.count;
+          });
+        } catch (error) {
+          window.alert(error.message || 'تعذر تحديث المفضلة');
+        } finally {
+          button.disabled = false;
+        }
+      });
+    });
+  })();
+
+  (function () {
+    document.querySelectorAll('[data-store-card-image]').forEach((image) => {
+      const media = image.closest('.store-product-card__media');
+      if (!media) return;
+      const finish = (failed) => {
+        media.classList.add('is-image-loaded');
+        if (failed) media.classList.add('is-image-error');
+      };
+      if (image.complete) {
+        finish(!image.naturalWidth);
+      } else {
+        image.addEventListener('load', () => finish(false), {once: true});
+        image.addEventListener('error', () => finish(true), {once: true});
+      }
+    });
+  })();
+</script>

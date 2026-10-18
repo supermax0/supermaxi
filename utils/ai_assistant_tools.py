@@ -209,8 +209,9 @@ def tool_get_cash_movements(args: dict, scope: dict) -> dict:
             break
 
     in_range = [m for m in movements if date_from <= m["date"] <= date_to]
-    total_in = sum(m["amount"] for m in in_range if m["type"] == "cash_in")
-    total_out = sum(m["amount"] for m in in_range if m["type"] == "cash_out")
+    from utils.cash_movement_values import movement_amount
+    total_in = sum(movement_amount(m) for m in in_range if m["type"] == "cash_in")
+    total_out = sum(movement_amount(m) for m in in_range if m["type"] == "cash_out")
     closing_balance = in_range[-1]["balance_after"] if in_range else opening_balance
 
     return {

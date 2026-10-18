@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}قوائم الشراء{% endblock %}
+{% block page_title %}قوائم الشراء{% endblock %}
+{% block content %}
+<script>document.body.classList.add('purchase-lists-route');</script>
+<link rel="stylesheet" href="{{ url_for('static',filename='css/purchase-lists.css') }}">
+<div class="pl-index" dir="rtl">
+  <div class="pl-head">
+    <div><h2 style="margin:0 0 5px">قوائم الشراء اليومية</h2><span style="color:var(--text-muted)">خطط مشتريات اليوم ثم نفّذ العناصر التي تم شراؤها فعلياً.</span></div>
+    {% if permissions.create %}<button class="pl-btn pl-primary" id="newListBtn"><i class="fa fa-plus"></i> قائمة شراء جديدة</button>{% endif %}
+  </div>
+  <div class="pl-card">
+    <form method="get" style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+      <select name="status" class="pl-btn pl-muted" onchange="this.form.submit()">
+        <option value="">كل الحالات</option><option value="open" {% if request.args.get('status')=='open' %}selected{% endif %}>مفتوحة</option><option value="executed" {% if request.args.get('status')=='executed' %}selected{% endif %}>منفذة</option><option value="partially_executed" {% if request.args.get('status')=='partially_executed' %}selected{% endif %}>منفذة جزئياً</option>
+      </select>
+    </form>
+    <div class="pl-table-wrap"><table class="pl-table"><thead><tr><th>رقم القائمة</th><th>التاريخ</th><th>الفرع</th><th>المخزن</th><th>المسؤول</th><th>العناصر</th><th>الحالة</th><th></th></tr></thead><tbody>
+      {% for row in rows %}<tr><td data-label="رقم القائمة"><b>{{ row.list_number }}</b></td><td data-label="التاريخ">{{ row.list_date }}</td><td data-label="الفرع">{{ row.branch.name if row.branch else '—' }}</td><td data-label="المخزن">{{ row.warehouse.name if row.warehouse else '—' }}</td><td data-label="المسؤول">{{ row.responsible_employee.name if row.responsible_employee else '—' }}</td><td data-label="العناصر">{{ row.items|rejectattr('status','in',['discarded','cancelled'])|list|length }}</td><td data-label="الحالة"><span class="pl-status {{ row.status }}">{{ {'draft':'مسودة','open':'مفتوحة','partially_executed':'منفذة جزئياً','executed':'منفذة','cancelled':'ملغاة'}.get(row.status,row.status) }}</span></td><td class="pl-index-open"><a class="pl-btn pl-muted" href="{{ url_for('purchase_lists.detail',list_id=row.id) }}">فتح القائمة</a></td></tr>
+      {% else %}<tr><td colspan="8" style="text-align:center;padding:35px;color:var(--text-muted)">لا توجد قوائم شراء بعد.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </div>
+</div>
+<div class="pl-modal" id="newListModal"><div class="pl-dialog"><h3 style="margin-top:0">قائمة شراء يومية جديدة</h3><div class="pl-grid">
+  <div class="pl-field"><label>التاريخ</label><input id="plDate" type="date" value="{{ now_date or '' }}"></div>
+  <div class="pl-field"><label>الفرع</label><select id="plBranch">{% for b in branches %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}</select></div>
+  <div class="pl-field"><label>المخزن</label><select id="plWarehouse">{% for w in warehouses %}<option value="{{ w.id }}" data-branch="{{ w.branch_id or '' }}">{{ w.name }}</option>{% endfor %}</select></div>
+  <div class="pl-field"><label>الموظف المسؤول</label><select id="plResponsible">{% for e in employees %}<option value="{{ e.id }}" {% if e.id==session.get('user_id') %}selected{% endif %}>{{ e.name }}</option>{% endfor %}</select></div>
+  <div class="pl-field" style="grid-column:1/-1"><label>ملاحظات</label><textarea id="plNotes" rows="3"></textarea></div>
+</div><div class="pl-error" id="plCreateError"></div><div class="pl-actions"><button class="pl-btn pl-primary" id="plCreate">إنشاء</button><button class="pl-btn pl-muted" id="plCancel">إلغاء</button></div></div></div>
+<script>
+(()=>{const modal=document.getElementById('newListModal'),dateEl=document.getElementById('plDate'),prefill={{ prefill_product_id|tojson }};dateEl.value=dateEl.value||new Date().toISOString().slice(0,10);const open=()=>modal.classList.add('open');document.getElementById('newListBtn')?.addEventListener('click',open);if(prefill)open();document.getElementById('plCancel').onclick=()=>modal.classList.remove('open');document.getElementById('plBranch').onchange=e=>{const bid=e.target.value;[...document.getElementById('plWarehouse').options].forEach(o=>o.hidden=!!o.dataset.branch&&o.dataset.branch!==bid);const first=[...document.getElementById('plWarehouse').options].find(o=>!o.hidden);if(first)first.selected=true};document.getElementById('plCreate').onclick=async()=>{const err=document.getElementById('plCreateError');err.textContent='';try{const res=await fetch('/purchases/lists/api',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({list_date:dateEl.value,branch_id:document.getElementById('plBranch').value,warehouse_id:document.getElementById('plWarehouse').value,responsible_employee_id:document.getElementById('plResponsible').value,notes:document.getElementById('plNotes').value})});const data=await res.json();if(!res.ok)throw new Error(data.error);location.href=data.redirect_url+(prefill?`?product_id=${prefill}`:'');}catch(e){err.textContent=e.message||'تعذر الإنشاء';}}})();
+</script>
+{% endblock %}

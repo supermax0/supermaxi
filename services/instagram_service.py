@@ -5,6 +5,7 @@ from typing import Any, List
 
 import requests
 from flask import current_app
+from utils.meta_graph import GRAPH_BASE
 
 
 def get_instagram_access_token() -> str:
@@ -22,7 +23,7 @@ def fetch_comments(
     if not token:
         current_app.logger.warning("Instagram fetch_comments: no access token")
         return []
-    url = f"https://graph.facebook.com/v19.0/{media_id}/comments"
+    url = f"{GRAPH_BASE}/{media_id}/comments"
     params: dict[str, Any] = {
         "access_token": token,
         "fields": "id,text,username,timestamp",
@@ -51,7 +52,7 @@ def reply_comment(
         return False
     if not message or not comment_id:
         return False
-    url = f"https://graph.facebook.com/v19.0/{comment_id}/replies"
+    url = f"{GRAPH_BASE}/{comment_id}/replies"
     payload = {"message": message, "access_token": token}
     try:
         resp = requests.post(url, data=payload, timeout=10)

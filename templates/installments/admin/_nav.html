@@ -1,0 +1,19 @@
+<link rel="stylesheet" href="{{ url_for('static', filename='css/installments.css') }}">
+<section class="ins-module-bar">
+  <div class="ins-module-brand">
+    <span class="ins-module-brand__icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M4 5h16v14H4z"></path><path d="M8 3v4M16 3v4M4 10h16"></path><path d="m9 15 2 2 4-4"></path></svg>
+    </span>
+    <span><strong>إدارة الأقساط</strong><small>المتجر، الطلبات والتحصيلات</small></span>
+  </div>
+  <nav class="ins-nav" aria-label="التنقل في الأقساط">
+    <a class="{{ 'active' if request.endpoint == 'installments_admin.dashboard' }}" href="{{ url_for('installments_admin.dashboard') }}"><svg viewBox="0 0 24 24"><path d="M4 13h6V4H4zM14 20h6v-9h-6zM4 20h6v-3H4zM14 7h6V4h-6z"></path></svg><span>اللوحة</span></a>
+    <a class="{{ 'active' if request.endpoint in ['installments_admin.products','installments_admin.product_detail'] }}" href="{{ url_for('installments_admin.products') }}"><svg viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5z"></path><path d="m3 12 9 5 9-5M3 16l9 5 9-5"></path></svg><span>المنتجات</span></a>
+    <a class="{{ 'active' if request.endpoint in ['installments_admin.applications','installments_admin.application_detail'] }}" href="{{ url_for('installments_admin.applications') }}"><svg viewBox="0 0 24 24"><path d="M6 3h12v18H6z"></path><path d="M9 7h6M9 11h6M9 15h4"></path></svg><span>الطلبات</span></a>
+    <a class="{{ 'active' if request.endpoint in ['installments_admin.contracts','installments_admin.contract_detail','installments_admin.customer_statement'] }}" href="{{ url_for('installments_admin.contracts') }}"><svg viewBox="0 0 24 24"><path d="M5 3h14v18H5z"></path><path d="M8 7h8M8 11h8M8 15h5"></path></svg><span>العقود والدفعات</span></a>
+    <a class="{{ 'active' if request.endpoint == 'installments_admin.overdue' }}" href="{{ url_for('installments_admin.overdue') }}"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v6l4 2"></path></svg><span>المتأخرات</span></a>
+    <a class="{{ 'active' if request.endpoint == 'installments_admin.reports' }}" href="{{ url_for('installments_admin.reports') }}"><svg viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg><span>التقارير</span></a>
+    <a class="{{ 'active' if request.endpoint == 'installments_admin.settings_page' }}" href="{{ url_for('installments_admin.settings_page') }}"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2.8 2.8-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21h-4v-.1a1.7 1.7 0 0 0-1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1L4.2 17l.1-.1a1.7 1.7 0 0 0 .3-1.9A1.7 1.7 0 0 0 3.1 14H3v-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9L4.2 7 7 4.2l.1.1A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.5V3h4v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1L19.8 7l-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.1v4h-.1a1.7 1.7 0 0 0-1.5 1z"></path></svg><span>الإعدادات</span></a>
+  </nav>
+  {% if session.get('tenant_slug') %}<a class="ins-store-preview" href="{{ url_for('installments_store.store_index', tenant_slug=session.get('tenant_slug')) }}" target="_blank"><span>معاينة المتجر</span><svg viewBox="0 0 24 24"><path d="M14 3h7v7M10 14 21 3"></path><path d="M21 14v7H3V3h7"></path></svg></a>{% endif %}
+</section>

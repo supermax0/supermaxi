@@ -211,9 +211,12 @@ def get_openai_client(*, api_key: str | None = None):
     return _CLIENT
 
 
-def create_response(*, api_key: str | None = None, **kwargs):
+def create_response(*, api_key: str | None = None, max_retries: int | None = None, **kwargs):
     try:
-        return get_openai_client(api_key=api_key).responses.create(**kwargs)
+        client = get_openai_client(api_key=api_key)
+        if max_retries is not None:
+            client = client.with_options(max_retries=max_retries)
+        return client.responses.create(**kwargs)
     except AIServiceError:
         raise
     except Exception as exc:

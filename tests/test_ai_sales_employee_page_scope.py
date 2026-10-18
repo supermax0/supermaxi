@@ -99,6 +99,9 @@ def test_employee_only_sees_conversations_from_registered_pages():
             g.tenant = TENANT
             session["user_id"] = first_id
             session["role"] = "cashier"
+            session["plan_key"] = "basic"
+            assert _can_view() is False
+            session["plan_key"] = "enterprise"
             assert _can_view() is True
             response = api_conversations()
             payload = response.get_json()
@@ -108,6 +111,7 @@ def test_employee_only_sees_conversations_from_registered_pages():
             g.tenant = TENANT
             session["user_id"] = first_id
             session["role"] = "cashier"
+            session["plan_key"] = "enterprise"
             payload = api_overview().get_json()["overview"]
             assert payload["open_conversations"] == 1
             assert payload["messages_today"] == 1
@@ -116,6 +120,7 @@ def test_employee_only_sees_conversations_from_registered_pages():
             g.tenant = TENANT
             session["user_id"] = first_id
             session["role"] = "cashier"
+            session["plan_key"] = "enterprise"
             response = app.make_response(api_messages(second_conversation_id))
             assert response.status_code == 403
 
@@ -123,5 +128,6 @@ def test_employee_only_sees_conversations_from_registered_pages():
             g.tenant = TENANT
             session["user_id"] = first_id
             session["role"] = "cashier"
+            session["plan_key"] = "enterprise"
             response = app.make_response(api_message_media(second_message_id))
             assert response.status_code == 403

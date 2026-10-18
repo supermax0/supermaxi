@@ -3,10 +3,155 @@ plan_limits.py — نظام حدود الخطط (SaaS Feature Gating)
 كل خطة تحدد: عدد المستخدمين، الطلبات الشهرية، والميزات المسموح بها.
 """
 
+from collections import OrderedDict
+
+from utils.tenant_feature_flags import TENANT_FEATURE_GROUPS, default_feature_enabled
+
+
+# مفاتيح قديمة ما زالت مستخدمة كحدود عامة في القوائم والمسارات، بينما
+# TENANT_FEATURE_GROUPS يحتوي كل الصفحات والتفاصيل التي تظهر داخل الشركة.
+_LEGACY_PLAN_FEATURE_GROUP = {
+    "key": "plan_limits",
+    "label": "حدود الخطة العامة",
+    "features": [
+        ("cashflow", "التحصيل والمدفوعات"),
+        ("printing", "الطباعة والفواتير"),
+        ("reports_adv", "التقارير المالية المتقدمة"),
+        ("rbac", "صلاحيات RBAC"),
+    ],
+}
+
+PLAN_FEATURE_GROUPS = [_LEGACY_PLAN_FEATURE_GROUP, *TENANT_FEATURE_GROUPS]
+PLAN_FEATURE_LABELS = OrderedDict(
+    (key, label)
+    for group in PLAN_FEATURE_GROUPS
+    for key, label in group["features"]
+)
+
+
+# الصفحة الفرعية ترث حالة الباب الرئيسي عندما لا تكون لها قيمة محفوظة بعد.
+# هذا يحافظ على الخطط القديمة ويمنع ظهور الصفحة مقفولة لمجرد أن المفتاح أضيف
+# بعد إنشاء سجل الخطة في قاعدة البيانات.
+PLAN_FEATURE_PARENTS = {
+    "executive_dashboard": "dashboard",
+    "trade_in_sales": "pos",
+    "orders_all": "orders",
+    "orders_placed": "orders",
+    "orders_packed": "orders",
+    "orders_shipping": "orders",
+    "orders_delivered": "orders",
+    "orders_returned": "orders",
+    "orders_reports": "orders",
+    "orders_printing": "printing",
+    "inventory_products": "inventory",
+    "inventory_ledger": "inventory",
+    "inventory_audit": "inventory",
+    "inventory_add_product": "inventory",
+    "inventory_reports": "inventory",
+    "maintenance": "inventory",
+    "supplier_statement": "suppliers",
+    "stock_transfers": "inventory",
+    "customer_blacklist": "customers",
+    "customer_provinces": "customers",
+    "customer_credit": "customers",
+    "agents_pending_execution": "agents",
+    "employee_roles": "rbac",
+    "shipping_reports": "shipping",
+    "shipping_company_returns": "shipping",
+    "delivery_archive": "shipping",
+    "delivery_agent_portal": "shipping",
+    "cash": "cashflow",
+    "fixed_assets": "accounts",
+    "rotating_savings": "accounts",
+    "installments_dashboard": "installments",
+    "installments_products": "installments",
+    "installments_applications": "installments",
+    "installments_contracts": "installments",
+    "installments_overdue": "installments",
+    "installments_reports": "installments",
+    "installments_settings": "installments",
+    "reports": "reports_adv",
+    "reports_daily": "reports_adv",
+    "reports_monitors": "reports_adv",
+    "reports_financial": "reports_adv",
+    "reports_sales": "reports_adv",
+    "reports_profit": "reports_adv",
+    "investments": "ai_assistant",
+    "assistant_chat": "ai_assistant",
+    "mobile_app_videos": "mobile_app",
+    "mobile_app_users": "mobile_app",
+    "mobile_app_comments": "mobile_app",
+    "mobile_app_rewards": "mobile_app",
+    "mobile_app_coupons": "mobile_app",
+    "mobile_app_flags": "mobile_app",
+    "mobile_app_design": "mobile_app",
+    "mobile_app_notifications": "mobile_app",
+    "mobile_app_analytics": "mobile_app",
+    "permissions": "rbac",
+    "settings_system": "settings",
+    "settings_invoice": "settings",
+    "settings_appearance": "settings",
+    "settings_branches": "settings",
+    "settings_storefront": "settings",
+    "settings_database_repair": "settings",
+    "invoice_templates": "printing",
+    "beauty_appointments": "beauty",
+    "beauty_services": "beauty",
+    "beauty_sessions": "beauty",
+    "beauty_alerts": "beauty",
+    "beauty_accounts": "beauty",
+    "beauty_clients": "beauty",
+    "wholesale_ops": "wholesale",
+    "wholesale_sales": "wholesale",
+    "wholesale_purchases": "wholesale",
+    "wholesale_receipts": "wholesale",
+    "wholesale_payments": "wholesale",
+    "wholesale_customers": "wholesale",
+    "wholesale_suppliers": "wholesale",
+    "wholesale_products": "wholesale",
+    "wholesale_warehouses": "wholesale",
+    "wholesale_transfers": "wholesale",
+    "wholesale_accounts": "wholesale",
+    "wholesale_statement": "wholesale",
+    "wholesale_expenses": "wholesale",
+    "wholesale_reports": "wholesale",
+    "wholesale_settings": "wholesale",
+}
+
 # ===================================================
 # تعريف خطط الاشتراك وحدودها وميزاتها
 # ===================================================
 PLAN_DEFINITIONS = {
+    "free": {
+        "key":          "free",
+        "name":         "الخطة المجانية",
+        "price_monthly": 0,
+        "price_yearly":  0,
+        "max_users":     3,
+        "max_orders_monthly": 500,
+        # العرض الترحيبي يفتح كل صفحات النظام التشغيلية والمحاسبية،
+        # وتبقى منتجات الذكاء الاصطناعي خارج الاشتراك المجاني.
+        "features": {
+            "orders":       True,
+            "pos":          True,
+            "inventory":    True,
+            "customers":    True,
+            "cashflow":     True,
+            "printing":     True,
+            "expenses":     True,
+            "suppliers":    True,
+            "purchases":    True,
+            "shipping":     True,
+            "reports_adv":  True,
+            "rbac":         True,
+            "agents":       True,
+            "accounts":     True,
+            "messages":     True,
+            "ai_assistant": False,
+            "ai_workspace": False,
+            "ai_sales":     False,
+        },
+    },
     "basic": {
         "key":          "basic",
         "name":         "الخطة الأساسية",
@@ -32,6 +177,7 @@ PLAN_DEFINITIONS = {
             "ai_assistant": False,  # مساعد AI
             "ai_workspace": False,  # مساحة LEON التفاعلية
             "messages":     False,  # نظام الرسائل
+            "ai_sales":     False,  # موظف المبيعات الذكي
         },
     },
 
@@ -60,6 +206,7 @@ PLAN_DEFINITIONS = {
             "ai_assistant": False,  # فقط في Enterprise
             "ai_workspace": False,
             "messages":     False,
+            "ai_sales":     False,
         },
     },
 
@@ -88,12 +235,51 @@ PLAN_DEFINITIONS = {
             "ai_assistant": True,
             "ai_workspace": True,
             "messages":     True,
+            "ai_sales":     True,
         },
     },
 }
 
 # Default fallback
 _DEFAULT_PLAN = PLAN_DEFINITIONS["basic"]
+
+
+def resolve_plan_features(plan_key: str, stored_features=None) -> dict:
+    """Return a complete, backwards-compatible feature matrix for a plan.
+
+    Old database rows can contain only a handful of keys.  Missing page keys
+    inherit their parent feature; standalone pages stay enabled until the
+    superadmin explicitly disables them.  Values stored in the database always
+    win over defaults.
+    """
+    static_features = dict(
+        PLAN_DEFINITIONS.get(plan_key, _DEFAULT_PLAN).get("features", {})
+    )
+    explicit_features = (
+        {str(key): bool(value) for key, value in stored_features.items()}
+        if isinstance(stored_features, dict)
+        else {}
+    )
+    source = {**static_features, **explicit_features}
+    resolved = dict(source)
+
+    def feature_state(feature: str, visiting=None) -> bool:
+        if feature in source:
+            return bool(source[feature])
+        visiting = set(visiting or ())
+        if feature in visiting:
+            return False
+        visiting.add(feature)
+        parent = PLAN_FEATURE_PARENTS.get(feature)
+        if parent:
+            return feature_state(parent, visiting)
+        # هذه صفحات كانت متاحة قبل إضافة مصفوفة الصفحات الشاملة؛ نستخدم
+        # افتراض الشركة نفسه (ومن ضمنه الميزات الحساسة المعطلة افتراضياً).
+        return default_feature_enabled(feature)
+
+    for feature in PLAN_FEATURE_LABELS:
+        resolved[feature] = feature_state(feature)
+    return resolved
 
 
 def get_plan(plan_key: str) -> dict:
@@ -115,14 +301,22 @@ def get_plan(plan_key: str) -> dict:
         try:
             plan = session.query(SubscriptionPlan).filter_by(plan_key=plan_key).first()
             if plan:
-                return plan.to_dict()
+                data = plan.to_dict()
+                data["features"] = resolve_plan_features(
+                    plan.plan_key, data.get("features")
+                )
+                return data
         finally:
             session.close()
     except Exception as e:
         # في حالة الفشل (مثلاً قبل تهيئة قاعدة البيانات)، نعود للقيم الثابتة
         pass
         
-    return PLAN_DEFINITIONS.get(plan_key, _DEFAULT_PLAN)
+    data = dict(PLAN_DEFINITIONS.get(plan_key, _DEFAULT_PLAN))
+    data["features"] = resolve_plan_features(
+        data.get("key", plan_key), data.get("features")
+    )
+    return data
 
 
 def has_feature(plan_key: str, feature: str) -> bool:

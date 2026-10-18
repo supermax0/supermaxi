@@ -1,0 +1,99 @@
+.supermax-invoice-stamps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 24px;
+  margin-top: 10px;
+  direction: rtl;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.supermax-invoice-seals-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+  margin-top: 10px;
+  direction: ltr;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.supermax-invoice-seals-row .supermax-invoice-stamps {
+  grid-column: 2;
+  margin-top: 0;
+}
+
+.supermax-inspection-stamp {
+  position: relative;
+  grid-column: 1;
+  justify-self: start;
+  width: 165px;
+  line-height: 1;
+  direction: ltr;
+}
+
+.supermax-inspection-stamp__image {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.supermax-inspection-stamp__date {
+  position: absolute;
+  top: 71.2%;
+  left: 15%;
+  width: 46%;
+  height: 10.5%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  color: #123ca9;
+  font-family: Arial, sans-serif;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .15px;
+  white-space: nowrap;
+}
+
+.supermax-invoice-stamps__image {
+  display: block;
+  flex: 0 1 auto;
+  min-width: 0;
+  width: 140px;
+  height: auto;
+  object-fit: contain;
+  print-color-adjust: exact;
+  -webkit-print-color-adjust: exact;
+}
+
+.supermax-invoice-stamps__image--quality {
+  width: 190px;
+}
+
+@media screen and (max-width: 480px) {
+  .supermax-invoice-seals-row {
+    grid-template-columns: minmax(115px, 38%) minmax(0, 1fr);
+    gap: 10px;
+  }
+  .supermax-inspection-stamp { width: 100%; max-width: 150px; }
+  .supermax-inspection-stamp__date { font-size: clamp(8px, 2.6vw, 11px); }
+  .supermax-invoice-seals-row .supermax-invoice-stamps { grid-column: 2; }
+  .supermax-invoice-stamps { gap: 16px; }
+  .supermax-invoice-stamps__image { width: 36%; max-width: 140px; }
+  .supermax-invoice-stamps__image--quality { width: 49%; max-width: 190px; }
+}
+
+@media print {
+  .supermax-invoice-seals-row { margin-top: 2mm; }
+  .supermax-inspection-stamp { width: 40mm; }
+  .supermax-inspection-stamp__date { font-size: 2.6mm; }
+  .supermax-invoice-stamps { gap: 6mm; margin-top: 2mm; }
+  .supermax-invoice-stamps__image { width: 34mm; }
+  .supermax-invoice-stamps__image--quality { width: 46mm; }
+}

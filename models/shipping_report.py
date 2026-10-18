@@ -7,6 +7,7 @@ class ShippingReport(db.Model):
     __tablename__ = "shipping_report"
     
     id = db.Column(db.Integer, primary_key=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey("branch.id"), nullable=True, index=True)
     
     # رقم الكشف (فريد)
     report_number = db.Column(db.String(50), unique=True, nullable=False)
@@ -53,6 +54,7 @@ class ShippingReport(db.Model):
     def to_dict(self):
         return {
             "id": self.id,
+            "branch_id": self.branch_id,
             "report_number": self.report_number,
             "shipping_company_id": self.shipping_company_id,
             "shipping_company_name": self.shipping_company_name,

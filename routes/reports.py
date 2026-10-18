@@ -23,8 +23,10 @@ from utils.daily_report_data import (
     list_daily_audit_archive,
     parse_report_date,
 )
+from utils.daily_report_4a import build_daily_report_4a_data
 from utils.financial_report_data import get_financial_report_data
 from utils.cash_calculations import _effective_paid_amount
+from utils.operational_reports import VALID_REPORT_TYPES, build_operational_report
 
 # =======================
 # Accounting Calculations (الحسابات المحاسبية الصحيحة)
@@ -238,6 +240,17 @@ def reports_dashboard():
     )
 
 
+@reports_bp.route("/detailed/<report_type>")
+def detailed_report(report_type):
+    """تقارير تشغيلية قابلة للتصفية والطباعة."""
+    if not check_permission("can_see_reports"):
+        return redirect("/pos"), 403
+    if report_type not in VALID_REPORT_TYPES:
+        return redirect("/reports"), 302
+    data = build_operational_report(report_type, request.args)
+    return render_template("reports_detailed.html", **data)
+
+
 @reports_bp.route("/daily")
 def daily_report():
     if not check_permission("can_see_reports"):
@@ -246,6 +259,27 @@ def daily_report():
     report_date = parse_report_date(request.args.get("date"))
     data = build_daily_report_data(report_date)
     return render_template("reports_daily.html", **data)
+
+
+@reports_bp.route("/daily/4a")
+def daily_report_4a():
+    """نموذج التقرير اليومي 4A — ورقة A4 للطباعة / حفظ PDF."""
+    if not check_permission("can_see_reports"):
+        return redirect("/pos"), 403
+    ensure_daily_audit_schema()
+    report_date = parse_report_date(request.args.get("date"))
+    data = build_daily_report_4a_data(report_date)
+    response = render_template("reports_daily_4a.html", **data)
+    if request.args.get("download") == "1":
+        filename = f"daily_report_4a_{report_date.isoformat()}.html"
+        return Response(
+            response,
+            mimetype="text/html; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="{filename}"',
+            },
+        )
+    return response
 
 
 @reports_bp.route("/daily/audit", methods=["POST"])

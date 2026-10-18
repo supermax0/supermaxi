@@ -1,0 +1,579 @@
+{% extends "base.html" %}
+{% block title %}منتجات الأقساط - Finora{% endblock %}
+{% block content %}
+<main class="ins-wrap">
+  {% include "installments/admin/_nav.html" %}
+
+  <div class="ins-heading">
+    <div><span class="ins-eyebrow">كتالوج المتجر</span><h1>منتجات الأقساط</h1><p>اربط منتجات المخزون بخطط تقسيط وانشرها في المتجر.</p></div>
+    <div class="ins-actions"><button class="ins-btn" type="button" data-open-quick>+ إضافة منتج جديد</button><button class="ins-btn secondary" type="button" data-open-product>ربط منتج موجود</button></div>
+  </div>
+
+  <div id="quickProductModal" class="ins-quick-modal" hidden>
+    <button class="ins-quick-modal__backdrop" type="button" data-close-quick aria-label="إغلاق النافذة"></button>
+    <section class="ins-quick-modal__panel" role="dialog" aria-modal="true" aria-labelledby="quickProductTitle">
+      <header class="ins-quick-modal__head">
+        <div><span class="ins-card-title__icon">+</span><div><h2 id="quickProductTitle">إضافة منتج جديد</h2><p>أدخل المعلومات مرة واحدة؛ سنضيف المنتج للمخزون ونربطه بالمتجر تلقائياً.</p></div></div>
+        <button type="button" data-close-quick aria-label="إغلاق">×</button>
+      </header>
+      <form id="quickProductForm" class="ins-quick-form">
+        <section class="ins-quick-section">
+          <div class="ins-quick-section__title"><span>1</span><div><strong>معلومات المنتج</strong><small>الاسم يكفي لاقتراح الصنف تلقائياً</small></div></div>
+          <div class="ins-form-grid">
+            <div class="ins-field ins-span"><label>اسم المنتج <b class="ins-required">*</b><input id="quickName" name="name" required minlength="2" maxlength="150" autocomplete="off" placeholder="مثال: ثلاجة Samsung سعة 18 قدم"></label><small id="categorySuggestion" class="ins-smart-hint">سيظهر اقتراح الصنف هنا بعد كتابة الاسم.</small></div>
+            <div class="ins-field"><label>العلامة التجارية<input id="quickBrand" name="brand" list="iraqBrandOptions" autocomplete="off" placeholder="اختر أو اكتب أي ماركة"></label><small class="ins-field-help">يمكنك كتابة أي ماركة غير موجودة في القائمة.</small></div>
+            <datalist id="iraqBrandOptions">{% for brand in brand_options %}<option value="{{ brand }}"></option>{% endfor %}</datalist>
+            <div class="ins-field"><label>الصنف <b class="ins-required">*</b><select id="quickCategory" name="category" required>{% for category in category_catalog %}<option value="{{ category }}" {% if category == 'أخرى' %}selected{% endif %}>{{ category }}</option>{% endfor %}</select></label></div>
+            <div class="ins-field"><label>الصنف الفرعي<select id="quickSubcategory" name="subcategory"></select></label></div>
+            <div class="ins-field"><label>الفرع<select name="branch_id"><option value="">الفرع الافتراضي</option>{% for branch in branches %}<option value="{{ branch.id }}">{{ branch.name }}{% if branch.is_default %} — الافتراضي{% endif %}</option>{% endfor %}</select></label></div>
+            <div class="ins-field"><label>الكمية الافتتاحية<input name="opening_stock" type="number" min="0" step="1" value="0"></label></div>
+            <div class="ins-field"><label>SKU تلقائي<input id="quickSku" name="sku" dir="ltr" readonly></label></div>
+            <div class="ins-field"><label>باركود EAN-13 تلقائي<input id="quickBarcode" name="barcode" dir="ltr" readonly></label></div>
+          </div>
+        </section>
+
+        <section class="ins-quick-section">
+          <div class="ins-quick-section__title"><span>2</span><div><strong>السعر والربح</strong><small>سعر البيع يُحسب مباشرة من سعر الشراء والنسبة</small></div></div>
+          <div class="ins-price-grid">
+            <div class="ins-field"><label>سعر الشراء بالدولار<div class="ins-input-suffix"><input id="quickBuyPriceUsd" name="buy_price_usd" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0"><span>$</span></div></label><small class="ins-field-help">يُحوّل تلقائياً على صرف 1$ = 1,350 د.ع</small></div>
+            <div class="ins-field"><label>سعر الشراء <b class="ins-required">*</b><div class="ins-input-suffix"><input id="quickBuyPrice" name="buy_price" type="number" min="0" step="1" required><span>د.ع</span></div></label></div>
+            <div class="ins-field"><label>نسبة الربح %<div class="ins-input-suffix"><input id="quickProfit" name="profit_percentage" type="number" min="0" max="1000" step="0.01" value="25"><span>%</span></div></label></div>
+            <div class="ins-field"><label>سعر البيع <b class="ins-required">*</b><div class="ins-input-suffix"><input id="quickSalePrice" name="sale_price" type="number" min="1" step="1" required><span>د.ع</span></div></label></div>
+          </div>
+          <div id="quickProfitSummary" class="ins-profit-summary"><span>الربح للقطعة</span><strong>0 د.ع</strong><small>0%</small></div>
+        </section>
+
+        <section class="ins-quick-section">
+          <div class="ins-quick-section__title"><span>3</span><div><strong>الربط بمتجر الأقساط</strong><small>تُنشأ خطة أولى ويظهر المنتج في المتجر فوراً</small></div></div>
+          <div class="ins-form-grid">
+            <div class="ins-field"><label>مدة التقسيط{% if allowed_durations %}<select name="months">{% for duration in allowed_durations %}<option value="{{ duration }}" {% if duration == allowed_durations[-1] %}selected{% endif %}>{{ duration }} شهر</option>{% endfor %}</select>{% else %}<div class="ins-input-suffix"><input name="months" type="number" min="1" max="120" value="12"><span>شهر</span></div>{% endif %}</label></div>
+            <div class="ins-field"><label>زيادة سعر الأقساط %<div class="ins-input-suffix"><input name="installment_markup" type="number" min="0" step="0.01" value="25"><span>%</span></div></label></div>
+            <div class="ins-field"><label>الدفعة الأولى %<div class="ins-input-suffix"><input name="down_payment" type="number" min="0" max="100" step="0.01" value="0"><span>%</span></div></label></div>
+            <label class="ins-publish-switch"><input name="publish_to_store" type="checkbox" value="1" checked><span class="ins-publish-switch__track"><i></i></span><span><strong>نشر في المتجر الآن</strong><small>يمكن إلغاء النشر وتعديله لاحقاً</small></span></label>
+          </div>
+        </section>
+
+        <div id="quickProductError" class="ins-message error" hidden></div>
+        <footer class="ins-quick-modal__footer"><button id="quickSaveButton" class="ins-btn" type="submit">حفظ وربط بالمتجر</button><button class="ins-btn secondary" type="button" data-close-quick>إلغاء</button><span>سيتم إنشاء SKU والباركود وتسجيل المنتج في المخزون تلقائياً.</span></footer>
+      </form>
+    </section>
+  </div>
+
+  <section class="ins-product-guide">
+    <article><span>1</span><div><strong>اكتب اسم المنتج</strong><small>نقترح الصنف والماركة</small></div></article><i>←</i>
+    <article><span>2</span><div><strong>أدخل الشراء والربح</strong><small>سعر البيع يُحسب تلقائياً</small></div></article><i>←</i>
+    <article><span>3</span><div><strong>احفظ مرة واحدة</strong><small>مخزون + باركود + متجر الأقساط</small></div></article>
+  </section>
+
+  <section id="createBox" class="ins-card ins-product-create" hidden>
+    <div class="ins-card-title"><div><span class="ins-card-title__icon">+</span><div><h2>إضافة منتج إلى متجر الأقساط</h2><p>اختر منتجاً موجوداً في المخزون، ثم حدد أول خطة تقسيط له.</p></div></div><button type="button" data-close-product aria-label="إغلاق">×</button></div>
+    {% if source_products %}
+      <form id="productForm" class="ins-form-grid">
+        <div class="ins-field ins-span"><label>ابحث داخل منتجات المخزون<input id="sourceProductSearch" type="search" placeholder="اكتب اسم المنتج أو SKU" autocomplete="off"></label></div>
+        <div class="ins-field ins-span"><label>المنتج الأساسي <b class="ins-required">*</b><select id="product_id" name="product_id" required><option value="">اختر منتجاً من المخزون</option>{% for p in source_products %}<option value="{{ p.id }}" data-price="{{ p.sale_price }}" data-title="{{ p.name }}" data-sku="{{ p.sku or '' }}" data-category="{{ p.catalog_category or '' }}" data-stock="{{ p.quantity }}">{{ p.name }}{% if p.sku %} — {{ p.sku }}{% endif %} — المخزون: {{ p.quantity }}</option>{% endfor %}</select></label><small id="sourceProductHint" class="ins-field-help">تظهر هنا المنتجات الفعالة غير المضافة سابقاً إلى الأقساط.</small></div>
+        <div class="ins-field"><label>عنوان العرض <b class="ins-required">*</b><input id="title" name="title" required maxlength="180"></label></div>
+        <div class="ins-field"><label>الرابط المختصر <b class="ins-required">*</b><input id="slug" name="slug" required pattern="[a-z0-9-]+" dir="ltr" placeholder="product-123"></label><small class="ins-field-help">أحرف إنكليزية وأرقام وشرطة فقط؛ يُملأ تلقائياً.</small></div>
+        <div class="ins-field"><label>السعر النقدي <b class="ins-required">*</b><input id="cash_price" name="cash_price" type="number" min="0" required></label></div>
+        <div class="ins-field"><label>الفئة<input id="category" name="category" placeholder="مثال: شاشات"></label></div>
+        <div class="ins-field ins-span"><label>وصف مختصر<input name="short_description" maxlength="500" placeholder="وصف يظهر أسفل اسم المنتج في المتجر"></label></div>
+        <div class="ins-form-divider ins-span"><span>أول خطة تقسيط</span></div>
+        <div class="ins-field"><label>مدة الخطة <b class="ins-required">*</b>{% if allowed_durations %}<select name="months" required>{% for duration in allowed_durations %}<option value="{{ duration }}" {% if duration == allowed_durations[-1] %}selected{% endif %}>{{ duration }} شهر</option>{% endfor %}</select>{% else %}<div class="ins-input-suffix"><input name="months" type="number" min="1" max="120" value="12" required><span>شهر</span></div>{% endif %}</label>{% if allowed_durations %}<small class="ins-field-help">المدد المحددة في إعدادات الأقساط فقط.</small>{% endif %}</div>
+        <div class="ins-field"><label>نسبة الزيادة % <b class="ins-required">*</b><input name="markup" type="number" min="0" step="0.01" value="25" required></label></div>
+        <div class="ins-field"><label>الدفعة الأولى %<input name="down" type="number" min="0" max="100" step="0.01" value="0"></label></div>
+        <div class="ins-field"><label>حالة المنتج<select name="status"><option value="draft">حفظ كمسودة</option><option value="published">نشر مباشرة في المتجر</option></select></label></div>
+        <div id="productError" class="ins-message error ins-span" hidden></div>
+        <div class="ins-product-create__footer ins-span"><button class="ins-btn" type="submit" id="saveProductButton">حفظ المنتج وخطة التقسيط</button><button class="ins-btn secondary" type="button" data-close-product>إلغاء</button></div>
+      </form>
+    {% else %}
+      <div class="ins-source-empty">
+        <span>□</span>
+        {% if inventory_product_count == 0 %}<h3>لا توجد منتجات فعالة في المخزون</h3><p>أضف المنتج أولاً من صفحة المخزون، وأدخل اسمه وسعر البيع والكمية، ثم ارجع إلى هنا لربطه بالأقساط.</p><a class="ins-btn" href="{{ url_for('inventory.add_product_page') }}">فتح صفحة إضافة منتج</a>
+        {% else %}<h3>كل منتجات المخزون مضافة للأقساط</h3><p>يوجد {{ inventory_product_count }} منتج فعال، وكلها مرتبطة بالفعل بمتجر الأقساط. يمكنك إدارة خططها من الجدول أدناه أو إضافة منتج جديد للمخزون.</p><a class="ins-btn" href="{{ url_for('inventory.add_product_page') }}">إضافة منتج جديد للمخزون</a>{% endif %}
+      </div>
+    {% endif %}
+  </section>
+
+  <section class="ins-list-summary"><div><span>{{ products|length }}</span><small>منتج أقساط</small></div><div><span>{{ source_products|length }}</span><small>متاح للربط</small></div><div><span>{{ inventory_product_count }}</span><small>منتج فعال بالمخزون</small></div></section>
+  <form method="get" class="ins-filter ins-section-gap"><input name="q" value="{{ q }}" placeholder="ابحث باسم منتج الأقساط"><button class="ins-btn secondary">بحث</button>{% if q %}<a class="ins-btn" href="{{ url_for('installments_admin.products') }}">مسح البحث</a>{% endif %}</form>
+  <div class="ins-table-wrap ins-section-gap"><table class="ins-table"><thead><tr><th>المنتج</th><th>السعر النقدي</th><th>الخطط</th><th>المخزون</th><th>الحالة</th><th>آخر تعديل</th><th></th></tr></thead><tbody>{% for row in products %}{% set active_plans=row.plans|selectattr('active')|list %}<tr><td><a href="{{ url_for('installments_admin.product_detail',product_id=row.id) }}">{{ row.title }}</a><small class="ins-muted"><br>{{ row.product.sku or row.category or '' }}</small></td><td class="ins-money">{{ row.cash_price|toLocaleString }}</td><td>{{ active_plans|length }}</td><td><span class="ins-stock {{ 'is-empty' if row.product.quantity <= 0 }}">{{ row.product.quantity }}</span></td><td><span class="ins-badge {{ row.status }}">{{ row.status }}</span></td><td>{{ row.updated_at.strftime('%Y-%m-%d') }}</td><td><div class="ins-table-actions"><button class="ins-btn ins-ad-launch" type="button" data-ad-product="{{ row.id }}" data-ad-title="{{ row.title }}">إعلان</button><a class="ins-btn secondary" href="{{ url_for('installments_admin.product_detail',product_id=row.id) }}">إدارة</a><button class="ins-btn ins-delete-product" type="button" data-delete-product="{{ row.id }}" data-delete-title="{{ row.title }}" title="حذف من المتجر فقط (المنتج يبقى في المخزون)">حذف</button></div></td></tr>{% else %}<tr><td colspan="7"><div class="ins-empty"><span>□</span><strong>لا توجد منتجات أقساط بعد</strong><small>استخدم زر «ربط منتج بالأقساط» للبدء.</small></div></td></tr>{% endfor %}</tbody></table></div>
+</main>
+
+<div class="ins-ad-modal" id="adWizard" hidden role="dialog" aria-modal="true" aria-labelledby="adWizardTitle">
+  <button class="ins-ad-modal__backdrop" type="button" data-close-ad aria-label="إغلاق"></button>
+  <section class="ins-ad-modal__panel">
+    <header class="ins-ad-modal__head">
+      <div><span class="ins-ad-modal__eyebrow">مساعد النشر والإعلان الذكي</span><h2 id="adWizardTitle">جهّز منشور المنتج</h2><p>راجع الصور والكليشة ثم انشر مباشرة على الصفحة، أو افتح إعلاناً ممولاً إذا احتجت.</p></div>
+      <button class="ins-ad-modal__close" type="button" data-close-ad aria-label="إغلاق">×</button>
+    </header>
+    <div class="ins-ad-loading" id="adLoading"><span></span><strong>جاري جمع معلومات المنتج والصور...</strong></div>
+    <div class="ins-ad-error" id="adError" hidden></div>
+    <div class="ins-ad-workspace" id="adWorkspace" hidden>
+      <div class="ins-ad-product" id="adProductSummary"></div>
+      <nav class="ins-ad-platforms" id="adPlatforms" aria-label="منصة الإعلان"></nav>
+      <div class="ins-ad-layout">
+        <aside class="ins-ad-assets">
+          <div class="ins-ad-section-head"><div><strong>صور وفيديو المنتج</strong><small>تم تحديد جميع الوسائط تلقائياً</small></div><span id="adMediaCount">0</span></div>
+          <div class="ins-ad-media-grid" id="adMediaGrid"></div>
+          <div class="ins-ad-empty-media" id="adEmptyMedia" hidden>لا توجد صور أو فيديو لهذا المنتج. أضفها من صفحة إدارة المنتج أولاً.</div>
+        </aside>
+        <section class="ins-ad-editor">
+          <div class="ins-ad-controls">
+            <label><span>الصفحة أو الحساب</span><select id="adDestination"></select><small id="adDestinationHint"></small><span class="ins-ad-connect-actions" id="adConnectActions" hidden><button type="button" id="adRefreshPages">تحديث الصفحات</button><a id="adConnectPages" href="/publisher/settings" target="_blank" rel="noopener">ربط صفحة فيسبوك ↗</a></span></label>
+            <label><span>هدف الإعلان</span><select id="adObjective"><option value="sales">المبيعات والطلبات</option><option value="messages">الرسائل</option><option value="traffic">زيارات المتجر</option><option value="awareness">الانتشار</option></select></label>
+            <label><span>أسلوب الكليشة</span><select id="adTone"><option value="iraqi">عراقي طبيعي</option><option value="professional">رسمي واحترافي</option><option value="short">قصير ومباشر</option></select></label>
+          </div>
+          <button class="ins-btn ins-ad-generate" id="adGenerate" type="button"><span>✦</span> رتّب الكليشة بالذكاء الاصطناعي</button>
+          <div class="ins-ad-ai-note" id="adAiNote"></div>
+          <div class="ins-ad-result" id="adResult" hidden>
+            <label class="ins-ad-field ins-ad-field--wide"><span>النص الأساسي</span><textarea id="adPrimaryText" rows="6"></textarea></label>
+            <div class="ins-ad-fields-2">
+              <label class="ins-ad-field"><span>العنوان</span><input id="adHeadline"></label>
+              <label class="ins-ad-field"><span>زر الإجراء</span><input id="adCta"></label>
+            </div>
+            <label class="ins-ad-field"><span>الوصف المختصر</span><textarea id="adDescription" rows="2"></textarea></label>
+            <label class="ins-ad-field"><span>هاشتاكات / كلمات بحث</span><textarea id="adTags" rows="3"></textarea></label>
+            <label class="ins-ad-field" id="adSearchField" hidden><span>عناوين وأوصاف Google Ads</span><textarea id="adSearchCopy" rows="6"></textarea></label>
+            <details class="ins-ad-details"><summary>نص الفيديو واقتراح العرض</summary><label class="ins-ad-field"><span>افتتاحية الفيديو</span><input id="adVideoHook"></label><label class="ins-ad-field"><span>سيناريو الفيديو</span><textarea id="adVideoScript" rows="3"></textarea></label><label class="ins-ad-field"><span>ترتيب الوسائط</span><textarea id="adVisualDirection" rows="2"></textarea></label></details>
+          </div>
+        </section>
+      </div>
+    </div>
+    <footer class="ins-ad-modal__footer">
+      <span id="adFooterStatus">راجع الكليشة أولاً؛ النشر لا يتم إلا بعد تأكيدك.</span>
+      <div><button class="ins-btn secondary" type="button" id="adCopy" disabled>نسخ الكليشة</button><button class="ins-btn ins-ad-publish" type="button" id="adPublishPage" disabled>نشر الآن على الصفحة</button><button class="ins-btn secondary" type="button" id="adOpenPlatform" disabled>إنشاء إعلان ممول ↗</button></div>
+    </footer>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<style>
+  .ins-delete-product { background: #fee2e2 !important; color: #b91c1c !important; border-color: #fca5a5 !important; }
+  .ins-delete-product:hover { background: #fecaca !important; }
+  .ins-delete-product:disabled { opacity: .6; cursor: not-allowed; }
+</style>
+<script>
+  const quickModal = document.getElementById('quickProductModal');
+  const quickForm = document.getElementById('quickProductForm');
+  const quickName = document.getElementById('quickName');
+  const quickBrand = document.getElementById('quickBrand');
+  const quickCategory = document.getElementById('quickCategory');
+  const quickSubcategory = document.getElementById('quickSubcategory');
+  const categoryCatalog = {{ category_catalog|tojson }};
+  const categoryRules = [
+    ['هواتف وأجهزة لوحية','ساعات ذكية',['ساعة ذكية','smart watch','smartwatch','apple watch']],
+    ['هواتف وأجهزة لوحية','أجهزة لوحية',['تابلت','tablet','ipad','آيباد']],
+    ['هواتف وأجهزة لوحية','هواتف ذكية',['هاتف','موبايل','mobile','phone','iphone','galaxy','ريدمي','redmi']],
+    ['حواسيب ولابتوبات','طابعات',['طابعة','printer']],
+    ['حواسيب ولابتوبات','لابتوبات',['لابتوب','لاب توب','laptop','notebook','macbook']],
+    ['حواسيب ولابتوبات','شاشات حاسوب',['monitor','شاشة كمبيوتر','شاشة حاسوب']],
+    ['تلفزيونات وشاشات','أجهزة عرض',['بروجكتر','projector']],
+    ['تلفزيونات وشاشات','تلفزيونات',['تلفزيون','smart tv','شاشة ذكية','شاشة led']],
+    ['أجهزة منزلية','ثلاجات',['ثلاجة','refrigerator']],
+    ['أجهزة منزلية','مجمدات',['فريزر','freezer','مجمدة']],
+    ['أجهزة منزلية','غسالات صحون',['غسالة صحون','dishwasher']],
+    ['أجهزة منزلية','غسالات',['غسالة','washer','washing machine']],
+    ['أجهزة منزلية','طباخات وأفران',['طباخ','فرن','oven','cooker']],
+    ['أجهزة منزلية','مكانس',['مكنسة','vacuum']],
+    ['تكييف وتبريد','سبلت',['سبلت','مكيف','تكييف','split','air conditioner']],
+    ['تكييف وتبريد','مبردات هواء',['مبرد','air cooler']],
+    ['تكييف وتبريد','مراوح',['مروحة','fan']],
+    ['صوتيات','سماعات',['سماعة','سماعات','headphone','earbuds','airpods']],
+    ['صوتيات','مكبرات صوت',['سبيكر','speaker','soundbar']],
+    ['ألعاب وترفيه','أجهزة ألعاب',['بلايستيشن','playstation','xbox','nintendo']],
+    ['كاميرات ومراقبة','كاميرات',['كاميرا','camera']],
+    ['كاميرات ومراقبة','أنظمة مراقبة',['مراقبة','cctv','dvr','nvr']],
+    ['طاقة وكهربائيات','مولدات',['مولدة','مولد','generator']],
+    ['طاقة وكهربائيات','UPS',['ups','يو بي اس']],
+    ['أثاث ومفروشات','غرف نوم',['غرفة نوم','سرير','bedroom']],
+    ['أثاث ومفروشات','أطقم جلوس',['صوفا','كنبة','انتريه','sofa']],
+    ['عناية شخصية','عطور',['عطر','perfume']],
+    ['عناية شخصية','حلاقة',['ماكينة حلاقة','shaver','trimmer']],
+    ['إكسسوارات','شواحن',['شاحن','charger','power bank','باور بانك']],
+    ['إكسسوارات','كيبلات',['كيبل','كابل','cable']],
+    ['إكسسوارات','ذاكرة وتخزين',['هارد','ssd','flash','ذاكرة','memory card']]
+  ];
+  let categoryTouched = false;
+
+  function fillSubcategories(selectedValue = '') {
+    const items = categoryCatalog[quickCategory.value] || [];
+    const placeholder = new Option('اختر الصنف الفرعي', '');
+    quickSubcategory.replaceChildren(placeholder, ...items.map(value => new Option(value, value)));
+    if (items.includes(selectedValue)) quickSubcategory.value = selectedValue;
+  }
+  function ean13Check(firstTwelve) {
+    const total = [...firstTwelve].reduce((sum, value, index) => sum + Number(value) * (index % 2 ? 3 : 1), 0);
+    return String((10 - (total % 10)) % 10);
+  }
+  function refreshGeneratedCodes() {
+    const now = new Date();
+    const stamp = String(now.getFullYear()).slice(-2) + String(now.getMonth() + 1).padStart(2,'0') + String(now.getDate()).padStart(2,'0');
+    const token = Math.random().toString(36).slice(2,8).toUpperCase();
+    document.getElementById('quickSku').value = `FIN-${stamp}-${token}`;
+    const firstTwelve = ('20' + String(Date.now()).slice(-10)).slice(0,12);
+    document.getElementById('quickBarcode').value = firstTwelve + ean13Check(firstTwelve);
+  }
+  function inferFromName() {
+    const value = quickName.value.trim().toLowerCase();
+    const match = categoryRules.find(([, , words]) => words.some(word => value.includes(word)));
+    if (match && !categoryTouched) {
+      quickCategory.value = match[0];
+      fillSubcategories(match[1]);
+    }
+    const brands = [...document.querySelectorAll('#iraqBrandOptions option')].map(option => option.value).sort((a,b) => b.length - a.length);
+    if (!quickBrand.value) {
+      const detected = brands.find(brand => value.includes(brand.toLowerCase()));
+      if (detected) quickBrand.value = detected;
+    }
+    const category = match ? match[0] : quickCategory.value;
+    const subcategory = match ? match[1] : (quickSubcategory.value || 'غير محدد');
+    document.getElementById('categorySuggestion').textContent = match
+      ? `اقتراح ذكي: ${category} ← ${subcategory}`
+      : (value ? 'لم نتعرف على الصنف تلقائياً؛ اختره من القائمة.' : 'سيظهر اقتراح الصنف هنا بعد كتابة الاسم.');
+  }
+  const quickUsdRate = 1350;
+  function formatMoney(value) { return Math.round(Number(value) || 0).toLocaleString('ar-IQ'); }
+  function updateBuyPriceFromUsd() {
+    const usd = Number(document.getElementById('quickBuyPriceUsd').value) || 0;
+    document.getElementById('quickBuyPrice').value = usd > 0 ? Math.round(usd * quickUsdRate) : '';
+    updateProfitSummary('profit');
+  }
+  function updateProfitSummary(source = 'profit') {
+    const buy = Number(document.getElementById('quickBuyPrice').value) || 0;
+    const profitInput = document.getElementById('quickProfit');
+    const saleInput = document.getElementById('quickSalePrice');
+    if (source !== 'sale') saleInput.value = buy ? Math.round(buy * (1 + (Number(profitInput.value) || 0) / 100)) : '';
+    const sale = Number(saleInput.value) || 0;
+    if (source === 'sale' && buy > 0) profitInput.value = Math.max(0, ((sale - buy) / buy) * 100).toFixed(2).replace(/\.00$/,'');
+    const amount = sale - buy;
+    const percentage = buy > 0 ? (amount / buy) * 100 : 0;
+    const summary = document.getElementById('quickProfitSummary');
+    summary.classList.toggle('is-negative', amount < 0);
+    summary.querySelector('strong').textContent = `${formatMoney(amount)} د.ع`;
+    summary.querySelector('small').textContent = `${percentage.toFixed(1)}%`;
+  }
+  function openQuickModal() {
+    quickModal.hidden = false;
+    document.body.classList.add('ins-modal-open');
+    refreshGeneratedCodes();
+    fillSubcategories();
+    setTimeout(() => quickName.focus(), 30);
+  }
+  function closeQuickModal() {
+    quickModal.hidden = true;
+    document.body.classList.remove('ins-modal-open');
+  }
+  document.querySelector('[data-open-quick]')?.addEventListener('click', openQuickModal);
+  document.querySelectorAll('[data-close-quick]').forEach(button => button.addEventListener('click', closeQuickModal));
+  quickCategory?.addEventListener('change', () => { categoryTouched = true; fillSubcategories(); });
+  quickName?.addEventListener('input', inferFromName);
+  document.getElementById('quickBuyPriceUsd')?.addEventListener('input', updateBuyPriceFromUsd);
+  document.getElementById('quickBuyPrice')?.addEventListener('input', event => {
+    if (event.isTrusted) document.getElementById('quickBuyPriceUsd').value = '';
+    updateProfitSummary('profit');
+  });
+  document.getElementById('quickProfit')?.addEventListener('input', () => updateProfitSummary('profit'));
+  document.getElementById('quickSalePrice')?.addEventListener('input', () => updateProfitSummary('sale'));
+  document.addEventListener('keydown', event => { if (event.key === 'Escape' && !quickModal.hidden) closeQuickModal(); });
+  quickForm?.addEventListener('submit', async event => {
+    event.preventDefault();
+    const button = document.getElementById('quickSaveButton');
+    const errorBox = document.getElementById('quickProductError');
+    const data = Object.fromEntries(new FormData(quickForm));
+    data.buy_price_usd = Number(data.buy_price_usd || 0);
+    data.buy_price = Number(data.buy_price);
+    data.sale_price = Number(data.sale_price);
+    data.profit_percentage = Number(data.profit_percentage);
+    data.opening_stock = Number(data.opening_stock);
+    data.branch_id = Number(data.branch_id || 0);
+    data.months = Number(data.months);
+    data.installment_markup = Number(data.installment_markup);
+    data.down_payment = Number(data.down_payment);
+    data.publish_to_store = Boolean(quickForm.elements.publish_to_store.checked);
+    button.disabled = true;
+    button.textContent = 'جاري الحفظ والربط...';
+    errorBox.hidden = true;
+    try {
+      const response = await fetch({{ url_for('installments_admin.quick_create_product')|tojson }}, {method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(data)});
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'تعذر حفظ المنتج');
+      location.href = `/installments/products/${result.id}`;
+    } catch (error) {
+      errorBox.textContent = error.message;
+      errorBox.hidden = false;
+      button.disabled = false;
+      button.textContent = 'حفظ وربط بالمتجر';
+    }
+  });
+
+  const createBox = document.getElementById('createBox');
+  document.querySelector('[data-open-product]')?.addEventListener('click', () => { createBox.hidden = false; createBox.scrollIntoView({behavior:'smooth',block:'start'}); });
+  document.querySelectorAll('[data-close-product]').forEach(button => button.addEventListener('click', () => { createBox.hidden = true; }));
+  const form = document.getElementById('productForm');
+  const productSelect = document.getElementById('product_id');
+  const slugify = value => String(value || '').toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  productSelect?.addEventListener('change', event => {
+    const option = event.target.selectedOptions[0];
+    if (!option?.value) return;
+    document.getElementById('cash_price').value = option.dataset.price || '';
+    document.getElementById('title').value = option.dataset.title || '';
+    document.getElementById('category').value = option.dataset.category || '';
+    document.getElementById('slug').value = slugify(option.dataset.sku) || `product-${option.value}`;
+    document.getElementById('sourceProductHint').textContent = Number(option.dataset.stock) > 0 ? `المتوفر حالياً: ${option.dataset.stock}` : 'تنبيه: مخزون هذا المنتج صفر، لن يظهر متاحاً للشراء حتى تضيف كمية.';
+  });
+  document.getElementById('sourceProductSearch')?.addEventListener('input', event => {
+    const term = event.target.value.trim().toLowerCase();
+    let visible = 0;
+    [...productSelect.options].forEach((option,index) => { if (!index) return; const match = !term || option.textContent.toLowerCase().includes(term); option.hidden = !match; if (match) visible += 1; });
+    document.getElementById('sourceProductHint').textContent = visible ? `${visible} منتج مطابق` : 'لا يوجد منتج مطابق؛ يمكنك إضافته أولاً إلى المخزون.';
+  });
+  form?.addEventListener('submit', async event => {
+    event.preventDefault();
+    const button = document.getElementById('saveProductButton');
+    const errorBox = document.getElementById('productError');
+    const data = Object.fromEntries(new FormData(form));
+    data.product_id = Number(data.product_id);
+    data.cash_price = Number(data.cash_price);
+    data.plans = [{months:Number(data.months),pricing_mode:'percentage',markup_percentage:data.markup,down_payment_type:Number(data.down)>0?'percentage':'none',down_payment_value:data.down,processing_fee:0,active:true}];
+    button.disabled = true; errorBox.hidden = true;
+    try {
+      const response = await fetch({{ url_for('installments_admin.create_product')|tojson }}, {method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(data)});
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'تعذر حفظ المنتج');
+      location.href = `/installments/products/${result.id}`;
+    } catch (error) { errorBox.textContent = error.message; errorBox.hidden = false; button.disabled = false; }
+  });
+
+  const adWizard = document.getElementById('adWizard');
+  const adWorkspace = document.getElementById('adWorkspace');
+  const adLoading = document.getElementById('adLoading');
+  const adError = document.getElementById('adError');
+  const adResult = document.getElementById('adResult');
+  const adKitUrl = {{ url_for('installments_admin.product_ad_kit', product_id=0)|tojson }};
+  const adCopyUrl = {{ url_for('installments_admin.product_ad_copy', product_id=0)|tojson }};
+  const adPublishUrl = {{ url_for('installments_admin.publish_product_to_facebook', product_id=0)|tojson }};
+  const platformMarks = {facebook:'f', instagram:'◎', google:'G', tiktok:'♪'};
+  let adState = {productId:null, kit:null, platform:'facebook', creative:null};
+
+  function productAdUrl(template, productId) { return template.replace('/0/', `/${productId}/`); }
+  function closeAdWizard() {
+    adWizard.hidden = true;
+    document.body.classList.remove('ins-modal-open');
+  }
+  function showAdError(message) {
+    adError.textContent = message;
+    adError.hidden = false;
+  }
+  function selectAdPlatform(platform) {
+    adState.platform = platform;
+    document.querySelectorAll('[data-ad-platform]').forEach(button => button.classList.toggle('is-active', button.dataset.adPlatform === platform));
+    const destinations = adState.kit?.destinations?.[platform] || [];
+    const select = document.getElementById('adDestination');
+    const metaPlatform = platform === 'facebook' || platform === 'instagram';
+    const fallback = new Option(metaPlatform ? 'لا توجد صفحة مربوطة — اربط صفحة أولاً' : 'اختيار الحساب داخل منصة الإعلان', metaPlatform ? '' : 'platform');
+    select.replaceChildren(...destinations.map(row => {
+      const option = new Option(row.name, row.id);
+      option.dataset.externalId = row.external_id || '';
+      option.dataset.canPublish = row.can_publish ? 'true' : 'false';
+      return option;
+    }), fallback);
+    if (destinations.length) select.value = destinations[0].id;
+    else select.value = metaPlatform ? '' : 'platform';
+    const connectActions = document.getElementById('adConnectActions');
+    connectActions.hidden = !metaPlatform;
+    document.getElementById('adConnectPages').href = adState.kit.facebook_pages_url || '/publisher/settings';
+    document.getElementById('adDestinationHint').textContent = destinations.length
+      ? `${destinations.length} صفحة مرتبطة — اختر صفحة النشر.`
+      : (metaPlatform ? 'ماكو صفحة مربوطة حالياً. اربط صفحتك ثم اضغط «تحديث الصفحات».' : 'سيطلب منك مدير الإعلانات اختيار الحساب بعد الفتح.');
+    document.getElementById('adOpenPlatform').textContent = metaPlatform ? 'نسخ وبدء إنشاء إعلان ممول ↗' : `نسخ وفتح ${adState.kit.platforms[platform].label} ↗`;
+    const publishButton = document.getElementById('adPublishPage');
+    publishButton.hidden = platform !== 'facebook';
+    publishButton.disabled = true;
+    adState.creative = null;
+    adResult.hidden = true;
+    document.getElementById('adCopy').disabled = true;
+    document.getElementById('adOpenPlatform').disabled = true;
+    document.getElementById('adFooterStatus').textContent = platform === 'facebook' ? 'ولّد الكليشة ثم انشرها مباشرة على الصفحة.' : 'ولّد الكليشة ثم راجعها قبل فتح المنصة.';
+  }
+  function canOpenAdPlatform() {
+    const isMeta = adState.platform === 'facebook' || adState.platform === 'instagram';
+    return Boolean(adState.creative) && (!isMeta || Boolean(document.getElementById('adDestination').value));
+  }
+  function canPublishFacebook() {
+    const option = document.getElementById('adDestination').selectedOptions[0];
+    return adState.platform === 'facebook' && Boolean(adState.creative) && option?.dataset.canPublish === 'true';
+  }
+  function renderAdKit() {
+    const {product, platforms, ai_configured: aiConfigured} = adState.kit;
+    document.getElementById('adProductSummary').innerHTML = `<div><strong>${escapeAdHtml(product.title)}</strong><small>${escapeAdHtml(product.sku || product.category || '')}</small></div><span>${Number(product.cash_price || 0).toLocaleString('ar-IQ')} ${escapeAdHtml(product.currency)}</span>`;
+    document.getElementById('adPlatforms').innerHTML = Object.values(platforms).map(platform => `<button type="button" data-ad-platform="${platform.key}"><i>${platformMarks[platform.key]}</i><span><strong>${escapeAdHtml(platform.label)}</strong><small>${escapeAdHtml(platform.hint)}</small></span></button>`).join('');
+    document.querySelectorAll('[data-ad-platform]').forEach(button => button.addEventListener('click', () => selectAdPlatform(button.dataset.adPlatform)));
+    const grid = document.getElementById('adMediaGrid');
+    grid.innerHTML = product.media.map(media => {
+      const mediaUrl = escapeAdHtml(media.url);
+      const mediaId = escapeAdHtml(media.id);
+      const preview = media.type === 'video' ? `<video src="${mediaUrl}" muted preload="metadata"></video><b>فيديو</b>` : `<img src="${mediaUrl}" alt="">`;
+      return `<label class="ins-ad-media"><input type="checkbox" value="${mediaId}" checked><span class="ins-ad-media__preview">${preview}</span><small>${escapeAdHtml(media.name || (media.type === 'video' ? 'فيديو' : 'صورة'))}</small><a href="${mediaUrl}" target="_blank" rel="noopener" download>فتح</a></label>`;
+    }).join('');
+    document.getElementById('adMediaCount').textContent = product.media.length;
+    document.getElementById('adEmptyMedia').hidden = product.media.length > 0;
+    document.getElementById('adAiNote').textContent = aiConfigured ? 'الذكاء الاصطناعي جاهز. النص يبقى قابلاً للتعديل قبل الانتقال.' : 'سيتم تجهيز نص بديل قابل للتعديل إلى أن يتم ضبط مفتاح الذكاء الاصطناعي.';
+    selectAdPlatform('facebook');
+  }
+  function escapeAdHtml(value) {
+    const node = document.createElement('span'); node.textContent = String(value ?? ''); return node.innerHTML;
+  }
+  async function openAdWizard(productId, title) {
+    adState = {productId, kit:null, platform:'facebook', creative:null};
+    adWizard.hidden = false;
+    document.body.classList.add('ins-modal-open');
+    adWorkspace.hidden = true; adLoading.hidden = false; adError.hidden = true; adResult.hidden = true;
+    document.getElementById('adWizardTitle').textContent = `إعلان: ${title}`;
+    document.getElementById('adCopy').disabled = true;
+    document.getElementById('adPublishPage').disabled = true;
+    document.getElementById('adOpenPlatform').disabled = true;
+    try {
+      const response = await fetch(productAdUrl(adKitUrl, productId), {headers:{Accept:'application/json'}});
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'تعذر جمع معلومات المنتج');
+      adState.kit = result;
+      renderAdKit();
+      adLoading.hidden = true; adWorkspace.hidden = false;
+    } catch (error) { adLoading.hidden = true; showAdError(error.message); }
+  }
+  function fillAdCreative(creative) {
+    document.getElementById('adPrimaryText').value = creative.primary_text || '';
+    document.getElementById('adHeadline').value = creative.headline || '';
+    document.getElementById('adCta').value = creative.call_to_action || '';
+    document.getElementById('adDescription').value = creative.description || '';
+    const tags = [...(creative.hashtags || []), ...(creative.keywords || [])];
+    document.getElementById('adTags').value = [...new Set(tags)].join(' ');
+    const searchParts = [...(creative.search_headlines || []).map(value => `عنوان: ${value}`), ...(creative.search_descriptions || []).map(value => `وصف: ${value}`)];
+    document.getElementById('adSearchCopy').value = searchParts.join('\n');
+    document.getElementById('adSearchField').hidden = adState.platform !== 'google';
+    document.getElementById('adVideoHook').value = creative.video_hook || '';
+    document.getElementById('adVideoScript').value = creative.video_script || '';
+    document.getElementById('adVisualDirection').value = creative.visual_direction || '';
+    adResult.hidden = false;
+    document.getElementById('adCopy').disabled = false;
+    document.getElementById('adPublishPage').disabled = !canPublishFacebook();
+    document.getElementById('adOpenPlatform').disabled = !canOpenAdPlatform();
+    document.getElementById('adFooterStatus').textContent = creative.warning || (creative.ai_generated ? 'تمت كتابة الكليشة — راجعها ثم اضغط «نشر الآن على الصفحة».' : 'تم تجهيز نص قابل للتعديل — راجعه ثم انشره.');
+  }
+  function adCreativeText() {
+    const searchCopy = adState.platform === 'google' ? document.getElementById('adSearchCopy').value : '';
+    return [document.getElementById('adHeadline').value, document.getElementById('adPrimaryText').value, document.getElementById('adDescription').value, document.getElementById('adTags').value, searchCopy].filter(Boolean).join('\n\n');
+  }
+  async function copyAdCreative() {
+    const text = adCreativeText();
+    if (!text) return;
+    try { await navigator.clipboard.writeText(text); }
+    catch (_) { const area = document.getElementById('adPrimaryText'); area.select(); document.execCommand('copy'); }
+    document.getElementById('adFooterStatus').textContent = 'تم نسخ الكليشة. الوسائط المحددة جاهزة للفتح والتنزيل.';
+  }
+  document.querySelectorAll('[data-ad-product]').forEach(button => button.addEventListener('click', () => openAdWizard(Number(button.dataset.adProduct), button.dataset.adTitle)));
+
+  document.querySelectorAll('[data-delete-product]').forEach(button => {
+    button.addEventListener('click', async () => {
+      const productId = Number(button.dataset.deleteProduct);
+      const title = button.dataset.deleteTitle;
+      if (!window.confirm(`هل تريد حذف «${title}» من متجر الأقساط؟\n\nسيتم حذف المنتج وخططه وصوره من المتجر فقط — المنتج يبقى في المخزون ولا تُحذف بياناته المحاسبية.`)) return;
+      button.disabled = true;
+      button.textContent = 'جاري الحذف...';
+      try {
+        const response = await fetch(`/installments/api/products/${productId}`, {method: 'DELETE', headers: {Accept: 'application/json'}});
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'تعذر الحذف');
+        button.closest('tr').remove();
+      } catch (error) {
+        alert(error.message);
+        button.disabled = false;
+        button.textContent = 'حذف';
+      }
+    });
+  });
+  document.querySelectorAll('[data-close-ad]').forEach(button => button.addEventListener('click', closeAdWizard));
+  document.addEventListener('keydown', event => { if (event.key === 'Escape' && !adWizard.hidden) closeAdWizard(); });
+  document.getElementById('adGenerate')?.addEventListener('click', async () => {
+    const button = document.getElementById('adGenerate');
+    const mediaIds = [...document.querySelectorAll('#adMediaGrid input:checked')].map(input => input.value);
+    button.disabled = true; button.innerHTML = '<span>✦</span> جاري ترتيب الكليشة...'; adError.hidden = true;
+    try {
+      const response = await fetch(productAdUrl(adCopyUrl, adState.productId), {method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({platform:adState.platform,objective:document.getElementById('adObjective').value,tone:document.getElementById('adTone').value,media_ids:mediaIds})});
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'تعذر تجهيز الكليشة');
+      adState.creative = result.creative;
+      fillAdCreative(result.creative);
+    } catch (error) { showAdError(error.message); }
+    finally { button.disabled = false; button.innerHTML = '<span>✦</span> أعد ترتيب الكليشة بالذكاء الاصطناعي'; }
+  });
+  document.getElementById('adCopy')?.addEventListener('click', copyAdCreative);
+  document.getElementById('adDestination')?.addEventListener('change', () => {
+    document.getElementById('adOpenPlatform').disabled = !canOpenAdPlatform();
+    document.getElementById('adPublishPage').disabled = !canPublishFacebook();
+    const option = document.getElementById('adDestination').selectedOptions[0];
+    if (option?.value) document.getElementById('adDestinationHint').textContent = option.dataset.canPublish === 'true'
+      ? `الصفحة المختارة: ${option.textContent}. زر النشر سيرسل المنشور إليها مباشرة.`
+      : `الحساب ${option.textContent} مربوط للمحادثات فقط؛ اربطه من إعدادات الناشر حتى يتاح النشر المباشر.`;
+  });
+  document.getElementById('adRefreshPages')?.addEventListener('click', async () => {
+    const button = document.getElementById('adRefreshPages');
+    button.disabled = true; button.textContent = 'جاري التحديث...'; adError.hidden = true;
+    try {
+      const response = await fetch(adState.kit.facebook_pages_refresh_url, {method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:'{}'});
+      const result = await response.json();
+      if (!response.ok || result.success === false) throw new Error(result.message || result.error || 'تعذر تحديث الصفحات');
+      const kitResponse = await fetch(productAdUrl(adKitUrl, adState.productId), {headers:{Accept:'application/json'}});
+      const kit = await kitResponse.json();
+      if (!kitResponse.ok) throw new Error(kit.error || 'تعذر قراءة الصفحات');
+      adState.kit = kit;
+      selectAdPlatform(adState.platform);
+      document.getElementById('adFooterStatus').textContent = 'تم تحديث الصفحات. اختر الصفحة ثم ولّد الكليشة.';
+    } catch (error) {
+      showAdError(`${error.message}. افتح «ربط صفحة فيسبوك» وأدخل User Token ثم ارجع واضغط تحديث.`);
+    } finally { button.disabled = false; button.textContent = 'تحديث الصفحات'; }
+  });
+  document.getElementById('adOpenPlatform')?.addEventListener('click', () => {
+    if (!canOpenAdPlatform()) {
+      showAdError('اربط صفحة فيسبوك واخترها أولاً، ثم ولّد الكليشة.');
+      return;
+    }
+    copyAdCreative();
+    const url = adState.kit?.platforms?.[adState.platform]?.launch_url;
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+  });
+  document.getElementById('adPublishPage')?.addEventListener('click', async () => {
+    if (!canPublishFacebook()) {
+      showAdError('اختر صفحة فيسبوك مربوطة للنشر، ثم ولّد الكليشة أولاً.');
+      return;
+    }
+    const message = adCreativeText();
+    if (!message) {
+      showAdError('الكليشة فارغة. اكتب النص أو ولّده قبل النشر.');
+      return;
+    }
+    const destination = document.getElementById('adDestination');
+    const option = destination.selectedOptions[0];
+    if (!window.confirm(`سيتم نشر هذا المنشور الآن على صفحة «${option.textContent}». هل تريد المتابعة؟`)) return;
+    const button = document.getElementById('adPublishPage');
+    const mediaIds = [...document.querySelectorAll('#adMediaGrid input:checked')].map(input => input.value);
+    button.disabled = true;
+    button.textContent = 'جاري النشر...';
+    adError.hidden = true;
+    try {
+      const response = await fetch(productAdUrl(adPublishUrl, adState.productId), {
+        method: 'POST',
+        headers: {'Content-Type':'application/json','Accept':'application/json'},
+        body: JSON.stringify({destination_id: destination.value, message, media_ids: mediaIds}),
+      });
+      const result = await response.json();
+      if (!response.ok || result.success === false) throw new Error(result.error || result.message || 'تعذر النشر على فيسبوك');
+      document.getElementById('adFooterStatus').textContent = `✓ ${result.message}${result.post_id ? ` — رقم المنشور: ${result.post_id}` : ''}`;
+      button.textContent = 'تم النشر ✓';
+    } catch (error) {
+      showAdError(error.message);
+      button.disabled = false;
+      button.textContent = 'إعادة محاولة النشر';
+    }
+  });
+</script>
+{% endblock %}

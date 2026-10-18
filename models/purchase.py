@@ -4,6 +4,10 @@ from datetime import datetime
 class Purchase(db.Model):
     __tablename__ = "purchase"
 
+    __table_args__ = (
+        db.UniqueConstraint("branch_id", "invoice_no", name="_purchase_branch_invoice_no_uc"),
+    )
+
     id = db.Column(db.Integer, primary_key=True)
 
     # =====================
@@ -53,6 +57,18 @@ class Purchase(db.Model):
 
     created_by_employee_id = db.Column(db.Integer, db.ForeignKey("employee.id"), nullable=True)
     stock_applied = db.Column(db.Boolean, default=False)
+    stock_revision = db.Column(db.Integer, nullable=False, default=1)
+
+    warehouse_id = db.Column(db.Integer, nullable=True, index=True)
+    purchase_list_id = db.Column(db.Integer, db.ForeignKey("purchase_list.id"), nullable=True, index=True)
+    currency = db.Column(db.String(10), nullable=True, default="IQD")
+    exchange_rate = db.Column(db.Float, nullable=True, default=1.0)
+    payment_currency = db.Column(db.String(10), nullable=True)
+    is_draft = db.Column(db.Boolean, default=False, nullable=True)
+    deleted_at = db.Column(db.DateTime, nullable=True)
+    source_module = db.Column(db.String(40), nullable=True)
+    customs_extra = db.Column(db.Integer, nullable=True, default=0)
+    other_extra = db.Column(db.Integer, nullable=True, default=0)
 
     purchase_date = db.Column(db.Date, default=datetime.utcnow().date)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -68,6 +84,12 @@ class Purchase(db.Model):
         "PurchasePayment",
         back_populates="purchase",
         cascade="all, delete-orphan",
+        lazy=True,
+    )
+    supplier_payment_allocations = db.relationship(
+        "SupplierPaymentAllocation",
+        back_populates="purchase",
+        passive_deletes=True,
         lazy=True,
     )
     attachments = db.relationship(

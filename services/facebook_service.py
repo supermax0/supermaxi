@@ -5,6 +5,7 @@ from typing import Any, List
 
 import requests
 from flask import current_app
+from utils.meta_graph import GRAPH_BASE
 
 
 def get_page_access_token() -> str:
@@ -24,14 +25,14 @@ def fetch_comments(
 ) -> List[dict[str, Any]]:
     """
     جلب تعليقات منشور فيسبوك.
-    GET /v19.0/{post-id}/comments
+    GET /{supported-version}/{post-id}/comments
     """
     token = access_token or get_page_access_token()
     if not token:
         current_app.logger.warning("Facebook fetch_comments: no access token")
         return []
 
-    url = f"https://graph.facebook.com/v19.0/{post_id}/comments"
+    url = f"{GRAPH_BASE}/{post_id}/comments"
     params: dict[str, Any] = {
         "access_token": token,
         "fields": "id,message,from,created_time",
@@ -58,7 +59,7 @@ def reply_comment(
 ) -> bool:
     """
     نشر رد على تعليق فيسبوك.
-    POST https://graph.facebook.com/v19.0/{comment-id}/comments
+    POST /{supported-version}/{comment-id}/comments
     """
     token = access_token or get_page_access_token()
     if not token:
@@ -67,7 +68,7 @@ def reply_comment(
     if not message or not comment_id:
         return False
 
-    url = f"https://graph.facebook.com/v19.0/{comment_id}/comments"
+    url = f"{GRAPH_BASE}/{comment_id}/comments"
     payload = {"message": message, "access_token": token}
 
     try:

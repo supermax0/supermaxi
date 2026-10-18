@@ -11,6 +11,7 @@ from utils.permission_checks import get_current_employee
 from utils.payroll_schema import backfill_commission_lines, ensure_payroll_schema
 from utils.payroll_service import (
     WEEKDAY_LABELS,
+    build_monthly_orders_statement,
     build_payroll_dashboard,
     get_payment_history,
     pay_salary,
@@ -19,6 +20,7 @@ from utils.payroll_service import (
     settle_employee_commission_payment,
 )
 from utils.treasury_helpers import treasury_choices_for_form
+from utils.branch_scope import require_visible
 
 payroll_bp = Blueprint("payroll", __name__)
 
@@ -36,13 +38,6 @@ def _ensure_schema():
 @permission_required("manage_employees")
 def payroll_page():
     treasury_accounts = treasury_choices_for_form()
-    try:
-        from utils.treasury_helpers import resolve_treasury_account_id
-
-        default_tid = resolve_treasury_account_id(None)
-        process_due_salary_payments(today=date.today(), treasury_account_id=default_tid)
-    except Exception:
-        db.session.rollback()
     return render_template(
         "payroll.html",
         treasury_accounts=treasury_accounts,
@@ -53,15 +48,27 @@ def payroll_page():
 @payroll_bp.route("/api/dashboard")
 @permission_required("manage_employees")
 def payroll_dashboard_api():
-    data = build_payroll_dashboard()
+    year = request.args.get("year", type=int)
+    month = request.args.get("month", type=int)
+    if year is not None and (month is None or month < 1 or month > 12):
+        return jsonify({"error": "شهر غير صالح"}), 400
+    if month is not None and year is None:
+        return jsonify({"error": "حدد السنة مع الشهر"}), 400
+    data = build_payroll_dashboard(commission_year=year, commission_month=month)
     return jsonify({"success": True, **data})
 
 
 @payroll_bp.route("/api/commission/<int:employee_id>")
 @permission_required("manage_employees")
 def payroll_commission_detail(employee_id):
-    employee = Employee.query.get_or_404(employee_id)
-    lines = serialize_commission_lines(employee_id)
+    employee = require_visible(Employee.query.get_or_404(employee_id))
+    year = request.args.get("year", type=int)
+    month = request.args.get("month", type=int)
+    if year is not None and (month is None or month < 1 or month > 12):
+        return jsonify({"error": "شهر غير صالح"}), 400
+    if month is not None and year is None:
+        return jsonify({"error": "حدد السنة مع الشهر"}), 400
+    lines = serialize_commission_lines(employee_id, year=year, month=month)
     total = sum(int(l["amount"] or 0) for l in lines)
     return jsonify(
         {
@@ -71,6 +78,8 @@ def payroll_commission_detail(employee_id):
             "lines": lines,
             "total_amount": total,
             "order_count": len(lines),
+            "year": year,
+            "month": month,
         }
     )
 
@@ -85,17 +94,30 @@ def payroll_settle_commission():
     except (TypeError, ValueError):
         return jsonify({"error": "بيانات غير صالحة"}), 400
 
+    year = data.get("year")
+    month = data.get("month")
+    try:
+        year = int(year) if year is not None and str(year).strip() != "" else None
+        month = int(month) if month is not None and str(month).strip() != "" else None
+    except (TypeError, ValueError):
+        return jsonify({"error": "شهر السداد غير صالح"}), 400
+
+    if year is None or month is None:
+        return jsonify({"error": "اختر شهر السداد أولاً"}), 400
+    if month < 1 or month > 12:
+        return jsonify({"error": "شهر غير صالح"}), 400
+
+    require_visible(Employee.query.get_or_404(employee_id))
     current = get_current_employee()
     settled_by = current.id if current else None
-    now = datetime.utcnow()
 
     try:
         result = settle_employee_commission_payment(
             employee_id,
             treasury_account_id=treasury_account_id,
             settled_by=settled_by,
-            year=now.year,
-            month=now.month,
+            year=year,
+            month=month,
         )
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -107,7 +129,7 @@ def payroll_settle_commission():
         log_activity(
             "update",
             "payroll",
-            f"سداد عمولة {result['employee_name']} — {result['order_count']} طلب — {result['amount']} د.ع",
+            f"سداد عمولة {result['employee_name']} — {result['period_year']}-{int(result['period_month']):02d} — {result['order_count']} طلب — {result['amount']} د.ع",
             entity_type="employee",
             entity_id=employee_id,
             payload=result,
@@ -115,7 +137,16 @@ def payroll_settle_commission():
     except Exception:
         pass
 
-    return jsonify({"success": True, **result, "message": "تم سداد العمولة وخصمها من الخزينة"})
+    return jsonify(
+        {
+            "success": True,
+            **result,
+            "message": (
+                f"تم سداد عمولة شهر {result['period_year']}-{int(result['period_month']):02d} "
+                f"(مع المرحّل إن وُجد) وخصمها من الخزينة"
+            ),
+        }
+    )
 
 
 @payroll_bp.route("/api/pay-salary", methods=["POST"])
@@ -137,6 +168,8 @@ def payroll_pay_salary():
     else:
         return jsonify({"error": "نوع المستفيد غير صالح"}), 400
 
+    if payee_type == "employee":
+        require_visible(payee)
     current = get_current_employee()
     settled_by = current.id if current else None
 
@@ -208,3 +241,19 @@ def payroll_process_due():
             "message": f"تم صرف {result['paid_count']} راتب",
         }
     )
+
+
+@payroll_bp.route("/api/monthly-statement")
+@permission_required("manage_employees")
+def payroll_monthly_statement():
+    try:
+        year = int(request.args.get("year") or datetime.utcnow().year)
+        month = int(request.args.get("month") or datetime.utcnow().month)
+    except (TypeError, ValueError):
+        return jsonify({"error": "فترة غير صالحة"}), 400
+
+    if month < 1 or month > 12:
+        return jsonify({"error": "الشهر غير صالح"}), 400
+
+    data = build_monthly_orders_statement(year, month)
+    return jsonify({"success": True, **data})

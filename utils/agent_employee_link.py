@@ -57,12 +57,16 @@ def ensure_agent_employee(agent: DeliveryAgent | None) -> Employee | None:
     _ensure_messaging_role()
     messaging_role = Role.query.filter_by(name=AGENT_MESSAGING_ROLE).first()
 
+    shadow_username = agent_employee_username(agent.id)
     emp = None
     if getattr(agent, "employee_id", None):
-        emp = Employee.query.get(agent.employee_id)
+        linked = Employee.query.get(agent.employee_id)
+        # لا نستخدم حساب الأدمن أو أي موظف حقيقي؛ المراسلة لحساب الظل فقط.
+        if linked and linked.username == shadow_username:
+            emp = linked
 
     if not emp:
-        emp = Employee.query.filter_by(username=agent_employee_username(agent.id)).first()
+        emp = Employee.query.filter_by(username=shadow_username).first()
 
     if not emp:
         emp = Employee(

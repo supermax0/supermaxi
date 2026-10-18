@@ -7,8 +7,8 @@
   <title>فاتورة رقم #{{ order.id }}</title>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  {% if not printable_codes %}<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>{% endif %}
   <style>
     * {
       margin: 0;
@@ -314,6 +314,26 @@
     .warranty-notes p {
       margin-bottom: 5px;
     }
+
+    .warranty-notes h4 {
+      margin: 0 0 6px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .warranty-notes ul {
+      margin: 0 0 8px;
+      padding: 0 18px 0 0;
+      list-style: disc;
+    }
+
+    .warranty-notes li {
+      margin-bottom: 4px;
+    }
+
+    .warranty-notes strong {
+      font-weight: 800;
+    }
     
     .footer-contact {
       display: flex;
@@ -353,12 +373,12 @@
       display: inline-block;
     }
     
-    #barcode {
+    [data-invoice-barcode] {
       max-width: 180px;
       height: 50px;
     }
     
-    #qrcode {
+    [data-invoice-qrcode] {
       width: 108px;
       min-height: 108px;
       min-width: 108px;
@@ -430,9 +450,9 @@
     <!-- Layout order from settings -->
     {% set layout_data = settings.get_layout_settings() %}
     {% if layout_data and layout_data.get('order') %}
-    <script type="application/json" id="layout-order">{{ layout_data.get('order') | tojson }}</script>
+    <script type="application/json" id="layout-order-{{ order.id }}" data-invoice-layout>{{ layout_data.get('order') | tojson }}</script>
     {% else %}
-    <script type="application/json" id="layout-order">["header", "summary-customer", "products", "total", "footer"]</script>
+    <script type="application/json" id="layout-order-{{ order.id }}" data-invoice-layout>["header", "summary-customer", "products", "total", "footer"]</script>
     {% endif %}
     
     <!-- ==================== Header ==================== -->
@@ -504,6 +524,15 @@
         <div class="customer-detail">
           <strong>الموظف:</strong> {{ order.employee_name or "—" }}
         </div>
+        {% if order.shipping_barcode %}
+        <div class="customer-detail">
+          <strong data-finora-shipping-receipt>شركة النقل:</strong> {{ order.shipping_company.name if order.shipping_company else "—" }}
+        </div>
+        <div class="customer-detail">
+          <strong>رقم وصل / بوليصة النقل:</strong>
+          <span dir="ltr" style="unicode-bidi:isolate;overflow-wrap:anywhere">{{ order.shipping_receipt_numbers|default([order.shipping_barcode])|join(' | ') }}</span>
+        </div>
+        {% endif %}
       </div>
     </div>
     
@@ -514,7 +543,9 @@
           <tr>
             <th>#</th>
             <th>المنتج</th>
+            {% if order.source_module == 'food' %}<th>النكهة/النوع</th><th>الوحدة</th>{% endif %}
             <th>العدد</th>
+            {% if order.source_module == 'food' %}<th>نوع البيع</th>{% endif %}
             <th>سعر القطعه</th>
             {% if settings.show_discount_column %}<th>الخصم</th>{% endif %}
             {% if settings.show_tax_column %}<th>الضريبه</th>{% endif %}
@@ -527,7 +558,9 @@
           <tr>
             <td>{{ loop.index }}</td>
             <td class="product-name-col">{{ item.product_name or "—" }}</td>
-            <td>{{ item.quantity }} قطعة</td>
+            {% if order.source_module == 'food' %}<td>{{ item.food_variant_name or '—' }}</td><td>{{ item.food_unit_name or '—' }}</td>{% endif %}
+            <td>{{ item.quantity }}{% if order.source_module == 'food' %} {{ item.food_unit_name or '' }}{% else %} قطعة{% endif %}</td>
+            {% if order.source_module == 'food' %}<td>{{ 'جملة' if item.food_sale_mode == 'WHOLESALE' else 'مفرد' }}</td>{% endif %}
             <td>{{ "{:,.2f}".format(item.price) }}</td>
             {% if settings.show_discount_column %}<td>0.00</td>{% endif %}
             {% if settings.show_tax_column %}<td>0.00</td>{% endif %}
@@ -537,6 +570,7 @@
           {% else %}
           <tr>
             {% set col_count = 4 %}
+            {% if order.source_module == 'food' %}{% set col_count = col_count + 3 %}{% endif %}
             {% if settings.show_discount_column %}{% set col_count = col_count + 1 %}{% endif %}
             {% if settings.show_tax_column %}{% set col_count = col_count + 1 %}{% endif %}
             {% if settings.show_unit_price_with_tax %}{% set col_count = col_count + 1 %}{% endif %}
@@ -579,9 +613,7 @@
     <!-- ==================== Footer ==================== -->
     <div class="invoice-footer" data-section="footer">
       <div class="warranty-notes">
-        {% for line in settings.warranty_notes.split('\n') %}
-        <p>{{ line }}</p>
-        {% endfor %}
+        {{ settings.warranty_notes|invoice_rich_text }}
       </div>
       
       <div class="footer-contact">
@@ -601,7 +633,7 @@
           <div class="code-item">
             <div class="code-label">باركود</div>
             <div class="barcode-container">
-              <svg id="barcode"></svg>
+              {% if printable_codes %}<img data-invoice-barcode src="{{ printable_codes.barcode }}" alt="باركود الفاتورة {{ order.id }}">{% else %}<svg id="barcode-{{ order.id }}" data-invoice-barcode></svg>{% endif %}
             </div>
           </div>
           {% endif %}
@@ -609,7 +641,7 @@
           <div class="code-item">
             <div class="code-label">QR Code</div>
             <div class="qrcode-container">
-              <div id="qrcode"></div>
+              <div id="qrcode-{{ order.id }}" data-invoice-qrcode title="{{ order_public_view_url if order_public_view_url is defined and order_public_view_url else url_for('orders.invoice_page', order_id=order.id, _external=True) }}">{% if printable_codes %}<img src="{{ printable_codes.qr }}" width="108" height="108" alt="QR رابط الفاتورة">{% endif %}</div>
             </div>
           </div>
           {% endif %}
@@ -619,8 +651,16 @@
   </div>
   
   <script>
+    (function () {
+    const invoiceRoot = document.currentScript.previousElementSibling;
+    invoiceRoot.dataset.finoraPrintReady = 'pending';
+    let barcodeReady = {% if printable_codes %}true{% else %}{{ (not show_barcode)|tojson }}{% endif %};
+    let qrReady = {% if printable_codes %}true{% else %}{{ (not show_qrcode)|tojson }}{% endif %};
+    function markInvoiceReady() {
+      if (barcodeReady && qrReady) invoiceRoot.dataset.finoraPrintReady = 'ready';
+    }
     // Invoice layout order from settings
-    var layoutOrderScript = document.getElementById('layout-order');
+    var layoutOrderScript = invoiceRoot.querySelector('[data-invoice-layout]');
     var layoutOrder = ['header', 'summary-customer', 'products', 'total', 'footer'];
     if (layoutOrderScript) {
       try {
@@ -632,7 +672,7 @@
     
     // Function to reorder elements
     function reorderInvoiceElements() {
-      const container = document.querySelector('.invoice-container');
+      const container = invoiceRoot;
       if (!container || !layoutOrder || layoutOrder.length === 0) return;
       
       const sections = {};
@@ -699,7 +739,7 @@
         
         {% if show_barcode %}
         try {
-          JsBarcode("#barcode", "{{ order.id }}", {
+          if (!barcodeReady) JsBarcode(invoiceRoot.querySelector('[data-invoice-barcode]'), "{{ order.id }}", {
             format: "CODE128",
             width: 2,
             height: 50,
@@ -707,7 +747,9 @@
             fontSize: 12,
             margin: 3
           });
+          barcodeReady = true;
         } catch (e) {
+          invoiceRoot.dataset.finoraPrintReady = 'error';
           console.error('Barcode generation error:', e);
         }
         {% endif %}
@@ -715,8 +757,9 @@
         {% if show_qrcode %}
         try {
           const invoiceUrl = {{ (order_public_view_url if order_public_view_url is defined and order_public_view_url else url_for('orders.invoice_page', order_id=order.id))|tojson }};
-          const qrContainer = document.getElementById("qrcode");
+          const qrContainer = invoiceRoot.querySelector('[data-invoice-qrcode]');
           function drawInvoiceQr() {
+            if (qrReady) return true;
             if (!qrContainer || typeof QRCode === 'undefined') return false;
             qrContainer.innerHTML = '';
             new QRCode(qrContainer, {
@@ -727,6 +770,8 @@
               colorLight: "#ffffff",
               correctLevel: QRCode.CorrectLevel.H
             });
+            qrReady = true;
+            markInvoiceReady();
             return true;
           }
           function loadQrLib(cb) {
@@ -747,9 +792,11 @@
             loadQrLib(function () { drawInvoiceQr(); });
           }
         } catch (e) {
+          invoiceRoot.dataset.finoraPrintReady = 'error';
           console.error('QR Code generation error:', e);
         }
         {% endif %}
+        markInvoiceReady();
       }, 100);
     });
     
@@ -774,7 +821,7 @@
       // جلب معلومات المنتجات
       const products = [];
       {% for item in items %}
-      products.push("{{ item.product_name }}");
+      products.push({{ ((item.product_name or '') ~ (' — ' ~ item.variant_color if item.variant_color else ''))|tojson }});
       {% endfor %}
       
       const productNames = products.join(', ');
@@ -787,6 +834,8 @@
       const whatsappUrl = 'https://wa.me/' + cleanPhone + '?text=' + encodeURIComponent(message);
       window.open(whatsappUrl, '_blank');
     }
+    {% if not invoice_capture %}window.sendWhatsAppMessage = sendWhatsAppMessage;{% endif %}
+    })();
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 </body>

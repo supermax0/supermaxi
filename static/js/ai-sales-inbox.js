@@ -1114,6 +1114,77 @@
     }
   }
 
+  let verifyPhone = null;
+  let verifySending = false;
+
+  function renderVerifyMessages() {
+    const list = $("verifyMessages");
+    if (!list) return;
+    const entries = state.verifyMessages || [];
+    if (!entries.length) {
+      list.innerHTML = '<p class="sales-ai-verify-empty">اكتب سؤال زبون حقيقي بالأسفل لتجربة رد الذكاء الفعلي.</p>';
+      return;
+    }
+    list.innerHTML = entries.map(entry => {
+      if (entry.role === "customer") {
+        return `<div class="sales-ai-message outbound"><div class="sales-ai-bubble">${escapeHtml(entry.text)}</div></div>`;
+      }
+      const diag = entry.diagnostics || {};
+      const badges = [];
+      if (diag.model) badges.push(`<span>الموديل: ${escapeHtml(diag.model)}</span>`);
+      if (typeof diag.elapsed_ms === "number") badges.push(`<span>${(diag.elapsed_ms / 1000).toFixed(1)} ثا</span>`);
+      badges.push(`<span>${diag.reply_length || 0} حرف${diag.reply_length_capped ? " · تم القص عند 420" : ""}</span>`);
+      if (diag.human_takeover) badges.push('<span class="sales-ai-verify-flag">تحويل لموظف</span>');
+      if (diag.needs_human_review) badges.push('<span class="sales-ai-verify-flag">يحتاج مراجعة بشرية</span>');
+      const body = entry.text ? escapeHtml(entry.text) : "<em>لا يوجد رد نصي</em>";
+      return `<div class="sales-ai-message inbound"><div class="sales-ai-bubble">${body}</div><div class="sales-ai-verify-diagnostics">${badges.join("")}</div></div>`;
+    }).join("");
+    list.scrollTop = list.scrollHeight;
+  }
+
+  async function sendVerifyMessage(event) {
+    event.preventDefault();
+    const input = $("verifyInput");
+    const text = input.value.trim();
+    if (!text || verifySending) return;
+    verifySending = true;
+    input.value = "";
+    state.verifyMessages = state.verifyMessages || [];
+    state.verifyMessages.push({ role: "customer", text });
+    renderVerifyMessages();
+    try {
+      const data = await api("/ai-sales/api/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, phone: verifyPhone }),
+      });
+      verifyPhone = data.conversation?.external_phone || data.conversation?.external_contact_id || verifyPhone;
+      state.verifyMessages.push({
+        role: "ai",
+        text: data.reply?.text_content || "",
+        diagnostics: data.diagnostics || {},
+      });
+    } catch (error) {
+      state.verifyMessages.push({ role: "ai", text: `تعذر تنفيذ الاختبار: ${error.message}`, diagnostics: {} });
+      toast(error.message, "error");
+    } finally {
+      verifySending = false;
+      renderVerifyMessages();
+    }
+  }
+
+  async function startNewVerifyThread() {
+    try {
+      const data = await api("/ai-sales/api/simulate/reset", { method: "POST" });
+      verifyPhone = data.phone;
+      state.verifyMessages = [];
+      renderVerifyMessages();
+      toast("بدأت محادثة اختبار جديدة");
+    } catch (error) {
+      toast(error.message, "error");
+    }
+  }
+
   function trainingProductOptions(selectedId = "") {
     const selected = String(selectedId || "");
     return `<option value="">اختر المنتج</option>${state.products.map(product => `
@@ -1188,6 +1259,17 @@
     $("channelSecretSaved").classList.toggle("show", Boolean(channel.has_app_secret));
     $("channelVerifySaved").classList.toggle("show", Boolean(channel.has_verify_token));
     renderCallingState(channel);
+  }
+
+  function renderTikTokSummary(channel) {
+    const stateValue = channel.connection_status || "draft";
+    const stateLabel = { draft: "الإعداد غير مكتمل", ready: "جاهز", verified: "Webhook متحقق", connected: "متصل", error: "خطأ بالاتصال" }[stateValue] || stateValue;
+    const item = (label, ok, value = "") => `<div class="sales-ai-channel-state ${ok ? "ok" : "missing"}"><span>${label}</span><strong>${ok ? "محفوظ" : "مطلوب"}${value ? " · " + escapeHtml(value) : ""}</strong></div>`;
+    const error = channel.last_error ? `<div class="sales-ai-channel-state missing"><span>آخر خطأ</span><strong>${escapeHtml(channel.last_error)}</strong></div>` : "";
+    $("tiktokSummary").innerHTML = `<div class="sales-ai-channel-summary"><div class="sales-ai-channel-grid">${item("حالة القناة", !["draft", "error"].includes(stateValue), stateLabel)}${item("Business ID", Boolean(channel.external_account_id))}${item("Access Token", Boolean(channel.has_access_token))}${item("App Secret", Boolean(channel.has_app_secret))}${item("Refresh Token", Boolean(channel.has_tiktok_refresh_token))}${item("تشغيل القناة", Boolean(channel.is_active), channel.is_active ? "فعال" : "متوقف")}</div><strong>Webhook URL (للتسجيل اليدوي إن احتجت)</strong><code>${escapeHtml(channel.webhook_url || "يظهر بعد أول حفظ")}</code>${error}</div>`;
+    $("tiktokTokenSaved").classList.toggle("show", Boolean(channel.has_access_token));
+    $("tiktokSecretSaved").classList.toggle("show", Boolean(channel.has_app_secret));
+    $("tiktokRefreshTokenSaved").classList.toggle("show", Boolean(channel.has_tiktok_refresh_token));
   }
 
   function renderCallingState(channel, result = null) {
@@ -1370,6 +1452,7 @@
     $("agentContextMessages").value = profile.max_context_messages || 18;
     $("agentResponseDelay").value = profile.ai_response_delay_ms || 0;
     $("agentMaxAudio").value = profile.max_audio_size_mb || 25;
+    $("agentMaxVideoSeconds").value = profile.max_video_seconds || 60;
     $("agentHumanPause").value = profile.human_takeover_minutes || 30;
     $("agentInstructions").value = profile.system_instructions || "";
     $("agentVoiceInstructions").value = profile.voice_instructions || "";
@@ -1401,6 +1484,15 @@
       $("channelWaba").value = whatsapp.waba_id || "";
       $("channelActive").checked = Boolean(whatsapp.is_active);
       renderChannelSummary(whatsapp);
+    }
+    const tiktok = state.channels.find(channel => channel.channel_type === "tiktok");
+    if (tiktok) {
+      $("tiktokChannelId").value = tiktok.id;
+      $("tiktokName").value = tiktok.name || "";
+      $("tiktokAppId").value = tiktok.tiktok_app_id || "";
+      $("tiktokBusinessId").value = tiktok.external_account_id || "";
+      $("tiktokActive").checked = Boolean(tiktok.is_active);
+      renderTikTokSummary(tiktok);
     }
     renderMetaSettings();
     await loadProductMedia();
@@ -1768,6 +1860,7 @@
           max_context_messages: Number($("agentContextMessages").value),
           ai_response_delay_ms: Number($("agentResponseDelay").value),
           max_audio_size_mb: Number($("agentMaxAudio").value),
+          max_video_seconds: Number($("agentMaxVideoSeconds").value),
           human_takeover_minutes: Number($("agentHumanPause").value),
           system_instructions: $("agentInstructions").value,
           voice_instructions: $("agentVoiceInstructions").value,
@@ -1879,6 +1972,36 @@
       $("channelVerify").value = "";
       await loadSettings();
       toast("تم حفظ قناة واتساب وبقيت المفاتيح السرية محفوظة");
+    } catch (error) {
+      toast(error.message, "error");
+    }
+  }
+
+  async function saveTikTokChannel(event) {
+    event.preventDefault();
+    const payload = {
+      id: Number($("tiktokChannelId").value) || null,
+      channel_type: "tiktok",
+      name: $("tiktokName").value,
+      tiktok_app_id: $("tiktokAppId").value,
+      business_id: $("tiktokBusinessId").value,
+      is_active: $("tiktokActive").checked,
+    };
+    if ($("tiktokToken").value) payload.access_token = $("tiktokToken").value;
+    if ($("tiktokSecret").value) payload.app_secret = $("tiktokSecret").value;
+    if ($("tiktokRefreshToken").value) payload.tiktok_refresh_token = $("tiktokRefreshToken").value;
+    try {
+      const data = await api("/ai-sales/api/channels", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      $("tiktokChannelId").value = data.channel.id;
+      $("tiktokToken").value = "";
+      $("tiktokSecret").value = "";
+      $("tiktokRefreshToken").value = "";
+      renderTikTokSummary(data.channel);
+      toast("تم حفظ قناة تيك توك وبقيت المفاتيح السرية محفوظة");
     } catch (error) {
       toast(error.message, "error");
     }
@@ -2268,6 +2391,8 @@
   $("mobileBackBtn").addEventListener("click", () => backToConversationList());
   $("refreshBtn").addEventListener("click", () => poll());
   $("simulateBtn")?.addEventListener("click", simulate);
+  $("verifyComposerForm")?.addEventListener("submit", sendVerifyMessage);
+  $("verifyNewThreadBtn")?.addEventListener("click", startNewVerifyThread);
   $("summaryBtn").addEventListener("click", () => openOverlay("summaryOverlay"));
   $("customerInfoBtn").addEventListener("click", () => openOverlay("customerOverlay"));
   $("toggleDetailsBtn").addEventListener("click", () => {
@@ -2296,6 +2421,7 @@
     });
     document.querySelectorAll('input[name="agentIntelligence"]').forEach(input => input.addEventListener("change", updateIntelligenceDescription));
     $("channelForm").addEventListener("submit", saveChannel);
+    $("tiktokForm").addEventListener("submit", saveTikTokChannel);
     $("checkCallingBtn").addEventListener("click", checkCallingReadiness);
     $("metaForm").addEventListener("submit", saveMetaConnector);
     $("addMetaPageBtn").addEventListener("click", connectMetaPage);

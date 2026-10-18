@@ -1,4 +1,5 @@
 import json
+import uuid
 
 from sqlalchemy.orm import validates
 
@@ -27,6 +28,10 @@ class Product(db.Model):
         db.ForeignKey("tenant.id"),
         nullable=True
     )
+    branch_id = db.Column(db.Integer, db.ForeignKey("branch.id"), nullable=True, index=True)
+    catalog_group_id = db.Column(
+        db.String(36), nullable=False, default=lambda: str(uuid.uuid4()), index=True
+    )
 
     name = db.Column(db.String(150), nullable=False)
     sku = db.Column(db.String(100), nullable=True)
@@ -34,9 +39,22 @@ class Product(db.Model):
     buy_price = db.Column(db.Integer, nullable=False)
 
     __table_args__ = (
-        db.UniqueConstraint('tenant_id', 'barcode', name='_product_barcode_tenant_uc'),
+        db.UniqueConstraint(
+            'tenant_id', 'branch_id', 'barcode',
+            name='_product_barcode_tenant_branch_uc',
+        ),
+        db.CheckConstraint(
+            "exchange_sale_price IS NULL OR exchange_sale_price > 0",
+            name="_product_exchange_sale_price_positive_ck",
+        ),
     )
     sale_price = db.Column(db.Integer, nullable=False)
+    # Optional price used when the customer gives an old item in exchange.
+    # Inventory remains shared with the normal sale price.
+    exchange_sale_price = db.Column(db.Integer, nullable=True)
+    # Optional sell price for non-primary provinces (Baghdad uses sale_price).
+    # Used only when meta_json.dual_region_pricing is enabled.
+    governorate_sale_price = db.Column(db.Integer, nullable=True)
 
     shipping_cost = db.Column(db.Integer, default=0)
     marketing_cost = db.Column(db.Integer, default=0)
@@ -45,6 +63,8 @@ class Product(db.Model):
     quantity = db.Column(db.Integer, default=0)  # المخزون الحالي (يتم حسابه تلقائياً)
     active = db.Column(db.Boolean, default=True)
     store_visible = db.Column(db.Boolean, default=True)
+    # False = مخفي من نقطة البيع (POS) مع بقائه في المخزون والمتجر
+    pos_visible = db.Column(db.Boolean, default=True)
     
     # حد التنبيه لانخفاض المخزون (الرقم الذي إذا وصل إليه المخزون أو قل عنه يظهر التنبيه)
     low_stock_threshold = db.Column(db.Integer, default=5)
@@ -69,6 +89,7 @@ class Product(db.Model):
     order_items = db.relationship(
         "OrderItem",
         back_populates="product",
+        foreign_keys="OrderItem.product_id",
         cascade="all, delete-orphan"
     )
 

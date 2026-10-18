@@ -1,0 +1,43 @@
+{% extends 'superadmin/leads/_base.html' %}
+{% from 'superadmin/leads/_macros.html' import kpi_card, status_badge, empty_state %}
+{% set page_title = 'المتابعات' %}
+{% set page_subtitle = 'عملاء يحتاجون متابعة اليوم أو قريباً' %}
+{% block leads_content %}
+<div class="lc-kpi-grid lc-kpi-grid-sm">
+    {{ kpi_card('متأخرة', followups.counts.overdue, 'fa-triangle-exclamation', 'lc-kpi-danger') }}
+    {{ kpi_card('اليوم', followups.counts.today, 'fa-calendar-day', 'lc-kpi-warn') }}
+    {{ kpi_card('غداً', followups.counts.tomorrow, 'fa-calendar-plus', 'lc-kpi-info') }}
+    {{ kpi_card('هذا الأسبوع', followups.counts.this_week, 'fa-calendar-week', '') }}
+</div>
+<section class="lc-card">
+    <header class="lc-card-header"><div><h2><i class="fas fa-list-check lc-card-icon"></i> قائمة المتابعات</h2></div></header>
+    <div class="lc-card-body" style="padding:0;">
+        <div class="lc-table-wrap" style="border:none;box-shadow:none;border-radius:0;">
+            <table class="lc-table">
+                <thead><tr><th>الوقت</th><th>الشركة</th><th>الحالة</th><th>الهاتف</th><th></th></tr></thead>
+                <tbody>
+                    {% for lead in followups.leads %}
+                    <tr>
+                        <td><strong>{{ lead.next_follow_up_at[:16] if lead.next_follow_up_at else '—' }}</strong></td>
+                        <td>
+                            <button type="button" class="lc-cell-link lc-cell-btn" data-lc-open-lead="{{ lead.id }}">
+                                <strong>{{ lead.business_name }}</strong>
+                            </button>
+                        </td>
+                        <td>{{ status_badge(lead.status, status_labels.get(lead.status, lead.status)) }}</td>
+                        <td>{{ lead.primary_phone or '—' }}</td>
+                        <td>
+                            <button type="button" class="lc-link-btn" data-lc-open-lead="{{ lead.id }}">
+                                <i class="fas fa-eye"></i> عرض
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5">{{ empty_state('لا توجد متابعات مجدولة', 'fa-clock') }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}

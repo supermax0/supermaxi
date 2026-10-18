@@ -6,6 +6,7 @@ from modules.workspace.recipes.courier_settlement_recipe import COURIER_SETTLEME
 from modules.workspace.recipes.mock_workspace_recipe import MOCK_WORKSPACE_RECIPE
 from modules.workspace.recipes.purchase_invoice_recipe import PURCHASE_INVOICE_RECIPE
 from modules.workspace.recipes.return_statement_recipe import RETURN_STATEMENT_RECIPE
+from modules.workspace.recipes.inventory_forensics_recipe import INVENTORY_FORENSICS_RECIPE
 from modules.workspace.recipes.unknown_document_recipe import UNKNOWN_DOCUMENT_RECIPE
 from modules.workspace.services.workflow_errors import WorkflowInvalidTypeError
 
@@ -15,6 +16,7 @@ _RECIPES: Dict[str, Dict[str, Any]] = {
     "courier_settlement": COURIER_SETTLEMENT_RECIPE,
     "return_statement": RETURN_STATEMENT_RECIPE,
     "purchase_invoice": PURCHASE_INVOICE_RECIPE,
+    "inventory_forensics": INVENTORY_FORENSICS_RECIPE,
 }
 
 

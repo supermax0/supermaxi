@@ -6,14 +6,85 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import secrets
 import uuid
 from datetime import datetime
 from typing import Optional
+from urllib.parse import quote
 
 from flask import current_app
 from sqlalchemy.orm import sessionmaker
 
 from extensions_tenant import get_tenant_engine
+
+
+DISCOVERY_SOURCE_LABELS = {
+    "chatgpt": "ChatGPT",
+    "facebook": "فيسبوك",
+    "instagram": "إنستغرام",
+    "tiktok": "تيك توك",
+    "google_search": "بحث Google",
+    "google_ads": "إعلان Google",
+    "youtube": "YouTube",
+    "friend": "صديق أو توصية",
+    "other": "أخرى",
+}
+
+
+def normalize_whatsapp_number(value: str) -> str:
+    """تحويل الرقم العراقي إلى الصيغة الرقمية الدولية المناسبة لرابط wa.me."""
+    digits = re.sub(r"\D", "", str(value or ""))
+    if digits.startswith("00964"):
+        digits = digits[2:]
+    elif digits.startswith("07"):
+        digits = "964" + digits[1:]
+    elif len(digits) == 10 and digits.startswith("7"):
+        digits = "964" + digits
+    return digits
+
+
+def new_activation_code() -> str:
+    """رمز قصير يسهل قراءته ومطابقته في رسالة واتساب."""
+    alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
+    return "".join(secrets.choice(alphabet) for _ in range(6))
+
+
+def build_whatsapp_activation_message(registration: dict) -> str:
+    return "\n".join(
+        [
+            "مرحباً، أرجو تفعيل حسابي في نظام Finora.",
+            f"الاسم: {registration.get('contact_name') or '—'}",
+            f"اسم النشاط: {registration.get('company_name') or '—'}",
+            f"رقم واتساب المسجل: {registration.get('phone') or '—'}",
+            f"معرّف الشركة: {registration.get('slug') or '—'}",
+            f"رمز طلب التفعيل: {registration.get('activation_code') or '—'}",
+        ]
+    )
+
+
+def build_whatsapp_activation_url(service_number: str, registration: dict) -> str:
+    number = normalize_whatsapp_number(service_number)
+    if not number:
+        return ""
+    return f"https://wa.me/{number}?text={quote(build_whatsapp_activation_message(registration))}"
+
+
+def normalize_discovery_source(source, other=None) -> tuple[str, str]:
+    source_clean = str(source or "").strip().lower()
+    if source_clean not in DISCOVERY_SOURCE_LABELS:
+        return "", ""
+    other_clean = str(other or "").strip()[:120] if source_clean == "other" else ""
+    return source_clean, other_clean
+
+
+def discovery_source_label(source, other=None) -> str:
+    source_clean, other_clean = normalize_discovery_source(source, other)
+    if not source_clean:
+        return "—"
+    if source_clean == "other" and other_clean:
+        return f"أخرى — {other_clean}"
+    return DISCOVERY_SOURCE_LABELS[source_clean]
 
 
 def _app_root(app_root: Optional[str] = None) -> str:
@@ -44,8 +115,21 @@ def _fmt_dt(value) -> Optional[str]:
         return str(value)
 
 
+SECRET_KEYS = ("password", "password2", "admin_password", "new_password")
+
+
+def _strip_secrets(payload: dict) -> bool:
+    """Remove every credential field (legacy files stored plaintext passwords). True when something was removed."""
+    removed = False
+    for key in SECRET_KEYS:
+        if key in payload:
+            payload.pop(key, None)
+            removed = True
+    return removed
+
+
 def save_tenant_registration(slug: str, data: dict, app_root: Optional[str] = None) -> str:
-    """حفظ/دمج بيانات التسجيل في ملف JSON (تتضمن كلمة المرور الأصلية إن وُفرت)."""
+    """حفظ/دمج بيانات التسجيل في ملف JSON. لا تُخزَّن كلمات المرور إطلاقاً (التجزئة فقط في جدول الموظفين)."""
     slug_clean = (slug or "").strip().lower()
     if not slug_clean:
         raise ValueError("slug مطلوب")
@@ -65,10 +149,7 @@ def save_tenant_registration(slug: str, data: dict, app_root: Optional[str] = No
     if not payload.get("registered_at"):
         payload["registered_at"] = payload["updated_at"]
 
-    payload.pop("password2", None)
-    # عند المزامنة من القاعدة دون كلمة مرور جديدة — الإبقاء على المحفوظة سابقاً
-    if not payload.get("password") and existing.get("password"):
-        payload["password"] = existing["password"]
+    _strip_secrets(payload)
 
     if not payload.get("unsubscribe_token"):
         payload["unsubscribe_token"] = existing.get("unsubscribe_token") or str(uuid.uuid4())
@@ -90,9 +171,17 @@ def load_tenant_registration(slug: str, app_root: Optional[str] = None) -> Optio
         return None
     try:
         with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
+            data = json.load(f)
     except (json.JSONDecodeError, OSError):
         return None
+    if isinstance(data, dict) and _strip_secrets(data):
+        # Legacy record held a plaintext password: scrub it from disk the first time it is read.
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+        except OSError:
+            pass
+    return data
 
 
 def delete_tenant_registration(slug: str, app_root: Optional[str] = None) -> None:
@@ -198,14 +287,19 @@ def registration_payload_for_signup(
     email: str,
     phone: str,
     username: str,
-    password: str,
+    password: str = "",  # accepted for compatibility only — never stored
     plan_key: str,
     plan_name: str,
     billing: str,
     business_type: str = "general",
     source: str = "signup",
     marketing_opt_in: bool = True,
+    discovery_source: str = "",
+    discovery_source_other: str = "",
 ) -> dict:
+    discovery_source, discovery_source_other = normalize_discovery_source(
+        discovery_source, discovery_source_other
+    )
     return {
         "slug": slug,
         "company_name": company_name,
@@ -213,13 +307,16 @@ def registration_payload_for_signup(
         "email": email or None,
         "phone": phone or None,
         "username": username,
-        "password": password,
         "plan_key": plan_key,
         "plan_name": plan_name,
         "billing": billing,
         "business_type": business_type,
         "source": source,
+        "discovery_source": discovery_source or None,
+        "discovery_source_other": discovery_source_other or None,
         "marketing_opt_in": bool(marketing_opt_in),
+        "activation_status": "pending_whatsapp",
+        "activation_code": new_activation_code(),
         "unsubscribe_token": str(uuid.uuid4()),
         "registered_at": datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
     }

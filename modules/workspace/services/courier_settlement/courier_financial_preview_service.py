@@ -2,6 +2,10 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Set
 
+from modules.workspace.services.courier_settlement.courier_profit_preview_service import (
+    CourierProfitPreviewService,
+)
+
 
 class CourierFinancialPreviewService:
     @staticmethod
@@ -25,6 +29,7 @@ class CourierFinancialPreviewService:
         issue_amount = 0
         variance_amount = 0
         blocked_row_ids: Set[str] = set()
+        global_blockers = 0
         warnings: List[str] = []
 
         issue_row_ids: Set[str] = set()
@@ -36,15 +41,22 @@ class CourierFinancialPreviewService:
                 issue_row_ids.add(iid)
             if severity in ("critical", "error") and iid:
                 blocked_row_ids.add(iid)
+            elif severity in ("critical", "error") and not iid:
+                global_blockers += 1
             if itype == "AMOUNT_MISMATCH" and iid:
                 if isinstance(issue, dict):
                     details = issue.get("details", {})
                 else:
                     details = issue.get_details() if hasattr(issue, "get_details") else {}
                 collected = details.get("collected") or 0
-                inv_total = details.get("invoice_total") or 0
-                issue_amount += abs(collected - inv_total)
-                variance_amount += abs(collected - inv_total)
+                expected = (
+                    details.get("expected_amount")
+                    or details.get("remaining_amount")
+                    or details.get("invoice_total")
+                    or 0
+                )
+                issue_amount += abs(collected - expected)
+                variance_amount += abs(collected - expected)
 
         seen_orders: Set[str] = set()
         for row in analysis_rows:
@@ -78,7 +90,29 @@ class CourierFinancialPreviewService:
                 unmatched_rows += 1
 
             if snap and collected and snap.get("total"):
-                variance_amount += abs(int(collected) - int(snap.get("total") or 0))
+                paid = max(int(snap.get("paid_amount") or 0), 0)
+                total = int(snap.get("total") or 0)
+                remaining = max(
+                    int(snap.get("remaining_amount"))
+                    if snap.get("remaining_amount") is not None
+                    else total - paid,
+                    0,
+                )
+                expected = remaining if paid > 0 else total
+                normalized_order = str(norm or "")
+                shipping_barcodes = {
+                    str(value or "")
+                    for value in (snap.get("shipping_barcodes") or [])
+                    if value not in (None, "")
+                }
+                is_piece = bool(
+                    len(shipping_barcodes) > 1
+                    and normalized_order in shipping_barcodes
+                    and 0 < int(collected) <= expected
+                )
+                has_price_adjustment = bool(snap.get("price_adjustment_plan"))
+                if not is_piece and not has_price_adjustment:
+                    variance_amount += abs(int(collected) - expected)
 
         expected_net = total_collected - total_fees
         safe_to_post = 0
@@ -88,7 +122,22 @@ class CourierFinancialPreviewService:
             if status == "matched" and row_id not in blocked_row_ids:
                 safe_to_post += 1
 
-        blocked_rows = len(blocked_row_ids) + unmatched_rows + duplicate_rows
+        explicitly_unsafe_ids = {
+            CourierFinancialPreviewService._row_val(row, "id")
+            for row in analysis_rows
+            if CourierFinancialPreviewService._row_val(row, "match_status")
+            not in ("matched",)
+        }
+        blocked_rows = len(blocked_row_ids | explicitly_unsafe_ids)
+        if global_blockers:
+            safe_to_post = 0
+            blocked_rows = total_rows
+
+        profit = CourierProfitPreviewService.compute(analysis_rows)
+        if profit["skipped_rows"]:
+            warnings.append(
+                f"تعذر حساب ربح {profit['skipped_rows']} صف لعدم وجود مطابقة مؤكدة أو كلفة بضاعة."
+            )
 
         return {
             "total_rows": total_rows,
@@ -103,7 +152,9 @@ class CourierFinancialPreviewService:
             "variance_amount": variance_amount,
             "safe_to_post_rows": safe_to_post,
             "blocked_rows": blocked_rows,
+            "global_blockers": global_blockers,
             "warnings": warnings,
+            "profit": profit,
             "posting_preview": {
                 "readonly": True,
                 "message": "هذه معاينة فقط. لم يتم إنشاء أي قيد أو تسديد.",

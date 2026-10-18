@@ -75,6 +75,40 @@ def pages():
     )
 
 
+@pages_bp.route("/<int:page_id>")
+@permission_required("view_pages")
+def page_detail(page_id):
+    from modules.employee_desk.page_link import load_thread
+
+    page = Page.query.get_or_404(page_id)
+    orders = (
+        Invoice.query.filter_by(page_id=page.id)
+        .order_by(Invoice.id.desc())
+        .limit(80)
+        .all()
+    )
+    rows = []
+    for order in orders:
+        thread = load_thread(order)
+        rows.append(
+            {
+                "id": order.id,
+                "total": order.total or 0,
+                "status": order.status or "",
+                "employee": order.employee_name or "—",
+                "customer": order.customer_name or "—",
+                "created_at": order.created_at.strftime("%Y-%m-%d %H:%M") if order.created_at else "—",
+                "thread": thread,
+            }
+        )
+    return render_template(
+        "page_detail.html",
+        page=page,
+        orders=rows,
+        can_manage_pages=employee_can(get_current_employee(), "manage_pages"),
+    )
+
+
 @pages_bp.route("/rename/<int:page_id>", methods=["POST"])
 @permission_required("manage_pages")
 def rename_page(page_id):

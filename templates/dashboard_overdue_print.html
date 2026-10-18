@@ -298,6 +298,7 @@
           <th>{{ _('dashboard_overdue_print_th_address') }}</th>
           <th>{{ _('dashboard_overdue_print_th_age') }}</th>
           <th>{{ _('dashboard_th_amount') }}</th>
+          <th>{{ _('dashboard_th_remaining') }}</th>
         </tr>
       </thead>
       <tbody>
@@ -314,12 +315,14 @@
             </span>
           </td>
           <td class="amount">{{ "{:,}".format(row.total or 0) }}</td>
+          <td class="amount">{{ "{:,}".format(row.remaining or 0) if row.remaining else '—' }}</td>
         </tr>
         {% endfor %}
         <tr class="totals">
           <td colspan="5">{{ _('dashboard_overdue_print_footer_summary') }}</td>
           <td>{{ orders_count }}</td>
           <td>{{ "{:,}".format(total_amount) }} {{ _('dashboard_overdue_print_currency') }}</td>
+          <td>{{ "{:,}".format(total_remaining or 0) }} {{ _('dashboard_overdue_print_currency') }}</td>
         </tr>
       </tbody>
     </table>

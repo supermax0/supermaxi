@@ -21,8 +21,8 @@
     {% if business_allows('settings_storefront') %}
     <option value="/settings/storefront" {% if settings_nav == 'storefront' %}selected{% endif %}>{{ _('settings_nav_storefront') }}</option>
     {% endif %}
-    {% if is_admin and business_allows('settings_database_repair') %}
-    <option value="/settings/database-repair" {% if settings_nav == 'database' %}selected{% endif %}>{{ _('settings_card_db_repair_title') }}</option>
+    {% if is_admin %}
+    <option value="/settings/pos-api" {% if settings_nav == 'pos_api' %}selected{% endif %}>مفتاح API للمساعد</option>
     {% endif %}
     {% if show_fixed_assets_settings %}
     <option value="/assets/settings" {% if settings_nav == 'fixed_assets' %}selected{% endif %}>{{ _('settings_card_fixed_assets_title') }}</option>
@@ -65,6 +65,11 @@
       {% if business_allows('settings_storefront') %}
       <a href="/settings/storefront" class="settings-subnav-item{% if settings_nav == 'storefront' %} active{% endif %}">
         <i class="fas fa-store"></i> {{ _('settings_nav_storefront') }}
+      </a>
+      {% endif %}
+      {% if is_admin %}
+      <a href="/settings/pos-api" class="settings-subnav-item{% if settings_nav == 'pos_api' %} active{% endif %}">
+        <i class="fas fa-key"></i> مفتاح API
       </a>
       {% endif %}
       {% if is_admin and business_allows('settings_database_repair') %}

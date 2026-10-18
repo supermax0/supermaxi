@@ -199,8 +199,9 @@ def build_employee_commission_stats_map(
         pending = get_pending_commission_total(employee_id)
         lines = pending["lines"]
         if year is not None and month is not None:
-            start, end = _month_bounds(year, month)
-            lines = [l for l in lines if l.accrued_at and start <= l.accrued_at <= end]
+            _start, end = _month_bounds(year, month)
+            # يشمل عمولات الشهر + المرحّلة من أشهر سابقة حتى لا يضيع جاري الشحن
+            lines = [l for l in lines if l.accrued_at and l.accrued_at <= end]
         if unsettled_only and not lines:
             continue
         orders = len(lines)
@@ -310,8 +311,9 @@ def settle_employee_commission(
 
     lines = get_pending_commission_lines(employee_id)
     if year and month:
-        start, end = _month_bounds(year, month)
-        lines = [l for l in lines if l.accrued_at and start <= l.accrued_at <= end]
+        # شهر محدد + مرحّل من أشهر سابقة (جاري شحن وصل لاحقاً) — بدون أشهر لاحقة
+        _start, end = _month_bounds(year, month)
+        lines = [l for l in lines if l.accrued_at and l.accrued_at <= end]
     if not lines:
         return {"ok": False, "error": "لا توجد طلبات مستحقة للسداد في هذه الفترة"}
 

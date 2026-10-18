@@ -1,6 +1,9 @@
 from flask import Blueprint, render_template, request, redirect, url_for, jsonify, session, flash
 from extensions import db
-from sqlalchemy import func, or_
+from utils.branch_scope import is_general_admin, resolve_write_branch_id
+from utils.branch_mode import independent_branches_enabled
+from sqlalchemy import and_, func, or_
+from sqlalchemy.orm import joinedload
 from models.account_transaction import AccountTransaction
 from models.invoice import Invoice
 from models.order_item import OrderItem
@@ -31,6 +34,106 @@ from utils.treasury_calculations import (
 from utils.treasury_schema_guard import ensure_treasury_schema
 
 accounts_bp = Blueprint("accounts", __name__, url_prefix="/accounts")
+
+NON_CASH_MARKERS = ("مخزون افتتاحي", "تسوية جرد", "غير نقدي")
+AUTOMATED_WITHDRAW_MARKERS = (
+    "مصروف:",
+    "صندوق -",
+    "مخزون افتتاحي",
+    "تسوية جرد",
+    "غير نقدي",
+    "شراء نقدي",
+    "دفعة شراء",
+    "تحويل →",
+    "تحويل ←",
+)
+AUTOMATED_DEPOSIT_MARKERS = (
+    "إلغاء مصروف",
+    "صندوق -",
+    "مخزون افتتاحي",
+    "تسوية جرد",
+    "غير نقدي",
+    "تحويل →",
+    "تحويل ←",
+)
+TX_PAGE_SIZE_OPTIONS = (25, 50, 100)
+
+
+def _note_excludes_markers(column, markers):
+    """SQL filter: note is empty or does not contain any of the markers."""
+    return and_(*[
+        or_(column.is_(None), ~column.contains(marker))
+        for marker in markers
+    ])
+
+
+def _financial_transactions_query():
+    """Base query for cash/financial movements shown on the accounts page."""
+    query = AccountTransaction.query
+    for marker in NON_CASH_MARKERS:
+        query = query.filter(
+            or_(AccountTransaction.note.is_(None), ~AccountTransaction.note.contains(marker))
+        )
+    return query
+
+
+def _sum_owner_deposits() -> int:
+    total = (
+        _financial_transactions_query()
+        .filter(
+            AccountTransaction.type == "deposit",
+            _note_excludes_markers(AccountTransaction.note, AUTOMATED_DEPOSIT_MARKERS),
+        )
+        .with_entities(func.coalesce(func.sum(AccountTransaction.amount), 0))
+        .scalar()
+    )
+    return int(total or 0)
+
+
+def _sum_owner_withdrawals() -> int:
+    total = (
+        _financial_transactions_query()
+        .filter(
+            AccountTransaction.type == "withdraw",
+            _note_excludes_markers(AccountTransaction.note, AUTOMATED_WITHDRAW_MARKERS),
+        )
+        .with_entities(func.coalesce(func.sum(AccountTransaction.amount), 0))
+        .scalar()
+    )
+    return int(total or 0)
+
+
+def _paginate_financial_transactions(page: int, per_page: int):
+    base_query = _financial_transactions_query()
+    total = base_query.count()
+    pages = max(1, (total + per_page - 1) // per_page)
+    page = min(max(1, page), pages)
+    rows = (
+        base_query.options(joinedload(AccountTransaction.treasury_account))
+        .order_by(AccountTransaction.created_at.desc())
+        .offset((page - 1) * per_page)
+        .limit(per_page)
+        .all()
+    )
+    return rows, {
+        "page": page,
+        "per_page": per_page,
+        "total": total,
+        "pages": pages,
+        "has_prev": page > 1,
+        "has_next": page < pages,
+        "prev_num": page - 1,
+        "next_num": page + 1,
+    }
+
+
+def _visible_cash_balance(treasury_balances) -> int:
+    """Sum cash accounts from the same already-scoped rows shown on the page."""
+    return sum(
+        int(item["balance"] or 0)
+        for item in treasury_balances
+        if item["account"].is_cash
+    )
 
 
 @accounts_bp.before_request
@@ -117,6 +220,7 @@ def accounts():
         return redirect("/pos"), 403
 
     if request.method == "POST":
+        branch_id = resolve_write_branch_id(request.form)
         ensure_treasury_schema()
         treasury_account_id = resolve_treasury_account_id(request.form.get("treasury_account_id"))
         tx_type = (request.form.get("type") or "").strip()
@@ -143,6 +247,7 @@ def accounts():
                 flash(str(exc), "error")
                 return redirect(url_for("accounts.accounts"))
         tx = AccountTransaction(
+            branch_id=branch_id,
             type=tx_type,
             amount=amount,
             note=f"حركة يدوية - {note}",
@@ -162,26 +267,20 @@ def accounts():
             pass
         return redirect(url_for("accounts.accounts"))
 
-    transactions = AccountTransaction.query.order_by(
-        AccountTransaction.created_at.desc()
-    ).all()
+    try:
+        tx_page = int(request.args.get("page") or 1)
+    except (TypeError, ValueError):
+        tx_page = 1
+    try:
+        tx_per_page = int(request.args.get("per_page") or TX_PAGE_SIZE_OPTIONS[0])
+    except (TypeError, ValueError):
+        tx_per_page = TX_PAGE_SIZE_OPTIONS[0]
+    if tx_per_page not in TX_PAGE_SIZE_OPTIONS:
+        tx_per_page = TX_PAGE_SIZE_OPTIONS[0]
 
-    # ==========================
-    # تصحيح محاسبي: استبعاد حركات المخزون الافتتاحي من الحسابات المالية
-    # السبب المحاسبي:
-    # - المخزون الافتتاحي يُعتبر قيمة مخزون فقط (Asset)
-    # - لا يؤثر على الرصيد المالي (Cash/Balance)
-    # - يجب استبعاده من حساب الرصيد المالي
-    # ==========================
-    # فلترة الحركات المالية: استبعاد قيود المخزون/القيود غير النقدية من عرض النقد ورأس المال.
-    non_cash_markers = ("مخزون افتتاحي", "تسوية جرد", "غير نقدي")
-    financial_transactions = [
-        t for t in transactions 
-        if not (t.note and any(marker in t.note for marker in non_cash_markers))
-    ]
-    
-    # عرض الحركات المالية فقط (بدون حركات المخزون الافتتاحي)
-    transactions_to_display = financial_transactions
+    transactions_to_display, tx_pagination = _paginate_financial_transactions(
+        tx_page, tx_per_page
+    )
 
     # ==========================
     # تصحيح محاسبي: اعتماد الصندوق كمصدر وحيد للرصيد النقدي
@@ -191,20 +290,16 @@ def accounts():
     # - لا تقوم صفحة الحسابات بحساب الرصيد النقدي (يُحسب من الصندوق فقط)
     # ==========================
     # حساب إيداعات وسحوبات رأس المال فقط (استبعاد المصاريف والحركات الآلية)
-    total_deposit = sum(
-        t.amount for t in financial_transactions if t.is_owner_deposit()
-    )
-
-    total_withdraw = sum(
-        t.amount for t in financial_transactions if t.is_owner_withdrawal()
-    )
+    total_deposit = _sum_owner_deposits()
+    total_withdraw = _sum_owner_withdrawals()
 
     # ==========================
     # الرصيد النقدي يُحسب من الصندوق فقط (Cash Transactions)
     # استخدام حساب الصندوق كمصدر وحيد - منع الازدواجية
     # ==========================
-    from utils.cash_calculations import calculate_cash_balance
-    balance = calculate_cash_balance()  # الرصيد من الصندوق - المصدر الوحيد الموثوق
+    # يُحسب بعد تحميل حسابات الخزينة المرئية حتى يستخدم نفس نطاق الفرع
+    # الذي تستخدمه بطاقات الصناديق والبنوك أدناه.
+    balance = 0
 
     # ===============================
     # حساب صافي الأرباح على أساس الطلبات المسجلة
@@ -274,11 +369,132 @@ def accounts():
         }
         for acc in treasury_accounts
     ]
+    if not independent_branches_enabled():
+        # Aggregate legacy per-branch treasury rows into one logical shared
+        # account for display and reports. No historical row is deleted.
+        grouped = {}
+        for item in treasury_balances:
+            account = item["account"]
+            key = ((account.account_type or "bank").strip().lower(), (account.name or "").strip().casefold())
+            current = grouped.get(key)
+            if current is None:
+                grouped[key] = {"account": account, "balance": int(item["balance"] or 0)}
+            else:
+                current["balance"] += int(item["balance"] or 0)
+        treasury_balances = list(grouped.values())
+        treasury_accounts = [item["account"] for item in treasury_balances]
+    # في عرض «كل الفروع» نجمع صناديق الفروع كلها، وفي عرض فرع واحد
+    # تحتوي القائمة تلقائياً على حسابات ذلك الفرع فقط.
+    balance = _visible_cash_balance(treasury_balances)
     total_liquidity = calculate_total_liquidity()
+
+    from models.branch import Branch
+
+    visible_account_branch_ids = {
+        int(account.branch_id)
+        for account in treasury_accounts
+        if account.branch_id
+    }
+    visible_account_branch_names = {
+        int(branch.id): branch.name
+        for branch in (
+            Branch.query.execution_options(skip_branch_scope=True)
+            .filter(Branch.id.in_(visible_account_branch_ids or [-1]))
+            .all()
+        )
+    }
+    for item in treasury_balances:
+        item["branch_name"] = visible_account_branch_names.get(
+            int(item["account"].branch_id or 0),
+            "فرع غير محدد",
+        )
+    treasury_show_branch_names = independent_branches_enabled() and len(visible_account_branch_ids) > 1
+    treasury_form_choices = treasury_choices_for_form()
+
+    transfer_accounts = treasury_accounts
+    transfer_branch_names = {}
+    if is_general_admin():
+        from utils.treasury_helpers import get_default_cash_account
+
+        active_branches = (
+            Branch.query.execution_options(skip_branch_scope=True)
+            .filter_by(is_active=True)
+            .order_by(Branch.name.asc())
+            .all()
+        )
+        for branch in active_branches:
+            get_default_cash_account(branch.id)
+        transfer_branch_names = {int(branch.id): branch.name for branch in active_branches}
+        transfer_accounts = (
+            TreasuryAccount.query.execution_options(skip_branch_scope=True)
+            .filter_by(is_active=True)
+            .order_by(
+                TreasuryAccount.branch_id.asc(),
+                TreasuryAccount.account_type.asc(),
+                TreasuryAccount.is_default.desc(),
+                TreasuryAccount.name.asc(),
+            )
+            .all()
+        )
+    else:
+        try:
+            from flask import g
+
+            if getattr(g, "branch", None) is not None:
+                transfer_branch_names[int(g.branch.id)] = g.branch.name
+        except Exception:
+            pass
+
+    treasury_transfer_choices = [
+        {
+            "id": account.id,
+            "name": account.name,
+            "account_type": account.account_type,
+            "is_cash": account.is_cash,
+            "branch_id": account.branch_id,
+            "branch_name": transfer_branch_names.get(int(account.branch_id or 0), "فرع غير محدد"),
+        }
+        for account in transfer_accounts
+    ]
+    treasury_transfer_source_choices = sorted(
+        treasury_transfer_choices,
+        key=lambda item: (
+            not item["is_cash"],
+            item["branch_name"],
+            item["name"],
+        ),
+    )
+    treasury_transfer_destination_choices = sorted(
+        treasury_transfer_choices,
+        key=lambda item: (
+            item["is_cash"],
+            item["branch_name"],
+            item["name"],
+        ),
+    )
+
+    if not independent_branches_enabled():
+        # Shared mode has one logical treasury; do not expose per-branch
+        # duplicate transfer choices from legacy branch rows.
+        treasury_transfer_choices = [
+            {
+                "id": account.id,
+                "name": account.name,
+                "account_type": account.account_type,
+                "is_cash": account.is_cash,
+                "branch_id": account.branch_id,
+                "branch_name": "مشترك",
+            }
+            for account in treasury_form_choices
+        ]
+        treasury_transfer_source_choices = sorted(treasury_transfer_choices, key=lambda item: (not item["is_cash"], item["name"]))
+        treasury_transfer_destination_choices = sorted(treasury_transfer_choices, key=lambda item: (item["is_cash"], item["name"]))
 
     return render_template(
         "accounts.html",
-        transactions=transactions_to_display,  # عرض الحركات المالية فقط (بدون المخزون الافتتاحي)
+        transactions=transactions_to_display,  # صفحة واحدة من سجل الحركات المالية
+        tx_pagination=tx_pagination,
+        tx_page_size_options=TX_PAGE_SIZE_OPTIONS,
         total_deposit=total_deposit,
         total_withdraw=total_withdraw,
         balance=balance,
@@ -292,7 +508,12 @@ def accounts():
         treasury_accounts=treasury_accounts,
         treasury_balances=treasury_balances,
         total_liquidity=total_liquidity,
-        treasury_choices=treasury_choices_for_form(),
+        treasury_choices=treasury_form_choices,
+        treasury_show_branch_names=treasury_show_branch_names,
+        treasury_transfer_choices=treasury_transfer_choices,
+        treasury_transfer_source_choices=treasury_transfer_source_choices,
+        treasury_transfer_destination_choices=treasury_transfer_destination_choices,
+        can_transfer_all_branches=is_general_admin(),
     )
 
 # ============================
@@ -319,7 +540,9 @@ def add_capital_from_profit():
     
     # تسجيل حركة "غير نقدية" للمتابعة فقط (لا تؤثر على الصندوق)
     # يتم استبعادها من حساب الكاش عبر فلتر "غير نقدي" في cash_calculations
+    branch_id = resolve_write_branch_id(request.form)
     tx = AccountTransaction(
+        branch_id=branch_id,
         type="deposit",
         amount=int(net_profit),
         note=f"إغلاق فترة (غير نقدي) - زيادة رأس المال من صافي الأرباح ({net_profit:,} د.ع)"
@@ -363,7 +586,13 @@ def add_bank():
         flash("يوجد بنك بنفس الاسم مسبقاً", "error")
         return redirect(url_for("accounts.accounts"))
 
-    bank = TreasuryAccount(name=name, account_type="bank", is_default=False, is_active=True)
+    bank = TreasuryAccount(
+        name=name,
+        account_type="bank",
+        is_default=False,
+        is_active=True,
+        branch_id=resolve_write_branch_id(request.form),
+    )
     db.session.add(bank)
     db.session.commit()
     try:
@@ -396,7 +625,19 @@ def treasury_transfer():
 
     note = (request.form.get("note") or "").strip() or None
     try:
-        transfer = record_treasury_transfer(from_account_id, to_account_id, amount, note)
+        transfer = record_treasury_transfer(
+            from_account_id,
+            to_account_id,
+            amount,
+            note,
+            allow_cross_branch=is_general_admin(),
+        )
+        from_account = TreasuryAccount.query.execution_options(skip_branch_scope=True).filter_by(
+            id=from_account_id
+        ).first()
+        to_account = TreasuryAccount.query.execution_options(skip_branch_scope=True).filter_by(
+            id=to_account_id
+        ).first()
         try:
             log_activity(
                 "create",
@@ -408,6 +649,8 @@ def treasury_transfer():
                     "to_account_id": to_account_id,
                     "amount": amount,
                     "note": note,
+                    "from_branch_id": from_account.branch_id if from_account else None,
+                    "to_branch_id": to_account.branch_id if to_account else None,
                 },
             )
         except Exception:

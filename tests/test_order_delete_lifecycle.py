@@ -11,6 +11,7 @@ TENANT_CANCELED = f"test_order_delete_canceled_{os.getpid()}"
 TENANT_LEDGER = f"test_order_delete_ledger_{os.getpid()}"
 TENANT_SIDE_EFFECTS = f"test_order_delete_side_effects_{os.getpid()}"
 TENANT_PAID_COMMISSION = f"test_order_delete_paid_commission_{os.getpid()}"
+TENANT_PAID_PAYROLL = f"test_order_delete_paid_payroll_{os.getpid()}"
 
 
 def _fresh_tenant_db(tenant: str):
@@ -133,10 +134,12 @@ def test_delete_paid_order_removes_collection_ledger_from_daily_profit():
         business_today,
         net_profit_for_collection_calendar_day,
     )
+    from utils.invoice_mutation_policy import set_paid_invoice_mutations_enabled
 
     with app.app_context():
         g.tenant = TENANT_LEDGER
         init_tenant_db(TENANT_LEDGER)
+        set_paid_invoice_mutations_enabled(True)
 
         customer = Customer(name="Delete Ledger Customer", phone="07750000000")
         product = Product(name="Delete Ledger Item", buy_price=100, sale_price=500, quantity=3, active=True)
@@ -202,10 +205,12 @@ def test_delete_paid_order_removes_delivery_expense_and_pending_commission():
     from utils.delivery_expense_service import sync_delivery_expense_for_invoice
     from utils.order_shipping import apply_manual_delivery_fee_on_payment
     from utils.payroll_service import sync_commission_line_for_invoice
+    from utils.invoice_mutation_policy import set_paid_invoice_mutations_enabled
 
     with app.app_context():
         g.tenant = TENANT_SIDE_EFFECTS
         init_tenant_db(TENANT_SIDE_EFFECTS)
+        set_paid_invoice_mutations_enabled(True)
 
         customer = Customer(name="Delete Side Effects Customer", phone="07751000000")
         employee = Employee(
@@ -264,7 +269,7 @@ def test_delete_paid_order_removes_delivery_expense_and_pending_commission():
         assert EmployeeCommissionLine.query.filter_by(invoice_id=invoice_id).count() == 0
 
 
-def test_delete_order_blocks_when_commission_already_paid():
+def test_paid_delete_is_blocked_by_default_even_with_delete_permission():
     _fresh_tenant_db(TENANT_PAID_COMMISSION)
     from app import app
     from flask import g
@@ -336,7 +341,7 @@ def test_delete_order_blocks_when_commission_already_paid():
         response = delete_order(invoice_id)
         data = _json_payload(response)
         assert data["success"] is False
-        assert response[1] == 400
+        assert response[1] == 403
 
     with app.app_context():
         g.tenant = TENANT_PAID_COMMISSION
@@ -345,9 +350,105 @@ def test_delete_order_blocks_when_commission_already_paid():
         assert int(Product.query.get(product_id).quantity or 0) == 3
 
 
+def test_enabled_paid_delete_removes_paid_commission_payroll_share():
+    _fresh_tenant_db(TENANT_PAID_PAYROLL)
+    from app import app
+    from flask import g
+    from extensions import db
+    from extensions_tenant import init_tenant_db
+    from models.account_transaction import AccountTransaction
+    from models.customer import Customer
+    from models.employee import Employee
+    from models.employee_commission_line import EmployeeCommissionLine
+    from models.employee_commission_settlement import EmployeeCommissionSettlement
+    from models.employee_payment import EmployeePayment
+    from models.expense import Expense
+    from models.invoice import Invoice
+    from models.order_item import OrderItem
+    from models.product import Product
+    from routes.orders import delete_order
+    from utils.invoice_mutation_policy import set_paid_invoice_mutations_enabled
+    from utils.payment_ledger import append_payment_ledger_delta
+    from utils.payroll_service import (
+        settle_employee_commission_payment,
+        sync_commission_line_for_invoice,
+    )
+    from utils.treasury_calculations import calculate_treasury_balance
+    from utils.treasury_helpers import get_default_cash_account
+
+    with app.test_request_context("/"):
+        g.tenant = TENANT_PAID_PAYROLL
+        init_tenant_db(TENANT_PAID_PAYROLL)
+        customer = Customer(name="Paid Payroll Customer", phone="07753000000")
+        employee = Employee(
+            name="Paid Payroll Cashier",
+            username="paid-payroll-cashier",
+            password="x",
+            role="cashier",
+            is_active=True,
+            commission_percent=125,
+        )
+        product = Product(name="Paid Payroll Item", buy_price=100, sale_price=500, quantity=3, active=True)
+        db.session.add_all([customer, employee, product])
+        db.session.flush()
+        invoice = Invoice(
+            customer_id=customer.id,
+            customer_name=customer.name,
+            employee_id=employee.id,
+            employee_name=employee.name,
+            total=500,
+            status="تم التوصيل",
+            payment_status="مسدد",
+            paid_amount=500,
+        )
+        db.session.add(invoice)
+        db.session.flush()
+        db.session.add(OrderItem(
+            invoice_id=invoice.id,
+            product_id=product.id,
+            product_name=product.name,
+            quantity=1,
+            price=500,
+            cost=100,
+            total=500,
+        ))
+        append_payment_ledger_delta(invoice.id, 500)
+        sync_commission_line_for_invoice(invoice)
+        db.session.commit()
+
+        cash_account = get_default_cash_account()
+        result = settle_employee_commission_payment(
+            employee.id,
+            treasury_account_id=cash_account.id,
+        )
+        assert result["ok"], result
+        invoice_id = invoice.id
+        product_id = product.id
+        payment_id = result["payment_id"]
+        assert calculate_treasury_balance(cash_account.id) == 375
+        set_paid_invoice_mutations_enabled(True)
+
+    with app.test_request_context(f"/orders/delete/{invoice_id}", method="POST"):
+        g.tenant = TENANT_PAID_PAYROLL
+        data = _json_payload(delete_order(invoice_id))
+        assert data["success"], data
+
+    with app.test_request_context("/"):
+        g.tenant = TENANT_PAID_PAYROLL
+        assert Invoice.query.get(invoice_id) is None
+        assert EmployeeCommissionLine.query.filter_by(invoice_id=invoice_id).count() == 0
+        assert EmployeePayment.query.get(payment_id) is None
+        assert EmployeeCommissionSettlement.query.filter_by(payment_id=payment_id).count() == 0
+        assert Expense.query.filter_by(employee_payment_id=payment_id).count() == 0
+        assert AccountTransaction.query.filter_by(type="withdraw", amount=125).count() == 0
+        assert int(Product.query.get(product_id).quantity or 0) == 4
+        assert calculate_treasury_balance(get_default_cash_account().id) == 0
+
+
 if __name__ == "__main__":
     test_delete_canceled_order_does_not_restore_stock_twice()
     test_delete_paid_order_removes_collection_ledger_from_daily_profit()
     test_delete_paid_order_removes_delivery_expense_and_pending_commission()
-    test_delete_order_blocks_when_commission_already_paid()
+    test_paid_delete_is_blocked_by_default_even_with_delete_permission()
+    test_enabled_paid_delete_removes_paid_commission_payroll_share()
     print("order delete lifecycle tests passed")

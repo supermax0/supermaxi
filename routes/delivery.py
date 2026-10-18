@@ -13,9 +13,12 @@ import json
 from utils.shipping_report_execute import execute_shipping_report
 from utils.agent_report_helpers import (
     compute_report_delivered_amount,
+    compute_report_items_totals,
     enrich_orders_data_display_fields,
+    enrich_orders_data_items,
     extract_agent_id_from_report,
     row_collectible_amount,
+    sync_open_report_payment_amounts,
 )
 
 delivery_bp = Blueprint("delivery", __name__, url_prefix="/delivery")
@@ -90,6 +93,187 @@ def _reports_back_url_for_report(report, current_role):
     if agent_id:
         return f"/agents/{agent_id}/reports"
     return "/shipping"
+
+
+def _report_print_branding():
+    defaults = {
+        "company_name": "Finora",
+        "company_subtitle": None,
+        "report_logo": None,
+        "report_address": None,
+        "report_phone": None,
+        "report_footer": "كشف رسمي صادر من نظام Finora",
+    }
+    try:
+        from models.invoice_settings import InvoiceSettings
+
+        settings = InvoiceSettings.get_settings()
+    except Exception:
+        return defaults
+
+    def _safe_get(name):
+        try:
+            value = getattr(settings, name, None)
+        except Exception:
+            return None
+        if value is None:
+            return None
+        text = str(value).strip()
+        return text or None
+
+    company_name = (
+        _safe_get("report_company_name")
+        or _safe_get("company_name")
+        or _safe_get("store_name")
+        or defaults["company_name"]
+    )
+    show_logo = True
+    try:
+        show_logo = bool(getattr(settings, "report_show_logo", True))
+    except Exception:
+        show_logo = True
+    return {
+        "company_name": company_name,
+        "company_subtitle": _safe_get("company_subtitle"),
+        "report_logo": (_safe_get("report_logo_path") or _safe_get("logo_path")) if show_logo else None,
+        "report_address": _safe_get("report_address") or _safe_get("company_address"),
+        "report_phone": _safe_get("report_phone") or _safe_get("company_phone"),
+        "report_footer": _safe_get("report_footer_text") or defaults["report_footer"],
+    }
+
+
+def _agent_label_from_report(report) -> str:
+    name = (getattr(report, "shipping_company_name", None) or "").strip()
+    prefix = "كشف المندوب:"
+    if name.startswith(prefix):
+        name = name[len(prefix):].strip()
+    return name or "—"
+
+
+def _build_report_print_url(report_id, token=None):
+    url = f"/delivery/report/{int(report_id)}/print?autoprint=1"
+    if token:
+        url += f"&token={token}"
+    return url
+
+
+def _get_report_view_context(report_id):
+    """صلاحيات وبيانات صفحة الكشف. يعيد (error_response) أو dict للقالب."""
+    token = request.args.get("token")
+    is_public_access = False
+    shipping_company = None
+    is_shipping_company = False
+    is_admin = False
+    employee = None
+    current_role = None
+
+    if token:
+        shipping_company = ShippingCompany.query.filter_by(access_token=token).first()
+        if shipping_company:
+            is_public_access = True
+            is_shipping_company = True
+        else:
+            return jsonify({"error": "الرابط غير صحيح"}), 403
+    else:
+        if "user_id" not in session and "shipping_company_id" not in session:
+            return jsonify({"error": "غير مصرح"}), 403
+
+        if "shipping_company_id" in session:
+            shipping_company_id = session["shipping_company_id"]
+            shipping_company = ShippingCompany.query.get(shipping_company_id)
+            if shipping_company:
+                is_shipping_company = True
+                current_role = "shipping_company"
+        elif "user_id" in session:
+            current_user_id = session["user_id"]
+            employee = Employee.query.get(current_user_id)
+            if employee:
+                current_role = session.get("role", "cashier")
+                if current_role == "admin":
+                    is_admin = True
+
+    report = ShippingReport.query.get_or_404(report_id)
+
+    if is_shipping_company:
+        if shipping_company and report.shipping_company_id != shipping_company.id:
+            return jsonify({"error": "هذا الكشف لا يخص شركة النقل الخاصة بك"}), 403
+    elif is_admin:
+        pass
+    else:
+        return jsonify({"error": "غير مصرح"}), 403
+
+    orders_data = json.loads(report.orders_data) if report.orders_data else []
+    if not report.is_executed:
+        sync_open_report_payment_amounts(report)
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+        orders_data = json.loads(report.orders_data) if report.orders_data else []
+    orders_data = enrich_orders_data_display_fields(
+        orders_data,
+        refresh_live=True,
+        refresh_live_amounts=not report.is_executed,
+    )
+    orders_data = enrich_orders_data_items(orders_data, refresh_live=True)
+    from utils.order_stock_trace import attach_order_stock_traces_to_rows
+
+    stock_trace_map = attach_order_stock_traces_to_rows(orders_data)
+    if report.is_executed:
+        for row in orders_data:
+            if isinstance(row, dict) and "remaining" not in row:
+                row.setdefault("paid_amount", 0)
+                row.setdefault("remaining", int(row.get("total", 0) or 0))
+
+    status_selections = {}
+    has_status_selections = False
+    if report.order_status_selections:
+        try:
+            status_selections = json.loads(report.order_status_selections)
+            if status_selections and len(status_selections) > 0:
+                has_status_selections = True
+        except Exception:
+            pass
+
+    can_execute = False
+    if is_admin and not report.is_executed and has_status_selections:
+        can_execute = True
+    has_stock_return = any(
+        value in {"ملغي", "Canceled", "مؤجل", "Delayed"}
+        for value in status_selections.values()
+    )
+
+    if has_status_selections:
+        display_total_amount = compute_report_delivered_amount(report)
+        display_total_label = "مجموع الواصل"
+    else:
+        display_total_amount = sum(row_collectible_amount(row) for row in orders_data)
+        display_total_label = "المجموع الكلي"
+
+    item_totals = compute_report_items_totals(orders_data)
+    access_token = token if is_public_access else None
+
+    return {
+        "report": report,
+        "orders_data": orders_data,
+        "employee": employee,
+        "current_role": current_role,
+        "session": session,
+        "is_public_access": is_public_access,
+        "is_shipping_company": is_shipping_company,
+        "can_execute": can_execute,
+        "status_selections": status_selections,
+        "has_stock_return": has_stock_return,
+        "display_total_amount": display_total_amount,
+        "display_total_label": display_total_label,
+        "reports_back_url": _reports_back_url_for_report(report, current_role),
+        "stock_trace_map": stock_trace_map,
+        "print_url": _build_report_print_url(report.id, access_token),
+        "access_token": access_token,
+        "agent_label": _agent_label_from_report(report),
+        "items_count": item_totals["lines"],
+        "items_qty": item_totals["qty"],
+    }
 
 
 # =====================================================
@@ -273,115 +457,31 @@ def get_order_details(order_id):
 @delivery_bp.route("/report/<int:report_id>")
 def view_report(report_id):
     """عرض كشف معين"""
-    
-    # التحقق من الوصول العام باستخدام token
-    token = request.args.get("token")
-    is_public_access = False
-    shipping_company = None
-    is_shipping_company = False
-    is_admin = False
-    employee = None
-    current_role = None
-    
-    if token:
-        # محاولة الوصول العام
-        shipping_company = ShippingCompany.query.filter_by(access_token=token).first()
-        if shipping_company:
-            is_public_access = True
-            is_shipping_company = True
-        else:
-            return jsonify({"error": "الرابط غير صحيح"}), 403
-    else:
-        # التحقق من تسجيل الدخول للوصول العادي
-        if "user_id" not in session and "shipping_company_id" not in session:
-            return jsonify({"error": "غير مصرح"}), 403
-        
-        # التحقق من نوع المستخدم
-        if "shipping_company_id" in session:
-            # تسجيل دخول شركة نقل
-            shipping_company_id = session["shipping_company_id"]
-            shipping_company = ShippingCompany.query.get(shipping_company_id)
-            if shipping_company:
-                is_shipping_company = True
-                current_role = "shipping_company"
-        elif "user_id" in session:
-            # تسجيل دخول موظف/أدمن
-            current_user_id = session["user_id"]
-            employee = Employee.query.get(current_user_id)
-            if employee:
-                current_role = session.get("role", "cashier")
-                if current_role == "admin":
-                    is_admin = True
-    
-    report = ShippingReport.query.get_or_404(report_id)
-    
-    # التحقق من الصلاحيات
-    if is_shipping_company:
-        if shipping_company and report.shipping_company_id != shipping_company.id:
-            return jsonify({"error": "هذا الكشف لا يخص شركة النقل الخاصة بك"}), 403
-    elif is_admin:
-        # الأدمن يمكنه رؤية أي كشف
-        pass
-    else:
-        return jsonify({"error": "غير مصرح"}), 403
-    
-    orders_data = json.loads(report.orders_data) if report.orders_data else []
-    # إثراء المدفوع/الباقي + العنوان والحالة الحالية للكشوف غير المنفّذة
-    if not report.is_executed:
-        orders_data = enrich_orders_data_display_fields(orders_data, refresh_live=True)
-    else:
-        orders_data = enrich_orders_data_display_fields(orders_data, refresh_live=False)
-        for row in orders_data:
-            if isinstance(row, dict) and "remaining" not in row:
-                row.setdefault("paid_amount", 0)
-                row.setdefault("remaining", int(row.get("total", 0) or 0))
-    
-    # استخدام template مختلف للوصول العام (بدون sidebar)
-    template_name = "shipping_report_view_public.html" if is_shipping_company else "shipping_report_view.html"
-    
-    # تحضير status_selections للـ template
-    status_selections = {}
-    has_status_selections = False
-    if report.order_status_selections:
-        try:
-            status_selections = json.loads(report.order_status_selections)
-            # التحقق من أن هناك حالات محفوظة فعلياً
-            if status_selections and len(status_selections) > 0:
-                has_status_selections = True
-        except:
-            pass
-    
-    # للأدمن: إضافة زر تنفيذ إذا كان هناك تغييرات محفوظة
-    can_execute = False
-    if is_admin and not report.is_executed and has_status_selections:
-        can_execute = True
-    has_stock_return = any(
-        value in {"ملغي", "Canceled", "مؤجل", "Delayed"}
-        for value in status_selections.values()
-    )
+    ctx = _get_report_view_context(report_id)
+    if isinstance(ctx, tuple):
+        return ctx
 
-    # بعد تحديد الحالات: المجموع = الباقي للواصل فقط (بدون مؤجل/ملغي)
-    if has_status_selections:
-        display_total_amount = compute_report_delivered_amount(report)
-        display_total_label = "مجموع الواصل"
-    else:
-        display_total_amount = sum(row_collectible_amount(row) for row in orders_data)
-        display_total_label = "المجموع الكلي"
-    
+    template_name = (
+        "shipping_report_view_public.html"
+        if ctx.get("is_shipping_company")
+        else "shipping_report_view.html"
+    )
+    return render_template(template_name, **ctx)
+
+
+@delivery_bp.route("/report/<int:report_id>/print")
+def print_report(report_id):
+    """طباعة احترافية لكشف المندوب مع المنتجات."""
+    ctx = _get_report_view_context(report_id)
+    if isinstance(ctx, tuple):
+        return ctx
+    branding = _report_print_branding()
     return render_template(
-        template_name,
-        report=report,
-        orders_data=orders_data,
-        employee=employee,
-        current_role=current_role,
-        session=session,
-        is_public_access=is_public_access,
-        can_execute=can_execute,
-        status_selections=status_selections,
-        has_stock_return=has_stock_return,
-        display_total_amount=display_total_amount,
-        display_total_label=display_total_label,
-        reports_back_url=_reports_back_url_for_report(report, current_role),
+        "shipping_report_print.html",
+        **ctx,
+        **branding,
+        generated_at=datetime.now(),
+        autoprint=str(request.args.get("autoprint") or "").strip() in {"1", "true", "yes"},
     )
 
 # =====================================================

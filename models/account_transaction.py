@@ -5,6 +5,7 @@ class AccountTransaction(db.Model):
     __tablename__ = "account_transaction"
 
     id = db.Column(db.Integer, primary_key=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey("branch.id"), nullable=True, index=True)
 
     type = db.Column(
         db.String(20),
@@ -37,6 +38,9 @@ class AccountTransaction(db.Model):
 
     treasury_account = db.relationship("TreasuryAccount", lazy=True)
     treasury_transfer = db.relationship("TreasuryTransfer", lazy=True)
+
+    # Optional trace back to the planning document that produced a purchase.
+    purchase_list_id = db.Column(db.Integer, db.ForeignKey("purchase_list.id"), nullable=True, index=True)
 
     created_at = db.Column(
         db.DateTime,

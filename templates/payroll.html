@@ -3,679 +3,235 @@
 {% block page_title %}💼 نظام الرواتب{% endblock %}
 
 {% block content %}
-{% from "partials/fd_icons.html" import icon %}
-<link rel="stylesheet" href="/static/css/finora-ui.css?v=20261018e">
-<style>
-  #fdPage .pay-treasury {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 44px;
-    padding: 0 12px;
-    border: 1px solid var(--fd-border);
-    border-radius: 12px;
-    background: var(--fd-surface);
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--fd-muted);
-    white-space: nowrap;
-  }
-  #fdPage .pay-treasury select {
-    border: 0 !important;
-    background: transparent !important;
-    box-shadow: none !important;
-    min-height: 40px;
-    padding: 0 4px !important;
-    font: inherit;
-    font-weight: 800;
-    color: var(--fd-text);
-    max-width: 180px;
-  }
-  #fdPage .pay-act-cell { white-space: nowrap; }
-  #fdPage .pay-act-cell .fd-btn + .fd-btn { margin-inline-start: 6px; }
-  #fdPage .pay-pos { color: #16a34a; }
-  #fdPage .pay-lines-total { display: flex; justify-content: space-between; font-weight: 800; padding: 10px 6px 0; }
-  #fdPage .pay-lines-wrap { max-height: 46vh; overflow: auto; }
-  #fdPage .pay-name small { display: block; color: var(--fd-muted); font-size: 12px; font-weight: 500; margin-top: 2px; }
-  @media (max-width: 600px) {
-    #fdPage .pay-treasury { width: 100%; justify-content: space-between; }
-    #fdPage .pay-treasury select { max-width: none; flex: 1; text-align: end; }
-    #fdPage .pay-act-cell { white-space: normal; }
-  }
-</style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/payroll.css') }}?v=20260808a">
 
-<div class="fd payroll-fd-page" id="fdPage">
-
-  <header class="fd-header no-print">
-    <div class="fd-header-main">
-      <span class="fd-header-icon" style="color: var(--fd-purple);">{{ icon('wallet', 26) }}</span>
-      <div class="fd-header-text">
-        <h1 class="fd-title">الرواتب</h1>
-        <p class="fd-subtitle">رواتب الموظفين والمندوبين، العمولات المعلّقة، الجدولة وسجل المدفوعات</p>
-      </div>
+<div class="payroll-page">
+  <div class="payroll-summary">
+    <div class="payroll-card">
+      <h4>رواتب مستحقة اليوم</h4>
+      <div class="payroll-card-value" id="summarySalaryDue">0</div>
+      <span class="payroll-card-unit">د.ع</span>
     </div>
-  </header>
-
-  <nav class="fd-subnav no-print" aria-label="الفريق">
-    <a class="fd-subnav-link" href="/employees/">الموظفون</a>
-    <a class="fd-subnav-link active" href="/payroll">الرواتب</a>
-    <a class="fd-subnav-link" href="/agents">{{ _('delivery_agents') }}</a>
-    <a class="fd-subnav-link" href="/employees/page-warnings">تحذير البيجات</a>
-  </nav>
-
-  <div class="fd-kpis no-print">
-    <button type="button" class="fd-kpi fd-kpi--amber" data-pay-kpi="salary">
-      <span class="fd-kpi-text">
-        <span class="fd-kpi-label">رواتب مستحقة اليوم</span>
-        <span><span class="fd-kpi-value fd-kpi-value--money" id="summarySalaryDue">0</span><span class="fd-kpi-unit">د.ع</span></span>
-      </span>
-      <span class="fd-kpi-icon">{{ icon('calendar', 28) }}</span>
-    </button>
-    <button type="button" class="fd-kpi fd-kpi--purple" data-pay-kpi="commission">
-      <span class="fd-kpi-text">
-        <span class="fd-kpi-label">عمولات معلّقة</span>
-        <span><span class="fd-kpi-value fd-kpi-value--money" id="summaryCommissionDue">0</span><span class="fd-kpi-unit">د.ع</span></span>
-      </span>
-      <span class="fd-kpi-icon">{{ icon('receipt', 28) }}</span>
-    </button>
-    <button type="button" class="fd-kpi fd-kpi--red" data-pay-kpi="due">
-      <span class="fd-kpi-text">
-        <span class="fd-kpi-label">إجمالي المستحق</span>
-        <span><span class="fd-kpi-value fd-kpi-value--money" id="summaryTotalDue">0</span><span class="fd-kpi-unit">د.ع</span></span>
-      </span>
-      <span class="fd-kpi-icon">{{ icon('alert', 28) }}</span>
-    </button>
-    <button type="button" class="fd-kpi fd-kpi--green" data-pay-kpi="history">
-      <span class="fd-kpi-text">
-        <span class="fd-kpi-label">مدفوع هذا الشهر</span>
-        <span><span class="fd-kpi-value fd-kpi-value--money" id="summaryPaidMonth">0</span><span class="fd-kpi-unit">د.ع</span></span>
-      </span>
-      <span class="fd-kpi-icon">{{ icon('check-circle', 28) }}</span>
-    </button>
+    <div class="payroll-card">
+      <h4>عمولات معلّقة</h4>
+      <div class="payroll-card-value" id="summaryCommissionDue">0</div>
+      <span class="payroll-card-unit">د.ع</span>
+    </div>
+    <div class="payroll-card accent">
+      <h4>إجمالي المستحق</h4>
+      <div class="payroll-card-value" id="summaryTotalDue">0</div>
+      <span class="payroll-card-unit">د.ع</span>
+    </div>
   </div>
 
-  <div class="fd-toolbar no-print">
-    <label class="pay-treasury" title="الحساب الذي تُخصم منه الرواتب والعمولات">
-      {{ icon('wallet', 18) }}<span>حساب الصرف</span>
+  <div class="payroll-toolbar">
+    <label>
+      حساب الصرف
       <select id="treasuryAccount">
         {% for acc in treasury_accounts %}
-        <option value="{{ acc.id }}" {% if acc.is_default %}selected{% endif %}>{{ acc.name }}</option>
+        <option value="{{ acc.id }}" {% if acc.is_default %}selected{% endif %}>{% if independent_branches_enabled %}{{ acc.branch_name }} — {% endif %}{{ acc.name }}</option>
         {% endfor %}
       </select>
     </label>
-
-    <label class="fd-search fd-tool--search">
-      {{ icon('search', 18) }}
-      <input type="search" id="paySearch" autocomplete="off" placeholder="ابحث باسم الموظف أو المندوب...">
-    </label>
-
-    <div class="fd-tools-row">
-      <button type="button" class="fd-btn fd-btn--primary" id="btnProcessDue">
-        {{ icon('check-circle', 18) }}
-        <span class="fd-btn-label">صرف الرواتب المستحقة اليوم</span>
-      </button>
-      <div class="fd-pop-wrap">
-        <button type="button" class="fd-btn fd-btn--icon" data-fd-pop="payMorePop" aria-expanded="false" aria-controls="payMorePop" title="المزيد" aria-label="المزيد">{{ icon('dots', 20) }}</button>
-        <div class="fd-pop fd-pop--end fd-menu" id="payMorePop" role="menu" hidden>
-          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close id="btnRefresh">{{ icon('scan') }}<span>تحديث</span></button>
-          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="exportPayrollCsv()">{{ icon('download') }}<span>تصدير CSV (التبويب الحالي)</span></button>
-          <div class="fd-menu-sep" role="separator"></div>
-          <a class="fd-menu-item" role="menuitem" href="/employees/">{{ icon('users') }}<span>الموظفون (إعداد الرواتب)</span></a>
-          <a class="fd-menu-item" role="menuitem" href="/agents">{{ icon('truck') }}<span>{{ _('delivery_agents') }}</span></a>
-          <a class="fd-menu-item" role="menuitem" href="/expenses">{{ icon('receipt') }}<span>المصاريف</span></a>
-        </div>
-      </div>
-    </div>
+    <button type="button" class="payroll-btn primary" id="btnProcessDue">صرف الرواتب المستحقة اليوم</button>
+    <button type="button" class="payroll-btn secondary" id="btnRefresh">تحديث</button>
   </div>
 
-  <div class="fd-toolbar fd-toolbar--chips no-print">
-    <div class="fd-chips" id="payTabs" role="tablist" aria-label="الأقسام">
-      <button type="button" class="fd-chip payroll-tab active" data-tab="due" role="tab">المستحقات<span class="fd-chip-count" data-count="due"></span></button>
-      <button type="button" class="fd-chip payroll-tab" data-tab="commission" role="tab">العمولات<span class="fd-chip-count" data-count="commission"></span></button>
-      <button type="button" class="fd-chip payroll-tab" data-tab="schedule" role="tab">الجدولة<span class="fd-chip-count" data-count="schedule"></span></button>
-      <button type="button" class="fd-chip payroll-tab" data-tab="history" role="tab">السجل<span class="fd-chip-count" data-count="history"></span></button>
-    </div>
+  <div class="payroll-tabs">
+    <button type="button" class="payroll-tab active" data-tab="due">المستحقات</button>
+    <button type="button" class="payroll-tab" data-tab="commission">العمولات</button>
+    <button type="button" class="payroll-tab" data-tab="statement">كشف شهري</button>
+    <button type="button" class="payroll-tab" data-tab="schedule">الجدولة</button>
+    <button type="button" class="payroll-tab" data-tab="history">السجل</button>
   </div>
 
-  <section class="fd-table-card">
-    <div class="fd-table-scroll">
-      <table class="fd-table" id="payTable">
-        <thead id="payHead"></thead>
-        <tbody id="payBody">
-          <tr><td class="fd-empty">جاري التحميل...</td></tr>
+  <section class="payroll-panel active" id="panelDue">
+    <div class="payroll-table-wrap">
+      <table class="payroll-table">
+        <thead>
+          <tr>
+            <th>الاسم</th>
+            <th>النوع</th>
+            <th>الجدولة</th>
+            <th>المبلغ</th>
+            <th>الموعد</th>
+            <th>إجراء</th>
+          </tr>
+        </thead>
+        <tbody id="dueTableBody">
+          <tr><td colspan="6" class="empty">جاري التحميل...</td></tr>
         </tbody>
       </table>
     </div>
   </section>
 
-  <footer class="fd-footer no-print">
-    <div class="fd-footer-info">
-      <select id="payPageSize" aria-label="عدد الصفوف في الصفحة">
-        <option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
-      </select>
-      <span class="fd-range" id="payRange"></span>
-      <span class="fd-totals" id="payTotals"></span>
+  <section class="payroll-panel" id="panelCommission">
+    <div class="payroll-statement-toolbar">
+      <label>
+        شهر السداد
+        <input type="month" id="commissionMonth">
+      </label>
+      <button type="button" class="payroll-btn secondary" id="btnLoadCommission">عرض عمولات الشهر</button>
+      <span class="payroll-commission-hint" id="commissionMonthHint">طلبات جاري الشحن ما تنسدد مع الشهر؛ لما توصل تترحّل وتنصرف مع الشهر اللي تختاره</span>
     </div>
-    <nav class="fd-pager" id="payPager" aria-label="الصفحات"></nav>
-  </footer>
+    <div class="payroll-statement-summary" id="commissionMonthSummary">اختر الشهر لعرض العمولات المعلّقة</div>
+    <div class="payroll-table-wrap">
+      <table class="payroll-table">
+        <thead>
+          <tr>
+            <th>الموظف</th>
+            <th>الطلبات</th>
+            <th>مبلغ العمولة/طلب</th>
+            <th>المجموع</th>
+            <th>إجراء</th>
+          </tr>
+        </thead>
+        <tbody id="commissionTableBody">
+          <tr><td colspan="5" class="empty">اختر الشهر ثم اضغط عرض</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
 
-  <!-- Detail panel (also shows the commission lines that used to open in a modal) -->
-  <aside class="fd-detail" id="payDetail" aria-label="التفاصيل" hidden>
-    <div class="fd-detail-head">
-      <div class="fd-detail-titles">
-        <h3 class="fd-detail-title" id="payDetailTitle"></h3>
-        <p class="fd-detail-sub" id="payDetailSub"></p>
-      </div>
-      <button type="button" class="fd-close-btn" onclick="closePayDetail()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+  <section class="payroll-panel" id="panelStatement">
+    <div class="payroll-statement-toolbar">
+      <label>
+        الشهر
+        <input type="month" id="statementMonth">
+      </label>
+      <button type="button" class="payroll-btn primary" id="btnLoadStatement">عرض الكشف</button>
+      <button type="button" class="payroll-btn secondary" id="btnPrintStatement">
+        <i class="fas fa-print"></i> طباعة الكشف
+      </button>
     </div>
-    <div class="fd-detail-body" id="payDetailBody"></div>
-  </aside>
+    <div class="payroll-statement-summary" id="statementSummary">اختر الشهر ثم اضغط عرض الكشف</div>
+    <p class="payroll-statement-note" id="statementNote">
+      الكلي = الواصل + الراجع/الملغي + الجاري.
+      المبلغ الكلي = عمولة الطلبات الواصلة فقط.
+      طلبات جاري الشحن المفتوحة من أشهر سابقة تُرحَّل للشهر المحدد حتى تُغلق حتى لا يضيع حق الموظف.
+    </p>
+    <div class="payroll-table-wrap">
+      <table class="payroll-table" id="statementTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>اسم الموظف</th>
+            <th>الكلي</th>
+            <th>الواصل</th>
+            <th>الراجع / الملغي</th>
+            <th>الجاري</th>
+            <th>عمولة الواصل</th>
+            <th>رقم التحويل</th>
+          </tr>
+        </thead>
+        <tbody id="statementTableBody">
+          <tr><td colspan="8" class="empty">لا توجد بيانات بعد</td></tr>
+        </tbody>
+        <tfoot id="statementTableFoot"></tfoot>
+      </table>
+    </div>
+  </section>
+
+  <section class="payroll-panel" id="panelSchedule">
+    <div class="payroll-table-wrap">
+      <table class="payroll-table">
+        <thead>
+          <tr>
+            <th>الاسم</th>
+            <th>الجدولة</th>
+            <th>المبلغ</th>
+            <th>الموعد القادم</th>
+          </tr>
+        </thead>
+        <tbody id="scheduleTableBody">
+          <tr><td colspan="4" class="empty">لا توجد جداول رواتب</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="payroll-panel" id="panelHistory">
+    <div class="payroll-table-wrap">
+      <table class="payroll-table">
+        <thead>
+          <tr>
+            <th>التاريخ</th>
+            <th>المستفيد</th>
+            <th>النوع</th>
+            <th>المبلغ</th>
+            <th>المصروف</th>
+          </tr>
+        </thead>
+        <tbody id="historyTableBody">
+          <tr><td colspan="5" class="empty">جاري التحميل...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
 </div>
+
+<div class="payroll-modal" id="commissionModal" hidden>
+  <div class="payroll-modal-backdrop" data-close-modal></div>
+  <div class="payroll-modal-content">
+    <header>
+      <h3 id="commissionModalTitle">تفاصيل العمولة</h3>
+      <button type="button" class="payroll-modal-close" data-close-modal>&times;</button>
+    </header>
+    <div class="payroll-modal-body">
+      <table class="payroll-table compact">
+        <thead>
+          <tr>
+            <th>الكود</th>
+            <th>الطلب</th>
+            <th>الزبون</th>
+            <th>المبلغ</th>
+          </tr>
+        </thead>
+        <tbody id="commissionLinesBody"></tbody>
+      </table>
+    </div>
+    <footer>
+      <button type="button" class="payroll-btn primary" id="btnSettleFromModal">سداد شهر محدد</button>
+      <button type="button" class="payroll-btn secondary" data-close-modal>إغلاق</button>
+    </footer>
+  </div>
+</div>
+
+<section id="payrollStatementPrint" class="payroll-statement-print" aria-hidden="true">
+  <header class="psp-header">
+    <div>
+      <h1 id="pspTitle">طلبات شهر —</h1>
+      <p>Finora System — كشف رواتب / طلبات الموظفين</p>
+    </div>
+    <div class="psp-meta">
+      <p><strong>الفترة:</strong> <span id="pspPeriod">—</span></p>
+      <p><strong>تاريخ الطباعة:</strong> <span id="pspPrintedAt">—</span></p>
+    </div>
+  </header>
+  <p class="psp-summary" id="pspSummary"></p>
+  <p class="psp-note" id="pspNote"></p>
+  <table class="psp-table">
+    <thead>
+      <tr>
+        <th class="psp-col-index">#</th>
+        <th class="psp-col-name">اسم الموظف</th>
+        <th class="psp-col-num">الكلي</th>
+        <th class="psp-col-num">الواصل</th>
+        <th class="psp-col-num">الراجع / الملغي</th>
+        <th class="psp-col-num">الجاري</th>
+        <th class="psp-col-amount">عمولة الواصل</th>
+        <th class="psp-col-transfer">رقم التحويل</th>
+      </tr>
+    </thead>
+    <tbody id="pspBody"></tbody>
+    <tfoot id="pspFoot"></tfoot>
+  </table>
+</section>
 
 <script>
   window.PAYROLL_CONFIG = {
     treasuryDefault: {% if treasury_accounts %}{{ treasury_accounts[0].id }}{% else %}null{% endif %}
   };
 </script>
-<script src="/static/js/finora-ui.js?v=20261018c"></script>
-<script>
-  const F = window.FinoraUI;
-  const byId = id => document.getElementById(id);
-  const PAY_PAGE_SIZES = [10, 25, 50, 100];
-  const PAY_PAGE_SIZE_KEY = "payroll_page_size";
-  const PAY_TAB_KEY = "payroll_tab";
-  const PAY_TABS = ["due", "commission", "schedule", "history"];
-  const fmt = n => F.num(n || 0);
-  const payMoney = n => F.money(n || 0);
-  let dashboard = { due_rows: [], commission_employees: [], schedule_rows: [] };
-  let historyRows = [];
-  let historyLoaded = false;
-  let payTab = "due";
-  let payDueOnly = false;
-  let payPage = 0;
-  let payDetail = null; // {tab, key}
-  let payBusy = false;
-
-  function payPageSize() {
-    try {
-      const saved = parseInt(localStorage.getItem(PAY_PAGE_SIZE_KEY), 10);
-      if (PAY_PAGE_SIZES.includes(saved)) return saved;
-    } catch (e) { /* storage unavailable */ }
-    return 25;
-  }
-
-  function treasuryId() {
-    const el = byId("treasuryAccount");
-    return el && el.value ? parseInt(el.value, 10) : null;
-  }
-
-  async function api(url, options) {
-    const res = await fetch(url, {
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      credentials: "same-origin",
-      ...options,
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || data.message || "حدث خطأ");
-    return data;
-  }
-
-  // ---- Row model per tab ----
-  const typeLabel = t => (t === "delivery_agent" ? "مندوب" : "موظف");
-  const typePill = t => `<span class="fd-pill fd-pill--${t === "delivery_agent" ? "sky" : "gray"}">${typeLabel(t)}</span>`;
-  const kindPill = k => (k === "commission" ? '<span class="fd-pill fd-pill--purple">عمولة</span>' : '<span class="fd-pill fd-pill--blue">راتب</span>');
-  const duePill = r => (r.is_due ? '<span class="fd-pill fd-pill--red">مستحق</span>' : '<span class="fd-pill fd-pill--gray">مجدول</span>');
-  const histDate = r => (r.paid_at ? r.paid_at.slice(0, 16).replace("T", " ") : "");
-
-  function tabRows(tab) {
-    if (tab === "due") return (dashboard.due_rows || []).map(r => ({ ...r, _key: "d:" + r.kind + ":" + r.payee_type + ":" + r.payee_id, _name: r.name }));
-    if (tab === "commission") return (dashboard.commission_employees || []).map(r => ({ ...r, _key: "c:" + r.employee_id, _name: r.employee_name }));
-    if (tab === "schedule") return (dashboard.schedule_rows || []).map(r => ({ ...r, _key: "s:" + r.payee_type + ":" + r.payee_id, _name: r.name }));
-    return historyRows.map(r => ({ ...r, _key: "h:" + r.id, _name: r.payee_name }));
-  }
-
-  function filteredRows() {
-    const q = byId("paySearch").value.trim().toLowerCase();
-    return tabRows(payTab).filter(r => {
-      if (payTab === "due" && payDueOnly && !(r.kind === "salary" && r.is_due)) return false;
-      if (q && !String(r._name || "").toLowerCase().includes(q)) return false;
-      return true;
-    });
-  }
-
-  function primaryAction(r, tab) {
-    if (tab === "commission") {
-      return `<button type="button" class="fd-btn fd-btn--soft fd-btn--sm" data-view-commission="${r.employee_id}">التفاصيل</button>` +
-             `<button type="button" class="fd-btn fd-btn--primary fd-btn--sm" data-settle-commission="${r.employee_id}">سداد</button>`;
-    }
-    if (tab === "due") {
-      if (r.kind === "commission" && r.is_due) return `<button type="button" class="fd-btn fd-btn--primary fd-btn--sm" data-settle-commission="${r.payee_id}">سداد</button>`;
-      if (r.kind === "salary" && r.is_due) return `<button type="button" class="fd-btn fd-btn--primary fd-btn--sm" data-pay-salary="${r.payee_type}:${r.payee_id}">صرف</button>`;
-      if (r.kind === "salary") return `<button type="button" class="fd-btn fd-btn--sm" data-pay-salary-manual="${r.payee_type}:${r.payee_id}">صرف يدوي</button>`;
-    }
-    if (tab === "history" && r.expense_id) return `<a class="fd-btn fd-btn--sm" href="/expenses">مصروف #${r.expense_id}</a>`;
-    return "";
-  }
-
-  const HEADS = {
-    due: ["الاسم", "النوع", "الجدولة|fd-col-opt2", "المبلغ", "الموعد", "إجراء"],
-    commission: ["الموظف", "الطلبات", "مبلغ العمولة/طلب|fd-col-opt", "المجموع", "إجراء"],
-    schedule: ["الاسم", "النوع|fd-col-opt2", "الجدولة", "المبلغ", "الموعد القادم"],
-    history: ["التاريخ", "المستفيد", "النوع", "المبلغ", "المصروف|fd-col-opt2"]
-  };
-
-  function rowCells(r, tab) {
-    if (tab === "due") {
-      return `
-        <td class="fd-td-title pay-name" data-label="الاسم"><b>${F.esc(r.name)}</b></td>
-        <td data-label="النوع">${typePill(r.payee_type)} ${kindPill(r.kind)}</td>
-        <td data-label="الجدولة" class="fd-col-opt2 fd-cell-muted">${F.dash(r.schedule_label)}${r.orders ? " · " + fmt(r.orders) + " طلب" : ""}</td>
-        <td data-label="المبلغ" class="fd-cell-amount">${payMoney(r.amount)}</td>
-        <td data-label="الموعد">${r.next_pay_date ? `<span dir="ltr">${F.esc(r.next_pay_date)}</span> ` : ""}${duePill(r)}</td>
-        <td data-label="إجراء" class="pay-act-cell">${primaryAction(r, tab) || '<span class="fd-muted">—</span>'}</td>`;
-    }
-    if (tab === "commission") {
-      return `
-        <td class="fd-td-title pay-name" data-label="الموظف"><b>${F.esc(r.employee_name)}</b></td>
-        <td data-label="الطلبات">${fmt(r.orders)}</td>
-        <td data-label="مبلغ العمولة/طلب" class="fd-col-opt fd-cell-muted">${payMoney(r.commission_rate)}</td>
-        <td data-label="المجموع" class="fd-cell-amount">${payMoney(r.amount)}</td>
-        <td data-label="إجراء" class="pay-act-cell">${primaryAction(r, tab)}</td>`;
-    }
-    if (tab === "schedule") {
-      return `
-        <td class="fd-td-title pay-name" data-label="الاسم"><b>${F.esc(r.name)}</b></td>
-        <td data-label="النوع" class="fd-col-opt2">${typePill(r.payee_type)}</td>
-        <td data-label="الجدولة">${F.dash(r.schedule_label)}</td>
-        <td data-label="المبلغ" class="fd-cell-amount">${payMoney(r.amount)}</td>
-        <td data-label="الموعد القادم">${r.next_pay_date ? `<span dir="ltr">${F.esc(r.next_pay_date)}</span>` : '<span class="fd-muted">—</span>'}</td>`;
-    }
-    return `
-        <td class="fd-td-title fd-cell-muted" data-label="التاريخ"><span dir="ltr">${F.esc(histDate(r)) || "—"}</span></td>
-        <td data-label="المستفيد" class="pay-name"><b>${F.esc(r.payee_name)}</b></td>
-        <td data-label="النوع"><span class="fd-pill fd-pill--${r.payment_kind === "commission" ? "purple" : "blue"}">${F.esc(r.payment_kind_label || r.payment_kind || "")}</span></td>
-        <td data-label="المبلغ" class="fd-cell-amount">${payMoney(r.amount)}</td>
-        <td data-label="المصروف" class="fd-col-opt2">${r.expense_id ? `<a href="/expenses">#${r.expense_id}</a>` : '<span class="fd-muted">—</span>'}</td>`;
-  }
-
-  const EMPTY = { due: "لا توجد مستحقات حالياً", commission: "لا توجد عمولات معلّقة", schedule: "لا توجد جداول رواتب", history: "لا يوجد سجل مدفوعات" };
-
-  function syncPayUi() {
-    const counts = {
-      due: (dashboard.due_rows || []).length,
-      commission: (dashboard.commission_employees || []).length,
-      schedule: (dashboard.schedule_rows || []).length,
-      history: historyRows.length
-    };
-    document.querySelectorAll("#payTabs [data-count]").forEach(el => {
-      const k = el.getAttribute("data-count");
-      el.textContent = k === "history" && !historyLoaded ? "" : fmt(counts[k]);
-    });
-    document.querySelectorAll("#payTabs .payroll-tab").forEach(t => {
-      const on = t.getAttribute("data-tab") === payTab;
-      t.classList.toggle("active", on);
-      t.setAttribute("aria-selected", on ? "true" : "false");
-    });
-    document.querySelectorAll("#fdPage [data-pay-kpi]").forEach(k => {
-      const v = k.getAttribute("data-pay-kpi");
-      const on = v === "salary" ? payTab === "due" && payDueOnly : v === "due" ? payTab === "due" && !payDueOnly : v === payTab;
-      k.classList.toggle("active", on);
-    });
-  }
-
-  function renderPay() {
-    F.closeRowMenu();
-    syncPayUi();
-    const cols = HEADS[payTab];
-    const withMenu = payTab !== "history";
-    byId("payHead").innerHTML = "<tr>" + cols.map(c => {
-      const [label, cls] = c.split("|");
-      return `<th${cls ? ` class="${cls}"` : ""}>${label}</th>`;
-    }).join("") + (withMenu ? '<th class="fd-col-actions"></th>' : "") + "</tr>";
-    const colspan = cols.length + (withMenu ? 1 : 0);
-
-    const rows = filteredRows();
-    const size = payPageSize();
-    const pages = Math.max(1, Math.ceil(rows.length / size));
-    payPage = Math.min(payPage, pages - 1);
-    const pageRows = rows.slice(payPage * size, (payPage + 1) * size);
-    const total = rows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    byId("payTotals").innerHTML = rows.length ? "المجموع <b>" + fmt(total) + " د.ع</b>" : "";
-    const from = rows.length ? payPage * size + 1 : 0;
-    byId("payRange").innerHTML = "عرض " + fmt(from) + "–" + fmt(Math.min(rows.length, (payPage + 1) * size)) + " من <b>" + fmt(rows.length) + "</b>";
-    byId("payPager").innerHTML = F.pagerHtml(payPage, pages, "data-pay-page");
-
-    const body = byId("payBody");
-    if (payTab === "history" && !historyLoaded) {
-      body.innerHTML = `<tr><td colspan="${colspan}" class="fd-empty">جاري التحميل...</td></tr>`;
-      return;
-    }
-    if (!pageRows.length) {
-      const q = byId("paySearch").value.trim() || (payTab === "due" && payDueOnly);
-      body.innerHTML = `<tr><td colspan="${colspan}" class="fd-empty">${q ? "لا توجد نتائج مطابقة." : EMPTY[payTab]}</td></tr>`;
-      return;
-    }
-    const openKey = payDetail && payDetail.tab === payTab ? payDetail.key : null;
-    body.innerHTML = pageRows.map(r => `
-      <tr data-pay-row="${F.esc(r._key)}" class="${r._key === openKey ? "is-open" : ""}" style="cursor:pointer">
-        ${rowCells(r, payTab)}
-        ${withMenu ? `<td class="fd-col-actions"><button type="button" class="fd-more-btn" data-fd-row-menu="${F.esc(r._key)}" aria-haspopup="menu" aria-label="إجراءات" title="إجراءات"></button></td>` : ""}
-      </tr>`).join("");
-  }
-
-  function setSummary(data) {
-    byId("summarySalaryDue").textContent = fmt(data.total_salary_due);
-    byId("summaryCommissionDue").textContent = fmt(data.total_commission_due);
-    byId("summaryTotalDue").textContent = fmt(data.total_due);
-  }
-
-  function setPaidMonth() {
-    const month = new Date().toISOString().slice(0, 7);
-    const sum = historyRows.filter(r => (r.paid_at || "").slice(0, 7) === month).reduce((s, r) => s + (Number(r.amount) || 0), 0);
-    byId("summaryPaidMonth").textContent = fmt(sum);
-  }
-
-  async function loadDashboard() {
-    const data = await api("/payroll/api/dashboard");
-    dashboard = data;
-    setSummary(data);
-    renderPay();
-    refreshDetail();
-  }
-
-  async function loadHistory() {
-    try {
-      const data = await api("/payroll/api/history?limit=500");
-      historyRows = data.rows || [];
-    } catch (e) {
-      historyRows = [];
-      F.toast(e.message, "error");
-    }
-    historyLoaded = true;
-    setPaidMonth();
-    renderPay();
-  }
-
-  // ---- Actions (same endpoints and payloads as before) ----
-  function needTreasury() {
-    const tid = treasuryId();
-    if (!tid) F.toast("اختر حساب الخزينة", "error");
-    return tid;
-  }
-
-  async function settleCommission(employeeId) {
-    const tid = needTreasury();
-    if (!tid || payBusy) return;
-    if (!confirm("تأكيد سداد كل العمولات المعلّقة لهذا الموظف؟")) return;
-    payBusy = true;
-    try {
-      const res = await api("/payroll/api/settle-commission", {
-        method: "POST",
-        body: JSON.stringify({ employee_id: employeeId, treasury_account_id: tid }),
-      });
-      F.toast(res.message || "تم السداد", "success");
-      closePayDetail();
-      await loadDashboard();
-      await loadHistory();
-    } catch (e) {
-      F.toast(e.message, "error");
-    } finally { payBusy = false; }
-  }
-
-  async function paySalary(payeeType, payeeId, manual) {
-    const tid = needTreasury();
-    if (!tid || payBusy) return;
-    if (!confirm(manual ? "صرف يدوي للراتب؟" : "صرف الراتب المستحق؟")) return;
-    payBusy = true;
-    try {
-      const res = await api("/payroll/api/pay-salary", {
-        method: "POST",
-        body: JSON.stringify({ payee_type: payeeType, payee_id: payeeId, treasury_account_id: tid, manual: !!manual }),
-      });
-      F.toast(res.message || "تم الصرف", "success");
-      await loadDashboard();
-      await loadHistory();
-    } catch (e) {
-      F.toast(e.message, "error");
-    } finally { payBusy = false; }
-  }
-
-  async function processDue() {
-    const tid = needTreasury();
-    if (!tid || payBusy) return;
-    if (!confirm("صرف كل الرواتب المستحقة اليوم من الخزينة؟")) return;
-    payBusy = true;
-    byId("btnProcessDue").disabled = true;
-    try {
-      const res = await api("/payroll/api/process-due", {
-        method: "POST",
-        body: JSON.stringify({ treasury_account_id: tid }),
-      });
-      let msg = res.message || "تم";
-      if (res.skipped_count) msg += ` — تعذر صرف ${res.skipped_count}`;
-      F.toast(msg, "success");
-      await loadDashboard();
-      await loadHistory();
-    } catch (e) {
-      F.toast(e.message, "error");
-    } finally {
-      payBusy = false;
-      byId("btnProcessDue").disabled = false;
-    }
-  }
-
-  // ---- Detail panel ----
-  const payKv = (key, value) => `<div class="fd-kv-row"><span class="fd-kv-key">${key}</span><span class="fd-kv-val">${value}</span></div>`;
-  const findRow = (tab, key) => tabRows(tab).find(r => r._key === key);
-
-  function markOpenRow() {
-    const openKey = payDetail && payDetail.tab === payTab ? payDetail.key : null;
-    document.querySelectorAll("#payBody tr[data-pay-row]").forEach(tr => {
-      tr.classList.toggle("is-open", tr.getAttribute("data-pay-row") === openKey);
-    });
-  }
-
-  function openPayDetail(tab, key) {
-    const r = findRow(tab, key);
-    if (!r) return;
-    if (tab === "commission" || (tab === "due" && r.kind === "commission")) {
-      viewCommission(tab === "commission" ? r.employee_id : r.payee_id, tab, key);
-      return;
-    }
-    payDetail = { tab, key };
-    let html = "";
-    if (tab === "history") {
-      byId("payDetailTitle").textContent = r.payee_name;
-      byId("payDetailSub").textContent = histDate(r);
-      html = `
-        <div class="fd-detail-status">${typePill(r.payee_type)} <span class="fd-pill fd-pill--${r.payment_kind === "commission" ? "purple" : "blue"}">${F.esc(r.payment_kind_label || "")}</span></div>
-        <div class="fd-kv">
-          ${payKv("المبلغ", `<b>${payMoney(r.amount)}</b>`)}
-          ${payKv("التاريخ", `<span dir="ltr">${F.esc(histDate(r)) || "—"}</span>`)}
-          ${payKv("المصروف", r.expense_id ? `<a href="/expenses">#${r.expense_id}</a>` : "—")}
-        </div>
-        ${F.blank(r.note) ? "" : `<div class="fd-stock-line" style="font-weight:500;">${F.esc(r.note)}</div>`}
-        <div class="fd-detail-actions">${r.expense_id ? '<a class="fd-btn fd-btn--soft fd-btn--sm" href="/expenses">المصاريف</a>' : ""}</div>`;
-    } else {
-      const sched = tab === "schedule"
-        ? (dashboard.due_rows || []).find(d => d.kind === "salary" && d.payee_type === r.payee_type && d.payee_id === r.payee_id) || r
-        : r;
-      byId("payDetailTitle").textContent = r.name;
-      byId("payDetailSub").textContent = typeLabel(r.payee_type) + (r.schedule_label ? " · " + r.schedule_label : "");
-      html = `
-        <div class="fd-detail-status">${typePill(r.payee_type)} ${kindPill("salary")} ${sched.is_due !== undefined ? duePill(sched) : ""}</div>
-        <div class="fd-kv">
-          ${payKv("الراتب", `<b>${payMoney(r.amount)}</b>`)}
-          ${payKv("الجدولة", F.dash(r.schedule_label))}
-          ${payKv("الموعد القادم", r.next_pay_date ? `<span dir="ltr">${F.esc(r.next_pay_date)}</span>` : "—")}
-        </div>
-        <div class="fd-detail-actions">
-          ${sched.is_due ? `<button type="button" class="fd-btn fd-btn--primary fd-btn--sm" data-pay-salary="${r.payee_type}:${r.payee_id}">صرف الراتب المستحق</button>` : ""}
-          <button type="button" class="fd-btn fd-btn--sm" data-pay-salary-manual="${r.payee_type}:${r.payee_id}">صرف يدوي</button>
-          <a class="fd-btn fd-btn--sm" href="${r.payee_type === "delivery_agent" ? "/agents" : "/employees/"}">${r.payee_type === "delivery_agent" ? "المندوبون" : "الموظفون"}</a>
-        </div>`;
-    }
-    byId("payDetailBody").innerHTML = html;
-    F.show(byId("payDetail"));
-    markOpenRow();
-  }
-
-  async function viewCommission(employeeId, tab, key) {
-    try {
-      const data = await api(`/payroll/api/commission/${employeeId}`);
-      payDetail = { tab: tab || payTab, key: key || null, commission: employeeId };
-      byId("payDetailTitle").textContent = `عمولات ${data.employee_name} (${data.order_count} طلب)`;
-      byId("payDetailSub").textContent = "عمولات معلّقة لم تُسدَّد بعد";
-      const lines = data.lines || [];
-      byId("payDetailBody").innerHTML = `
-        <div class="fd-kv">
-          ${payKv("عدد الطلبات", fmt(data.order_count))}
-          ${payKv("المجموع", `<b>${payMoney(data.total_amount)}</b>`)}
-        </div>
-        <div class="pay-lines-wrap">
-          <table class="fd-lines" id="commissionLinesBody">
-            <thead><tr><th>الكود</th><th>الطلب</th><th>الزبون</th><th>المبلغ</th></tr></thead>
-            <tbody>${lines.length ? lines.map(l => `<tr>
-              <td><code dir="ltr">${F.esc(l.code)}</code></td>
-              <td>#${F.esc(l.invoice_id)}</td>
-              <td>${F.dash(l.customer_name)}</td>
-              <td>${payMoney(l.amount)}</td></tr>`).join("") : '<tr><td colspan="4" class="fd-muted">لا توجد أسطر</td></tr>'}</tbody>
-          </table>
-        </div>
-        <div class="fd-detail-actions">
-          ${lines.length ? `<button type="button" class="fd-btn fd-btn--primary fd-btn--sm" id="btnSettleFromModal" data-settle-commission="${employeeId}">سداد الكل</button>` : ""}
-          <button type="button" class="fd-btn fd-btn--sm" onclick="closePayDetail()">إغلاق</button>
-        </div>`;
-      F.show(byId("payDetail"));
-      markOpenRow();
-    } catch (e) {
-      F.toast(e.message, "error");
-    }
-  }
-
-  function refreshDetail() {
-    if (!payDetail || byId("payDetail").hidden) return;
-    if (payDetail.commission) return; // commission panel refreshes on demand
-    if (findRow(payDetail.tab, payDetail.key)) openPayDetail(payDetail.tab, payDetail.key);
-    else closePayDetail();
-  }
-
-  function closePayDetail() {
-    payDetail = null;
-    F.hide(byId("payDetail"));
-    markOpenRow();
-  }
-
-  // ---- Row menu ----
-  function openPayMenu(trigger) {
-    const key = trigger.getAttribute("data-fd-row-menu");
-    const r = findRow(payTab, key);
-    if (!r) return;
-    const items = [{ act: "view", label: "عرض التفاصيل" }];
-    let commissionId = null;
-    if (payTab === "commission") commissionId = r.employee_id;
-    if (payTab === "due" && r.kind === "commission") commissionId = r.payee_id;
-    if (commissionId) {
-      items.push({ act: "settle", label: "سداد العمولات" });
-    } else {
-      const due = payTab === "due" ? r.is_due : ((dashboard.due_rows || []).find(d => d.kind === "salary" && d.payee_type === r.payee_type && d.payee_id === r.payee_id) || {}).is_due;
-      if (due) items.push({ act: "pay", label: "صرف الراتب المستحق" });
-      items.push({ act: "manual", label: "صرف يدوي" });
-    }
-    const pt = r.payee_type || "employee";
-    items.push("sep", { href: pt === "delivery_agent" ? "/agents" : "/employees/", label: pt === "delivery_agent" ? "صفحة المندوبين" : "صفحة الموظفين" });
-    F.rowMenu(trigger, items, act => {
-      if (act === "view") openPayDetail(payTab, key);
-      if (act === "settle") settleCommission(commissionId);
-      if (act === "pay") paySalary(r.payee_type, r.payee_id, false);
-      if (act === "manual") paySalary(r.payee_type, r.payee_id, true);
-    });
-  }
-
-  function setTab(tab, dueOnly) {
-    if (!PAY_TABS.includes(tab)) tab = "due";
-    payTab = tab;
-    payDueOnly = !!dueOnly;
-    payPage = 0;
-    try { localStorage.setItem(PAY_TAB_KEY, tab); } catch (e) { /* storage unavailable */ }
-    if (payDetail && payDetail.tab !== tab) closePayDetail();
-    renderPay();
-    if (tab === "history" && !historyLoaded) loadHistory();
-  }
-
-  function exportPayrollCsv() {
-    const cell = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
-    const map = {
-      due: [["الاسم", "النوع", "البند", "الجدولة", "المبلغ", "الموعد", "مستحق"], r => [r.name, typeLabel(r.payee_type), r.kind === "commission" ? "عمولة" : "راتب", r.schedule_label, r.amount, r.next_pay_date, r.is_due ? "نعم" : "لا"]],
-      commission: [["الموظف", "الطلبات", "العمولة/طلب", "المجموع"], r => [r.employee_name, r.orders, r.commission_rate, r.amount]],
-      schedule: [["الاسم", "النوع", "الجدولة", "المبلغ", "الموعد القادم"], r => [r.name, typeLabel(r.payee_type), r.schedule_label, r.amount, r.next_pay_date]],
-      history: [["التاريخ", "المستفيد", "النوع", "المبلغ", "المصروف"], r => [histDate(r), r.payee_name, r.payment_kind_label, r.amount, r.expense_id]]
-    }[payTab];
-    const lines = [map[0].map(cell).join(",")];
-    filteredRows().forEach(r => lines.push(map[1](r).map(cell).join(",")));
-    const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "payroll-" + payTab + ".csv";
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  }
-
-  document.addEventListener("click", e => {
-    const t = e.target;
-    if (!t.closest) return;
-    const settle = t.closest("[data-settle-commission]");
-    if (settle) { settleCommission(parseInt(settle.getAttribute("data-settle-commission"), 10)); return; }
-    const view = t.closest("[data-view-commission]");
-    if (view) {
-      const id = parseInt(view.getAttribute("data-view-commission"), 10);
-      viewCommission(id, payTab, payTab === "commission" ? "c:" + id : null);
-      return;
-    }
-    const pay = t.closest("[data-pay-salary]");
-    if (pay) { const [pt, id] = pay.getAttribute("data-pay-salary").split(":"); paySalary(pt, parseInt(id, 10), false); return; }
-    const manual = t.closest("[data-pay-salary-manual]");
-    if (manual) { const [pt, id] = manual.getAttribute("data-pay-salary-manual").split(":"); paySalary(pt, parseInt(id, 10), true); return; }
-    const menu = t.closest("[data-fd-row-menu]");
-    if (menu) { openPayMenu(menu); return; }
-    const page = t.closest("[data-pay-page]");
-    if (page && !page.disabled) {
-      const v = page.getAttribute("data-pay-page");
-      payPage = v === "prev" ? payPage - 1 : v === "next" ? payPage + 1 : parseInt(v, 10) || 0;
-      renderPay();
-      return;
-    }
-    const tab = t.closest("#payTabs [data-tab]");
-    if (tab) { setTab(tab.getAttribute("data-tab"), false); return; }
-    const kpi = t.closest("[data-pay-kpi]");
-    if (kpi) {
-      const v = kpi.getAttribute("data-pay-kpi");
-      if (v === "salary") setTab("due", !(payTab === "due" && payDueOnly));
-      else setTab(v === "due" ? "due" : v, false);
-      return;
-    }
-    const row = t.closest("tr[data-pay-row]");
-    if (row && !t.closest("a, button")) openPayDetail(payTab, row.getAttribute("data-pay-row"));
-  });
-
-  document.addEventListener("DOMContentLoaded", () => {
-    const size = byId("payPageSize");
-    size.value = String(payPageSize());
-    size.addEventListener("change", () => {
-      try { localStorage.setItem(PAY_PAGE_SIZE_KEY, size.value); } catch (e) { /* storage unavailable */ }
-      payPage = 0;
-      renderPay();
-    });
-    byId("paySearch").addEventListener("input", () => { payPage = 0; renderPay(); });
-    byId("btnProcessDue").addEventListener("click", processDue);
-    byId("btnRefresh").addEventListener("click", () => {
-      loadDashboard().then(loadHistory).catch(err => F.toast(err.message, "error"));
-    });
-    try { const saved = localStorage.getItem(PAY_TAB_KEY); if (PAY_TABS.includes(saved)) payTab = saved; } catch (e) { /* storage unavailable */ }
-    renderPay();
-    loadDashboard()
-      .then(() => loadHistory())
-      .catch(err => F.toast(err.message, "error"));
-  });
-</script>
+<script src="{{ url_for('static', filename='js/payroll.js') }}?v=20260808b"></script>
 {% endblock %}

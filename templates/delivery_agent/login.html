@@ -2,413 +2,91 @@
 <html lang="ar" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <meta name="theme-color" content="#2563eb">
-  <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <script src="/static/js/no-zoom.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0B1B3A">
   <title>تسجيل دخول المندوب</title>
-  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon.png">
-  <link rel="shortcut icon" href="/static/favicon.png">
-  <link rel="apple-touch-icon" href="{{ platform_logo_url }}">
+  <link rel="icon" href="/static/favicon.png">
   <script>
     (function () {
       try {
         var saved = localStorage.getItem("theme");
-        var theme = saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
-        document.documentElement.setAttribute("data-theme", theme);
+        var dark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.setAttribute("data-theme", saved || (dark ? "dark" : "light"));
       } catch (e) {
         document.documentElement.setAttribute("data-theme", "light");
       }
     })();
   </script>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <link rel="stylesheet" href="/static/css/design-refresh.css">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    body {
-      font-family: 'Tajawal', sans-serif;
-      min-height: 100vh;
-      min-height: 100dvh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: calc(24px + env(safe-area-inset-top, 0px)) 16px calc(24px + env(safe-area-inset-bottom, 0px));
-      color: var(--text-main);
-      background:
-        radial-gradient(900px 480px at 100% -5%, rgba(37, 99, 235, 0.12), transparent 58%),
-        radial-gradient(700px 400px at -10% 100%, rgba(16, 185, 129, 0.08), transparent 55%),
-        var(--bg-page);
-    }
-
-    .agent-login-page {
-      width: 100%;
-      max-width: 400px;
-    }
-
-    .agent-login-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      box-shadow: var(--shadow-card);
-      padding: 28px 22px 24px;
-    }
-
-    .agent-login-brand {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      margin-bottom: 24px;
-    }
-
-    .agent-login-icon {
-      width: 68px;
-      height: 68px;
-      border-radius: 18px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(135deg, #3b82f6, #2563eb);
-      color: #fff;
-      font-size: 28px;
-      margin-bottom: 14px;
-      box-shadow: 0 8px 22px rgba(37, 99, 235, 0.28);
-      border: none;
-    }
-
-    .agent-login-brand h1 {
-      font-size: 21px;
-      font-weight: 800;
-      color: var(--text-main);
-      margin-bottom: 6px;
-      line-height: 1.35;
-    }
-
-    .agent-login-brand p {
-      font-size: 13px;
-      color: var(--text-secondary);
-      line-height: 1.6;
-      max-width: 280px;
-    }
-
-    .agent-login-error {
-      display: none;
-      align-items: flex-start;
-      gap: 10px;
-      padding: 12px 14px;
-      border-radius: var(--radius-md);
-      background: var(--danger-soft);
-      border: 1px solid rgba(220, 38, 38, 0.18);
-      color: var(--danger);
-      font-size: 13px;
-      font-weight: 600;
-      margin-bottom: 18px;
-      line-height: 1.5;
-    }
-
-    .agent-login-error.is-visible { display: flex; }
-
-    .agent-login-error i {
-      margin-top: 2px;
-      flex-shrink: 0;
-    }
-
-    .agent-field {
-      margin-bottom: 16px;
-    }
-
-    .agent-field label {
-      display: block;
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--text-main);
-      margin-bottom: 8px;
-    }
-
-    .agent-input-wrap {
-      position: relative;
-      display: flex;
-      align-items: center;
-    }
-
-    .agent-input-wrap > i.field-icon {
-      position: absolute;
-      right: 14px;
-      color: var(--text-muted);
-      font-size: 15px;
-      pointer-events: none;
-    }
-
-    .agent-input-wrap input {
-      width: 100%;
-      padding: 14px 44px 14px 44px;
-      border-radius: 14px;
-      border: 1px solid var(--border);
-      background: var(--surface-soft);
-      color: var(--text-main);
-      font-size: 16px;
-      font-family: inherit;
-      min-height: 48px;
-      transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-    }
-
-    .agent-input-wrap input:focus {
-      outline: none;
-      border-color: var(--primary);
-      background: var(--surface);
-      box-shadow: 0 0 0 3px var(--primary-glow);
-    }
-
-    .agent-input-wrap input::placeholder {
-      color: var(--text-muted);
-    }
-
-    .agent-toggle-password {
-      position: absolute;
-      left: 8px;
-      width: 40px;
-      height: 40px;
-      border: none;
-      border-radius: 10px;
-      background: transparent;
-      color: var(--text-muted);
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: color 0.2s ease, background 0.2s ease;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    .agent-toggle-password:hover {
-      color: var(--primary);
-      background: var(--primary-soft);
-    }
-
-    .agent-login-btn {
-      width: 100%;
-      margin-top: 8px;
-      padding: 15px 18px;
-      border: none;
-      border-radius: 14px;
-      background: linear-gradient(135deg, #3b82f6, #2563eb);
-      color: #fff;
-      font-size: 16px;
-      font-weight: 700;
-      font-family: inherit;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      min-height: 52px;
-      transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
-      box-shadow: 0 8px 22px rgba(37, 99, 235, 0.28);
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    .agent-login-btn:hover:not(:disabled) {
-      transform: translateY(-1px);
-      box-shadow: 0 12px 28px rgba(37, 99, 235, 0.28);
-    }
-
-    .agent-login-btn:active:not(:disabled) {
-      transform: translateY(0);
-    }
-
-    .agent-login-btn:disabled {
-      opacity: 0.72;
-      cursor: wait;
-    }
-
-    .agent-login-footer {
-      margin-top: 20px;
-      text-align: center;
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    .agent-login-footer strong {
-      color: var(--text-secondary);
-      font-weight: 700;
-    }
-
-    @media (max-width: 480px) {
-      body {
-        align-items: flex-start;
-        padding-top: calc(48px + env(safe-area-inset-top, 0px));
-      }
-
-      .agent-login-card {
-        padding: 24px 16px 20px;
-        border-radius: 20px;
-        border: none;
-        box-shadow: 0 10px 36px rgba(15, 23, 42, 0.08);
-      }
-
-      .agent-login-brand h1 {
-        font-size: 20px;
-      }
-
-      .agent-login-icon {
-        width: 60px;
-        height: 60px;
-        font-size: 24px;
-        border-radius: 16px;
-      }
-
-      .agent-login-footer {
-        margin-top: 18px;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="/static/delivery_agent/agent.css">
 </head>
-<body>
-  <div class="agent-login-page">
-    <div class="agent-login-card">
-      <div class="agent-login-brand">
-        <div class="agent-login-icon" aria-hidden="true">
-          <i class="fas fa-truck-fast"></i>
+<body class="da-body">
+  <div class="da-loading-bar" id="daLoading" aria-hidden="true"><span></span></div>
+  <div class="da-splash" id="daSplash">
+    <svg width="72" height="72" viewBox="0 0 72 72" aria-hidden="true">
+      <rect width="72" height="72" rx="18" fill="#2563EB"/>
+      <path d="M16 40h28l6-10H28" fill="none" stroke="#fff" stroke-width="3" stroke-linejoin="round"/>
+      <circle cx="26" cy="48" r="4" fill="#fff"/>
+      <circle cx="46" cy="48" r="4" fill="#fff"/>
+      <path d="M18 40V30h16" fill="none" stroke="#fff" stroke-width="3"/>
+    </svg>
+    <strong>بوابة المندوب</strong>
+    <span>Finora</span>
+    <div class="bar"><i></i></div>
+  </div>
+
+  <main class="da-login-page">
+    <section class="da-login-card">
+      <div class="da-login-brand">
+        <div class="da-mark" aria-hidden="true">
+          <svg width="32" height="32" viewBox="0 0 72 72"><path d="M16 40h28l6-10H28" fill="none" stroke="#fff" stroke-width="4"/><circle cx="26" cy="48" r="4" fill="#fff"/><circle cx="46" cy="48" r="4" fill="#fff"/></svg>
         </div>
-        <h1>تسجيل دخول المندوب</h1>
-        <p>{% if tenant_name %}شركة <strong>{{ tenant_name }}</strong> — {% endif %}أدخل اسم المستخدم وكلمة المرور للوصول إلى لوحة التوصيل</p>
+        <h1>تسجيل الدخول</h1>
+        <p>
+          {% if tenant_name or fixed_tenant_slug %}
+          شركة {{ tenant_name or fixed_tenant_slug }}
+          {% else %}
+          أدخل بيانات المندوب للوصول إلى طلباتك
+          {% endif %}
+        </p>
       </div>
 
       {% if tenant_error %}
-      <div class="agent-login-error is-visible" role="alert">
-        <i class="fas fa-circle-exclamation"></i>
-        <span>{{ tenant_error }}</span>
-      </div>
+      <div class="da-alert" role="alert">{{ tenant_error }}</div>
       {% endif %}
-
-      <div class="agent-login-error" id="errorMessage" role="alert">
-        <i class="fas fa-circle-exclamation"></i>
+      <div class="da-alert" id="errorMessage" role="alert" hidden>
         <span id="errorText"></span>
       </div>
 
       <form id="loginForm" novalidate>
         {% if fixed_tenant_slug %}
-        <input type="hidden" id="tenant_slug" name="tenant_slug" value="{{ fixed_tenant_slug }}">
+        <input type="hidden" id="tenant_slug" value="{{ fixed_tenant_slug }}">
         {% else %}
-        <div class="agent-field">
+        <div class="da-field">
           <label for="tenant_slug">معرف الشركة</label>
-          <div class="agent-input-wrap">
-            <i class="fas fa-building field-icon"></i>
-            <input type="text" id="tenant_slug" name="tenant_slug" placeholder="مثال: super" required autocomplete="organization" value="{{ request.args.get('tenant', '') }}">
+          <div class="da-field-wrap">
+            <input id="tenant_slug" name="tenant_slug" autocomplete="organization" required value="{{ request.args.get('tenant', '') }}" placeholder="مثال: super">
           </div>
         </div>
         {% endif %}
-
-        <div class="agent-field">
+        <div class="da-field">
           <label for="username">اسم المستخدم</label>
-          <div class="agent-input-wrap">
-            <i class="fas fa-user field-icon"></i>
-            <input type="text" id="username" name="username" placeholder="مثال: agent01" required autocomplete="username">
+          <div class="da-field-wrap">
+            <input id="username" name="username" autocomplete="username" required placeholder="اسم المستخدم">
           </div>
         </div>
-
-        <div class="agent-field">
+        <div class="da-field">
           <label for="password">كلمة المرور</label>
-          <div class="agent-input-wrap">
-            <i class="fas fa-lock field-icon"></i>
-            <input type="password" id="password" name="password" placeholder="••••••••" required autocomplete="current-password">
-            <button type="button" class="agent-toggle-password" id="togglePassword" aria-label="إظهار كلمة المرور">
-              <i class="fas fa-eye"></i>
-            </button>
+          <div class="da-field-wrap">
+            <input id="password" name="password" type="password" autocomplete="current-password" required placeholder="كلمة المرور">
+            <button type="button" class="da-eye" id="togglePassword" aria-label="إظهار كلمة المرور">إظهار</button>
           </div>
         </div>
-
-        <button type="submit" class="agent-login-btn" id="loginBtn">
-          <i class="fas fa-right-to-bracket"></i>
-          <span>تسجيل الدخول</span>
-        </button>
+        <button type="submit" class="da-btn primary" id="loginBtn">تسجيل الدخول</button>
       </form>
-
-      <div class="agent-login-footer">
-        بوابة مندوبي التوصيل — <strong>Finora</strong>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    const errorBox = document.getElementById('errorMessage');
-    const errorText = document.getElementById('errorText');
-    const loginForm = document.getElementById('loginForm');
-    const loginBtn = document.getElementById('loginBtn');
-    const passwordInput = document.getElementById('password');
-    const togglePasswordBtn = document.getElementById('togglePassword');
-
-    function showError(message) {
-      errorText.textContent = message;
-      errorBox.classList.add('is-visible');
-    }
-
-    function hideError() {
-      errorBox.classList.remove('is-visible');
-      errorText.textContent = '';
-    }
-
-    togglePasswordBtn.addEventListener('click', function () {
-      const isPassword = passwordInput.type === 'password';
-      passwordInput.type = isPassword ? 'text' : 'password';
-      togglePasswordBtn.innerHTML = isPassword
-        ? '<i class="fas fa-eye-slash"></i>'
-        : '<i class="fas fa-eye"></i>';
-      togglePasswordBtn.setAttribute('aria-label', isPassword ? 'إخفاء كلمة المرور' : 'إظهار كلمة المرور');
-    });
-
-    loginForm.addEventListener('submit', function (event) {
-      event.preventDefault();
-      hideError();
-
-      const username = document.getElementById('username').value.trim();
-      const password = passwordInput.value.trim();
-      const tenantInput = document.getElementById('tenant_slug');
-      const tenantSlug = tenantInput ? tenantInput.value.trim().toLowerCase() : '';
-
-      if (!tenantSlug) {
-        showError('يرجى إدخال معرف الشركة');
-        return;
-      }
-
-      if (!username || !password) {
-        showError('يرجى إدخال اسم المستخدم وكلمة المرور');
-        return;
-      }
-
-      loginBtn.disabled = true;
-      loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i><span>جاري الدخول...</span>';
-
-      const loginUrl = tenantSlug
-        ? '/delivery-agent/login/' + encodeURIComponent(tenantSlug)
-        : '/delivery-agent/login';
-
-      fetch(loginUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: username, password: password, tenant_slug: tenantSlug })
-      })
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-          if (data.success) {
-            window.location.href = data.redirect || '/delivery-agent/dashboard';
-            return;
-          }
-          showError(data.error || 'فشل تسجيل الدخول');
-        })
-        .catch(function (error) {
-          console.error(error);
-          showError('حدث خطأ أثناء تسجيل الدخول. حاول مرة أخرى.');
-        })
-        .finally(function () {
-          loginBtn.disabled = false;
-          loginBtn.innerHTML = '<i class="fas fa-right-to-bracket"></i><span>تسجيل الدخول</span>';
-        });
-    });
-  </script>
+      <p class="da-login-foot">بوابة المندوب — Finora</p>
+    </section>
+  </main>
+  <script src="/static/delivery_agent/login.js"></script>
 </body>
 </html>

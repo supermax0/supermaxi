@@ -59,22 +59,204 @@
 
 <div class="settings-section-card">
   <div class="settings-section-header">
+    <h2><i class="fas fa-table-list"></i> حجم صفحة الطلبات</h2>
+    <p>حدد عدد الطلبات التي تظهر افتراضياً في الصفحة الواحدة بجميع صفحات الطلبات.</p>
+  </div>
+  <div class="sys-form-group">
+    <label for="ordersPageSize">عدد الطلبات في الصفحة</label>
+    <input type="number" min="1" max="5000" step="1" id="ordersPageSize" value="{{ orders_page_size or 100 }}">
+    <div class="weak-message-help">القيمة الافتراضية 100، ويمكنك اختيار أي عدد من 1 إلى 5000.</div>
+  </div>
+  <div class="weak-message-actions">
+    <button class="settings-btn settings-btn-primary" type="button" onclick="saveOrdersPageSize()">
+      <i class="fas fa-save"></i> حفظ حجم الصفحة
+    </button>
+  </div>
+</div>
+
+<div class="settings-section-card">
+  <div class="settings-section-header">
+    <h2><i class="fas fa-dollar-sign"></i> سعر صرف أرصدة الموردين</h2>
+    <p>يُستخدم لتحويل المتبقي بالدينار إلى دولار في قائمة الموردين.</p>
+  </div>
+  <div class="sys-form-group">
+    <label for="supplierExchangeRate">سعر الدولار بالدينار العراقي</label>
+    <input
+      type="number"
+      min="1"
+      max="1000000"
+      step="0.01"
+      id="supplierExchangeRate"
+      value="{{ supplier_exchange_rate or 1350 }}"
+      inputmode="decimal"
+    >
+    <div class="weak-message-help">
+      مثال: عند إدخال 1350 يُحسب المتبقي بالدولار = المتبقي بالدينار ÷ 1350.
+    </div>
+  </div>
+  <div class="weak-message-actions">
+    <button class="settings-btn settings-btn-primary" type="button" onclick="saveSupplierExchangeRate()">
+      <i class="fas fa-save"></i> حفظ سعر الصرف
+    </button>
+  </div>
+</div>
+
+<div class="settings-section-card" id="orderInstallmentLifecycleSection">
+  <div class="settings-section-header">
+    <h2><i class="fas fa-hourglass-half"></i> دورة طلب الأقساط</h2>
+    <p>تفعيل وضع الأقساط على الطلبات العادية مع عدّ زمني وتسديد تلقائي بعد انتهاء المدة. منفصل عن نظام الأقساط الشهرية.</p>
+  </div>
+  {% set _ois = order_installment_settings or {} %}
+  <div class="settings-switch-row">
+    <div class="settings-switch-label">
+      <strong>تفعيل دورة الأقساط</strong>
+      <span>عند الإيقاف يختفي زر الأقساط نهائياً حتى مع وجود صلاحيات.</span>
+    </div>
+    <label class="settings-toggle">
+      <input type="checkbox" id="oilEnabled" {% if _ois.get('enabled') %}checked{% endif %}>
+      <span class="settings-toggle-slider"></span>
+    </label>
+  </div>
+  <div class="sys-form-group" style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+    <div>
+      <label for="oilDurationValue">مدة الدورة</label>
+      <input type="number" min="1" max="3650" step="1" id="oilDurationValue" value="{{ _ois.get('duration_value', 7) }}">
+    </div>
+    <div>
+      <label for="oilDurationUnit">الوحدة الزمنية</label>
+      <select id="oilDurationUnit">
+        <option value="days" {% if _ois.get('duration_unit', 'days') == 'days' %}selected{% endif %}>أيام</option>
+        <option value="hours" {% if _ois.get('duration_unit') == 'hours' %}selected{% endif %}>ساعات</option>
+      </select>
+    </div>
+  </div>
+  <div class="weak-message-help" style="margin-bottom:12px;">بداية احتساب المدة: من تاريخ إنشاء الطلب. عند انتهاء المدة: تسديد الطلب تلقائياً (إن كان مفعّلاً).</div>
+  <div class="settings-switch-row">
+    <div class="settings-switch-label"><strong>تفعيل التسديد التلقائي</strong></div>
+    <label class="settings-toggle">
+      <input type="checkbox" id="oilAutoSettle" {% if _ois.get('auto_settle_enabled', True) %}checked{% endif %}>
+      <span class="settings-toggle-slider"></span>
+    </label>
+  </div>
+  <div class="settings-switch-row">
+    <div class="settings-switch-label"><strong>السماح بالترجيع خلال فترة الأقساط</strong></div>
+    <label class="settings-toggle">
+      <input type="checkbox" id="oilAllowReturn" {% if _ois.get('allow_return', True) %}checked{% endif %}>
+      <span class="settings-toggle-slider"></span>
+    </label>
+  </div>
+  <div class="settings-switch-row">
+    <div class="settings-switch-label"><strong>تأكيد قبل إنشاء طلب أقساط</strong></div>
+    <label class="settings-toggle">
+      <input type="checkbox" id="oilConfirmCreate" {% if _ois.get('confirm_on_create', True) %}checked{% endif %}>
+      <span class="settings-toggle-slider"></span>
+    </label>
+  </div>
+  <div class="settings-switch-row">
+    <div class="settings-switch-label"><strong>تسجيل جميع الأحداث</strong></div>
+    <label class="settings-toggle">
+      <input type="checkbox" id="oilEventLog" {% if _ois.get('event_log_enabled', True) %}checked{% endif %}>
+      <span class="settings-toggle-slider"></span>
+    </label>
+  </div>
+  <div class="settings-switch-row">
+    <div class="settings-switch-label"><strong>إشعار المدير قبل الاستحقاق</strong></div>
+    <label class="settings-toggle">
+      <input type="checkbox" id="oilNotifyBefore" {% if _ois.get('notify_before_due') %}checked{% endif %}>
+      <span class="settings-toggle-slider"></span>
+    </label>
+  </div>
+  <p class="weak-message-help">إلغاء التسديد التلقائي إذا:</p>
+  <div class="settings-switch-row">
+    <div class="settings-switch-label"><strong>تم ترجيع الطلب بالكامل</strong></div>
+    <label class="settings-toggle">
+      <input type="checkbox" id="oilCancelOnReturn" {% if _ois.get('cancel_auto_on_full_return', True) %}checked{% endif %}>
+      <span class="settings-toggle-slider"></span>
+    </label>
+  </div>
+  <div class="settings-switch-row">
+    <div class="settings-switch-label"><strong>تم إلغاء الطلب</strong></div>
+    <label class="settings-toggle">
+      <input type="checkbox" id="oilCancelOnCancel" {% if _ois.get('cancel_auto_on_cancel', True) %}checked{% endif %}>
+      <span class="settings-toggle-slider"></span>
+    </label>
+  </div>
+  <div class="settings-switch-row">
+    <div class="settings-switch-label"><strong>تم التسديد يدوياً</strong></div>
+    <label class="settings-toggle">
+      <input type="checkbox" id="oilCancelOnManual" {% if _ois.get('cancel_auto_on_manual_settle', True) %}checked{% endif %}>
+      <span class="settings-toggle-slider"></span>
+    </label>
+  </div>
+  <div class="weak-message-actions">
+    <button class="settings-btn settings-btn-primary" type="button" onclick="saveOrderInstallmentSettings()">
+      <i class="fas fa-save"></i> حفظ دورة الأقساط
+    </button>
+  </div>
+</div>
+
+<div class="settings-section-card">
+  <div class="settings-section-header">
     <h2><i class="fas fa-boxes-stacked"></i> سياسة خصم مخزون الطلبات</h2>
-    <p>عند التفعيل لا يُخصم مخزون الطلب «تم الطلب» إلا عند التعبئة أو الشحن أو التوصيل أو التسديد.</p>
+    <p>حدد هل يبدأ الخصم عند «تم الطلب» أو «معبأة»، أو يتأجل إلى الشحن والتسديد.</p>
+  </div>
+  <div class="settings-switch-row">
+    <div class="settings-switch-label">
+      <strong>خصم المخزون عند «معبأة»</strong>
+      <span>أطفئه حتى لا يُخصم عند التعبئة؛ سيبقى الخصم إلزامياً عند الشحن أو التسديد الجزئي والكامل.</span>
+    </div>
+    <label class="settings-toggle">
+      <input
+        type="checkbox"
+        id="deductStockOnPacked"
+        {% if packed_stock_deduction_enabled %}checked{% endif %}
+      >
+      <span class="settings-toggle-slider"></span>
+    </label>
   </div>
   <div class="settings-switch-row">
     <div class="settings-switch-label">
       <strong>تأجيل خصم مخزون «تم الطلب»</strong>
-      <span>تفعيل الخيار يعيد مخزون الطلبات القديمة غير المسددة، ثم يخصم عند مغادرة «تم الطلب».</span>
+      <span>فعّله حتى لا يُخصم عند «تم الطلب»؛ ومع إطفاء خيار «معبأة» يبقى الطلب بلا خصم إلى الشحن أو التسديد.</span>
     </div>
     <label class="settings-toggle">
-      <input type="checkbox" id="deferredOrderStockEnabled" {% if deferred_order_stock_enabled %}checked{% endif %}>
+      <input
+        type="checkbox"
+        id="deferredOrderStockEnabled"
+        {% if deferred_order_stock_enabled %}checked{% endif %}
+      >
       <span class="settings-toggle-slider"></span>
     </label>
   </div>
   <div class="weak-message-actions">
     <button class="settings-btn settings-btn-primary" type="button" onclick="saveOrderStockPolicy()">
       <i class="fas fa-save"></i> حفظ سياسة المخزون
+    </button>
+  </div>
+</div>
+
+<div class="settings-section-card">
+  <div class="settings-section-header">
+    <h2><i class="fas fa-file-invoice-dollar"></i> تعديل وحذف الفواتير المسددة</h2>
+    <p>خيار حساس خاص بهذه الشركة، وهو مطفأ افتراضياً.</p>
+  </div>
+  <div class="settings-switch-row">
+    <div class="settings-switch-label">
+      <strong>السماح بتعديل أو حذف الفاتورة بعد التسديد</strong>
+      <span>الحذف النهائي يرجّع المخزون ويلغي التحصيل ومصاريف التوصيل والعمولات والحركات المرتبطة بالفاتورة.</span>
+    </div>
+    <label class="settings-toggle">
+      <input
+        type="checkbox"
+        id="paidInvoiceMutationsEnabled"
+        {% if paid_invoice_mutations_enabled %}checked{% endif %}
+      >
+      <span class="settings-toggle-slider"></span>
+    </label>
+  </div>
+  <div class="weak-message-actions">
+    <button class="settings-btn settings-btn-primary" type="button" onclick="savePaidInvoiceMutations()">
+      <i class="fas fa-save"></i> حفظ الخيار
     </button>
   </div>
 </div>
@@ -484,8 +666,103 @@ function saveMonitorSettings() {
     .catch(() => { hideLoading(); showToast("حدث خطأ في الاتصال", "error"); });
 }
 
+function saveOrderInstallmentSettings() {
+  const durationValue = Number(document.getElementById("oilDurationValue")?.value || 7);
+  if (!Number.isInteger(durationValue) || durationValue < 1 || durationValue > 3650) {
+    showToast("مدة الدورة يجب أن تكون بين 1 و 3650", "error");
+    return;
+  }
+  const payload = {
+    enabled: !!document.getElementById("oilEnabled")?.checked,
+    duration_value: durationValue,
+    duration_unit: document.getElementById("oilDurationUnit")?.value || "days",
+    auto_settle_enabled: !!document.getElementById("oilAutoSettle")?.checked,
+    allow_return: !!document.getElementById("oilAllowReturn")?.checked,
+    confirm_on_create: !!document.getElementById("oilConfirmCreate")?.checked,
+    event_log_enabled: !!document.getElementById("oilEventLog")?.checked,
+    notify_before_due: !!document.getElementById("oilNotifyBefore")?.checked,
+    cancel_auto_on_full_return: !!document.getElementById("oilCancelOnReturn")?.checked,
+    cancel_auto_on_cancel: !!document.getElementById("oilCancelOnCancel")?.checked,
+    cancel_auto_on_manual_settle: !!document.getElementById("oilCancelOnManual")?.checked,
+  };
+  showLoading();
+  fetch("/api/order-installment/settings", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+    .then((r) => r.json())
+    .then((data) => {
+      hideLoading();
+      if (data.success) showToast(data.message || "تم الحفظ", "success");
+      else showToast(data.error || "تعذر الحفظ", "error");
+    })
+    .catch(() => {
+      hideLoading();
+      showToast("حدث خطأ في الاتصال", "error");
+    });
+}
+
+function saveOrdersPageSize() {
+  const input = document.getElementById("ordersPageSize");
+  const pageSize = Number(input?.value);
+  if (!Number.isInteger(pageSize) || pageSize < 1 || pageSize > 5000) {
+    showToast("أدخل عدداً صحيحاً من 1 إلى 5000", "error");
+    input?.focus();
+    return;
+  }
+
+  showLoading();
+  fetch("/settings/system/orders-page-size", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ page_size: pageSize })
+  })
+    .then(async response => ({ ok: response.ok, data: await response.json() }))
+    .then(({ ok, data }) => {
+      hideLoading();
+      if (!ok || !data.success) throw new Error(data.error || "تعذر حفظ حجم الصفحة");
+      input.value = data.page_size;
+      showToast(data.message || "تم حفظ حجم صفحة الطلبات", "success");
+    })
+    .catch(error => {
+      hideLoading();
+      showToast(error.message || "حدث خطأ في الاتصال", "error");
+    });
+}
+
+function saveSupplierExchangeRate() {
+  const input = document.getElementById("supplierExchangeRate");
+  const exchangeRate = Number(input?.value);
+  if (!Number.isFinite(exchangeRate) || exchangeRate < 1 || exchangeRate > 1000000) {
+    showToast("أدخل سعر صرف صحيحاً أكبر من صفر", "error");
+    input?.focus();
+    return;
+  }
+
+  showLoading();
+  fetch("/settings/system/supplier-exchange-rate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ exchange_rate: exchangeRate })
+  })
+    .then(async response => ({ ok: response.ok, data: await response.json() }))
+    .then(({ ok, data }) => {
+      hideLoading();
+      if (!ok || !data.success) throw new Error(data.error || "تعذر حفظ سعر الصرف");
+      input.value = data.exchange_rate;
+      showToast(data.message || "تم حفظ سعر الصرف", "success");
+    })
+    .catch(error => {
+      hideLoading();
+      showToast(error.message || "حدث خطأ في الاتصال", "error");
+    });
+}
+
 function saveOrderStockPolicy() {
+  const packedCheckbox = document.getElementById("deductStockOnPacked");
   const checkbox = document.getElementById("deferredOrderStockEnabled");
+  const deductOnPacked = !!packedCheckbox?.checked;
   const enabled = !!checkbox?.checked;
   if (enabled && !confirm("سيتم إرجاع مخزون طلبات «تم الطلب» غير المسددة التي خُصمت سابقاً. هل تريد المتابعة؟")) {
     if (checkbox) checkbox.checked = false;
@@ -495,7 +772,7 @@ function saveOrderStockPolicy() {
   fetch("/settings/system/order-stock-policy", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ enabled })
+    body: JSON.stringify({ enabled, deduct_on_packed: deductOnPacked })
   })
     .then(async r => ({ ok: r.ok, data: await r.json() }))
     .then(({ ok, data }) => {
@@ -505,6 +782,32 @@ function saveOrderStockPolicy() {
         ? ` — أُعيد ${Number(data.restored_orders || 0)} طلب (${Number(data.restored_units || 0)} قطعة)`
         : "";
       showToast((data.message || "تم الحفظ") + details, "success");
+    })
+    .catch(err => {
+      hideLoading();
+      if (checkbox) checkbox.checked = !enabled;
+      showToast(err.message || "حدث خطأ", "error");
+    });
+}
+
+function savePaidInvoiceMutations() {
+  const checkbox = document.getElementById("paidInvoiceMutationsEnabled");
+  const enabled = !!checkbox?.checked;
+  if (enabled && !confirm("تنبيه: بعد التفعيل يمكن حذف أو تعديل فاتورة مسددة وإلغاء أثرها المالي والمخزني. هل تريد التفعيل لهذه الشركة؟")) {
+    if (checkbox) checkbox.checked = false;
+    return;
+  }
+  showLoading();
+  fetch("/settings/system/paid-invoice-mutations", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ enabled })
+  })
+    .then(async r => ({ ok: r.ok, data: await r.json() }))
+    .then(({ ok, data }) => {
+      hideLoading();
+      if (!ok || !data.success) throw new Error(data.error || "تعذر حفظ الخيار");
+      showToast(data.message || "تم الحفظ", "success");
     })
     .catch(err => {
       hideLoading();

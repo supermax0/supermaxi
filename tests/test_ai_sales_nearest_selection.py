@@ -133,6 +133,8 @@ def test_nearest_appliance_size_cheapest_screen_and_product_details():
         assert "169,000 د.ع" in advertised["reply"]
 
         assert _requested_product_media("عدك صوره للون الابيض") == "image"
+        assert _requested_product_media("عدك فديو للمنتج") == "video"
+        assert _requested_product_media("هاي صورة أرسلتها إلك") is None
         media_reply = _media_request_result(
             six_foot[0],
             "image",

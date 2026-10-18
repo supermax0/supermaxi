@@ -7,6 +7,7 @@
   <title>فاتورة رقم #{{ order.id }}</title>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+  <link rel="stylesheet" href="/static/css/supermax-invoice-stamps.css?v=20261015-2">
   <style>
     :root {
       --ink: {{ template_styles.secondary if template_styles and template_styles.secondary else '#111111' }};
@@ -97,8 +98,8 @@
     }
 
     .invoice-header {
-      display: flex;
-      justify-content: space-between;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
       gap: 20px;
       align-items: flex-start;
       padding-bottom: 18px;
@@ -107,29 +108,59 @@
 
     .brand {
       display: flex;
-      gap: 14px;
-      align-items: center;
+      gap: 0;
+      align-items: flex-start;
       min-width: 0;
     }
 
+    .store-qr {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-self: center;
+      gap: 2px;
+      color: var(--ink);
+      font-size: 11px;
+      font-weight: 700;
+      text-decoration: none;
+      text-align: center;
+    }
+
+    .store-qr__image {
+      display: block;
+      width: 108px;
+      height: 108px;
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
+
+    .brand__copy {
+      padding-top: 8px;
+      margin-inline-start: -10px;
+    }
+
     .brand__logo {
-      width: 64px;
-      height: 64px;
+      width: auto;
+      height: 96px;
+      max-width: 240px;
       object-fit: contain;
-      border: 1px solid var(--line);
-      background: var(--soft);
+      object-position: center;
+      background: transparent;
+      border: 0;
+      box-shadow: none;
       flex-shrink: 0;
     }
 
     .brand__logo-fallback {
-      width: 64px;
-      height: 64px;
+      width: 108px;
+      height: 108px;
       display: grid;
       place-items: center;
-      background: var(--ink);
-      color: var(--gold-line);
-      font-weight: 700;
-      font-size: 16px;
+      background: transparent;
+      color: var(--ink);
+      font-weight: 800;
+      font-size: 22px;
+      letter-spacing: 0.4px;
       flex-shrink: 0;
     }
 
@@ -145,7 +176,7 @@
       margin-top: 2px;
     }
 
-    .invoice-title-block { text-align: start; flex-shrink: 0; }
+    .invoice-title-block { text-align: start; flex-shrink: 0; justify-self: end; }
 
     .invoice-title {
       font-size: 26px;
@@ -273,13 +304,18 @@
     .totals__row:last-child { border-bottom: 0; }
 
     .totals__row--grand {
-      background: var(--ink);
-      color: #fff;
+      background: #fff;
+      color: var(--ink);
       font-size: 16px;
       font-weight: 800;
     }
 
-    .totals__row--grand .totals__value { color: var(--gold-line); }
+    .totals__row--grand .totals__value {
+      color: #15803d;
+      font-size: 18px;
+      font-weight: 800;
+    }
+    .totals__row--discount .totals__value { color: var(--paid); }
     .totals__value {
       font-weight: 700;
       direction: ltr;
@@ -296,6 +332,11 @@
     }
 
     .warranty__title { font-weight: 800; margin-bottom: 6px; }
+    .warranty p { margin: 0 0 5px; }
+    .warranty ul { margin: 0 0 6px; padding: 0 18px 0 0; list-style: disc; }
+    .warranty li { margin-bottom: 4px; }
+    .warranty h4 { margin: 0 0 6px; font-size: 13px; font-weight: 800; }
+    .warranty strong { font-weight: 800; color: var(--ink); }
 
     .notes-box {
       margin-top: 14px;
@@ -339,11 +380,11 @@
 
     .codes {
       display: flex;
-      gap: 16px;
-      align-items: flex-end;
-      flex-wrap: wrap;
-      justify-content: center;
-      margin-top: 14px;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 28px;
+      direction: ltr;
+      margin-top: 8px;
     }
 
     .barcode-svg { opacity: 0.55; }
@@ -362,7 +403,8 @@
         display: grid;
         grid-template-columns: 1fr;
       }
-      .invoice-title-block { text-align: right; }
+      .store-qr { order: -1; }
+      .invoice-title-block { text-align: right; justify-self: stretch; }
     }
 
     @media print {
@@ -395,6 +437,7 @@
         width: 100% !important;
         max-width: none !important;
         min-width: 0 !important;
+        min-height: 0 !important;
         margin: 0 !important;
         padding: 0 !important;
         border: none !important;
@@ -415,20 +458,34 @@
 
       /* Keep desktop multi-column layout while printing from phones */
       .invoice-header {
-        display: flex !important;
-        justify-content: space-between !important;
+        display: grid !important;
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr) !important;
         gap: 10px !important;
         align-items: flex-start !important;
         padding-bottom: 8px !important;
         margin: 0 !important;
       }
 
-      .brand { gap: 8px !important; }
-      .brand__logo,
+      .store-qr { font-size: 9px; }
+      .store-qr__image { width: 26mm; height: 26mm; }
+
+      .brand { gap: 0 !important; align-items: flex-start !important; }
+      .brand__copy { padding-top: 4px !important; margin-inline-start: -8px !important; }
+      .brand__logo {
+        width: auto !important;
+        height: 72px !important;
+        max-width: 180px !important;
+        background: transparent !important;
+        border: 0 !important;
+        box-shadow: none !important;
+      }
       .brand__logo-fallback {
-        width: 44px !important;
-        height: 44px !important;
-        font-size: 12px !important;
+        width: 72px !important;
+        height: 72px !important;
+        font-size: 16px !important;
+        background: transparent !important;
+        border: 0 !important;
+        box-shadow: none !important;
       }
       .brand__name { font-size: 16px !important; }
       .brand__activity { font-size: 10px !important; margin-top: 0 !important; }
@@ -507,6 +564,14 @@
       .totals__row { padding: 5px 8px !important; font-size: 11px !important; }
       .totals__row--grand {
         font-size: 13px !important;
+        background: #fff !important;
+        color: #111 !important;
+        print-color-adjust: exact;
+        -webkit-print-color-adjust: exact;
+      }
+      .totals__row--grand .totals__value {
+        color: #15803d !important;
+        font-size: 14px !important;
         print-color-adjust: exact;
         -webkit-print-color-adjust: exact;
       }
@@ -538,15 +603,18 @@
       .invoice-footer__gold { margin-top: 2px !important; }
 
       .codes {
-        gap: 10px !important;
-        margin-top: 6px !important;
+        margin-top: 4px !important;
         align-items: center !important;
+        justify-content: flex-start !important;
+        gap: 18px !important;
+        direction: ltr !important;
       }
 
       .barcode-svg {
         max-width: 160px !important;
         height: 28px !important;
         opacity: 0.7 !important;
+        margin-left: 0 !important;
       }
 
       .invoice-qr-addon {
@@ -568,6 +636,8 @@
 {% set company_phone = (settings.phone1 if settings and settings.phone1 else (settings.company_phone if settings and settings.company_phone else '')) %}
 {% set paid_val = (paid_amount if paid_amount is defined and paid_amount is not none else (order.paid_amount or 0)) %}
 {% set grand_val = (total if total is defined else (order.total or 0)) %}
+{% set discount_val = (discount_amount if discount_amount is defined and discount_amount is not none else (order.discount_amount or 0)) %}
+{% set subtotal_val = (total_before_discount if total_before_discount is defined and total_before_discount is not none else ((grand_val or 0) + (discount_val or 0))) %}
 {% set due_val = (due if due is defined else grand_val) %}
 {% set remaining_val = (due_val - paid_val) if (due_val - paid_val) > 0 else 0 %}
 {% set pay = (order.payment_status or '') %}
@@ -598,22 +668,17 @@
       <header class="invoice-header">
         <div class="brand">
           {% if settings and settings.use_logo_image and settings.logo_path %}
-          <img class="brand__logo" src="{{ settings.logo_path }}" alt="{{ company_name }}" />
+          <img class="brand__logo" src="{{ settings.logo_path }}" alt="{{ company_name }}" onload="luxCleanLogo(this)" />
           {% else %}
           <div class="brand__logo-fallback">
             {{ (settings.logo_circle_text if settings and settings.logo_circle_text else company_name[:2]) | replace('\n', ' ') }}
           </div>
           {% endif %}
-          <div>
-            <div class="brand__name">{{ company_name }}</div>
-            <div class="brand__activity">{{ company_activity }}</div>
-            <div class="brand__activity">
-              {% if company_address %}{{ company_address }}{% endif %}
-              {% if company_address and company_phone %} · {% endif %}
-              {% if company_phone %}{{ company_phone }}{% endif %}
-            </div>
-          </div>
         </div>
+        <a class="store-qr" href="https://www.finora.company/shop/super/" aria-label="امسح الرمز لزيارة متجر سوبر ماكس">
+          <img class="store-qr__image" src="/static/images/supermax-store-qr.svg" width="108" height="108" alt="QR متجر سوبر ماكس">
+          <span>تسوّق من متجرنا</span>
+        </a>
         <div class="invoice-title-block">
           <h1 class="invoice-title">فاتورة بيع</h1>
           <div class="invoice-number">رقم الفاتورة: <strong>#{{ order.id }}</strong></div>
@@ -663,7 +728,7 @@
             <tr>
               <td>{{ loop.index }}</td>
               <td>
-                <div class="item-name">{{ item.product_name or (item.product.name if item.product else 'منتج') }}</div>
+                <div class="item-name">{{ item.product_name or item.display_name or '—' }}</div>
               </td>
               <td class="col-num">{{ item.quantity }}</td>
               <td class="col-num">{{ "{:,.0f}".format(item.price or 0) }} د.ع</td>
@@ -682,7 +747,7 @@
         <div>
           <div class="warranty">
             <div class="warranty__title">ملاحظات الضمان</div>
-            <div>{{ (settings.warranty_notes if settings and settings.warranty_notes else (settings.invoice_note if settings and settings.invoice_note else 'يشمل الضمان الأعطال المصنعية وفق سياسة الشركة.')) }}</div>
+            <div>{{ (settings.warranty_notes if settings and settings.warranty_notes else (settings.invoice_note if settings and settings.invoice_note else 'يشمل الضمان الأعطال المصنعية وفق سياسة الشركة.'))|invoice_rich_text }}</div>
           </div>
           {% if order.note %}
           <div class="notes-box">
@@ -694,7 +759,11 @@
         <div class="totals">
           <div class="totals__row">
             <span>المجموع الفرعي</span>
-            <span class="totals__value">{{ "{:,.0f}".format(grand_val) }} د.ع</span>
+            <span class="totals__value">{{ "{:,.0f}".format(subtotal_val) }} د.ع</span>
+          </div>
+          <div class="totals__row totals__row--discount">
+            <span>الخصم</span>
+            <span class="totals__value">{% if discount_val %}− {% endif %}{{ "{:,.0f}".format(discount_val) }} د.ع</span>
           </div>
           <div class="totals__row">
             <span>المدفوع</span>
@@ -730,16 +799,79 @@
         </div>
         <div class="invoice-footer__gold">شكراً لثقتكم — نتمنى لكم تجربة ممتازة</div>
         <div class="codes">
-          <svg id="barcode-luxury-invoice" class="barcode-svg"></svg>
-          {{ invoice_qr_block(settings, order, public_url=order_public_view_url) }}
+          {{ invoice_qr_block(settings, order, host_suffix=order.id, public_url=order_public_view_url) }}
+          <svg id="barcode-luxury-invoice-{{ order.id }}" class="barcode-svg"></svg>
+        </div>
+        <div class="supermax-invoice-seals-row">
+          {% include 'partials/supermax_inspection_stamp.html' %}
+          {% include 'partials/supermax_invoice_stamps.html' %}
         </div>
       </footer>
     </article>
   </div>
 
   <script>
+    function luxCleanLogo(img) {
+      if (!img || img.dataset.cleaned) return;
+      img.dataset.cleaned = "1";
+      try {
+        var w = img.naturalWidth, h = img.naturalHeight;
+        if (!w || !h) return;
+        var canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        var ctx = canvas.getContext("2d", { willReadFrequently: true });
+        ctx.drawImage(img, 0, 0);
+        var imageData = ctx.getImageData(0, 0, w, h);
+        var d = imageData.data;
+        function sample(x, y) {
+          var i = (y * w + x) * 4;
+          return [d[i], d[i + 1], d[i + 2], d[i + 3]];
+        }
+        var corners = [sample(0, 0), sample(w - 1, 0), sample(0, h - 1), sample(w - 1, h - 1)];
+        var dark = corners.filter(function (c) {
+          return c[3] > 200 && Math.max(c[0], c[1], c[2]) < 48;
+        }).length;
+        if (dark < 3) return;
+        var bg = corners[0];
+        var minX = w, minY = h, maxX = 0, maxY = 0, seen = false;
+        for (var i = 0; i < d.length; i += 4) {
+          var dist = Math.sqrt(
+            Math.pow(d[i] - bg[0], 2) +
+            Math.pow(d[i + 1] - bg[1], 2) +
+            Math.pow(d[i + 2] - bg[2], 2)
+          );
+          if (dist < 42) d[i + 3] = 0;
+          else if (dist < 78) d[i + 3] = Math.round(d[i + 3] * ((dist - 42) / 36));
+          if (d[i + 3] > 16) {
+            var p = i / 4;
+            var x = p % w;
+            var y = (p - x) / w;
+            if (x < minX) minX = x;
+            if (y < minY) minY = y;
+            if (x > maxX) maxX = x;
+            if (y > maxY) maxY = y;
+            seen = true;
+          }
+        }
+        if (!seen) return;
+        ctx.putImageData(imageData, 0, 0);
+        var pad = 2;
+        minX = Math.max(0, minX - pad);
+        minY = Math.max(0, minY - pad);
+        maxX = Math.min(w - 1, maxX + pad);
+        maxY = Math.min(h - 1, maxY + pad);
+        var cw = maxX - minX + 1;
+        var ch = maxY - minY + 1;
+        var cropped = document.createElement("canvas");
+        cropped.width = cw;
+        cropped.height = ch;
+        cropped.getContext("2d").drawImage(canvas, minX, minY, cw, ch, 0, 0, cw, ch);
+        img.src = cropped.toDataURL("image/png");
+      } catch (e) {}
+    }
     try {
-      JsBarcode("#barcode-luxury-invoice", "{{ order.id }}", {
+      JsBarcode("#barcode-luxury-invoice-{{ order.id }}", "{{ order.id }}", {
         format: "CODE128",
         width: 1.1,
         height: 28,

@@ -1,109 +1,83 @@
-{% extends "base.html" %}
-{% from "payment_flow/_macros.html" import pf_topbar, pf_steps %}
-{% block title %}إتمام الدفع — Finora{% endblock %}
-{% block page_title %}{% endblock %}
+{% extends "public_flow/base.html" %}
+{% from "payment_flow/_macros.html" import pf_topbar, pf_steps with context %}
+{% block title %}إتمام الاشتراك — Finora{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/payment-flow.css') }}">
-<div class="pf-page">
-  {{ pf_topbar('/signup', 'تعديل الخطة') }}
+<div class="pf-page pf-page--payment">
+  {{ pf_topbar('/signup?plan=' ~ plan_key ~ '&billing=' ~ billing, 'تعديل الخطة') }}
   {{ pf_steps(2) }}
 
   <div class="pf-wrap">
+    <div class="pf-header pf-payment-header">
+      <span class="pf-eyebrow"><i class="fas fa-shield-halved"></i> خطوة أخيرة وآمنة</span>
+      <h1>أكمل اشتراكك</h1>
+      <p>راجع تفاصيل الخطة ثم تابع إلى تعليمات التحويل عبر زين كاش.</p>
+    </div>
+
     <div class="pf-pay-grid">
-      <div class="pf-card">
-        <h2 style="font-size:18px;font-weight:800;margin-bottom:20px"><i class="fas fa-shield-alt" style="color:var(--pf-primary)"></i> تفاصيل الدفع الآمن</h2>
+      <section class="pf-card pf-payment-card" aria-labelledby="paymentMethodTitle">
+        <h2 id="paymentMethodTitle"><i class="fas fa-wallet" style="color:var(--pf-primary)"></i> وسيلة الدفع المتاحة</h2>
 
-        <div class="pf-pay-methods">
-          <div class="pf-pay-method active" onclick="setMethod('card', this)">
-            <i class="fas fa-credit-card"></i> بطاقة ائتمان
+        <div class="pf-method-choice">
+          <i class="fas fa-mobile-screen-button"></i>
+          <div>
+            <strong>زين كاش</strong>
+            <span>تحويل مباشر مع رفع صورة الوصل</span>
           </div>
-          <div class="pf-pay-method" onclick="setMethod('zain', this)">
-            <i class="fas fa-mobile-alt"></i> زين كاش
+          <b><i class="fas fa-circle-check"></i> معتمدة</b>
+        </div>
+
+        <div class="pf-process-list" aria-label="خطوات إتمام الدفع">
+          <div class="pf-process-item">
+            <i class="fas fa-copy"></i>
+            <strong>انسخ رقم المحفظة</strong>
+            <span>سيظهر لك الرقم والمبلغ المطلوب بوضوح.</span>
+          </div>
+          <div class="pf-process-item">
+            <i class="fas fa-money-bill-transfer"></i>
+            <strong>نفّذ التحويل</strong>
+            <span>حوّل المبلغ من تطبيق زين كاش.</span>
+          </div>
+          <div class="pf-process-item">
+            <i class="fas fa-receipt"></i>
+            <strong>ارفع الوصل</strong>
+            <span>أرسل صورة الوصل لمراجعة الطلب وتفعيله.</span>
           </div>
         </div>
 
-        <div id="cardFields">
-          <div class="pf-field" style="margin-bottom:16px">
-            <label>الاسم على البطاقة</label>
-            <input type="text" id="c_name" placeholder="John Doe">
+        <details class="pf-help-details">
+          <summary><i class="fas fa-circle-question"></i> متى يتم تفعيل الاشتراك؟</summary>
+          <div>
+            <span>يصل طلبك مباشرةً إلى فريق المراجعة بعد رفع الوصل.</span>
+            <span>يتم إشعارك بعد مطابقة التحويل وتفعيل الخطة.</span>
+            <span>لن تُطلب منك معلومات بطاقتك المصرفية داخل Finora.</span>
           </div>
-          <div class="pf-field" style="margin-bottom:16px">
-            <label>رقم البطاقة</label>
-            <input type="text" id="c_num" placeholder="XXXX XXXX XXXX XXXX" maxlength="19" oninput="formatCardNum(this)">
-          </div>
-          <div class="pf-form-grid">
-            <div class="pf-field">
-              <label>تاريخ الانتهاء</label>
-              <input type="text" id="c_date" placeholder="MM/YY" maxlength="5">
-            </div>
-            <div class="pf-field">
-              <label>رمز CVV</label>
-              <input type="password" id="c_cvv" placeholder="***" maxlength="3">
-            </div>
+        </details>
+
+        <a class="pf-btn pf-btn-primary pf-btn-block" href="{{ url_for('payments.checkout', plan_key=plan_key, billing=billing) }}">
+          متابعة إلى تعليمات التحويل
+          <i class="fas fa-arrow-left"></i>
+        </a>
+        <p class="pf-payment-note"><i class="fas fa-lock"></i> بياناتك محفوظة، والدفع يتم من خلال محفظتك مباشرةً.</p>
+      </section>
+
+      <aside class="pf-card pf-summary-card" aria-labelledby="orderSummaryTitle">
+        <h2 id="orderSummaryTitle"><i class="fas fa-file-invoice" style="color:var(--pf-primary)"></i> ملخص الطلب</h2>
+        <div class="pf-summary-plan">
+          <i class="fas fa-layer-group"></i>
+          <div>
+            <span>الخطة المختارة</span>
+            <strong>{{ plan.name }}</strong>
           </div>
         </div>
-
-        <div id="zainFields" style="display:none">
-          <div class="pf-field" style="margin-bottom:12px">
-            <label>رقم محفظة زين كاش</label>
-            <input type="text" placeholder="07XXXXXXXXX">
-          </div>
-          <p class="pf-hint">سيتم تحويلك لإتمام الدفع عبر زين كاش ورفع إيصال التحويل.</p>
+        <div class="pf-order-summary">
+          <div class="pf-order-row"><span>دورة الاشتراك</span><strong>{{ 'سنوي' if billing == 'yearly' else 'شهري' }}</strong></div>
+          <div class="pf-order-row"><span>الضريبة</span><span>0 د.ع</span></div>
+          <div class="pf-order-row total"><span>الإجمالي</span><span>{{ "{:,}".format(plan.price) }} د.ع</span></div>
         </div>
-
-        <button class="pf-btn pf-btn-primary pf-btn-block" id="payBtn" onclick="processPay()" style="margin-top:24px">
-          <i class="fas fa-lock"></i> دفع <span id="btnAmount">{{ "{:,}".format(plan.price) }}</span> د.ع
-        </button>
-        <p class="pf-hint" style="text-align:center;margin-top:12px">
-          <i class="fas fa-info-circle"></i> يتم تشفير بياناتك ولا يتم تخزينها على خوادمنا.
-        </p>
-      </div>
-
-      <div>
-        <div class="pf-card" style="margin-bottom:16px">
-          <h3 style="font-size:16px;font-weight:800;margin-bottom:16px">ملخص الطلب</h3>
-          <div class="pf-order-summary">
-            <div class="pf-order-row"><span>الخطة</span><strong>{{ plan.name }}</strong></div>
-            <div class="pf-order-row"><span>نوع الاشتراك</span><strong>{{ 'سنوي' if billing == 'yearly' else 'شهري' }}</strong></div>
-            <div class="pf-order-row"><span>الضريبة (0%)</span><span>0 د.ع</span></div>
-            <div class="pf-order-row total"><span>الإجمالي</span><span>{{ "{:,}".format(plan.price) }} د.ع</span></div>
-          </div>
-          <p class="pf-hint" style="margin-top:16px;line-height:1.6">
-            بإتمام الدفع، أنت توافق على <a href="/terms" style="color:var(--pf-primary)">شروط الخدمة</a> و
-            <a href="/privacy" style="color:var(--pf-primary)">سياسة الخصوصية</a>.
-          </p>
-        </div>
-      </div>
+        <p class="pf-legal-note">بالمتابعة أنت توافق على <a href="/terms">شروط الخدمة</a> و<a href="/privacy">سياسة الخصوصية</a>.</p>
+      </aside>
     </div>
   </div>
 </div>
-
-<script>
-  function setMethod(m, el) {
-    document.querySelectorAll('.pf-pay-method').forEach(function (x) { x.classList.remove('active'); });
-    if (el) el.classList.add('active');
-    document.getElementById('cardFields').style.display = m === 'card' ? 'block' : 'none';
-    document.getElementById('zainFields').style.display = m === 'zain' ? 'block' : 'none';
-  }
-
-  function formatCardNum(el) {
-    var v = el.value.replace(/\D/g, '');
-    var out = '';
-    for (var i = 0; i < v.length; i++) {
-      if (i > 0 && i % 4 === 0) out += ' ';
-      out += v[i];
-    }
-    el.value = out;
-  }
-
-  function processPay() {
-    var btn = document.getElementById('payBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> جاري التحويل للدفع الآمن...';
-    setTimeout(function () {
-      window.location.href = '/payments/checkout?plan_key={{ plan_key }}&billing={{ billing }}';
-    }, 800);
-  }
-</script>
 {% endblock %}

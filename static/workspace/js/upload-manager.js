@@ -20,10 +20,10 @@ class WorkspaceUploadManager {
       this.fileInput.type = "file";
       this.fileInput.id = "ws-file-input";
       this.fileInput.hidden = true;
-      this.fileInput.accept = ".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp";
-      this.fileInput.multiple = true;
       document.body.appendChild(this.fileInput);
     }
+    this.fileInput.accept = ".pdf,.png,.jpg,.jpeg,.webp,application/pdf,image/png,image/jpeg,image/webp";
+    this.fileInput.multiple = true;
     this.fileInput.addEventListener("change", () => this._handleSelected());
   }
 
@@ -78,6 +78,11 @@ class WorkspaceUploadManager {
   async uploadFiles(sessionId, files) {
     const list = [...(files || [])].filter(Boolean);
     if (!list.length) return null;
+    if (list.length > 20) {
+      const err = new Error("يمكن رفع 20 ملفاً كحد أقصى في الدفعة الواحدة");
+      this.onError(err);
+      throw err;
+    }
 
     this.onStart(list[0], { index: 1, total: list.length });
     let lastData = null;

@@ -42,7 +42,8 @@ def test_replay_after_id():
 def test_stream_endpoint_replays_with_context():
     from app import app
 
-    tenant = "test_event_stream_endpoint"
+    from uuid import uuid4
+    tenant = f"test_event_stream_endpoint_{uuid4().hex[:8]}"
     with app.app_context():
         from flask import g
 
@@ -82,6 +83,11 @@ def test_stream_endpoint_replays_with_context():
             )
             db.session.commit()
 
+        from models.employee import Employee
+        if not db.session.get(Employee,44):
+            db.session.add(Employee(id=44,name='Stream test owner',username='stream-test-owner',password='test',role='admin',is_active=True))
+            db.session.commit()
+
         ws = SessionService.create_session(user_id=44, tenant_slug=tenant)
         event_bus.emit_event(ws.id, "report.appended", {"line": "stream ok"})
         session_id = ws.id
@@ -96,7 +102,7 @@ def test_stream_endpoint_replays_with_context():
             f"/workspace/api/sessions/{session_id}/stream?since=0",
             buffered=False,
         )
-        assert resp.status_code == 200
+        assert resp.status_code == 200, (resp.status_code,resp.headers.get('Location'))
         first = next(resp.response).decode("utf-8")
         assert "event:" in first
         assert "data:" in first

@@ -66,7 +66,7 @@
         <div class="rsm-head">
           <button type="button" class="rsm-close" aria-label="إغلاق">×</button>
           <div class="rsm-icon">↩</div>
-          <div><h3 class="rsm-title">${opts.title || ("ترجيع الطلب #" + orderId)}</h3><p class="rsm-subtitle">حدد الفرع الذي ستُعاد إليه أصناف الطلب.</p></div>
+          <div><h3 class="rsm-title">${opts.title || ("ترجيع الطلب #" + orderId)}</h3><p class="rsm-subtitle">${opts.subtitle || "حدد الفرع الذي ستُعاد إليه أصناف الطلب."}</p></div>
         </div>
         <div class="rsm-body">
           <div class="rsm-field" ${requireBarcode || suppliedBarcode ? "" : "hidden"}>

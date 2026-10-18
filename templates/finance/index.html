@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}الحسابات — FINORA{% endblock %}
+{% block page_title %}الحسابات{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static',filename='css/finance.css') }}">
+<section class="finance-page" dir="rtl" aria-label="الحسابات المالية">
+  <header class="finance-heading"><div><h1>الحسابات</h1><p>القبض والصرف والسلف والقروض والحسابات المالية</p></div><a class="finance-secondary" href="/accounts">ملخص الحسابات</a></header>
+  <nav class="finance-tabs" aria-label="أقسام الحسابات" role="tablist"><button role="tab" data-tab="vouchers" aria-selected="true">القبض والصرف</button><button role="tab" data-tab="loans" aria-selected="false">السلف والقروض</button><button role="tab" data-tab="accounts" aria-selected="false">الصناديق والحسابات</button><button role="tab" data-tab="journal" aria-selected="false" data-cap="finance.ledger" hidden>القيود والتقارير</button><button id="finance-help" class="finance-help" aria-label="شرح الحسابات" aria-expanded="false">?</button><button id="finance-settings" data-cap="finance.settings" hidden>الإعدادات</button></nav>
+  <p id="finance-explanation" class="finance-note" hidden>المسودة لا تغير الأرصدة. الاعتماد يرحّل العملية مرة واحدة. السند المرحّل يُصحح بالعكس مع بقاء الأصل والتاريخ.</p>
+  <div id="finance-stats" class="finance-stats" aria-live="polite"></div>
+  <form id="finance-filters" class="finance-toolbar"><input name="q" type="search" aria-label="بحث" placeholder="ابحث بالسند أو الجهة…"><input name="date_from" type="date" aria-label="من تاريخ"><input name="date_to" type="date" aria-label="إلى تاريخ"><select name="status" aria-label="الحالة"><option value="">كل الحالات</option><option value="draft">مسودة</option><option value="pending">بانتظار الاعتماد</option><option value="posted">مرحّل</option><option value="reversed">معكوس</option></select><select name="treasury_account_id" aria-label="الحساب"><option value="">كل الحسابات</option></select><button type="submit" class="finance-secondary">تصفية</button><button id="finance-create" type="button" class="finance-primary" data-cap="finance.create" hidden>+ سند جديد</button><a id="finance-export" class="finance-secondary" data-cap="finance.print" hidden>تصدير السندات</a></form>
+  <p id="finance-error" role="alert" hidden></p><p id="finance-loading" role="status" hidden>جارٍ تحميل البيانات…</p>
+  <div class="finance-table-wrap"><table class="finance-table"><thead id="finance-head"></thead><tbody id="finance-body"></tbody></table><div id="finance-empty" class="finance-empty" hidden><h2>لا توجد سجلات</h2><p>ابدأ بمسودة جديدة، أو غيّر التصفية.</p></div></div>
+  <footer class="finance-pagination"><span id="finance-count"></span><button id="finance-prev" class="finance-secondary">السابق</button><span id="finance-page-number">1</span><button id="finance-next" class="finance-secondary">التالي</button></footer>
+  <dialog id="finance-drawer" class="finance-drawer"><header><div><h2 id="finance-drawer-title"></h2><p id="finance-drawer-subtitle"></p></div><button id="finance-close" class="finance-secondary" aria-label="إغلاق">×</button></header><div id="finance-drawer-body"></div><footer id="finance-drawer-footer"></footer></dialog>
+</section>
+<script src="{{ url_for('static',filename='js/finance.js') }}" defer></script>
+{% endblock %}

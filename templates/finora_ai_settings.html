@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% block title %}إعدادات Finora AI{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='css/finora-ai-settings.css') }}?v=3">{% endblock %}
+{% block content %}
+<section class="ais" dir="rtl">
+  <header class="ais-hero"><div><span class="ais-eyebrow">FINORA INTELLIGENCE</span><h1>✦ مركز إعدادات الذكاء الاصطناعي</h1><p>خصّص المساعد، تحكّم بالاتصال، وحدّد الأدوات المتاحة لفريقك.</p></div><span class="ais-badge">🔒 قراءة آمنة فقط</span></header>
+  <form id="finoraAiSettingsForm" aria-busy="true">
+    <fieldset id="aiSettingsFields" disabled>
+      <div class="ais-layout">
+        <nav class="ais-nav" aria-label="أقسام الإعدادات"><a href="#aisProvider">◈ المزوّد والنموذج <span>01</span></a><a href="#aisConnection">↗ الاتصال والأداء <span>02</span></a><a href="#aisTools">☷ الأدوات والصلاحيات <span>03</span></a><div class="ais-note"><strong>بياناتك تحت سيطرتك</strong><p>الأدوات تستخدم صلاحيات المستخدم الحالية. التفعيل لا يمنح صلاحيات إضافية.</p></div></nav>
+        <div class="ais-main">
+          <div class="ais-card ais-enable"><div class="ais-icon">✦</div><div><h2>تفعيل Finora AI</h2><p>إتاحة المساعد للمستخدمين المصرّح لهم داخل الشركة.</p></div><label class="ais-switch"><input id="aiEnabled" type="checkbox" aria-label="تفعيل Finora AI"><span></span></label></div>
+          <section class="ais-card" id="aisProvider"><div class="ais-card-head"><span class="ais-icon">◈</span><div><h2>المزوّد والنموذج</h2><p>اختر طريقة تشغيل المساعد المناسبة لبيئتك.</p></div></div>
+            <div class="ais-grid"><label class="ais-field">المزوّد<select id="aiProvider"><option value="builtin">مساعد مدمج محدود · بدون نموذج لغوي</option><option value="openai">OpenAI</option><option value="local">مزوّد محلي متوافق</option><option value="ollama">Ollama</option><option value="lmstudio">LM Studio</option><option value="vllm">vLLM</option><option value="openai_compatible">OpenAI-compatible</option><option value="automatic">توجيه تلقائي</option></select></label><label class="ais-field">اسم النموذج<input id="aiModel" maxlength="120" dir="ltr" placeholder="اسم النموذج لدى المزوّد"><small>استخدم اسم نموذج متاح في حسابك أو خادمك.</small></label></div><div class="ais-info" id="aiProviderHint"></div>
+            <div class="ais-info" style="margin-top:16px"><strong>الفهم الاحترافي يحتاج نموذجًا لغويًا</strong><p>المساعد المدمج محدود ولا يفهم كل الصيغ. اختر نموذجًا متاحًا لديك في OpenAI أو خادم محلي. عند اختيار OpenAI تُرسل الرسائل ونتائج الأدوات اللازمة إليه، وتُحتسب تكلفة API منفصلة.</p><button id="aiProfessionalPreset" type="button" class="ais-secondary">تهيئة OpenAI للفهم المرن</button><small>يجهّز الحقول فقط؛ لا يُطبّق حتى تضغط حفظ. يحتفظ باسم النموذج الحالي إن كان مضبوطًا.</small></div>
+          </section>
+          <section class="ais-card" id="aisConnection"><div class="ais-card-head"><span class="ais-icon">↗</span><div><h2>الاتصال والأداء</h2><p>إعدادات الخادم وحدود الذاكرة ومهلة الاستجابة.</p></div></div>
+            <label class="ais-field">عنوان الاتصال · Endpoint<input id="aiEndpoint" type="url" maxlength="500" dir="ltr" placeholder="https://api.openai.com/v1"><small>عنوان HTTP(S) دون بيانات تسجيل دخول مضمّنة.</small></label>
+            <label class="ais-field">مفتاح الاتصال · API Key<input id="aiKey" type="password" autocomplete="new-password" maxlength="4096" dir="ltr" placeholder="اتركه فارغًا للاحتفاظ بالمفتاح الحالي"><small id="aiKeyState">المفتاح المحفوظ لا يظهر في المتصفح.</small></label>
+            <label class="ais-clear"><input id="aiClearKey" type="checkbox"> حذف المفتاح المحفوظ عند الحفظ <small>لا يحذف مفتاح البيئة الموجود على الخادم.</small></label>
+            <div class="ais-grid ais-performance"><label class="ais-field">مهلة الاتصال بالثواني<input id="aiTimeout" type="number" min="5" max="180" required value="60"><small>من 5 إلى 180 ثانية لكل طلب للمزوّد.</small></label><label class="ais-field">ميزانية سياق المحادثة<input id="aiContext" type="number" min="512" max="1000000" required value="8192"><small>حد تقريبي لحجم الرسائل السابقة، وليس ضمانًا لعدد رموز المزوّد.</small></label></div>
+          </section>
+          <section class="ais-card" id="aisTools"><div class="ais-card-head"><span class="ais-icon">☷</span><div><h2>الأدوات والصلاحيات</h2><p>تحكّم بالميزات المتاحة دون تغيير صلاحيات الفريق.</p></div></div>
+            <div class="ais-option"><div><h3>ربط MCP</h3><p>اكتشاف واستدعاء الأدوات الآمنة. تعطيله يمنع قراءة البيانات بالأدوات.</p></div><label class="ais-switch"><input id="aiMcpEnabled" type="checkbox" aria-label="تفعيل ربط MCP"><span></span></label></div>
+            <div class="ais-option"><div><h3>أدوات الحسابات والذمم</h3><p>أرصدة العملاء والموردين، الصندوق، والملخصات المالية حسب الصلاحيات.</p></div><label class="ais-switch"><input id="aiAccountingEnabled" type="checkbox" aria-label="تفعيل أدوات الحسابات"><span></span></label></div>
+            <div class="ais-option"><div><h3>المزوّدات المحلية</h3><p>السماح بتشغيل نماذج من خادم محلي متوافق.</p></div><label class="ais-switch"><input id="aiLocalEnabled" type="checkbox" aria-label="السماح بالمزودات المحلية"><span></span></label></div>
+            <div class="ais-locked"><span>🔒</span><div><strong>عمليات الكتابة والتعديل المالي مقفلة</strong><p>لا ينشئ المساعد فواتير أو تسديدات ولا يغيّر بيانات العمل في هذه المرحلة.</p></div></div>
+          </section>
+          <section class="ais-card" id="aisExternal"><div class="ais-card-head"><span class="ais-icon">⇄</span><div><h2>ربط تطبيق خارجي</h2><p>انسخ البيانات التالية إلى صفحة إضافة MCP في تطبيقك.</p></div></div>
+            <div class="ais-info">الاسم: <b>FINORA</b> · نوع الاتصال: <b dir="ltr">Streamable HTTP</b> · فعّل <b dir="ltr">Auto connect + discover</b>.</div>
+            <label class="ais-field" style="margin-top:18px">رابط خادم MCP<input id="aiMcpUrl" type="text" dir="ltr" readonly></label>
+            <div class="ais-save-actions"><button id="aiCopyMcpUrl" type="button" class="ais-secondary">نسخ الرابط</button><button id="aiGenerateMcpToken" type="button" class="ais-secondary">رمز مؤقت · 15 دقيقة</button></div>
+            <div class="ais-info" style="margin-top:20px"><strong>ربط دائم · حتى تلغيه بنفسك</strong><p>أنشئ مفتاحًا خاصًا لكل تطبيق موثوق. يتيح قراءة البيانات بصلاحيات حسابك، دون توسيعها. إذا انكشف المفتاح ألغِ الرابط فورًا.</p><label class="ais-field">اسم التطبيق<input id="aiMcpConnectionName" type="text" maxlength="80" value="AI Helper" autocomplete="off"></label><label class="ais-clear"><input id="aiMcpPersistentConsent" type="checkbox"> أوافق على منح هذا التطبيق وصولًا مستمرًا بصلاحيات حسابي إلى أن ألغي المفتاح.</label><button id="aiCreateMcpConnection" type="button" class="ais-primary">إنشاء مفتاح ربط دائم</button><small>انسخه عند الإنشاء؛ لن يمكنك استرجاع المفتاح لاحقًا. لا يُحفظ في المتصفح.</small></div>
+            <div class="ais-connections"><div class="ais-connections-head"><strong>روابط حسابك</strong><button id="aiRefreshMcpConnections" type="button" class="ais-secondary">تحديث القائمة</button></div><ul id="aiMcpConnections" aria-label="روابط MCP الدائمة" aria-live="polite"></ul></div>
+            <div id="aiMcpTokenBox" hidden style="margin-top:18px"><label class="ais-field">Bearer token<input id="aiMcpToken" type="password" dir="ltr" readonly autocomplete="off"><small>مفتاح أو رمز اتصال بصلاحيات حسابك، وليس مفتاح OpenAI. لا تشاركه مع الآخرين.</small></label><div class="ais-save-actions"><button id="aiCopyMcpToken" type="button" class="ais-secondary">نسخ المفتاح / الرمز</button><button id="aiClearMcpToken" type="button" class="ais-secondary">إخفاؤه من الصفحة</button></div></div>
+            <p id="aiMcpConnectStatus" class="ais-status" role="status" aria-live="polite"></p>
+            <div class="ais-locked"><span>ⓘ</span><div><strong>الرابط وحده لا يعني أن الخادم جاهز</strong><p>يجب نشر خادم MCP الرسمي وربط المسار به واستخدام HTTPS. localhost يعمل فقط على جهاز الخادم. الرمز المؤقت صالح 15 دقيقة؛ المفتاح الدائم لا ينتهي زمنيًا لكنه يتوقف عند إلغائه أو تعطيل الحساب أو صلاحية المساعد أو الاشتراك أو إعدادات الربط. إخفاؤه من الصفحة لا يلغي المفتاح؛ استخدم إلغاء الرابط من القائمة.</p></div></div>
+          </section>
+        </div>
+      </div>
+      <footer class="ais-savebar"><div><span id="aiChangeState">الإعدادات الحالية</span><small>تُطبّق الإعدادات على الطلبات الجديدة بعد الحفظ.</small></div><div class="ais-save-actions"><button id="aiReset" type="button" class="ais-secondary">تراجع عن التغييرات</button><button id="aiSave" type="submit" class="ais-primary">✓ حفظ الإعدادات</button></div></footer>
+    </fieldset>
+    <p id="aiSettingsStatus" class="ais-status" role="status" aria-live="polite">جاري تحميل الإعدادات…</p><button id="aiReload" type="button" class="ais-secondary" hidden>إعادة تحميل الإعدادات</button>
+  </form>
+</section>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/finora-ai-settings.js') }}?v=5" defer></script>{% endblock %}

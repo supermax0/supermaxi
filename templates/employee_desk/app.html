@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, interactive-widget=overlays-content">
+  <meta name="theme-color" content="#f8f9fc">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>مكتب الموظف</title>
+  <link rel="manifest" href="/employee-desk/manifest.webmanifest">
+  <link rel="stylesheet" href="{{ url_for('static', filename='employee_desk/desk.css') }}?v=40">
+  <style>
+    html, body { height: 100%; height: 100dvh; margin: 0; overflow: hidden; background: #f8f9fc; touch-action: manipulation; }
+  </style>
+</head>
+<body class="ed-native">
+<div class="ed-app ed-app-native" data-pane="ed-pane-home" data-viewer-id="{{ viewer.id or '' }}" data-is-admin="{{ '1' if viewer.is_admin else '0' }}">
+
+  <header class="ed-top">
+    <span class="ed-me" title="{{ viewer.name }}">{{ viewer.name[:1] }}</span>
+    <button type="button" class="ed-icon ed-bell" id="ed-bell" aria-label="المتأخر">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M6 9a6 6 0 1 1 12 0c0 7 3 7 3 7H3s3 0 3-7"/><path d="M10 19a2 2 0 0 0 4 0"/></svg>
+    </button>
+    <div class="ed-brand">
+      <span>FINORA</span>
+      <h1 class="ed-nav-title" id="ed-nav-title">الرسائل</h1>
+    </div>
+    <label class="ed-accept" title="استقبال محادثات جديدة">
+      <input type="checkbox" id="ed-accept-messages" checked>
+      <span>استقبال</span>
+    </label>
+    <button type="button" class="ed-book-cta" id="ed-open-book">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      <span>حجز</span>
+    </button>
+  </header>
+
+  <div class="ed-grid">
+    <section class="ed-pane ed-pane-phone" id="ed-pane-home">
+      <div class="ed-home">
+        <a href="/employee-desk/training" style="display:block;padding:14px 16px;margin-bottom:16px;border:1px solid #eadce0;border-radius:18px;background:#fff;color:#760019;text-decoration:none"><strong>أكاديمية الموظف ↗</strong><span style="display:block;margin-top:4px;font-size:12px;color:#777">جديد ويانا؟ تعلّم الرسائل والرد والحجز خطوة بخطوة</span></a>
+        <div class="ed-home-quick">
+          <button type="button" data-open-book>
+            <span>حجز جديد</span>
+          </button>
+          <button type="button" data-pane-jump="ed-pane-inbox">
+            <span>الرسائل</span>
+          </button>
+          <button type="button" data-pane-jump="ed-pane-customer">
+            <span>الزبون</span>
+          </button>
+          <button type="button" data-pane-jump="ed-pane-more">
+            <span>الحساب</span>
+          </button>
+        </div>
+        <h2>إحصائيات اليوم</h2>
+        <div class="ed-stats" id="ed-home-stats"></div>
+        <h2>مهام اليوم</h2>
+        <div class="ed-tasks" id="ed-home-tasks"></div>
+      </div>
+    </section>
+
+    <section class="ed-pane ed-pane-phone" id="ed-pane-orders">
+      <div class="ed-home">
+        <h2>الطلبات</h2>
+        <p class="ed-home-lead">الحجز يتم من المحادثة بعد ما تتأكد من الزبون والمنتج.</p>
+        <button type="button" class="ed-primary wide" data-open-book>حجز طلب جديد</button>
+      </div>
+    </section>
+
+    <section class="ed-pane ed-pane-phone" id="ed-pane-more">
+      <div class="ed-home ed-account">
+        <article class="ed-glass ed-id-card{% if not account.active %} is-stopped{% endif %}">
+          <div class="ed-id-photo-wrap">
+            {% if account.avatar %}
+              <img class="ed-account-photo" src="{{ account.avatar }}" alt="">
+            {% else %}
+              <span class="ed-account-photo">{{ account.initial }}</span>
+            {% endif %}
+            <span class="ed-id-dot{% if not account.active %} off{% endif %}" aria-hidden="true"></span>
+          </div>
+          <h2 class="ed-account-name">{{ account.name }}</h2>
+          <div class="ed-id-chips">
+            <span>{{ account.role_label }}</span>
+            {% if account.username %}<span class="muted">{{ account.username }}</span>{% endif %}
+            {% if account.employee_no %}<span class="muted">#{{ account.employee_no }}</span>{% endif %}
+          </div>
+          <p class="ed-id-state">{{ "الحساب نشط" if account.active else "الحساب موقوف" }}</p>
+        </article>
+
+        <section class="ed-account-block">
+          <div class="ed-block-head">
+            <h3>المؤشرات المالية</h3>
+            <button type="button" data-hide-money aria-pressed="false">إخفاء الأرقام</button>
+          </div>
+          <div class="ed-money-grid">
+            <article>
+              <span class="ed-k">نظام الراتب</span>
+              <strong>{{ account.pay_title }}</strong>
+              <small>{{ account.pay_note }}</small>
+            </article>
+            <article>
+              <span class="ed-k">الراتب</span>
+              <strong class="ed-money">{{ account.salary }}</strong>
+              <small>ثابت لكل دورة</small>
+            </article>
+            <article>
+              <span class="ed-k">عمولة كل طلب</span>
+              <strong class="ed-money">{{ account.commission }}</strong>
+              <small>لكل طلب واصل ومسدد</small>
+            </article>
+            <article>
+              <span class="ed-k">الطلبات</span>
+              <strong>{{ account.orders }}</strong>
+              <small class="ed-money">مبيعات {{ account.sales }}</small>
+            </article>
+          </div>
+        </section>
+
+        <section class="ed-account-block">
+          <div class="ed-block-head"><h3>معلومات الحساب</h3></div>
+          <div class="ed-glass ed-detail-card">
+            {% for row in account.details %}
+              <div class="ed-detail-row">
+                <div>
+                  <span>{{ row.label }}</span>
+                  <strong>{{ row.value }}</strong>
+                </div>
+                {% if row.copy %}
+                  <button type="button" data-copy="{{ row.copy }}" aria-label="نسخ {{ row.label }}">نسخ</button>
+                {% endif %}
+              </div>
+            {% endfor %}
+          </div>
+        </section>
+
+        <section class="ed-account-block">
+          <div class="ed-block-head"><h3>الصلاحيات</h3></div>
+          <div class="ed-glass ed-perm-card">
+            {% if account.perms %}
+              <div class="ed-perm-row">
+                {% for perm in account.perms %}<span>{{ perm }}</span>{% endfor %}
+              </div>
+            {% else %}
+              <p class="ed-perm-empty">لا صلاحيات إضافية على هذا الحساب.</p>
+            {% endif %}
+          </div>
+        </section>
+
+        <a class="ed-glass ed-logout" href="/employee-desk/training">أكاديمية الموظف — التعليم التفاعلي</a>
+        <a class="ed-glass ed-logout" href="/employee-desk/logout">تسجيل الخروج من الحساب</a>
+      </div>
+    </section>
+
+    <section class="ed-pane ed-inbox-pane" id="ed-pane-inbox">
+      <div class="ed-pane-head">
+        <h2>الرسائل</h2>
+        <span class="ed-count" id="ed-inbox-count">—</span>
+      </div>
+      <input type="search" class="ed-search" id="ed-inbox-search" placeholder="ابحث عن زبون…" autocomplete="off">
+      <div class="ed-seg" id="ed-inbox-filters">
+        <button type="button" class="ed-seg-btn active" data-status="ALL">الكل</button>
+        <button type="button" class="ed-seg-btn hot" data-status="LATE">متأخر</button>
+        <button type="button" class="ed-seg-btn" data-status="WAITING_REPLY">بانتظار</button>
+      </div>
+      <div class="ed-list" id="ed-inbox"></div>
+    </section>
+
+    <section class="ed-pane ed-chat-pane" id="ed-pane-chat">
+      <div class="ed-chat-head">
+        <button type="button" class="ed-back" id="ed-chat-back" aria-label="رجوع للقائمة">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+        <button type="button" class="ed-chat-identity" id="ed-open-customer">
+          <span class="ed-avatar ed-chat-ava" id="ed-chat-avatar">ف</span>
+          <div class="ed-chat-titles">
+            <h2 id="ed-chat-name">اختر محادثة</h2>
+            <p id="ed-chat-page">—</p>
+          </div>
+        </button>
+        <button type="button" class="ed-chat-status" id="ed-transfer-open">تحويل</button>
+        <button type="button" class="ed-chat-status" id="ed-book-from-chat">حجز</button>
+      </div>
+      <div class="ed-transfer-pop" id="ed-transfer-pop" hidden></div>
+      <div class="ed-stream" id="ed-stream">
+        <div class="ed-blank">
+          <strong>ابدأ من رسالة</strong>
+          اختر زبون، رد عليه، وبعدها احجز الطلب.
+        </div>
+      </div>
+      <footer class="ed-composer-wrap">
+        <p class="ed-chat-error" id="ed-chat-error" hidden></p>
+        <div class="ed-quick-pop" id="ed-quick-pop" hidden>
+          <div class="ed-quick-head">
+            <strong>ردود سريعة</strong>
+            <span>اضغط الرد لينرسل مباشرة</span>
+          </div>
+          <div class="ed-quick-list" id="ed-quick-list"></div>
+          <form class="ed-quick-add" id="ed-quick-add">
+            <input class="ed-input" id="ed-quick-text" placeholder="أضف رداً جديداً…" maxlength="280" autocomplete="off">
+            <button type="submit" class="ed-quick-save">حفظ</button>
+          </form>
+        </div>
+        <form class="ed-composer" id="ed-chat-form">
+          <input type="file" id="ed-chat-file" accept="image/*,video/*,audio/*,.pdf" hidden>
+          <div class="ed-compose">
+            <button type="button" class="ed-attach" id="ed-quick-open" aria-label="ردود سريعة" title="ردود سريعة">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 4 14h7l-1 8 10-14h-7z"/></svg>
+            </button>
+            <button type="button" class="ed-attach" id="ed-chat-attach" aria-label="إرفاق ملف" disabled>
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21.4 11.6 12.2 20.8a5.2 5.2 0 0 1-7.4-7.4l9.2-9.2a3.5 3.5 0 0 1 5 5l-9.2 9.1a1.8 1.8 0 0 1-2.5-2.5l8.1-8"/></svg>
+            </button>
+            <div class="ed-field">
+              <div class="ed-file-chip" id="ed-file-chip" hidden></div>
+              <textarea id="ed-chat-input" rows="1" placeholder="اكتب ردك…" maxlength="2000"></textarea>
+            </div>
+            <button type="submit" class="ed-send" id="ed-chat-send" aria-label="إرسال" disabled>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9l20-7z"/></svg>
+            </button>
+          </div>
+        </form>
+      </footer>
+    </section>
+
+    <aside class="ed-pane ed-cust-pane" id="ed-pane-customer">
+      <div class="ed-pane-head">
+        <h2>الزبون</h2>
+        <button type="button" class="ed-icon ghost only-tablet" id="ed-close-customer" aria-label="إغلاق">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="ed-cust-scroll">
+        <div id="ed-customer-body">
+          <div class="ed-blank small">لا زبون مرتبط بعد.</div>
+        </div>
+        <button type="button" class="ed-primary wide" id="ed-book-from-customer">حجز طلب لهذا الزبون</button>
+        <div class="ed-orders-block">
+          <h3>آخر الطلبات</h3>
+          <div id="ed-customer-orders"><div class="ed-blank small">—</div></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <nav class="ed-tabs" aria-label="تنقل المكتب">
+    <button type="button" data-pane="ed-pane-home" class="active">
+      <span class="ed-tab-ico">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1z"/></svg>
+      </span>
+      <span>الرئيسية</span>
+    </button>
+    <button type="button" data-pane="ed-pane-inbox">
+      <span class="ed-tab-ico">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6.5h16v11H8.2L4 21V6.5z"/></svg>
+        <span class="ed-tab-badge" id="ed-tab-badge" hidden></span>
+      </span>
+      <span>الرسائل</span>
+    </button>
+    <button type="button" data-pane="ed-pane-orders">
+      <span class="ed-tab-ico">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 7h12l-1 12H7L6 7z"/><path d="M9 7a3 3 0 0 1 6 0"/></svg>
+      </span>
+      <span>الطلبات</span>
+    </button>
+    <button type="button" data-pane="ed-pane-customer">
+      <span class="ed-tab-ico">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="3.3"/><path d="M5 19.2a7 7 0 0 1 14 0"/></svg>
+      </span>
+      <span>العملاء</span>
+    </button>
+    <button type="button" data-pane="ed-pane-more">
+      <span class="ed-tab-ico">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="6" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="18" cy="12" r="1.2"/></svg>
+      </span>
+      <span>الحساب</span>
+    </button>
+  </nav>
+</div>
+
+<div class="ed-sheet-back" id="ed-sheet-back" hidden></div>
+<section class="ed-sheet ed-pos" id="ed-sheet" hidden aria-label="نقطة البيع">
+  <header class="ed-sheet-head">
+    <button type="button" class="ed-icon ghost" id="ed-sheet-close" aria-label="إغلاق">
+      <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+    <div>
+      <h2>حجز طلب</h2>
+      <p id="ed-sheet-step">اختر زبون ثم المنتج</p>
+    </div>
+  </header>
+  <section class="ed-pos-cust" id="ed-grp-customer">
+    <div class="ed-pos-cust-label">الزبون</div>
+    <div id="ed-cust-picked" class="ed-picked" hidden></div>
+    <div id="ed-cust-pick">
+      <div class="ed-pos-cust-row">
+        <input type="text" inputmode="search" class="ed-input" id="ed-cust-q" placeholder="الاسم أو رقم الهاتف" autocomplete="off">
+        <button type="button" class="ed-pos-new-btn" id="ed-cust-new-toggle">زبون جديد</button>
+      </div>
+      <div class="ed-results" id="ed-cust-results"></div>
+    </div>
+    <button type="button" class="ed-text-btn" id="ed-cust-change" hidden>تغيير</button>
+  </section>
+  <div class="ed-pos-stage">
+    <section class="ed-pos-catalog" id="ed-grp-products">
+      <input type="text" inputmode="search" class="ed-input" id="ed-prod-q" placeholder="ابحث عن منتج…" autocomplete="off">
+      <div class="ed-results" id="ed-prod-results"></div>
+    </section>
+    <aside class="ed-pos-ticket">
+      <div class="ed-pos-ticket-head">
+        <strong>السلة</strong>
+        <span id="ed-cart-count">فارغة</span>
+      </div>
+      <div class="ed-cart" id="ed-cart"></div>
+      <label class="ed-pos-note">
+        <span>ملاحظة</span>
+        <input class="ed-input" id="ed-note" placeholder="توصيل بعد العصر…" maxlength="200">
+      </label>
+    </aside>
+  </div>
+  <div class="ed-newform" id="ed-cust-new" hidden>
+    <div class="ed-newform-head">
+      <strong>زبون جديد</strong>
+      <button type="button" class="ed-text-btn" id="ed-cust-new-cancel">إلغاء</button>
+    </div>
+    <label class="ed-pos-field"><span>اسم الزبون</span><input class="ed-input" id="ed-nc-name" autocomplete="off"></label>
+    <label class="ed-pos-field"><span>رقم الهاتف</span><input class="ed-input" id="ed-nc-phone" inputmode="tel" autocomplete="off"></label>
+    <div class="ed-two">
+      <label class="ed-pos-field">
+        <span>المحافظة</span>
+        <select class="ed-input" id="ed-nc-city">
+          <option value="بغداد">بغداد</option><option value="البصرة">البصرة</option>
+          <option value="نينوى">نينوى</option><option value="أربيل">أربيل</option>
+          <option value="النجف">النجف</option><option value="كربلاء">كربلاء</option>
+          <option value="بابل">بابل</option><option value="ذي قار">ذي قار</option>
+          <option value="الأنبار">الأنبار</option><option value="ديالى">ديالى</option>
+          <option value="كركوك">كركوك</option><option value="واسط">واسط</option>
+          <option value="صلاح الدين">صلاح الدين</option><option value="القادسية">القادسية</option>
+          <option value="ميسان">ميسان</option><option value="المثنى">المثنى</option>
+          <option value="دهوك">دهوك</option><option value="السليمانية">السليمانية</option>
+        </select>
+      </label>
+      <label class="ed-pos-field"><span>العنوان</span><input class="ed-input" id="ed-nc-address"></label>
+    </div>
+    <button type="button" class="ed-primary" id="ed-nc-save">حفظ الزبون</button>
+  </div>
+  <p class="ed-sheet-error" id="ed-sheet-error" hidden></p>
+  <footer class="ed-sheet-foot">
+    <div class="ed-total"><span>المجموع</span><strong id="ed-total">0 د.ع</strong></div>
+    <button type="button" class="ed-primary big" id="ed-confirm" disabled>احجز الطلب</button>
+  </footer>
+</section>
+
+<div class="ed-toast" id="ed-toast" hidden></div>
+<script src="{{ url_for('static', filename='employee_desk/desk.js') }}?v=41"></script>
+</body>
+</html>

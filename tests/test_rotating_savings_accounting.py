@@ -6,6 +6,8 @@ import os
 import sys
 import unittest
 from datetime import date
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -27,25 +29,42 @@ from utils.rotating_savings_service import (
 
 
 class RotatingSavingsAccountingTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        from app import app
+    def setUp(self):
+        from flask import Flask
+        import models  # noqa: F401
+        import models.delivery_agent  # noqa: F401
+        import models.system_settings  # noqa: F401
+        from models.account_transaction import AccountTransaction
+        from utils.treasury_helpers import get_default_cash_account
+        from utils.treasury_schema_guard import ensure_treasury_schema
 
-        cls.app = app
-        cls.app.config["TESTING"] = True
-        cls.app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
-        cls.ctx = cls.app.app_context()
-        cls.ctx.push()
+        self.app = Flask(__name__)
+        isolated = TemporaryDirectory(prefix="finora-rotating-test-")
+        self.addCleanup(isolated.cleanup)
+        database_path = Path(isolated.name) / "accounting.db"
+        self.app.config.update(TESTING=True, SQLALCHEMY_DATABASE_URI=f"sqlite:///{database_path.as_posix()}",
+                               SQLALCHEMY_TRACK_MODIFICATIONS=False)
+        db.init_app(self.app)
+        self.ctx = self.app.app_context()
+        self.ctx.push()
+        self.addCleanup(self.ctx.pop)
+        self.addCleanup(db.engine.dispose)
+        self.addCleanup(db.session.remove)
         db.create_all()
-        initialize_accounts()
         ensure_rotating_savings_schema()
+        ensure_treasury_schema()
+        cash = get_default_cash_account()
+        db.session.commit()
+        initialize_accounts()
         ensure_rotating_savings_gl_accounts()
-
-    @classmethod
-    def tearDownClass(cls):
-        db.session.remove()
-        db.drop_all()
-        cls.ctx.pop()
+        db.session.commit()
+        db.session.add(AccountTransaction(type="deposit", amount=20_000_000,
+                                          note="تمويل اختبار معزول", treasury_account_id=cash.id))
+        cash_gl = Account.query.filter_by(code=ACCOUNT_CODES["CASH"]).one()
+        capital_gl = Account.query.filter_by(code=ACCOUNT_CODES["CAPITAL"]).one()
+        db.session.add(JournalEntry(entry_number="TEST-FUND", debit_account_id=cash_gl.id, credit_account_id=capital_gl.id,
+                                    amount=20_000_000, description="تمويل اختبار معزول"))
+        db.session.commit()
 
     def _cash_balance(self):
         cash = Account.query.filter_by(code=ACCOUNT_CODES["CASH"]).first()

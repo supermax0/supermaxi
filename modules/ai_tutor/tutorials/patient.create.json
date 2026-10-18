@@ -1,0 +1,112 @@
+{
+  "id": "patient.create",
+  "version": 1,
+  "status": "verified",
+  "level": 1,
+  "title_ar": "إضافة مريض",
+  "title_first_ar": "إضافة أول مريض",
+  "title_first_when": {"name": "patients_count", "op": "eq", "value": 0},
+  "description_ar": "تسجيل مريض جديد في سجل المرضى.",
+  "chip_ar": "المرضى",
+  "requires_permissions": ["clinics_patients"],
+  "next_lessons": ["appointment.create"],
+  "curriculum": {"group": "operations", "order": 1},
+  "result": "patient.created",
+  "completion_validator": "patient.created_since_start",
+  "steps": [
+    {
+      "id": "open-patients-menu",
+      "type": "wait_click",
+      "target": {"action": "nav.patients"},
+      "reveal": [{"action": "nav.menu.open"}, {"section": "nav.group.patients"}],
+      "reconcile": {"kind": "ui", "when": {"page": "patients"}},
+      "nav_message_ar": "جاري فتح المرضى",
+      "message_ar": "سجل المرضى كله هنا. اضغط «المرضى»."
+    },
+    {
+      "id": "on-patients-page",
+      "type": "navigate",
+      "route": "/clinics/patients",
+      "page": "patients",
+      "reconcile": {"kind": "ui", "when": {"page": "patients"}},
+      "message_ar": "نفتح الآن صفحة المرضى."
+    },
+    {
+      "id": "click-add-patient",
+      "type": "wait_click",
+      "page": "patients",
+      "target": {"action": "patient.create"},
+      "reconcile": {"kind": "ui", "when": {"visible": {"section": "patient.form"}}},
+      "message_ar": "اضغط «مريض جديد» لفتح نموذج التسجيل."
+    },
+    {
+      "id": "form-open",
+      "type": "wait_modal",
+      "page": "patients",
+      "target": {"section": "patient.form"},
+      "reconcile": {"kind": "ui", "when": {"visible": {"section": "patient.form"}}},
+      "message_ar": "ننتظر ظهور نموذج المريض."
+    },
+    {
+      "id": "name",
+      "type": "wait_input",
+      "page": "patients",
+      "target": {"field": "patient.name"},
+      "condition": {"min_length": 3},
+      "message_ar": "اكتب الاسم الكامل للمريض (3 أحرف على الأقل)."
+    },
+    {
+      "id": "phone",
+      "type": "wait_input",
+      "page": "patients",
+      "target": {"field": "patient.phone"},
+      "condition": {"min_length": 7},
+      "message_ar": "اكتب رقم هاتف المريض. النظام ينبّهك إذا كان الرقم مسجلاً لمريض آخر."
+    },
+    {
+      "id": "gender",
+      "type": "highlight",
+      "page": "patients",
+      "target": {"field": "patient.gender"},
+      "message_ar": "الجنس اختياري. اخترْه إن أردت ثم اضغط «فهمت»."
+    },
+    {
+      "id": "birthdate",
+      "type": "highlight",
+      "page": "patients",
+      "target": {"field": "patient.birthdate"},
+      "message_ar": "تاريخ الميلاد اختياري، ومنه يظهر عمر المريض في السجل. أضفه إن أردت ثم اضغط «فهمت»."
+    },
+    {
+      "id": "more-info",
+      "type": "highlight",
+      "page": "patients",
+      "target": {"field": "patient.allergies"},
+      "message_ar": "العنوان وفصيلة الدم وهاتف الطوارئ والحساسية والملاحظات كلها اختيارية. الحساسية مهمة للطبيب فاكتبها إن كانت معروفة."
+    },
+    {
+      "id": "save",
+      "type": "wait_api_success",
+      "page": "patients",
+      "allow_back": false,
+      "target": {"action": "patient.save"},
+      "match": {"method": "POST", "url": "^/clinics/api/patients$"},
+      "reconcile": {"kind": "backend", "validator": "patient.created_since_start"},
+      "success_ar": "تم تسجيل المريض.",
+      "message_ar": "راجع البيانات ثم اضغط «حفظ»."
+    },
+    {
+      "id": "verify",
+      "type": "wait_state",
+      "allow_back": false,
+      "validator": "patient.created_since_start",
+      "message_ar": "نتأكد الآن من تسجيل المريض في النظام…"
+    },
+    {
+      "id": "done",
+      "type": "complete",
+      "allow_back": false,
+      "message_ar": "تم تسجيل المريض وتأكدنا من ذلك داخل النظام."
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#760019">
+  <title>أكاديمية الموظف | FINORA</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='employee_desk/training/training.css') }}?v=1">
+</head>
+<body>
+  <header class="academy-header">
+    <a class="brand" href="/employee-desk"><span class="brand-mark">ف</span><span><b>FINORA</b><small>أكاديمية الموظف</small></span></a>
+    <span class="header-note">مساحة تتعلّم بيها، على راحتك</span>
+    <a class="back-link" href="/employee-desk">الرجوع للمكتب ↗</a>
+  </header>
+  {% if preview_only %}<p class="preview-notice">معاينة محلية: أسماء الزبائن والمنتجات والأسعار هنا بيانات تدريبية. داخل النظام تُقرأ المنتجات من كتالوج شركتك.</p>{% endif %}
+  <div class="academy-layout">
+    <aside class="course-sidebar" aria-label="مسار التدريب">
+      <p class="eyebrow">خطوتك الأولى ويانا</p>
+      <h2>من أول دخول،<br>لأول حجز.</h2>
+      <p class="sidebar-description">شرح عملي من نفس واجهة مكتبك، بلهجة قريبة وخطوات واضحة.</p>
+      <div class="progress-label"><span>إنجازك بالمسار</span><b id="course-percent">0%</b></div>
+      <progress id="course-progress" max="7" value="0" aria-label="إنجاز مسار التدريب"></progress>
+      <nav id="module-nav" aria-label="الدروس"></nav>
+      <div class="sidebar-foot"><span class="safe-dot"></span>التطبيق هنا تدريبي بالكامل<p>ما يرسل رسائل وما يسجّل حجوزات فعلية.</p></div>
+      <button class="text-button" id="reset-progress" type="button">إعادة تقدّمي من البداية</button>
+    </aside>
+    <main id="main-content">
+      <section class="welcome">
+        <div><p class="eyebrow">أهلاً {{ viewer.name }}، هذا مكان البداية</p><h1>تعلّم الشغل.<br><em>وجرّبه بإيدك.</em></h1><p>افهم المنتج، رد بثقة، واحجز الطلب صح.<br>كل درس بيه شرح وتجربة صغيرة حتى تثبت المعلومة.</p></div>
+        <div class="welcome-stamp" aria-hidden="true"><span>دليل عملي</span><strong>خطوة<br>بخطوة</strong><span>من نفس نظامك ↗</span></div>
+      </section>
+      <div class="lesson-heading"><div><p class="eyebrow" id="module-number"></p><h2 id="module-title"></h2></div><span class="lesson-badge" id="module-kind"></span></div>
+      <p id="load-status" class="notice" role="status">جاري تحميل الدروس…</p>
+      <section id="walkthrough" hidden>
+        <div class="walkthrough-grid">
+          <div class="step-panel">
+            <div class="step-meta"><span id="step-counter"></span><span>صور من الواجهة الفعلية</span></div>
+            <h3 id="step-title" tabindex="-1"></h3><p id="step-description"></p>
+            <div class="task-box"><span class="task-icon">↖</span><div><b>دورك هسّه</b><p id="step-task"></p></div></div>
+            <p class="step-feedback" id="step-feedback" role="status" aria-live="polite"></p>
+            <button class="secondary" id="show-hint" type="button">أحتاج توضيح</button><p class="hint" id="step-hint" hidden></p>
+            <div class="step-navigation"><button class="primary" id="step-next" type="button" disabled>الخطوة الجاية ←</button><button class="secondary" id="step-prev" type="button">→ السابقة</button></div>
+            <p class="caption">الأسماء والرسائل داخل الصور أمثلة تدريبية. العلامة تحدد مكان الضغط بالواجهة الحقيقية.</p>
+          </div>
+          <div class="phone-area"><div class="phone"><div class="phone-screen" id="phone-screen"><img id="step-image" alt="" width="390" height="760"><button id="hotspot" type="button"><span>اضغط هنا</span></button></div></div><button class="text-button" id="zoom-image" type="button">⤢ كبّر الصورة</button></div>
+        </div>
+      </section>
+      <section id="knowledge" hidden>
+        <div class="knowledge-intro"><p>تعلّم على منتجات شركتك وأسعار البيع الحالية. اختَر منتج واقرأ مواصفاته، بعدها اختبر ذاكرتك.</p><span class="source-label">● من كتالوج النظام</span></div>
+        <form id="product-search-form" class="search-row"><label for="product-search">اسم المنتج أو الرمز<input id="product-search" type="search" placeholder="ابحث عن منتج…" maxlength="150"></label><button class="primary" type="submit">بحث</button></form>
+        <p id="product-status" role="status"></p><div class="product-layout"><div id="product-list" class="product-list" aria-label="المنتجات"></div><article class="product-detail" id="product-detail"><p>اختَر منتج من القائمة حتى تتعلّم عليه.</p></article></div>
+        <div id="product-challenge" class="challenge" hidden><h3>تتذكّر سعره؟</h3><p id="price-question"></p><form id="price-form"><label for="price-answer">سعر البيع بالدينار العراقي<input id="price-answer" inputmode="numeric" autocomplete="off" required></label><button class="primary" type="submit">تحقّق من إجابتي</button></form><p id="price-feedback" role="status"></p></div>
+        <p class="caption">نعرض سعر البيع الأساسي المسجل وقت البحث؛ تأكد من السعر النهائي بالطلب ومن أي اختلاف حسب المنطقة أو الاستبدال. المواصفات الناقصة تُراجع ويّا المسؤول.</p>
+      </section>
+      <section id="conversation" hidden>
+        <div class="scenario-card"><span class="eyebrow">موقف من الشغل اليومي</span><h3>الرد الزين يبدأ بمعلومة صحيحة.</h3><p>رحّب بالزبون، جاوب سؤاله من بيانات المنتج، واسأله عن المعلومة الناقصة. لا توعد بتوصيل أو ضمان أو خصم قبل التأكد.</p><div class="customer-message" id="scenario-question"></div><div id="scenario-answers" class="answers"></div><p id="scenario-feedback" role="status"></p><button class="primary" id="scenario-next" type="button" disabled>الموقف الجاي ←</button></div>
+      </section>
+      <section id="practice" hidden>
+        <div class="scenario-card"><span class="eyebrow">تجربة تجمع كل اللي تعلّمته</span><h3>من رسالة زبون إلى حجز مرتب.</h3><p>اختَر منتج من الكتالوج أولاً. استخدم بيانات تدريبية بالتمرين.</p><div class="customer-message" id="practice-message"></div><form id="practice-form"><label for="practice-reply">اكتب ردك للزبون<textarea id="practice-reply" rows="3" maxlength="2000" required placeholder="رحّب، اذكر السعر والمعلومة المؤكدة، واسأل عن التفاصيل…"></textarea></label><div class="form-grid"><label>اسم الزبون<input name="customer" autocomplete="off" required maxlength="100" placeholder="مثال: زبون التدريب"></label><label>رقم هاتف تدريبي<input name="phone" dir="ltr" inputmode="tel" autocomplete="off" required placeholder="07xxxxxxxxx" maxlength="20"></label><label>المحافظة<input name="city" required maxlength="70"></label><label>العنوان وأقرب نقطة دالة<input name="address" required maxlength="200"></label><label>الكمية<input name="quantity" type="number" min="1" max="99" value="1" required></label><label id="practice-color-label" hidden>اللون<select name="color" id="practice-color"></select></label></div><label class="check-label"><input id="practice-confirm" type="checkbox" required>راجعت المنتج والكمية والسعر والعنوان ويّا الزبون</label><button class="primary" type="submit" id="practice-submit">مراجعة الحجز التدريبي</button></form><div id="practice-feedback" role="status"></div><p class="caption">هذا فحص تدريبي للبيانات وتذكير بعناصر الرد، وتقييم أسلوب الكتابة النهائي يكون ويّا المشرف.</p></div>
+      </section>
+      <section class="quiz-card" id="module-quiz" hidden><p class="eyebrow">نثبت المعلومة</p><h3 id="quiz-question"></h3><div id="quiz-answers" class="answers"></div><p id="quiz-feedback" role="status"></p></section>
+      <section class="completion-card" id="module-complete" hidden><span class="completion-icon">✓</span><div><h3>عاشت إيدك، كمّلت هذا الدرس!</h3><p>تكدر ترجعله بأي وقت حتى تراجع الخطوات.</p></div><button class="primary" id="next-module" type="button">الدرس الجاي ←</button></section>
+      <section class="course-finished" id="course-finished" hidden><h2>كمّلت مسارك التدريبي ✓</h2><p>هسّه راجع أول رد وأول حجز ويّا المشرف قبل ما تبدأ الشغل الفعلي.</p><a class="primary" href="/employee-desk">افتح مكتب الموظف ↗</a></section>
+      <p class="storage-note" id="storage-note">تقدّمك محفوظ بهذا المتصفح ولهذا الحساب فقط.</p>
+    </main>
+  </div>
+  <dialog id="image-dialog" aria-label="صورة الشرح مكبّرة"><button class="secondary" id="close-image" type="button">إغلاق ×</button><p id="zoom-caption"></p><div id="zoom-content"></div></dialog>
+  <script id="training-config" type="application/json">{{ {'scope': training_scope, 'lessonsUrl': url_for('static', filename='employee_desk/training/lessons.json'), 'assetRoot': url_for('static', filename='employee_desk/training/')} | tojson }}</script>
+  <script src="{{ url_for('static', filename='employee_desk/training/training.js') }}?v=1" defer></script>
+</body>
+</html>

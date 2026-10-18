@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <title>كشف حساب {{ data.supplier.name }}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: "IBM Plex Sans Arabic", Tahoma, sans-serif; margin: 24px; color: #15282c; font-size: 13px; }
+    h1 { margin: 0 0 4px; font-size: 20px; }
+    .meta { color: #6d8085; margin-bottom: 18px; font-size: 12px; }
+    .balance { padding: 12px; border: 1px solid #dfe7ea; border-radius: 8px; margin-bottom: 16px; display: flex; justify-content: space-between; font-weight: 800; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { border: 1px solid #e1e8eb; padding: 8px; text-align: right; }
+    th { background: #f7f9fa; font-size: 11px; }
+    @media print { body { margin: 12mm; } button { display: none; } }
+  </style>
+</head>
+<body>
+  <button onclick="window.print()" style="margin-bottom:12px;padding:8px 14px;cursor:pointer">طباعة</button>
+  <h1>كشف حساب المورد</h1>
+  <div class="meta">{{ data.supplier.name }} — Finora Clinics</div>
+  <div class="balance"><span>الرصيد المستحق</span><span>{{ "{:,}".format(data.outstanding_balance) }} د.ع</span></div>
+  <table>
+    <thead><tr><th>التاريخ</th><th>المرجع</th><th>مدين</th><th>دائن</th><th>الرصيد</th></tr></thead>
+    <tbody>
+      {% for line in data.lines %}
+      <tr>
+        <td>{{ line.date or '—' }}</td>
+        <td>{{ line.reference }}</td>
+        <td>{{ "{:,}".format(line.debit) if line.debit else '—' }}</td>
+        <td>{{ "{:,}".format(line.credit) if line.credit else '—' }}</td>
+        <td>{{ "{:,}".format(line.balance) }} د.ع</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

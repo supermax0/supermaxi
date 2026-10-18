@@ -21,6 +21,15 @@ def test_draft_purchase_is_not_stock_applied_with_false_flag():
     assert _purchase_stock_applied(purchase) is False
 
 
+def test_in_progress_draft_preserves_explicit_stock_state():
+    assert _purchase_stock_applied(
+        SimpleNamespace(status="draft_editing", stock_applied=True)
+    ) is True
+    assert _purchase_stock_applied(
+        SimpleNamespace(status="draft_editing", stock_applied=False)
+    ) is False
+
+
 def test_purchase_treasury_paid_is_grouped_by_account():
     purchase = SimpleNamespace(
         payments=[

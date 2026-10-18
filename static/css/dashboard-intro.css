@@ -1,0 +1,162 @@
+.finora-dashboard-intro {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: clamp(18px, 4vw, 56px);
+  box-sizing: border-box;
+  background: radial-gradient(
+    ellipse at center,
+    #d9dbdc 0%,
+    #ced0d1 38%,
+    #c3c4c5 68%,
+    #b9babb 100%
+  );
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 480ms ease, visibility 480ms ease;
+}
+
+.finora-dashboard-intro.is-leaving {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.finora-dashboard-intro__stage {
+  position: relative;
+  width: min(74vw, 880px, 132vh);
+  aspect-ratio: 16 / 9;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.finora-dashboard-intro__video {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  object-position: center;
+  border-radius: 0;
+  background: transparent;
+  -webkit-mask-image: radial-gradient(
+    ellipse at center,
+    #000 42%,
+    rgba(0, 0, 0, 0.96) 50%,
+    rgba(0, 0, 0, 0.66) 62%,
+    rgba(0, 0, 0, 0.28) 72%,
+    transparent 82%
+  );
+  mask-image: radial-gradient(
+    ellipse at center,
+    #000 42%,
+    rgba(0, 0, 0, 0.96) 50%,
+    rgba(0, 0, 0, 0.66) 62%,
+    rgba(0, 0, 0, 0.28) 72%,
+    transparent 82%
+  );
+}
+
+.finora-dashboard-intro__sound {
+  position: absolute;
+  left: 50%;
+  bottom: -58px;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: #172033;
+  box-shadow: none;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition: transform 160ms ease, color 160ms ease;
+}
+
+.finora-dashboard-intro__sound[hidden] {
+  display: none;
+}
+
+.finora-dashboard-intro__sound:hover {
+  transform: translateX(-50%) translateY(-2px);
+  background: transparent;
+  color: #075fae;
+  box-shadow: none;
+}
+
+.finora-dashboard-intro__sound:focus-visible {
+  outline: 3px solid rgba(37, 99, 235, 0.28);
+  outline-offset: 3px;
+}
+
+.finora-dashboard-intro__sound-icon {
+  line-height: 1;
+}
+
+html.finora-dashboard-intro-active,
+html.finora-dashboard-intro-active body {
+  overflow: hidden !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .finora-dashboard-intro {
+    transition-duration: 160ms;
+  }
+}
+
+@media (max-width: 1024px) {
+  .finora-dashboard-intro__stage {
+    width: min(84vw, 760px, 132vh);
+  }
+}
+
+@media (max-width: 600px) {
+  .finora-dashboard-intro {
+    padding: 14px;
+  }
+
+  .finora-dashboard-intro__stage {
+    width: min(94vw, 560px, 136vh);
+    border-radius: 0;
+    box-shadow: none;
+  }
+
+  .finora-dashboard-intro__sound {
+    min-height: 40px;
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+}
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .finora-dashboard-intro {
+    padding: 10px;
+  }
+
+  .finora-dashboard-intro__stage {
+    width: min(78vw, 720px, 142vh);
+    border-radius: 0;
+  }
+
+  .finora-dashboard-intro__sound {
+    bottom: 8px;
+    min-height: 36px;
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+}

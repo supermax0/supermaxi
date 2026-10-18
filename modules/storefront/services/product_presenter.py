@@ -1,11 +1,37 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import datetime, timedelta, timezone
 
-from flask import url_for
+from flask import g, url_for
 
 from models.product import Product
+from modules.storefront.services.category_normalize import merge_washer_category
+from utils.product_color_service import colors_for_product_dict
+from utils.trade_in_service import product_sale_options
+
+
+def iqd_per_usd():
+    cached = getattr(g, "iqd_per_usd", None)
+    if cached is not None:
+        return cached
+    from utils.supplier_exchange_rate import get_supplier_exchange_rate
+
+    rate = get_supplier_exchange_rate()
+    g.iqd_per_usd = rate
+    return rate
+
+
+def usd_from_iqd(amount) -> float:
+    try:
+        iqd = int(amount or 0)
+    except (TypeError, ValueError):
+        return 0.0
+    rate = float(iqd_per_usd() or 0)
+    if iqd <= 0 or rate <= 0:
+        return 0.0
+    return round(iqd / rate, 2)
 
 
 def product_meta(product: Product) -> dict:
@@ -76,6 +102,47 @@ def product_specs(meta: dict) -> list[dict[str, str]]:
     return specs
 
 
+def description_specs(text: str | None) -> dict:
+    """Parse the same free-form copy used by the installment product page."""
+    raw = str(text or "").strip()
+    if not raw:
+        return {"rows": [], "features": [], "paragraph": ""}
+
+    chunks = [
+        part.strip(" \t\r\n-–—•·.!؟")
+        for part in re.split(
+            r"\s*(?:[•●▪◦·]+|[؛;]+|\r?\n+|(?<=[.!؟])\s+)\s*",
+            raw,
+        )
+        if part.strip(" \t\r\n-–—•·.!؟")
+    ]
+    if len(chunks) <= 1 and len(raw) > 180 and not re.search(r"[:：＝=]", raw):
+        return {"rows": [], "features": [], "paragraph": raw}
+
+    rows: list[dict[str, str]] = []
+    features: list[str] = []
+    for chunk in chunks:
+        matched = re.split(r"\s*[:：＝=]\s*", chunk, maxsplit=1)
+        if (
+            len(matched) == 2
+            and matched[0].strip()
+            and matched[1].strip()
+            and len(matched[0].strip()) <= 48
+        ):
+            rows.append({"label": matched[0].strip(), "value": matched[1].strip()})
+            continue
+
+        dashed = [part.strip() for part in re.split(r"\s+[–—-]\s+", chunk) if part.strip()]
+        if len(dashed) > 1:
+            features.extend(dashed)
+        else:
+            features.append(chunk)
+
+    rows = list({(row["label"], row["value"]): row for row in rows}.values())
+    features = list(dict.fromkeys(feature for feature in features if feature))
+    return {"rows": rows, "features": features, "paragraph": ""}
+
+
 def product_badge(meta: dict) -> str:
     return str(meta.get("store_badge") or meta.get("category") or "").strip()
 
@@ -120,15 +187,58 @@ def product_is_new(product: Product, badge: str) -> bool:
     return (now - created) <= timedelta(days=30)
 
 
-def product_card(product: Product, shop_slug: str) -> dict:
+def product_card(product: Product, shop_slug: str, *, catalog_item=None) -> dict:
     meta = product_meta(product)
     gallery = product_gallery(product, meta)
     specs = product_specs(meta)
+    detail_text = str(product.description or "").strip()
+    summary_text = detail_text
+    if catalog_item is not None:
+        detail_text = str(
+            catalog_item.full_description
+            or catalog_item.short_description
+            or product.description
+            or ""
+        ).strip()
+        summary_text = str(
+            catalog_item.short_description
+            or catalog_item.full_description
+            or product.description
+            or ""
+        ).strip()
+    parsed_description = description_specs(detail_text)
+    if not specs:
+        specs = parsed_description["rows"]
+    features = parsed_description["features"]
     badge = product_badge(meta)
-    price = int(product.sale_price or 0)
+    if catalog_item is not None:
+        media_urls = [
+            url_for("static", filename=media.file_path, v=media.size_bytes)
+            for media in sorted(
+                (media for media in catalog_item.media if media.media_type == "image"),
+                key=lambda media: (not media.is_main, media.sort_order, media.id),
+            )
+        ]
+        gallery = _unique_strings([*gallery, *media_urls])[:5]
+    price = int(
+        catalog_item.cash_price
+        if catalog_item is not None
+        else (product.sale_price or 0)
+    )
     old_price = product_old_price(meta)
     discount_percent = product_discount_percent(price, old_price)
-    category = product_category(meta)
+    product_name = (
+        str(catalog_item.title or product.name).strip()
+        if catalog_item is not None
+        else str(product.name or "").strip()
+    )
+    category = merge_washer_category(
+        str(catalog_item.category or "").strip()
+        if catalog_item is not None
+        else product_category(meta),
+        product_name,
+    )
+    badge = merge_washer_category(badge, product_name) or category
     brand = product_brand(meta)
     model = str(meta.get("model") or "").strip()
     sku = str(product.sku or "").strip()
@@ -137,28 +247,60 @@ def product_card(product: Product, shop_slug: str) -> dict:
         detail = url_for("storefront.product_detail", tenant_slug=shop_slug, product_id=product.id)
     else:
         detail = url_for("storefront.product_detail_legacy", product_id=product.id)
-    return {
+    stock = max(0, int(product.quantity or 0))
+    is_purchasable = bool(
+        product.active and (catalog_item is not None or product.store_visible)
+    )
+    card = {
         "id": product.id,
-        "name": product.name,
+        "name": product_name,
         "price": price,
         "old_price": old_price,
+        "price_currency": "USD" if str(meta.get("price_currency") or "").upper() == "USD" else "IQD",
+        "currency_label": "$" if str(meta.get("price_currency") or "").upper() == "USD" else "د.ع",
+        "price_iqd": int(round(price * float(iqd_per_usd()))) if str(meta.get("price_currency") or "").upper() == "USD" else price,
         "discount_percent": discount_percent,
         "category": category,
         "brand": brand,
         "model": model,
         "sku": sku,
         "is_new": is_new,
-        "description": str(product.description or "").strip(),
+        "description": summary_text,
+        "long_description": parsed_description["paragraph"],
+        "features": features,
         "image_url": gallery[0] if gallery else "",
         "gallery": gallery,
         "video_url": str(meta.get("video_url") or "").strip(),
         "specs": specs,
         "short_specs": " | ".join(f"{item['label']}: {item['value']}" for item in specs[:3]),
         "badge": badge,
-        "stock": int(product.quantity or 0),
-        "is_available": bool(product.active and product.store_visible and int(product.quantity or 0) > 0),
+        "stock": stock,
+        "is_available": bool(is_purchasable and stock > 0),
+        "is_reservation": bool(is_purchasable and stock <= 0),
         "url": detail,
     }
+    if catalog_item is not None:
+        card.update(
+            {
+                "installment_product_id": catalog_item.id,
+                "installment_slug": catalog_item.slug,
+                "featured": bool(catalog_item.featured),
+                "badge": category,
+            }
+        )
+    card.update(colors_for_product_dict(product))
+    if card.get("has_colors"):
+        card["stock"] = sum(int(row.get("available_qty", row.get("qty", 0)) or 0) for row in card["colors"])
+        card["is_available"] = bool(is_purchasable and card["stock"] > 0)
+        # Keep the existing reservation mode only for an entirely empty product.
+        card["is_reservation"] = bool(card["is_reservation"] and card["colors"])
+    if not card.get("image_url"):
+        photo = next((color.get("image_url") for color in card.get("colors", []) if color.get("image_url")), "")
+        if photo:
+            card["image_url"] = photo
+            card["gallery"] = [photo]
+    card.update(product_sale_options(product))
+    return card
 
 
 def build_hero_slides(cards: list[dict], store_design: dict, *, limit: int = 4) -> list[dict]:

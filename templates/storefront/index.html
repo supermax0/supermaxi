@@ -1,46 +1,153 @@
 {% extends "storefront/luxury_layout.html" %}
-{% block title %}{{ store_design.store_name }} - المتجر{% endblock %}
+{% block title %}{{ store_design.store_name }} | متجر النقد{% endblock %}
 {% block content %}
-{% include "storefront/partials/luxury/hero.html" %}
-{% include "storefront/partials/luxury/toolbar.html" %}
-{% include "storefront/partials/luxury/states.html" %}
+<div class="store-shell store-home cash-store-home">
+  {% if store_design.hero_mode in ['manual', 'both'] and hero_slides %}
+  {% include "storefront/partials/luxury/hero.html" %}
+  {% endif %}
+  {% if store_design.hero_mode != 'manual' or not hero_slides %}
+  <section class="cash-promo-hero" aria-labelledby="cashPromoTitle">
+    <i class="cash-promo-hero__corner cash-promo-hero__corner--top" aria-hidden="true"></i>
+    <i class="cash-promo-hero__corner cash-promo-hero__corner--bottom" aria-hidden="true"></i>
+    <span class="cash-promo-confetti cash-promo-confetti--one" aria-hidden="true"></span>
+    <span class="cash-promo-confetti cash-promo-confetti--two" aria-hidden="true"></span>
+    <span class="cash-promo-confetti cash-promo-confetti--three" aria-hidden="true"></span>
 
-<div id="luxProducts">
-{% for section in product_sections %}
-<section class="lux-products-section" id="luxSection-{{ section.id }}" data-section-id="{{ section.id }}" aria-label="{{ section.title }}">
-  <div class="lux-section-head">
-    <h2>{{ section.title }}</h2>
-    <span class="lux-count lux-section-count" data-section-count="{{ section.id }}">{{ section.products|length }} منتج</span>
-  </div>
-  <div class="lux-grid lux-section-grid lux-grid--cols-{{ section.grid_columns }}" id="luxGrid-{{ section.id }}" data-view="grid" data-section="{{ section.id }}">
-    {% for product in section.products %}
-    {% with card_template=section.card_template, card_size=section.card_size %}
-    {% include "storefront/partials/luxury/product_card.html" %}
-    {% endwith %}
-    {% endfor %}
-  </div>
-</section>
-{% endfor %}
+    <div class="cash-promo-hero__content">
+      <span class="cash-promo-hero__eyebrow">عروض {{ store_design.store_name }} المعتمدة</span>
+      {% set _hero_title = (store_design.hero_title or '')|trim %}
+      {% set _hero_sub = (store_design.hero_subtitle or '')|trim %}
+      {% if _hero_title and _hero_title != 'واجهة متجر احترافية' %}
+      <h1 id="cashPromoTitle">{{ _hero_title }}</h1>
+      {% else %}
+      <h1 id="cashPromoTitle">أسعار أقوى على<br><em>الأجهزة المنزلية والإلكترونيات</em></h1>
+      {% endif %}
+      {% if _hero_sub and _hero_sub != 'ابحث، فلتر، واختر منتجاتك بسهولة. كل عملية شراء تمر عبر سلة متكاملة ثم Checkout بالدفع عند الاستلام.' %}
+      <p class="cash-promo-hero__lead">{{ _hero_sub }}</p>
+      {% endif %}
+
+      <nav class="cash-promo-categories" aria-label="أقسام العروض السريعة">
+        {% for badge in badges[:4] %}
+        <a href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, badge=badge) }}">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M8 22h8M12 19v3"></path></svg>
+          <span>{{ badge }}</span>
+        </a>
+        {% else %}
+        <a href="#products"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M8 22h8M12 19v3"></path></svg><span>شاشات</span></a>
+        <a href="#products"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM4 10h16M8 7h.01"></path></svg><span>أجهزة منزلية</span></a>
+        {% endfor %}
+      </nav>
+
+      <div class="cash-promo-benefits">
+        <article>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="m8 12 2.5 2.5L16 9"></path></svg>
+          <div><strong>فحص قبل الدفع</strong><small>استلم وأنت مطمئن</small></div>
+        </article>
+        <article>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 20 7v5c0 5-3.4 8-8 9-4.6-1-8-4-8-9V7l8-4Z"></path><path d="m9 12 2 2 4-4"></path></svg>
+          <div><strong>ضمان معتمد</strong><small>على جميع المنتجات</small></div>
+        </article>
+        <article>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v10H3zM14 10h4l3 3v3h-7z"></path><circle cx="7" cy="18" r="2"></circle><circle cx="18" cy="18" r="2"></circle></svg>
+          <div><strong>توصيل سريع</strong><small>إلى جميع المحافظات</small></div>
+        </article>
+      </div>
+
+      <div class="cash-promo-actions">
+        <a class="cash-promo-button cash-promo-button--primary" href="{{ url_for('storefront.offers_page', tenant_slug=shop_tenant_slug) }}">تسوّق العروض الآن <span>‹</span></a>
+        <a class="cash-promo-button cash-promo-button--secondary" href="#products">عرض جميع المنتجات</a>
+      </div>
+    </div>
+
+    <div class="cash-promo-hero__visual">
+      <div class="cash-promo-seal" aria-label="أقوى العروض"><span>أقوى</span><strong>العروض</strong></div>
+      <div class="cash-promo-products">
+        {% for product in hero_products[:3] %}
+        <a class="cash-promo-product cash-promo-product--{{ loop.index }}" href="{{ product.url }}" aria-label="عرض {{ product.name }}">
+          <img src="{{ product.image_url }}" alt="{{ product.name }}" decoding="async">
+        </a>
+        {% endfor %}
+      </div>
+      <div class="cash-promo-stage" aria-hidden="true"><i></i></div>
+      <div class="cash-promo-dots" aria-hidden="true"><b></b><i></i><i></i><i></i></div>
+    </div>
+  </section>
+  {% endif %}
+
+  <section class="store-categories" id="categories" aria-label="أقسام المتجر">
+    {% if badges %}
+      <div class="store-categories__track" style="--category-roll-duration: {{ 38 + (badges|length * 4) }}s">
+        {% for copy in range(2) %}
+          <div class="store-categories__group" {% if copy %}aria-hidden="true"{% endif %}>
+            {% for badge in badges %}
+              {% set preview = category_previews.get(badge) %}
+              <a class="store-category-card" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, badge=badge) }}" {% if copy %}tabindex="-1"{% endif %}>
+                <div><strong>{{ badge }}</strong><small>عرض المزيد <span>‹</span></small></div>
+                {% if preview and preview.image_url %}<img src="{{ preview.image_url }}" alt="{{ badge }}" loading="lazy" decoding="async">
+                {% else %}<span class="store-category-placeholder"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9" r="1.5"></circle><path d="m4 17 4.5-4.5 3 3 2-2 6.5 6.5"></path></svg></span>{% endif %}
+              </a>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="store-categories__empty">ستظهر أقسام المنتجات هنا بعد نشرها.</div>
+    {% endif %}
+  </section>
+
+  {% include "storefront/partials/shared/trust.html" %}
+
+  <section class="store-products-section" id="products">
+    <div class="store-section-title">
+      <div class="store-section-title__copy">
+        <span>جاهزة للطلب الفوري</span>
+        <h2>{{ 'نتائج البحث' if filters.q or filters.badge else 'منتجات مميزة' }}</h2>
+        <p>منتجات أصلية، أسعار واضحة، وتجربة شراء مصممة للمتابعة من الهاتف والتابلت واللابتوب.</p>
+      </div>
+      <div class="store-section-title__aside">
+        <b>{{ total_products }}</b><span>منتج متاح</span>
+        {% if filters.q or filters.badge %}<a href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">مسح التصفية</a>{% endif %}
+      </div>
+    </div>
+    <div class="store-product-grid">
+      {% for product in page_products %}
+        {% include "storefront/partials/shared/product_card.html" %}
+      {% else %}
+        <div class="store-empty"><span>⌕</span><h3>لا توجد منتجات مطابقة</h3><p>جرّب البحث باسم مختلف أو تصفح كل المنتجات.</p><a href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">عرض الكل</a></div>
+      {% endfor %}
+    </div>
+    {% if pagination.pages > 1 %}
+    <nav class="store-pager" aria-label="صفحات المنتجات">
+      <p class="store-pager__status">عرض {{ pagination.from }}–{{ pagination.to }} من {{ pagination.total }} منتج</p>
+      {% if pagination.has_prev %}
+      <a class="store-pager__nav" href="{{ pagination.prev_href }}" rel="prev">السابق</a>
+      {% else %}
+      <span class="store-pager__nav is-disabled">السابق</span>
+      {% endif %}
+      {% for item in pagination.window %}
+        {% if item.ellipsis %}
+        <span class="store-pager__gap" aria-hidden="true">…</span>
+        {% elif item.current %}
+        <span class="store-pager__page is-current" aria-current="page">{{ item.page }}</span>
+        {% else %}
+        <a class="store-pager__page" href="{{ item.href }}">{{ item.page }}</a>
+        {% endif %}
+      {% endfor %}
+      {% if pagination.has_next %}
+      <a class="store-pager__nav" href="{{ pagination.next_href }}" rel="next">التالي</a>
+      {% else %}
+      <span class="store-pager__nav is-disabled">التالي</span>
+      {% endif %}
+    </nav>
+    {% endif %}
+  </section>
+
+  <section class="store-offers" id="offers">
+    <article><div class="store-offer-icon">COD</div><div><strong>الدفع عند الاستلام</strong><small>لا تدفع قبل استلام طلبك</small><a href="#products">تسوّق الآن</a></div></article>
+    <article><div class="store-offer-icon">✓</div><div><strong>فحص قبل الدفع</strong><small>تأكد من المنتج عند الوصول</small><a href="#products">شاهد المنتجات</a></div></article>
+    <article><div class="store-offer-icon">24</div><div><strong>طلب سريع</strong><small>سلة بسيطة ومتابعة واضحة للطلب</small><a href="#products">ابدأ التسوق</a></div></article>
+    <article class="store-offers__featured"><div><strong>تجربة متجر جديدة لكل الأجهزة</strong><small>شبكة كثيفة على اللابتوب، ترتيب مريح على التابلت، وبطاقات سريعة على الهاتف</small><a href="#products">استعرض جميع المنتجات</a></div><span>◆</span></article>
+  </section>
 </div>
-
-<script id="sfProductsData" type="application/json">{{ products|tojson }}</script>
-<script type="text/template" id="sfLuxuryCardTpl">
-{% raw %}
-<article class="lux-product-card lux-card-tpl-classic" data-product-id="{{ID}}" data-lux-category="{{CATEGORY}}" data-lux-price="{{PRICE}}">
-  <button type="button" class="lux-wish-btn" title="المفضلة — قريباً" disabled>&#9825;</button>
-  <a class="lux-product-media" href="{{URL}}">
-    {{IMAGE_BLOCK}}
-    <div class="lux-badges">{{BADGES}}</div>
-  </a>
-  <div class="lux-product-body">
-    <a class="lux-product-title" href="{{URL}}">{{NAME}}</a>
-    {{META_LINE}}
-    <div class="lux-product-prices">{{PRICE_BLOCK}}</div>
-    <button type="button" class="lux-btn-cart" data-sf-add-cart="{{ID}}" {{DISABLED}}>أضف إلى السلة</button>
-  </div>
-</article>
-{% endraw %}
-</script>
-
-{% include "storefront/partials/luxury/benefits.html" %}
+<script id="sfProductsData" type="application/json">[]</script>
 {% endblock %}

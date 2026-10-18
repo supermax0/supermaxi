@@ -1,0 +1,463 @@
+/* ======================================================
+   Finora system-wide dark mode — remaining modules
+   Loaded after design-refresh.css
+====================================================== */
+
+/* ---------- Installments (admin) ---------- */
+:root[data-theme="dark"] {
+  --ins-navy: #e8eef8;
+  --ins-navy-2: #cbd5e1;
+  --ins-blue: #60a5fa;
+  --ins-blue-soft: rgba(59, 130, 246, 0.16);
+  --ins-emerald: #34d399;
+  --ins-emerald-dark: #10b981;
+  --ins-gold: #fbbf24;
+  --ins-bg: #0b1220;
+  --ins-card: #121a2a;
+  --ins-border: rgba(148, 163, 184, 0.18);
+  --ins-text: #e8eef8;
+  --ins-muted: #8b9bb0;
+  --ins-danger: #f87171;
+  --ins-shadow: 0 12px 34px rgba(0, 0, 0, 0.32);
+}
+
+:root[data-theme="dark"] .ins-module-bar {
+  background: #121a2a !important;
+  border-color: var(--ins-border) !important;
+  box-shadow: none !important;
+}
+
+:root[data-theme="dark"] .ins-nav a { color: #a8b6c9; }
+:root[data-theme="dark"] .ins-nav a:hover {
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.12);
+}
+:root[data-theme="dark"] .ins-nav a.active {
+  color: #fff;
+  background: #1e3a5f;
+  box-shadow: none;
+}
+
+:root[data-theme="dark"] .ins-store-preview {
+  background: rgba(16, 185, 129, 0.14) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  color: #6ee7b7 !important;
+}
+
+:root[data-theme="dark"] .ins-wrap .card,
+:root[data-theme="dark"] .ins-wrap .ins-card,
+:root[data-theme="dark"] .ins-wrap table,
+:root[data-theme="dark"] .ins-wrap .panel,
+:root[data-theme="dark"] .ins-wrap .box {
+  background: var(--ins-card) !important;
+  color: var(--ins-text) !important;
+  border-color: var(--ins-border) !important;
+}
+
+:root[data-theme="dark"] .ins-wrap input,
+:root[data-theme="dark"] .ins-wrap select,
+:root[data-theme="dark"] .ins-wrap textarea {
+  background: #0d1523 !important;
+  color: var(--ins-text) !important;
+  border-color: var(--ins-border) !important;
+}
+
+:root[data-theme="dark"] .ins-wrap th {
+  background: #182338 !important;
+  color: #a8b6c9 !important;
+}
+
+:root[data-theme="dark"] .ins-wrap td {
+  color: var(--ins-text) !important;
+  border-color: var(--ins-border) !important;
+}
+
+/* ---------- AI Sales Inbox ---------- */
+:root[data-theme="dark"] .sales-ai-app,
+:root[data-theme="dark"] .sales-ai-settings,
+:root[data-theme="dark"] .sales-ai-overlay,
+:root[data-theme="dark"] .sales-ai-message-actions {
+  --ai-bg: #0b1220;
+  --ai-surface: #121a2a;
+  --ai-surface-soft: #182338;
+  --ai-surface-hover: #1e2a40;
+  --ai-border: rgba(148, 163, 184, 0.18);
+  --ai-border-strong: rgba(148, 163, 184, 0.28);
+  --ai-text: #e8eef8;
+  --ai-muted: #8b9bb0;
+  --ai-faint: #7a8ba3;
+  --ai-primary: #60a5fa;
+  --ai-primary-hover: #3b82f6;
+  --ai-primary-soft: rgba(59, 130, 246, 0.16);
+  --ai-green: #34d399;
+  --ai-green-soft: rgba(16, 185, 129, 0.16);
+  --ai-amber: #fbbf24;
+  --ai-amber-soft: rgba(245, 158, 11, 0.16);
+  --ai-red: #f87171;
+  --ai-red-soft: rgba(239, 68, 68, 0.16);
+  --ai-purple: #a78bfa;
+  --ai-purple-soft: rgba(139, 92, 246, 0.16);
+  --ai-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  color: var(--ai-text);
+}
+
+:root[data-theme="dark"] .sales-ai-app,
+:root[data-theme="dark"] .sales-ai-settings {
+  background: var(--ai-bg) !important;
+}
+
+/* ---------- AI Sales Comments ---------- */
+:root[data-theme="dark"] .sales-comments-page {
+  background: var(--bg-page) !important;
+}
+
+:root[data-theme="dark"] .comments-app {
+  --blue: #60a5fa;
+  --line: rgba(148, 163, 184, 0.18);
+  --muted: #8b9bb0;
+  --surface: #121a2a;
+  color: #e8eef8;
+}
+
+:root[data-theme="dark"] .comments-title > span {
+  background: rgba(59, 130, 246, 0.16);
+  color: #93c5fd;
+}
+
+:root[data-theme="dark"] .comments-page-select select,
+:root[data-theme="dark"] .comments-field select,
+:root[data-theme="dark"] .comments-field input,
+:root[data-theme="dark"] .comments-btn.secondary,
+:root[data-theme="dark"] .comments-meta-help,
+:root[data-theme="dark"] .comments-policy,
+:root[data-theme="dark"] .comments-workspace,
+:root[data-theme="dark"] .comments-switch-row {
+  background: #182338 !important;
+  color: #e8eef8 !important;
+  border-color: rgba(148, 163, 184, 0.18) !important;
+}
+
+:root[data-theme="dark"] .comments-meta-help-body,
+:root[data-theme="dark"] .comments-field {
+  color: #a8b6c9 !important;
+}
+
+:root[data-theme="dark"] .comments-meta-help-body code {
+  background: rgba(59, 130, 246, 0.16);
+  color: #93c5fd;
+}
+
+/* ---------- Reports (legacy cards) ---------- */
+:root[data-theme="dark"] .cards .card,
+:root[data-theme="dark"] .card.green,
+:root[data-theme="dark"] .card.blue,
+:root[data-theme="dark"] .card.orange,
+:root[data-theme="dark"] .card.red,
+:root[data-theme="dark"] .card.dark {
+  background: #121a2a !important;
+  color: #e8eef8 !important;
+  box-shadow: none !important;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+:root[data-theme="dark"] .card.green { border-color: rgba(52, 211, 153, 0.35) !important; }
+:root[data-theme="dark"] .card.blue { border-color: rgba(96, 165, 250, 0.35) !important; }
+:root[data-theme="dark"] .card.orange { border-color: rgba(251, 191, 36, 0.35) !important; }
+:root[data-theme="dark"] .card.red { border-color: rgba(248, 113, 113, 0.35) !important; }
+
+:root[data-theme="dark"] .modal-box {
+  background: #121a2a !important;
+  color: #e8eef8 !important;
+}
+
+:root[data-theme="dark"] .report-card {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text-main) !important;
+  box-shadow: none !important;
+}
+
+:root[data-theme="dark"] .report-card .card-label,
+:root[data-theme="dark"] .report-card .card-hint {
+  color: var(--text-muted) !important;
+}
+
+:root[data-theme="dark"] .report-card .card-value {
+  color: var(--text-main) !important;
+}
+
+/* ---------- Purchases color picker ---------- */
+:root[data-theme="dark"] .pur-color-card {
+  background: #121a2a !important;
+  color: #e8eef8;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35);
+}
+
+:root[data-theme="dark"] .pur-color-btn {
+  background: #182338 !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+  color: #e8eef8 !important;
+}
+
+/* ---------- DataTables (global CDN) ---------- */
+:root[data-theme="dark"] table.dataTable,
+:root[data-theme="dark"] .dataTables_wrapper {
+  color: var(--text-main) !important;
+}
+
+:root[data-theme="dark"] table.dataTable thead th,
+:root[data-theme="dark"] table.dataTable thead td {
+  background: var(--surface-soft) !important;
+  color: var(--text-secondary) !important;
+  border-color: var(--border) !important;
+}
+
+:root[data-theme="dark"] table.dataTable tbody tr {
+  background: var(--surface) !important;
+}
+
+:root[data-theme="dark"] table.dataTable tbody tr.odd {
+  background: #111827 !important;
+}
+
+:root[data-theme="dark"] table.dataTable tbody td {
+  color: var(--text-main) !important;
+  border-color: var(--border) !important;
+}
+
+:root[data-theme="dark"] table.dataTable.stripe tbody tr.odd,
+:root[data-theme="dark"] table.dataTable.display tbody tr.odd {
+  background: #111827 !important;
+}
+
+:root[data-theme="dark"] table.dataTable.hover tbody tr:hover,
+:root[data-theme="dark"] table.dataTable.display tbody tr:hover {
+  background: var(--surface-hover) !important;
+}
+
+:root[data-theme="dark"] .dataTables_wrapper .dataTables_length,
+:root[data-theme="dark"] .dataTables_wrapper .dataTables_filter,
+:root[data-theme="dark"] .dataTables_wrapper .dataTables_info,
+:root[data-theme="dark"] .dataTables_wrapper .dataTables_paginate {
+  color: var(--text-secondary) !important;
+}
+
+:root[data-theme="dark"] .dataTables_wrapper .dataTables_filter input,
+:root[data-theme="dark"] .dataTables_wrapper .dataTables_length select {
+  background: var(--surface-soft) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--border) !important;
+}
+
+:root[data-theme="dark"] .dataTables_wrapper .dataTables_paginate .paginate_button {
+  background: var(--surface-soft) !important;
+  color: var(--text-main) !important;
+  border: 1px solid var(--border) !important;
+}
+
+:root[data-theme="dark"] .dataTables_wrapper .dataTables_paginate .paginate_button.current,
+:root[data-theme="dark"] .dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+  background: rgba(59, 130, 246, 0.2) !important;
+  color: #93c5fd !important;
+  border-color: rgba(96, 165, 250, 0.4) !important;
+}
+
+/* ---------- Select2 / common widgets ---------- */
+:root[data-theme="dark"] .select2-container--default .select2-selection--single,
+:root[data-theme="dark"] .select2-container--default .select2-selection--multiple {
+  background: var(--surface-soft) !important;
+  border-color: var(--border) !important;
+  color: var(--text-main) !important;
+}
+
+:root[data-theme="dark"] .select2-dropdown {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text-main) !important;
+}
+
+:root[data-theme="dark"] .select2-container--default .select2-results__option--highlighted[aria-selected] {
+  background: rgba(59, 130, 246, 0.2) !important;
+  color: #e8eef8 !important;
+}
+
+/* ---------- Flatpickr / date widgets ---------- */
+:root[data-theme="dark"] .flatpickr-calendar {
+  background: #121a2a !important;
+  border-color: rgba(148, 163, 184, 0.22) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45) !important;
+}
+
+:root[data-theme="dark"] .flatpickr-months,
+:root[data-theme="dark"] .flatpickr-weekdays,
+:root[data-theme="dark"] .flatpickr-current-month,
+:root[data-theme="dark"] .flatpickr-day {
+  color: #e8eef8 !important;
+}
+
+:root[data-theme="dark"] .flatpickr-day:hover,
+:root[data-theme="dark"] .flatpickr-day.selected {
+  background: rgba(59, 130, 246, 0.25) !important;
+  border-color: #60a5fa !important;
+}
+
+/* ---------- Chart.js / canvas cards ---------- */
+:root[data-theme="dark"] .chart-card,
+:root[data-theme="dark"] .chart-container,
+:root[data-theme="dark"] .finora-wide-card,
+:root[data-theme="dark"] .finora-stat-card,
+:root[data-theme="dark"] .finora-status-card {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text-main) !important;
+}
+
+/* ---------- Settings extras ---------- */
+:root[data-theme="dark"] .settings-subnav a,
+:root[data-theme="dark"] .settings-subnav button,
+:root[data-theme="dark"] .settings-nav-pill {
+  background: var(--surface-soft);
+  color: var(--text-secondary);
+  border-color: var(--border);
+}
+
+:root[data-theme="dark"] .settings-subnav a.active,
+:root[data-theme="dark"] .settings-subnav button.active,
+:root[data-theme="dark"] .settings-nav-pill.active {
+  background: rgba(59, 130, 246, 0.16);
+  color: #93c5fd;
+  border-color: rgba(96, 165, 250, 0.35);
+}
+
+/* ---------- Rotating savings / customer credit extras ---------- */
+:root[data-theme="dark"] .rs-nav a,
+:root[data-theme="dark"] .cc-stat,
+:root[data-theme="dark"] .cc-card,
+:root[data-theme="dark"] .cc-panel {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text-main) !important;
+}
+
+:root[data-theme="dark"] .rs-nav a:hover,
+:root[data-theme="dark"] .rs-nav a.active {
+  background: rgba(59, 130, 246, 0.14) !important;
+  color: #93c5fd !important;
+  border-color: rgba(96, 165, 250, 0.3) !important;
+}
+
+/* ---------- Mobile app admin (ensure cards stay visible) ---------- */
+:root[data-theme="dark"] .ma-card,
+:root[data-theme="dark"] .ma-stat,
+:root[data-theme="dark"] .ma-flag-row,
+:root[data-theme="dark"] .ma-upload-card,
+:root[data-theme="dark"] .ma-videos-list-card,
+:root[data-theme="dark"] .ma-table-wrap,
+:root[data-theme="dark"] .ma-subnav-wrap {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text-main) !important;
+  box-shadow: none !important;
+}
+
+:root[data-theme="dark"] .ma-page-title,
+:root[data-theme="dark"] .ma-stat-value,
+:root[data-theme="dark"] .ma-card-title,
+:root[data-theme="dark"] .ma-tile-name,
+:root[data-theme="dark"] .ma-videos-title,
+:root[data-theme="dark"] .ma-table-title {
+  color: var(--text-main) !important;
+}
+
+/* ---------- Payroll / team admin safety net ---------- */
+:root[data-theme="dark"] .payroll-card,
+:root[data-theme="dark"] .team-admin-page .stat-card,
+:root[data-theme="dark"] .team-admin-page .glass-card,
+:root[data-theme="dark"] .team-admin-page .panel,
+:root[data-theme="dark"] .team-admin-page .modal-box {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text-main) !important;
+}
+
+/* ---------- Help system ---------- */
+:root[data-theme="dark"] .help-panel,
+:root[data-theme="dark"] .help-drawer,
+:root[data-theme="dark"] .help-card,
+:root[data-theme="dark"] .help-popover {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text-main) !important;
+}
+
+/* ---------- Stock trace / shortage chips ---------- */
+:root[data-theme="dark"] .stock-trace-btn,
+:root[data-theme="dark"] .stock-trace-chip {
+  background: var(--surface-soft) !important;
+  border-color: var(--border) !important;
+  color: var(--text-main) !important;
+}
+
+/* ---------- Beauty / inventory generic surfaces ---------- */
+:root[data-theme="dark"] .beauty-card,
+:root[data-theme="dark"] .beauty-panel,
+:root[data-theme="dark"] .inv-box,
+:root[data-theme="dark"] .inv-card,
+:root[data-theme="dark"] .table-wrap,
+:root[data-theme="dark"] .inv-products-filters-bar {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text-main) !important;
+}
+
+/* ---------- Receipts admin (not print) ---------- */
+:root[data-theme="dark"] .rc-page .rc-card,
+:root[data-theme="dark"] .rc-page .card,
+:root[data-theme="dark"] .rc-filters,
+:root[data-theme="dark"] .rc-table-wrap {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text-main) !important;
+}
+
+/* ---------- Soft accent buttons on dark ---------- */
+:root[data-theme="dark"] .btn-warning {
+  background: #d97706 !important;
+  color: #fff !important;
+  border-color: #d97706 !important;
+}
+
+:root[data-theme="dark"] .btn-info {
+  background: #2563eb !important;
+  color: #fff !important;
+  border-color: #2563eb !important;
+}
+
+/* ---------- Scrollbars ---------- */
+:root[data-theme="dark"] * {
+  scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+}
+
+:root[data-theme="dark"] *::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+:root[data-theme="dark"] *::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+}
+
+:root[data-theme="dark"] *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* ---------- Print: keep paper white ---------- */
+@media print {
+  :root[data-theme="dark"] body,
+  :root[data-theme="dark"] .page-main,
+  :root[data-theme="dark"] .content {
+    background: #fff !important;
+    color: #000 !important;
+  }
+}

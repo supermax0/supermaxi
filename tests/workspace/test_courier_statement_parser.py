@@ -100,6 +100,77 @@ def test_parse_orders_export_format():
     print("test_parse_orders_export_format ok")
 
 
+def test_phone_number_is_never_counted_as_collected_amount():
+    from modules.workspace.services.courier_settlement.courier_statement_parser import CourierStatementParser
+
+    class FakeExtraction:
+        def get_tables(self):
+            return [{
+                "page": 1,
+                "index": 0,
+                "headers": [
+                    "order_number",
+                    "customer_name",
+                    "customer_phone",
+                    "collected_amount",
+                    "delivery_fee",
+                    "net_amount",
+                ],
+                "rows": [[
+                    "210602",
+                    "احمد صالح",
+                    "07708857288",
+                    7708857288,
+                    25000,
+                    7708832288,
+                ]],
+            }]
+
+        extracted_text = ""
+        text_sample = ""
+
+    row = CourierStatementParser.parse(FakeExtraction())["rows"][0]
+    assert row["customer_phone"] == "07708857288"
+    assert row["collected_amount"] is None
+    assert row["delivery_fee"] == 25000
+    assert row["net_amount"] is None
+    assert any("PHONE_MISREAD_AS_AMOUNT" in item for item in row["warnings"])
+
+
+def test_collected_amount_is_recovered_from_trusted_fee_and_net():
+    from modules.workspace.services.courier_settlement.courier_statement_parser import CourierStatementParser
+
+    class FakeExtraction:
+        def get_tables(self):
+            return [{
+                "page": 1,
+                "index": 0,
+                "headers": [
+                    "order_number",
+                    "customer_phone",
+                    "collected_amount",
+                    "delivery_fee",
+                    "net_amount",
+                ],
+                "rows": [[
+                    "210602",
+                    "07708857288",
+                    7708857288,
+                    25000,
+                    542000,
+                ]],
+            }]
+
+        extracted_text = ""
+        text_sample = ""
+
+    row = CourierStatementParser.parse(FakeExtraction())["rows"][0]
+    assert row["collected_amount"] == 567000
+    assert row["delivery_fee"] == 25000
+    assert row["net_amount"] == 542000
+    assert any("PHONE_MISREAD_AS_AMOUNT" in item for item in row["warnings"])
+
+
 if __name__ == "__main__":
     test_parse_row_with_amounts()
     test_ignores_header_rows()

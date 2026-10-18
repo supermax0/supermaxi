@@ -35,6 +35,7 @@ from utils.accounting_logic import ACCOUNT_CODES, get_or_create_account, initial
 from utils.fixed_assets_schema_guard import ensure_fixed_assets_schema
 from utils.treasury_calculations import assert_sufficient_balance, InsufficientTreasuryBalance
 from utils.treasury_helpers import resolve_treasury_account_id
+from utils.branch_scope import resolve_write_branch_id
 
 FIXED_ASSET_GL = {
     "FIXED_ASSETS": "1301",
@@ -469,7 +470,7 @@ def build_asset_from_form(data, user_id=None, as_draft=True):
         asset_account_id=category.asset_account_id,
         accumulated_depreciation_account_id=category.accumulated_depreciation_account_id,
         depreciation_expense_account_id=category.depreciation_expense_account_id,
-        branch_id=_safe_int(data.get("branch_id")) or None,
+        branch_id=resolve_write_branch_id(data),
         location_text=location_text,
         responsible_user_id=responsible_user_id,
         status=status,
@@ -501,9 +502,18 @@ def build_asset_from_form(data, user_id=None, as_draft=True):
     return asset
 
 
+def _assert_hr_custody_returned(asset):
+    from sqlalchemy import inspect
+    if inspect(db.session.get_bind()).has_table("hr_asset_custody"):
+        from modules.hr.models import HRAssetCustody
+        if HRAssetCustody.query.filter_by(active_asset_id=asset.id).first():
+            raise FixedAssetError("الأصل بعهدة موظف؛ سجّل إرجاعه من الموارد البشرية قبل نقله أو التصرف به")
+
+
 def delete_fixed_asset(asset: FixedAsset, user_id=None):
     """حذف أصل غير مُرحّل (مسودة أو بدون قيد شراء)."""
     ensure_fixed_assets_schema()
+    _assert_hr_custody_returned(asset)
     settings = get_fixed_asset_settings()
     if asset.acquisition_journal_entry_id:
         if settings.prevent_delete_posted:
@@ -1084,6 +1094,7 @@ def _get_receipt_account_id(payment_method, treasury_id=None):
 
 
 def _validate_disposable_asset(asset: FixedAsset):
+    _assert_hr_custody_returned(asset)
     if asset.status in ("sold", "scrapped", "draft"):
         raise FixedAssetError("لا يمكن بيع أو إتلاف أصل في هذه الحالة")
     if not asset.acquisition_journal_entry_id:
@@ -1385,6 +1396,7 @@ def post_asset_transfer(data, user_id=None):
     asset = FixedAsset.query.get(_safe_int(data.get("asset_id")))
     if not asset:
         raise FixedAssetError("الأصل غير موجود")
+    _assert_hr_custody_returned(asset)
     if asset.status in ("sold", "scrapped", "draft"):
         raise FixedAssetError("لا يمكن نقل أصل في هذه الحالة")
 

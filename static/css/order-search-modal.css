@@ -124,10 +124,11 @@ body.finora-search-modal-open {
 .order-search-body {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
   min-height: 0;
   padding: 20px 24px !important;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   flex: 1;
 }
 
@@ -210,10 +211,10 @@ body.finora-search-modal-open {
   font-size: 17px;
 }
 
-/* Results container */
+/* Results container — must stay visible above barcode paste */
 .order-search-results {
-  flex: 1;
-  min-height: 140px;
+  flex: 1 1 0%;
+  min-height: min(42vh, 280px);
   display: flex;
   flex-direction: column;
   border: 1px solid #e2e8f0;
@@ -303,8 +304,8 @@ body.finora-search-modal-open {
 }
 
 .order-search-results__table-wrap {
-  flex: 1;
-  min-height: 0;
+  flex: 1 1 auto;
+  min-height: 168px;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
@@ -326,7 +327,7 @@ body.finora-search-modal-open {
 .order-results-table col.col-amount { width: 12%; }
 .order-results-table col.col-delivery-fee { width: 120px; }
 .order-results-table col.col-check { width: 80px; }
-.order-results-table col.col-action { width: 90px; }
+.order-results-table col.col-action { width: 120px; }
 
 .order-results-table thead th {
   position: sticky;
@@ -502,7 +503,14 @@ body.finora-search-modal-open {
 
 .order-results-table .order-td-action {
   text-align: center;
-  padding-inline: 6px;
+  padding-inline: 4px;
+}
+
+.order-action-cell {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
 }
 
 .order-results-table .order-orders-empty td {
@@ -594,6 +602,32 @@ body.finora-search-modal-open {
 .order-results-table .order-status-badge.status-returned {
   background-color: #fee2e2;
   color: #dc2626;
+}
+
+.order-remove-btn {
+  width: 32px;
+  height: 42px;
+  min-width: 32px;
+  min-height: 42px;
+  padding: 0;
+  margin: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #94a3b8;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.order-remove-btn:hover {
+  background: #fee2e2;
+  color: #dc2626;
+  border-color: #fecaca;
 }
 
 /* Execute button */
@@ -722,6 +756,14 @@ body.finora-search-modal-open {
     gap: 12px;
   }
 
+  .order-search-results {
+    min-height: min(38vh, 240px);
+  }
+
+  .order-search-results__table-wrap {
+    min-height: 140px;
+  }
+
   .order-search-toolbar {
     gap: 8px;
   }
@@ -751,7 +793,7 @@ body.finora-search-modal-open {
 
   .order-results-table col.col-id { width: 44px; }
   .order-results-table col.col-check { width: 60px; }
-  .order-results-table col.col-action { width: 60px; }
+  .order-results-table col.col-action { width: 96px; }
 
   .order-results-table thead th {
     height: 48px;
@@ -770,6 +812,15 @@ body.finora-search-modal-open {
     padding: 4px 8px;
     padding-inline-start: 18px;
     min-height: 28px;
+  }
+
+  .order-remove-btn {
+    width: 28px;
+    height: 36px;
+    min-width: 28px;
+    min-height: 36px;
+    border-radius: 10px;
+    font-size: 12px;
   }
 
   .order-execute-btn {
@@ -849,4 +900,79 @@ body.finora-search-modal-open {
   background: rgba(30, 41, 59, 0.9);
   border-color: rgba(255, 255, 255, 0.12);
   color: #e2e8f0;
+}
+
+/* —— قائمة الباركودات (أُزيلت من الواجهة) —— */
+.order-barcode-paste {
+  display: none !important;
+}
+
+.order-shipping-barcode-display {
+  display: inline-block;
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 700 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #334155;
+  direction: ltr;
+}
+
+.order-shipping-barcode-input {
+  width: 100%;
+  max-width: 150px;
+  box-sizing: border-box;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #f8fafc;
+  color: #0f172a;
+  font: 700 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  direction: ltr;
+  text-align: left;
+}
+
+.order-shipping-barcode-input.is-return-active {
+  border-color: #f59e0b;
+  background: #fffbeb;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.15);
+}
+
+.order-shipping-barcode-input.is-invalid {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.order-shipping-barcode-input:focus {
+  outline: none;
+  border-color: #2563eb;
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+}
+
+.order-shipping-barcode-input.is-return-active:focus {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+}
+
+@media (max-width: 640px) {
+  .order-shipping-barcode-input,
+  .order-shipping-barcode-display {
+    max-width: 120px;
+  }
+}
+
+:root[data-theme="dark"] .order-shipping-barcode-display {
+  color: #e2e8f0;
+}
+
+:root[data-theme="dark"] .order-shipping-barcode-input {
+  background: rgba(15, 23, 42, 0.8);
+  border-color: rgba(148, 163, 184, 0.25);
+  color: #e2e8f0;
+}
+
+:root[data-theme="dark"] .order-shipping-barcode-input.is-return-active {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.55);
 }

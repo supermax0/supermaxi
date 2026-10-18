@@ -1,0 +1,11 @@
+/* One launcher, above bottom navigation; never over an open assistant or lesson. */
+body :is(.finora-ai-fab,.ft-orb-launcher) {bottom:calc(var(--finora-assistant-bottom, max(24px, env(safe-area-inset-bottom, 0px))) + var(--finora-assistant-keyboard-inset,0px))}
+body:has(#finoraAiPanel.is-open,.ft-home:not([hidden]),.ft-card:not([hidden]),.ft-welcome:not([hidden]),#cxModal:not([hidden])) :is(.finora-ai-fab,.ft-orb-launcher,.ft-badge) {
+  visibility:hidden!important;
+  pointer-events:none!important;
+}
+body .ft-home {
+    bottom:calc(var(--finora-assistant-bottom,24px) + var(--finora-assistant-keyboard-inset,0px));
+    max-height:calc(var(--finora-assistant-viewport-height,100dvh) - var(--finora-assistant-bottom,24px) - 12px);
+}
+@media(max-width:600px) {body.finora-ai-open {overflow:hidden}}

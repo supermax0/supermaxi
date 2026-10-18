@@ -1,0 +1,40 @@
+{% extends 'superadmin/leads/_base.html' %}
+{% from 'superadmin/leads/_macros.html' import empty_state, table_link %}
+{% set page_title = 'مركز التكرارات' %}
+{% set page_subtitle = 'مراجعة ودمج أو تجاهل العملاء المتكررين' %}
+{% block leads_content %}
+<section class="lc-card">
+    <header class="lc-card-header">
+        <div><h2><i class="fas fa-clone lc-card-icon"></i> مرشّحات التكرار</h2><p>{{ candidates|length }} حالة للمراجعة</p></div>
+    </header>
+    <div class="lc-card-body" style="padding:0;">
+        <div class="lc-table-wrap" style="border:none;box-shadow:none;border-radius:0;">
+            <table class="lc-table">
+                <thead><tr><th>العميل أ</th><th>العميل ب</th><th>المستوى</th><th>النسبة</th><th>السبب</th><th>إجراءات</th></tr></thead>
+                <tbody>
+                    {% for row in candidates %}
+                    {% set c = row.candidate %}
+                    <tr>
+                        <td>{{ table_link(url_for('superadmin_leads.lead_detail', lead_id=c.lead_id), row.lead_a_name, row.lead_a_phone) }}</td>
+                        <td>{{ table_link(url_for('superadmin_leads.lead_detail', lead_id=c.candidate_lead_id), row.lead_b_name, row.lead_b_phone) }}</td>
+                        <td>
+                            <span class="lc-badge {% if c.duplicate_level == 'EXACT' %}lc-badge-exact{% elif c.duplicate_level == 'STRONG' %}lc-badge-strong{% else %}lc-badge-possible{% endif %}">{{ duplicate_labels.get(c.duplicate_level, c.duplicate_level) }}</span>
+                        </td>
+                        <td><strong>{{ '%.0f'|format(c.duplicate_score) }}%</strong></td>
+                        <td>{{ c.duplicate_reason or '—' }}</td>
+                        <td>
+                            <div class="lc-row-actions">
+                                <button type="button" class="sa-btn sa-btn-primary lc-merge-btn" data-target="{{ c.lead_id }}" data-source="{{ c.candidate_lead_id }}"><i class="fas fa-compress"></i> دمج</button>
+                                <button type="button" class="sa-btn sa-btn-secondary lc-dismiss-btn" data-id="{{ c.id }}">تجاهل</button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6">{{ empty_state('لا توجد تكرارات للمراجعة — ممتاز!', 'fa-check-circle') }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}

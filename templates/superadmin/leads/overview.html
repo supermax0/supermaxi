@@ -1,0 +1,67 @@
+{% extends 'superadmin/leads/_base.html' %}
+{% from 'superadmin/leads/_macros.html' import kpi_card, status_badge %}
+{% set page_title = 'لوحة العملاء المحتملين' %}
+{% set page_subtitle = 'نظرة شاملة على العملاء المحتملين والأداء والتحويل' %}
+{% block header_actions %}
+<a href="{{ url_for('superadmin_leads.new_lead') }}" class="sa-btn sa-btn-primary"><i class="fas fa-plus"></i> عميل جديد</a>
+<a href="{{ url_for('superadmin_leads.imports_page') }}" class="sa-btn sa-btn-secondary"><i class="fas fa-file-import"></i> استيراد Excel</a>
+{% endblock %}
+{% block leads_content %}
+<div class="lc-kpi-grid">
+    {{ kpi_card('إجمالي العملاء', kpis.total_leads, 'fa-users') }}
+    {{ kpi_card('بأرقام هاتف', kpis.with_phone, 'fa-phone', 'lc-kpi-info') }}
+    {{ kpi_card('لم يتم التواصل', kpis.not_contacted, 'fa-phone-slash') }}
+    {{ kpi_card('مهتمون', kpis.interested, 'fa-star', 'lc-kpi-success') }}
+    {{ kpi_card('تحت التجربة', kpis.trial, 'fa-flask', 'lc-kpi-warn') }}
+    {{ kpi_card('مشتركون', kpis.subscribed, 'fa-check-circle', 'lc-kpi-success') }}
+    {{ kpi_card('متابعات متأخرة', kpis.overdue_followups, 'fa-clock', 'lc-kpi-danger') }}
+    {{ kpi_card('الإيراد الشهري', '%.0f'|format(kpis.mrr_from_leads), 'fa-coins', 'lc-kpi-info') }}
+</div>
+
+<div class="lc-quick-links">
+    <a href="{{ url_for('superadmin_leads.followups_page') }}" class="lc-quick-link"><i class="fas fa-clock"></i> المتابعات</a>
+    <a href="{{ url_for('superadmin_leads.duplicates_page') }}" class="lc-quick-link"><i class="fas fa-clone"></i> مركز التكرارات</a>
+    <a href="{{ url_for('superadmin_leads.pipeline_page') }}" class="lc-quick-link"><i class="fas fa-columns"></i> مسار المبيعات</a>
+    <a href="{{ url_for('superadmin_leads.map_page') }}" class="lc-quick-link"><i class="fas fa-map-marked-alt"></i> الخريطة</a>
+    <a href="{{ url_for('superadmin_leads.export_leads') }}" class="lc-quick-link"><i class="fas fa-file-export"></i> تصدير Excel</a>
+</div>
+
+<section class="lc-card">
+    <header class="lc-card-header">
+        <div><h2><i class="fas fa-tags lc-card-icon"></i> حسب النشاط</h2><p>توزيع العملاء على أنواع الأعمال</p></div>
+    </header>
+    <div class="lc-card-body">
+        <div class="lc-activity-grid">
+            {% for a in activity_stats %}
+            <a href="{{ url_for('superadmin_leads.all_leads', activity_id=a.id) }}" class="lc-activity-card" style="--lc-accent: {{ a.color }}">
+                <div class="lc-activity-head"><i class="fas {{ a.icon }}"></i><h3>{{ a.name_ar }}</h3></div>
+                <div class="lc-activity-stats">
+                    <div><b>{{ a.total }}</b><small>الكل</small></div>
+                    <div><b>{{ a.with_phone }}</b><small>هاتف</small></div>
+                    <div><b>{{ a.interested }}</b><small>مهتم</small></div>
+                    <div><b>{{ a.subscribed }}</b><small>مشترك</small></div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<section class="lc-card">
+    <header class="lc-card-header">
+        <div><h2><i class="fas fa-filter lc-card-icon"></i> قمع المبيعات</h2><p>مسار التحويل من عميل محتمل إلى مشترك</p></div>
+    </header>
+    <div class="lc-card-body">
+        {% set max_count = funnel|map(attribute='count')|max if funnel else 1 %}
+        <div class="lc-funnel">
+            {% for row in funnel %}
+            <div class="lc-funnel-row">
+                <span>{{ status_labels.get(row.status, row.status) }}</span>
+                <strong>{{ row.count }}</strong>
+                <div class="lc-funnel-bar"><span style="width: {{ (row.count / max_count * 100) if max_count else 0 }}%"></span></div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endblock %}

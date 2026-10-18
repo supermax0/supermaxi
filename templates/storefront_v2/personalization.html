@@ -1,0 +1,42 @@
+{% extends "storefront_v2/base.html" %}
+{% block legacy_assets %}{% endblock %}
+{% block body_class %} sm-native{% endblock %}
+{% block title %}الخصوصية والتخصيص — {{ store_design.store_name }}{% endblock %}
+{% block meta %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+{% set action_url = url_for('storefront.personalization_page', tenant_slug=shop_tenant_slug) %}
+<section class="sm-shell sm-section sm-privacy">
+  <h1 class="sm-h1">الخصوصية والتخصيص</h1>
+  {% if done == 'off' %}<p class="sm-alert is-ok" role="status">تم إيقاف التخصيص ومسح اهتماماتك.</p>
+  {% elif done == 'on' %}<p class="sm-alert is-ok" role="status">تم تشغيل التخصيص.</p>
+  {% elif done == 'clear' %}<p class="sm-alert is-ok" role="status">تم مسح سجل اهتماماتك.</p>{% endif %}
+
+  <p>نرتّب لك الصفحة الرئيسية حسب ما تبحث عنه وتشاهده وتضيفه للسلة في هذا المتصفح فقط. لا نحتاج حسابك،
+     ولا نستخدم اسمك أو رقمك أو عنوانك لذلك. يمكنك إيقافه في أي وقت والمتجر يعمل كاملاً بدونه.</p>
+
+  <div class="sm-privacy__state">
+    <strong>التخصيص: {{ 'مفعّل' if info.enabled else 'متوقف' }}</strong>
+    <form method="post" action="{{ action_url }}">
+      {% if info.enabled %}
+      <button class="sm-btn" type="submit" name="action" value="off">إيقاف التخصيص</button>
+      {% else %}
+      <button class="sm-btn sm-btn--primary" type="submit" name="action" value="on">تشغيل التخصيص</button>
+      {% endif %}
+    </form>
+  </div>
+
+  {% if info.enabled %}
+  <h2 class="sm-h2">ما فهمناه من تسوقك</h2>
+  {% if info.interests %}
+  <ul class="sm-privacy__list">
+    {% for row in info.interests %}<li>{{ row.category }} — {{ 'اهتمام واضح' if row.strong else 'اهتمام بسيط' }}</li>{% endfor %}
+  </ul>
+  {% else %}<p class="sm-muted">لا شيء بعد — ستظهر لك الأقسام العامة.</p>{% endif %}
+  {% if info.searches %}<p class="sm-muted">آخر عمليات البحث: {{ info.searches|join('، ') }}</p>{% endif %}
+  {% if info.budget %}<p class="sm-muted">الميزانية التي ذكرتها: حتى {{ info.budget|toLocaleString }} د.ع</p>{% endif %}
+  {% if info.interests or info.searches %}
+  <form method="post" action="{{ action_url }}"><button class="sm-link" type="submit" name="action" value="clear">مسح سجل اهتماماتي</button></form>
+  {% endif %}
+  {% endif %}
+</section>
+{% endblock %}

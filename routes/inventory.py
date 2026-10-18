@@ -5,6 +5,13 @@ from io import BytesIO
 from flask import Blueprint, render_template, request, redirect, url_for, session, jsonify, current_app, g, send_file, flash
 from werkzeug.utils import secure_filename
 from extensions import db
+from utils.branch_scope import (
+    active_branch_id,
+    current_employee,
+    is_general_admin,
+    resolve_write_branch_id,
+    viewing_all_branches,
+)
 from models.product import Product
 from models.order_item import OrderItem
 from models.invoice import Invoice
@@ -30,6 +37,8 @@ from utils.activity_logger import PRODUCT_SNAPSHOT_FIELDS, log_activity, log_mut
 from utils.product_schema_guard import ensure_product_schema
 from utils.order_item_schema_guard import ensure_order_item_schema
 from utils.order_shipping import sync_product_name_to_order_items
+from utils.tenant_feature_flags import tenant_feature_enabled
+from utils.trade_in_service import employee_can_access_replacement_product
 from utils.product_delivery_fees import (
     apply_delivery_fees_to_meta,
     delivery_fees_from_form,
@@ -46,8 +55,35 @@ from utils.branch_stock_service import (
     set_opening_branch_stock,
     BranchStockError,
 )
+from utils.branch_product_service import barcode_conflict
+from utils.branch_mode import independent_branches_enabled
+from utils.product_color_service import (
+    ProductColorError,
+    adjust_color_stock,
+    color_stock_total,
+    get_branch_product_colors,
+    product_has_colors,
+)
+from utils.desktop_product_colors import append_product_colors, local_color_rows, lock_color_product
+from utils.product_color_media import apply_color_images, cleanup_color_uploads
+from utils.product_options import apply_product_options, option_config
 
 inventory_bp = Blueprint("inventory", __name__)
+
+
+@inventory_bp.get("/smart-audit")
+def smart_audit_app():
+    from pathlib import Path
+    from modules.inventory_audit.common import AuditError, actor, require
+    try:
+        actor()
+        require("inventory.audit.view")
+    except AuditError as error:
+        return jsonify(success=False, error=str(error)), error.status
+    source = Path(current_app.static_folder) / "finora-inventory-audit" / "audit.html"
+    if not source.is_file():
+        return jsonify(success=False, error="واجهة الجرد تحتاج بناء أصول الويب من النسخة المحدثة"), 503
+    return send_file(source, mimetype="text/html")
 
 
 @inventory_bp.before_request
@@ -62,20 +98,67 @@ def _inventory_branch_setup():
 
 def _inventory_branch_id():
     if getattr(g, "view_all_branches", False):
-        default = get_default_branch()
-        return default.id if default else None
+        return None
     return current_branch_id() or (get_default_branch().id if get_default_branch() else None)
+
+
+def _inventory_employee():
+    user_id = session.get("user_id")
+    return Employee.query.get(user_id) if user_id else None
+
+
+def _visible_inventory_products(products):
+    employee = _inventory_employee()
+    return [
+        product
+        for product in products
+        if employee_can_access_replacement_product(employee, product)
+    ]
+
+
+def _resolve_stock_adjust_branch_id(data) -> int:
+    """Resolve the branch for BranchStock mutations.
+
+    ``resolve_write_branch_id`` intentionally ignores an explicit branch in
+    shared (non-independent) mode and always returns the company default.
+    Quick-edit and similar stock screens expose a branch selector and write
+    per-branch ``BranchStock`` rows, so they must honor the chosen branch.
+    """
+    from models.branch import Branch
+
+    if independent_branches_enabled():
+        return resolve_write_branch_id(data, allow_admin_any_branch=True)
+
+    raw = None
+    try:
+        raw = data.get("branch_id")
+    except AttributeError:
+        raw = data
+
+    if raw not in (None, "", 0, "0", "all"):
+        try:
+            branch = Branch.query.filter_by(id=int(raw), is_active=True).first()
+        except (TypeError, ValueError):
+            branch = None
+        if not branch:
+            raise ValueError("الفرع المطلوب غير موجود أو غير نشط")
+        employee = current_employee()
+        if employee and not is_general_admin(employee) and getattr(employee, "branch_id", None):
+            if int(employee.branch_id) != int(branch.id):
+                raise PermissionError("لا يمكنك تعديل مخزون فرع آخر")
+        return int(branch.id)
+
+    return resolve_write_branch_id(data)
 
 
 def _branch_id_for_product_stock(form=None, meta: dict | None = None) -> int | None:
     """Use the product's selected branch for stock; fallback to current inventory branch."""
     from models.branch import Branch
 
-    candidates: list[int] = []
     if form is not None:
-        raw = (form.get("branch_id") or "").strip()
-        if raw.isdigit():
-            candidates.append(int(raw))
+        return resolve_write_branch_id(form)
+
+    candidates: list[int] = []
     if meta is not None:
         raw = meta.get("branch_id")
         if raw is not None:
@@ -90,7 +173,7 @@ def _branch_id_for_product_stock(form=None, meta: dict | None = None) -> int | N
             continue
         seen.add(branch_id)
         branch = Branch.query.filter_by(id=branch_id, is_active=True).first()
-        if branch:
+        if branch and (viewing_all_branches() or branch.id == active_branch_id()):
             return branch.id
 
     return _inventory_branch_id()
@@ -98,15 +181,37 @@ def _branch_id_for_product_stock(form=None, meta: dict | None = None) -> int | N
 
 def _edit_current_stock_for_product(product: Product, meta: dict | None = None) -> int:
     """Current on-hand quantity for the product edit form (branch-scoped when applicable)."""
-    stock_branch_id = _branch_id_for_product_stock(meta=meta)
+    stock_branch_id = int(product.branch_id or 0) or _branch_id_for_product_stock(meta=meta)
     if stock_branch_id:
+        if product_has_colors(product):
+            colors = get_branch_product_colors(product.id, stock_branch_id)
+            if colors:
+                return sum(int(row.get("qty") or 0) for row in colors)
         return get_branch_stock(stock_branch_id, product.id)
     return int(product.quantity or 0)
 
 
 def _product_display_qty(product, stock_map, view_all):
+    color_total = color_stock_total(product)
+    if color_total is not None:
+        return color_total
     fallback = int(product.quantity or 0)
     return stock_map.get(product.id, fallback)
+
+
+def _product_branch_colors_map(products, branches) -> dict[int, dict[int, list[dict]]]:
+    """Color balances keyed by displayed product then branch."""
+    result: dict[int, dict[int, list[dict]]] = {}
+    for product in products or []:
+        if not product_has_colors(product):
+            continue
+        by_branch: dict[int, list[dict]] = {}
+        for branch in branches or []:
+            colors = get_branch_product_colors(product.id, branch.id)
+            if colors:
+                by_branch[int(branch.id)] = colors
+        result[int(product.id)] = by_branch
+    return result
 
 
 def _load_product_meta(product) -> dict:
@@ -320,24 +425,46 @@ def _meta_from_inventory_add_form(form) -> dict:
     meta = apply_delivery_fees_to_meta(meta, by_province, default_fee)
     if form.get("has_colors"):
         meta["has_colors"] = True
+    from utils.product_region_pricing import set_dual_region_pricing_flag
+
+    meta = set_dual_region_pricing_flag(meta, bool(form.get("dual_region_pricing")))
     return meta
 
 
-def _color_rows_from_form(form) -> list[tuple[str, int]]:
+def _color_rows_from_form(form) -> list[dict]:
     names = form.getlist("color_name[]")
     qtys = form.getlist("color_qty[]")
-    rows: list[tuple[str, int]] = []
-    for name, qty in zip(names, qtys):
+    buys = form.getlist("color_buy_price[]")
+    sales = form.getlist("color_sale_price[]")
+    govs = form.getlist("color_gov_sale_price[]")
+    rows: list[dict] = []
+    for idx, name in enumerate(names):
         color = (name or "").strip()
         if not color:
             continue
-        rows.append((color, max(0, int(qty or 0))))
+        qty = max(0, int((qtys[idx] if idx < len(qtys) else 0) or 0))
+        buy_raw = buys[idx] if idx < len(buys) else ""
+        sale_raw = sales[idx] if idx < len(sales) else ""
+        gov_raw = govs[idx] if idx < len(govs) else ""
+        row = {"name": color, "qty": qty}
+        if str(buy_raw).strip() != "":
+            row["buy_price"] = max(0, int(buy_raw or 0))
+        if str(sale_raw).strip() != "":
+            row["sale_price"] = max(0, int(sale_raw or 0))
+        if str(gov_raw).strip() != "":
+            row["governorate_sale_price"] = max(0, int(gov_raw or 0))
+        rows.append(row)
     return rows
 
 
 def _apply_product_colors_from_form(product: Product, form) -> int:
     from utils.product_color_service import save_product_colors
     from models.product_color_variant import ProductColorVariant
+
+    if option_config(product).get("axes"):
+        # The old web color fields must never replace option balances or keys.
+        return int(db.session.query(db.func.coalesce(db.func.sum(ProductColorVariant.quantity), 0))
+                   .filter_by(product_id=product.id).scalar() or 0)
 
     has_colors = bool(form.get("has_colors"))
     if not has_colors:
@@ -351,7 +478,7 @@ def _apply_product_colors_from_form(product: Product, form) -> int:
     if not rows:
         return 0
     save_product_colors(product.id, rows)
-    return sum(qty for _, qty in rows)
+    return sum(int(r.get("qty") or 0) for r in rows)
 
 
 def _company_branches_for_form():
@@ -367,7 +494,7 @@ def _company_branches_for_form():
 
 def _inventory_add_summary():
     """إحصائيات مختصرة لشريط الملخص في صفحة إضافة المنتج."""
-    products = Product.query.all()
+    products = _visible_inventory_products(Product.query.all())
 
     def _val(v, default=0):
         return default if v is None else v
@@ -415,18 +542,61 @@ def _product_branch_map(products, branches) -> dict[int, dict]:
     return {p.id: _product_branch_info(p, branch_by_id) for p in products}
 
 
-def _product_branch_stock_map(products) -> dict[int, dict[int, int]]:
+def _product_branch_stock_map(products, catalog_members: dict[int, list[int]] | None = None) -> dict[int, dict[int, int]]:
     from models.branch import BranchStock
 
     product_ids = [p.id for p in (products or [])]
     if not product_ids:
         return {}
 
-    rows = BranchStock.query.filter(BranchStock.product_id.in_(product_ids)).all()
+    source_ids = [
+        source_id
+        for product_id in product_ids
+        for source_id in (catalog_members or {}).get(product_id, [product_id])
+    ]
+
+    query = BranchStock.query.filter(BranchStock.product_id.in_(source_ids))
+    # مدير الشركة يستطيع اختيار أي فرع من فلتر صفحة المخزون.  سابقاً كانت
+    # الواجهة تعرض كل الفروع، بينما هذه الخريطة تُحمّل رصيد الفرع الحالي فقط؛
+    # لذلك كان اختيار فرع آخر يُظهر كل المنتجات برصيد صفر رغم وجود أرصدة لها.
+    # الموظف غير المدير يبقى محصوراً بفرعه ولا تصل إليه أرصدة الفروع الأخرى.
+    # In legacy shared mode all employees intentionally work with one shared
+    # catalogue, so filtering this map to the internal default branch would
+    # hide the stock held by every other branch.
+    if independent_branches_enabled() and not (viewing_all_branches() or is_general_admin()):
+        query = query.filter(BranchStock.branch_id == int(active_branch_id() or 0))
+    rows = query.all()
+    representative_by_source = {
+        source_id: representative_id
+        for representative_id, member_ids in (catalog_members or {}).items()
+        for source_id in member_ids
+    }
     stock_by_product: dict[int, dict[int, int]] = {pid: {} for pid in product_ids}
     for row in rows:
-        stock_by_product.setdefault(row.product_id, {})[row.branch_id] = int(row.quantity or 0)
+        product_id = representative_by_source.get(row.product_id, row.product_id)
+        branch_stock = stock_by_product.setdefault(product_id, {})
+        branch_stock[row.branch_id] = branch_stock.get(row.branch_id, 0) + int(row.quantity or 0)
     return stock_by_product
+
+
+def _collapse_shared_inventory_products(products) -> tuple[list[Product], dict[int, list[int]]]:
+    """Return one inventory row for each product family in shared mode.
+
+    Branch migration creates local copies. Match their stable catalog family
+    and the legacy barcode/SKU identity shared with the purchase picker/POS,
+    so editing one copy cannot split the family into duplicate display rows.
+    """
+    from services.pos_catalog import shared_catalog_groups
+
+    representatives: list[Product] = []
+    members: dict[int, list[int]] = {}
+    for group in shared_catalog_groups(products):
+        group.sort(key=lambda product: (int(product.branch_id or 0), int(product.id)))
+        representative = group[0]
+        representatives.append(representative)
+        members[representative.id] = [int(product.id) for product in group]
+    representatives.sort(key=lambda product: ((product.name or "").casefold(), product.id))
+    return representatives, members
 
 
 def _delivery_fees_context(product=None, meta: dict | None = None) -> dict:
@@ -703,8 +873,17 @@ def download_inventory_audit_template():
     ensure_branch_schema()
     from models.branch import Branch
 
-    branch_id_raw = (request.args.get("branch_id") or "all").strip()
+    requested_branch_raw = request.args.get("branch_id")
+    branch_id_raw = (requested_branch_raw or "all").strip()
     all_branches = branch_id_raw in ("", "all")
+    current_id = int(active_branch_id() or 0)
+    if independent_branches_enabled() and not viewing_all_branches():
+        if requested_branch_raw is not None and (
+            all_branches or (branch_id_raw.isdigit() and int(branch_id_raw) != current_id)
+        ):
+            return jsonify({"ok": False, "error": "لا يمكنك تصدير مخزون فرع آخر."}), 403
+        branch_id_raw = str(current_id)
+        all_branches = False
     branch = None
     if not all_branches:
         if not branch_id_raw.isdigit():
@@ -782,6 +961,79 @@ def upload_inventory_audit_to_ai():
         return jsonify({"success": False, "error": str(e)}), 400
 
 
+def _inventory_snapshot():
+    """Products visible in the current branch scope with their displayed quantities.
+
+    Single source for the inventory page and the JSON product list (same branch,
+    shared-catalog and colour-stock rules)."""
+    products = _visible_inventory_products(Product.query.all())
+    shared_catalog_members: dict[int, list[int]] = {}
+    if not independent_branches_enabled():
+        products, shared_catalog_members = _collapse_shared_inventory_products(products)
+    # Shared-mode companies have one catalogue, but their physical stock may
+    # be distributed across several branches.  The default dashboard branch
+    # must not make those other quantities disappear from the inventory page.
+    view_all = getattr(g, "view_all_branches", False) or not independent_branches_enabled()
+    branch_id = _inventory_branch_id()
+    product_branch_stock_map = _product_branch_stock_map(products, shared_catalog_members)
+    if not independent_branches_enabled():
+        stock_map = {
+            product.id: sum(product_branch_stock_map.get(product.id, {}).values())
+            for product in products
+        }
+    else:
+        stock_map = branch_stock_map(None if view_all else branch_id)
+    branch_scope_label = (
+        "كل الفروع (نظام مشترك)"
+        if not independent_branches_enabled()
+        else ("كل الفروع" if view_all else (g.branch.name if getattr(g, "branch", None) else "—"))
+    )
+
+    # إحصائيات محسّنة (معالجة آمنة لـ None)
+    def _val(v, default=0):
+        return default if v is None else v
+
+    def _qty(p):
+        return _product_display_qty(p, stock_map, view_all)
+
+    product_display_qty_map = {int(p.id): _qty(p) for p in products}
+    base_stock_map = dict(stock_map)  # quantities before colour balances (page totals use these)
+    company_branches = _company_branches_for_form()
+    product_branch_map = _product_branch_map(products, company_branches)
+    product_branch_colors_map = _product_branch_colors_map(products, company_branches)
+    # Color rows are authoritative for color-managed products.  Feed their
+    # totals to the table and quick editor so a stale BranchStock row cannot
+    # produce two different quantities on the same page.
+    for product in products:
+        color_by_branch = product_branch_colors_map.get(int(product.id), {})
+        if not color_by_branch:
+            continue
+        branch_totals = {
+            int(bid): sum(int(row.get("qty") or 0) for row in rows)
+            for bid, rows in color_by_branch.items()
+        }
+        product_branch_stock_map[int(product.id)] = branch_totals
+        effective_qty = (
+            sum(branch_totals.values())
+            if view_all
+            else int(branch_totals.get(int(branch_id or 0), 0))
+        )
+        stock_map[int(product.id)] = effective_qty
+        product_display_qty_map[int(product.id)] = effective_qty
+    return {
+        "products": products,
+        "stock_map": stock_map,
+        "base_stock_map": base_stock_map,
+        "product_display_qty_map": product_display_qty_map,
+        "product_branch_stock_map": product_branch_stock_map,
+        "product_branch_map": product_branch_map,
+        "product_branch_colors_map": product_branch_colors_map,
+        "company_branches": company_branches,
+        "view_all": view_all,
+        "branch_scope_label": branch_scope_label,
+    }
+
+
 @inventory_bp.route("/", methods=["GET", "POST"])
 def inventory():
     # فحص الصلاحية
@@ -794,16 +1046,26 @@ def inventory():
     # ADD PRODUCT (NO SUPPLIER)
     # ==========================
     if request.method == "POST" and request.form.get("form_type") == "add_product":
+        write_branch_id = resolve_write_branch_id(request.form)
         opening_stock = int(request.form.get("opening_stock", 0) or 0)
         buy_price = int(request.form.get("buy_price", 0) or 0)
         barcode = request.form.get("barcode", "").strip() or None
+        if barcode_conflict(write_branch_id, barcode):
+            flash("الباركود مستخدم لمنتج آخر في هذا الفرع.", "error")
+            return redirect(url_for("inventory.inventory"))
         opening_stock_value = opening_stock * buy_price  # قيمة المخزون الافتتاحي
         
         p = Product(
+            branch_id=write_branch_id,
             name=request.form["name"],
             barcode=barcode,
             buy_price=buy_price,
             sale_price=int(request.form["sale_price"]),
+            exchange_sale_price=(
+                max(0, int(request.form.get("exchange_sale_price") or 0)) or None
+                if tenant_feature_enabled("trade_in_sales", default=False)
+                else None
+            ),
             shipping_cost=0,  # إلغاء الحقل
             marketing_cost=0,  # إلغاء الحقل
             opening_stock=opening_stock,
@@ -812,7 +1074,7 @@ def inventory():
         )
         db.session.add(p)
         db.session.flush()
-        branch_id = _inventory_branch_id()
+        branch_id = write_branch_id
         if branch_id:
             set_opening_branch_stock(branch_id, p.id, opening_stock)
         
@@ -838,18 +1100,22 @@ def inventory():
     # ==============================
     # DISPLAY DATA
     # ==============================
-    products = Product.query.all()
-    view_all = getattr(g, "view_all_branches", False)
-    branch_id = _inventory_branch_id()
-    stock_map = branch_stock_map(None if view_all else branch_id)
-    branch_scope_label = "كل الفروع" if view_all else (g.branch.name if getattr(g, "branch", None) else "—")
+    snapshot = _inventory_snapshot()
+    products = snapshot["products"]
+    stock_map = snapshot["stock_map"]
+    product_display_qty_map = snapshot["product_display_qty_map"]
+    product_branch_stock_map = snapshot["product_branch_stock_map"]
+    product_branch_map = snapshot["product_branch_map"]
+    product_branch_colors_map = snapshot["product_branch_colors_map"]
+    company_branches = snapshot["company_branches"]
+    view_all = snapshot["view_all"]
+    branch_scope_label = snapshot["branch_scope_label"]
 
-    # إحصائيات محسّنة (معالجة آمنة لـ None)
     def _val(v, default=0):
         return default if v is None else v
 
     def _qty(p):
-        return _product_display_qty(p, stock_map, view_all)
+        return _product_display_qty(p, snapshot["base_stock_map"], view_all)
 
     total_purchase = sum(_val(p.buy_price) * _qty(p) for p in products)
     total_sale = sum(_val(p.sale_price) * _qty(p) for p in products)
@@ -876,18 +1142,9 @@ def inventory():
     # المنتجات النشطة وغير النشطة
     active_count = sum(1 for p in products if p.active)
     inactive_count = len(products) - active_count
-    company_branches = _company_branches_for_form()
-    product_branch_map = _product_branch_map(products, company_branches)
-    product_branch_stock_map = _product_branch_stock_map(products)
-    product_rows = [
-        _inventory_grid_row(p, stock_map, product_branch_map, product_branch_stock_map)
-        for p in products
-    ]
-
     return render_template(
         "inventory.html",
         products=products,
-        product_rows=product_rows,
         total_purchase=total_purchase,
         total_sale=total_sale,
         total_profit=total_profit,
@@ -901,195 +1158,13 @@ def inventory():
         inactive_count=inactive_count,
         branch_scope_label=branch_scope_label,
         branch_stock_map=stock_map,
+        product_display_qty_map=product_display_qty_map,
         view_all_branches=view_all,
         company_branches=company_branches,
         product_branch_map=product_branch_map,
         product_branch_stock_map=product_branch_stock_map,
+        product_branch_colors_map=product_branch_colors_map,
     )
-
-
-def _inventory_grid_row(p, stock_map, branch_map, branch_stock_map) -> dict:
-    """صف المنتج في جدول المخزون (نفس الشكل للصفحة ولـ API الحفظ)."""
-    tenant_slug = session.get("tenant_slug") or current_app.config.get("STOREFRONT_DEFAULT_TENANT_SLUG", "")
-    branch_info = branch_map.get(p.id, {})
-    qty = stock_map.get(p.id, p.quantity or 0)
-    product_url = ""
-    if tenant_slug:
-        try:
-            product_url = url_for("storefront.product_detail", tenant_slug=tenant_slug, product_id=p.id)
-        except Exception:
-            product_url = ""
-    return {
-        "id": p.id,
-        "name": p.name,
-        "sku": p.sku or "---",
-        "barcode": p.barcode or "---",
-        "branch_id": branch_info.get("branch_id"),
-        "branch_name": branch_info.get("branch_name") or "—",
-        "branch_stocks": {str(k): v for k, v in (branch_stock_map.get(p.id, {}) or {}).items()},
-        "opening_stock": p.opening_stock or 0,
-        "quantity": qty,
-        "low_stock_threshold": p.low_stock_threshold if p.low_stock_threshold is not None else 5,
-        "active": bool(p.active),
-        "store_visible": bool(p.store_visible),
-        "product_url": product_url,
-        "description": p.description or "",
-        "image_url": p.image_url or "",
-        "meta_json": p.meta_json or "{}",
-        "buy_price": p.buy_price or 0,
-        "sale_price": p.sale_price or 0,
-        "inventory_value": (p.buy_price or 0) * qty,
-        "profit": (p.sale_price or 0) - (p.buy_price or 0),
-    }
-
-
-def _form_int(form, key: str, default: int = 0) -> int:
-    raw = str(form.get(key, "") or "").replace(",", "").strip()
-    if not raw:
-        return default
-    try:
-        return int(float(raw))
-    except (TypeError, ValueError):
-        raise ValueError(key)
-
-
-# ======================================
-# Product drawer API — إضافة/تعديل سريع (Finora desktop drawer)
-# Updates only the drawer fields; colors, media, specs and delivery
-# fees stay untouched (they are edited from the full /inventory/add page).
-# ======================================
-@inventory_bp.route("/api/product/save", methods=["POST"])
-def api_save_product():
-    if not check_permission("can_manage_inventory"):
-        return jsonify({"success": False, "error": "غير مصرح"}), 403
-
-    ensure_product_schema()
-    form = request.form
-    name = (form.get("name") or "").strip()
-    if not name:
-        return jsonify({"success": False, "error": "يرجى إدخال اسم المنتج.", "field": "name"}), 400
-
-    try:
-        buy_price = max(0, _form_int(form, "buy_price"))
-        sale_price = max(0, _form_int(form, "sale_price"))
-        low_stock_threshold = max(0, _form_int(form, "low_stock_threshold", 5))
-        opening_stock = max(0, _form_int(form, "opening_stock"))
-    except ValueError as exc:
-        return jsonify({"success": False, "error": "قيمة رقمية غير صحيحة.", "field": str(exc)}), 400
-
-    sku = (form.get("sku") or "").strip() or None
-    barcode = (form.get("barcode") or "").strip() or None
-    edit_raw = (form.get("product_id") or "").strip()
-    product = Product.query.get(int(edit_raw)) if edit_raw.isdigit() else None
-    if edit_raw and not product:
-        return jsonify({"success": False, "error": "المنتج غير موجود."}), 404
-
-    # Barcode / SKU must stay unique so scanning finds one product
-    for field, value, label in (("barcode", barcode, "الباركود"), ("sku", sku, "SKU")):
-        if not value:
-            continue
-        clash = Product.query.filter(getattr(Product, field) == value)
-        if product:
-            clash = clash.filter(Product.id != product.id)
-        other = clash.first()
-        if other:
-            return jsonify({
-                "success": False,
-                "error": f"{label} مستخدم للمنتج: {other.name}",
-                "field": field,
-            }), 400
-
-    image_url = _save_uploaded_product_image(request.files.get("product_image"))
-    meta = _load_product_meta(product) if product else {}
-    for key in ("category", "brand", "unit"):
-        if key in form:
-            value = (form.get(key) or "").strip()
-            if value:
-                meta[key] = value
-            else:
-                meta.pop(key, None)
-
-    if product:
-        before_product = snapshot_attrs(product, *PRODUCT_SNAPSHOT_FIELDS)
-        old_name = product.name
-        product.name = name
-        product.sku = sku
-        product.barcode = barcode
-        product.buy_price = buy_price
-        product.sale_price = sale_price
-        product.low_stock_threshold = low_stock_threshold
-        if "description" in form:
-            product.description = (form.get("description") or "").strip() or None
-        if image_url:
-            product.image_url = image_url
-        product.meta_json = json.dumps(meta, ensure_ascii=False) if meta else None
-        if name != old_name:
-            sync_product_name_to_order_items(product.id, name)
-        db.session.commit()
-        try:
-            log_mutation(
-                "update",
-                "inventory",
-                "product",
-                product.id,
-                before_product,
-                snapshot_attrs(product, *PRODUCT_SNAPSHOT_FIELDS),
-                f"تعديل منتج: {product.name}",
-            )
-        except Exception:
-            pass
-    else:
-        branch_id = _branch_id_for_product_stock(form)
-        if branch_id:
-            from models.branch import Branch
-
-            branch = Branch.query.filter_by(id=branch_id, is_active=True).first()
-            if branch:
-                meta["branch_id"] = branch.id
-                meta["branch_name"] = branch.name
-                meta["branch_note"] = branch.name
-        product = Product(
-            name=name,
-            sku=sku,
-            barcode=barcode,
-            buy_price=buy_price,
-            sale_price=sale_price,
-            shipping_cost=0,
-            marketing_cost=0,
-            opening_stock=opening_stock,
-            quantity=opening_stock,
-            active=True,
-            low_stock_threshold=low_stock_threshold,
-            description=(form.get("description") or "").strip() or None,
-            image_url=image_url,
-            meta_json=json.dumps(meta, ensure_ascii=False) if meta else None,
-        )
-        db.session.add(product)
-        db.session.flush()
-        if branch_id:
-            set_opening_branch_stock(branch_id, product.id, opening_stock)
-        db.session.commit()
-        try:
-            log_activity(
-                "create",
-                "inventory",
-                f"إضافة منتج: {product.name}",
-                entity_type="product",
-                entity_id=product.id,
-                payload={"product": snapshot_attrs(product, *PRODUCT_SNAPSHOT_FIELDS)},
-            )
-        except Exception:
-            pass
-
-    view_all = getattr(g, "view_all_branches", False)
-    stock_map = branch_stock_map(None if view_all else _inventory_branch_id())
-    row = _inventory_grid_row(
-        product,
-        stock_map,
-        _product_branch_map([product], _company_branches_for_form()),
-        _product_branch_stock_map([product]),
-    )
-    return jsonify({"success": True, "product": row})
 
 
 # ======================================
@@ -1100,11 +1175,15 @@ def api_save_product():
 def add_product_page():
     if not check_permission("can_manage_inventory"):
         return redirect("/pos"), 403
-
     ensure_product_schema()
-
+    # API clients (desktop) post the same form and get JSON instead of a page/redirect.
+    json_reply = request.method == "POST" and request.form.get("_response") == "json"
     if request.method == "POST":
         name = (request.form.get("name") or "").strip()
+        if json_reply and (request.form.get("edit_product_id") or "").strip():
+            return jsonify({"success": False, "error": "التعديل يتم عبر /inventory/api/products/<id>/update"}), 400
+        if not name and json_reply:
+            return jsonify({"success": False, "error": "يرجى إدخال اسم المنتج."}), 400
         if not name:
             ctx = _inventory_add_summary()
             ctx["error"] = "يرجى إدخال اسم المنتج."
@@ -1122,12 +1201,37 @@ def add_product_page():
                     ctx["product_specs_items"] = _extract_specs_items(ctx["product_meta"])
             return render_template("inventory_add_product.html", **ctx), 400
 
+        if json_reply:
+            try:
+                for field in ("pos_visible", "store_visible"):
+                    if field in request.form and request.form.get(field) not in {"0", "1"}:
+                        raise ValueError(field)
+                raw_exchange_price = int(request.form.get("exchange_sale_price") or 0)
+                if raw_exchange_price < 0:
+                    raise ValueError("exchange_sale_price")
+            except ValueError:
+                return jsonify(success=False, error="قيمة سعر الاستبدال أو إعداد الظهور غير صحيحة"), 400
+            if raw_exchange_price and not tenant_feature_enabled("trade_in_sales", default=False):
+                return jsonify(success=False, error="ميزة الاستبدال غير مفعّلة لهذه الشركة"), 400
+
         opening_stock = int(request.form.get("opening_stock", 0) or 0)
         has_colors_flag = bool(request.form.get("has_colors"))
         if has_colors_flag:
-            opening_stock = sum(qty for _, qty in _color_rows_from_form(request.form))
+            opening_stock = sum(int(r.get("qty") or 0) for r in _color_rows_from_form(request.form))
         buy_price = int(request.form.get("buy_price", 0) or 0)
         sale_price = int(request.form.get("sale_price", 0) or 0)
+        trade_in_enabled = tenant_feature_enabled("trade_in_sales", default=False)
+        exchange_sale_price = (
+            max(0, int(request.form.get("exchange_sale_price", 0) or 0)) or None
+            if trade_in_enabled
+            else None
+        )
+        dual_region = bool(request.form.get("dual_region_pricing"))
+        governorate_sale_price = None
+        if dual_region:
+            gov_raw = (request.form.get("governorate_sale_price") or "").strip()
+            if gov_raw != "":
+                governorate_sale_price = max(0, int(gov_raw or 0)) or None
         barcode = (request.form.get("barcode") or "").strip() or None
         sku = (request.form.get("sku") or "").strip() or None
         not_for_sale_flag = bool(request.form.get("not_for_sale"))
@@ -1159,14 +1263,29 @@ def add_product_page():
                 return render_template("inventory_add_product.html", **ctx), 404
 
             before_product = snapshot_attrs(p, *PRODUCT_SNAPSHOT_FIELDS)
+            if barcode_conflict(p.branch_id, barcode, exclude_product_id=p.id):
+                flash("الباركود مستخدم لمنتج آخر في هذا الفرع.", "error")
+                return redirect(url_for("inventory.add_product_page", edit=p.id))
             old_buy_price = p.buy_price
             old_name = p.name
+            if "product_options" in request.form:
+                lock_color_product(p)
+                has_colors_flag = True
+            original_current_stock = _edit_current_stock_for_product(p, _load_product_meta(p))
+            previous_options = option_config(p)
+            if previous_options.get("axes"):
+                meta["product_options"] = previous_options
+                meta["has_colors"] = True
+                has_colors_flag = True
 
             p.name = name
             p.sku = sku
             p.barcode = barcode
             p.buy_price = buy_price
             p.sale_price = sale_price
+            if trade_in_enabled:
+                p.exchange_sale_price = exchange_sale_price
+            p.governorate_sale_price = governorate_sale_price
             p.low_stock_threshold = max(0, low_stock_threshold)
             p.description = description
             p.skin_type = skin_type
@@ -1181,6 +1300,8 @@ def add_product_page():
             # لا تلمس الظهور في المتجر عند حفظ الوسائط/التعديل — يُغيَّر فقط من زر العين
             if getattr(p, "store_visible", None) is None:
                 p.store_visible = True
+            if getattr(p, "pos_visible", None) is None:
+                p.pos_visible = True
 
             if image_url:
                 p.image_url = image_url
@@ -1195,6 +1316,17 @@ def add_product_page():
 
             p.meta_json = json.dumps(meta, ensure_ascii=False) if meta else None
             db.session.flush()
+            if "product_options" in request.form:
+                try:
+                    lock_color_product(p)
+                    apply_product_options(p, request.form.get("product_options"),
+                                          current_stock=original_current_stock,
+                                          can_edit_price=check_permission("edit_price"))
+                    has_colors_flag = True
+                except (ProductColorError, IntegrityError) as exc:
+                    db.session.rollback()
+                    flash(str(exc) if isinstance(exc, ProductColorError) else "المخزون محجوز للأوفلاين؛ أعد تحميل المنتج", "error")
+                    return redirect(url_for("inventory.add_product_page", edit=p.id))
             color_total = _apply_product_colors_from_form(p, request.form)
             if has_colors_flag:
                 p.quantity = color_total
@@ -1203,7 +1335,17 @@ def add_product_page():
                     set_branch_stock(stock_branch_id, p.id, color_total)
             if name != old_name:
                 sync_product_name_to_order_items(p.id, name)
-            db.session.commit()
+            created_color_files = []
+            try:
+                if "color_images" in request.form:
+                    apply_color_images(p, request.form.get("color_images"), request.files, created_color_files)
+                db.session.commit()
+            except (ProductColorError, OSError, SQLAlchemyError) as exc:
+                db.session.rollback()
+                cleanup_color_uploads(created_color_files)
+                current_app.logger.exception("web product options save failed")
+                flash(str(exc) if isinstance(exc, ProductColorError) else "تعذّر حفظ الخيارات؛ لم تُحفظ التعديلات", "error")
+                return redirect(url_for("inventory.add_product_page", edit=p.id))
             try:
                 log_mutation(
                     "update",
@@ -1222,17 +1364,28 @@ def add_product_page():
                 return redirect(url_for("inventory.add_product_page"))
             return redirect(url_for("inventory.inventory"))
 
+        write_branch_id = resolve_write_branch_id(request.form)
+        if barcode_conflict(write_branch_id, barcode):
+            if json_reply:
+                return jsonify({"success": False, "error": "الباركود مستخدم لمنتج آخر في هذا الفرع."}), 409
+            flash("الباركود مستخدم لمنتج آخر في هذا الفرع.", "error")
+            return redirect(url_for("inventory.add_product_page"))
         p = Product(
+            branch_id=write_branch_id,
             name=name,
             sku=sku,
             barcode=barcode,
             buy_price=buy_price,
             sale_price=sale_price,
+            exchange_sale_price=exchange_sale_price,
+            governorate_sale_price=governorate_sale_price,
             shipping_cost=max(0, int(meta.get("delivery_default_fee") or 0)),
             marketing_cost=0,
             opening_stock=opening_stock,
             quantity=opening_stock,
             active=not not_for_sale_flag,
+            pos_visible=request.form.get("pos_visible", "1") != "0" if json_reply else True,
+            store_visible=request.form.get("store_visible", "1") != "0" if json_reply else True,
             low_stock_threshold=max(0, low_stock_threshold),
             description=description,
             image_url=image_url,
@@ -1255,7 +1408,23 @@ def add_product_page():
                 set_opening_branch_stock(stock_branch_id, p.id, color_total)
         elif stock_branch_id:
             set_opening_branch_stock(stock_branch_id, p.id, opening_stock)
-        db.session.commit()
+        created_color_files = []
+        try:
+            if "product_options" in request.form:
+                apply_product_options(p, request.form.get("product_options"), creating=True)
+                p.opening_stock = int(p.quantity or 0)
+                if stock_branch_id:
+                    set_opening_branch_stock(stock_branch_id, p.id, p.opening_stock)
+            if "color_images" in request.form:
+                apply_color_images(p, request.form.get("color_images"), request.files, created_color_files)
+            db.session.commit()
+        except (ProductColorError, OSError, SQLAlchemyError) as exc:
+            db.session.rollback()
+            cleanup_color_uploads(created_color_files)
+            if isinstance(exc, ProductColorError):
+                return jsonify(success=False, error=str(exc)), 400
+            current_app.logger.exception("product color photo save failed")
+            return jsonify(success=False, error="تعذّر حفظ المنتج؛ لم تُحفظ التعديلات. حاول مجدداً"), 500
         try:
             log_activity(
                 "create",
@@ -1267,7 +1436,8 @@ def add_product_page():
             )
         except Exception:
             pass
-
+        if json_reply:
+            return jsonify({"success": True, "product_id": p.id, "name": p.name})
         action = (request.form.get("submit_action") or "save").strip()
         if action == "add_another":
             return redirect(url_for("inventory.add_product_page"))
@@ -1280,6 +1450,7 @@ def add_product_page():
     ctx["product_meta"] = {}
     ctx["product_specs_items"] = []
     ctx["product_color_rows"] = []
+    ctx["product_option_rows"] = []
     ctx.update(_delivery_fees_context())
     edit_arg = request.args.get("edit", type=int)
     if edit_arg:
@@ -1288,10 +1459,16 @@ def add_product_page():
             ctx["edit_product"] = ep
             ctx["product_meta"] = _load_product_meta(ep)
             ctx["edit_current_stock"] = _edit_current_stock_for_product(ep, ctx["product_meta"])
+            ctx["product_option_rows"] = local_color_rows(ep.id)
             ctx["product_specs_items"] = _extract_specs_items(ctx["product_meta"])
-            from utils.product_color_service import get_product_colors
-
-            ctx["product_color_rows"] = get_product_colors(ep.id)
+            color_branch_id = int(ep.branch_id or 0) or _branch_id_for_product_stock(
+                meta=ctx["product_meta"]
+            )
+            ctx["product_color_rows"] = (
+                get_branch_product_colors(ep.id, color_branch_id)
+                if color_branch_id
+                else []
+            )
             ctx.update(_delivery_fees_context(ep, ctx["product_meta"]))
         else:
             ctx["error"] = "المنتج غير موجود."
@@ -1303,134 +1480,17 @@ def add_product_page():
 # ======================================
 @inventory_bp.route("/audit", methods=["GET"])
 def audit():
-    if not check_permission("can_manage_inventory"):
-        return redirect("/pos"), 403
+    return redirect(url_for("inventory.smart_audit_app"))
 
-    ensure_product_schema()
-    products = Product.query.filter_by(active=True).all()
 
-    # Expected quantities as /save-audit computes them (branch stock when a branch is active).
-    audit_expected = {}
-    audit_branch_name = ""
-    try:
-        branch_id = _inventory_branch_id()
-        if branch_id:
-            from models.branch import Branch
-
-            branch = Branch.query.get(branch_id)
-            audit_branch_name = branch.name if branch else ""
-            for p in products:
-                audit_expected[p.id] = int(get_branch_stock(branch_id, p.id) or 0)
-    except Exception:
-        db.session.rollback()
-        audit_expected = {}
-
-    # Recent saved audits (from the activity log written by /save-audit).
-    audit_history = []
-    try:
-        from models.activity_log import ActivityLog
-
-        logs = (
-            ActivityLog.query.filter(
-                ActivityLog.category == "inventory",
-                ActivityLog.summary.like("حفظ جرد مخزون%"),
-            )
-            .order_by(ActivityLog.created_at.desc())
-            .limit(30)
-            .all()
-        )
-        for log in logs:
-            items = log.get_payload().get("items") or []
-            if not isinstance(items, list):
-                items = []
-            rows = []
-            for it in items:
-                if not isinstance(it, dict):
-                    continue
-                try:
-                    expected = int(it.get("expected_qty") or 0)
-                    actual = int(it.get("actual_qty") or 0)
-                except (TypeError, ValueError):
-                    continue
-                rows.append({
-                    "id": it.get("id"),
-                    "name": str(it.get("name") or ""),
-                    "barcode": str(it.get("barcode") or ""),
-                    "expected_qty": expected,
-                    "actual_qty": actual,
-                })
-            audit_history.append({
-                "id": log.id,
-                "date": log.created_at.strftime("%Y-%m-%d %H:%M") if log.created_at else "",
-                "employee": log.employee_name or "",
-                "summary": log.summary or "",
-                "items": rows,
-            })
-    except Exception:
-        db.session.rollback()
-        audit_history = []
-
-    return render_template(
-        "inventory_audit.html",
-        products=products,
-        audit_expected=audit_expected,
-        audit_branch_name=audit_branch_name,
-        audit_history=audit_history,
-    )
 @inventory_bp.route("/save-audit", methods=["POST"])
 def save_audit():
+    # A stale browser tab must not bypass review/approval or turn a non-cash
+    # inventory variance into an old deposit/withdrawal transaction.
     if not check_permission("can_manage_inventory"):
-        return jsonify({"success": False, "error": "Unauthorized"}), 403
-        
-    data = request.get_json()
-    items = data.get("items", [])
-    
-    try:
-        branch_id = _inventory_branch_id()
-        for item in items:
-            product = Product.query.get(item["id"])
-            if product:
-                expected_qty = get_branch_stock(branch_id, product.id) if branch_id else product.quantity
-                actual_qty = item["actual_qty"]
-                difference = actual_qty - expected_qty
-                
-                if difference != 0:
-                    if branch_id:
-                        set_branch_stock(branch_id, product.id, actual_qty)
-                    else:
-                        product.quantity = actual_qty
-                    
-                    # Record the adjustment linearly
-                    adjustment_value = difference * product.buy_price
-                    if adjustment_value > 0:
-                        account_tx = AccountTransaction(
-                            type="deposit",
-                            amount=adjustment_value,
-                            note=f"تسوية جرد غير نقدي بزيادة - {product.name} ({difference:+d} وحدة)"
-                        )
-                    else:
-                        account_tx = AccountTransaction(
-                            type="withdraw",
-                            amount=abs(adjustment_value),
-                            note=f"تسوية جرد غير نقدي بعجز - {product.name} ({difference:+d} وحدة)"
-                        )
-                    db.session.add(account_tx)
-                    
-        db.session.commit()
-        try:
-            log_activity(
-                "update",
-                "inventory",
-                f"حفظ جرد مخزون — {len(items)} منتج",
-                payload={"items": items},
-            )
-        except Exception:
-            pass
-        return jsonify({"success": True, "message": "تم حفظ تقرير الجرد بنجاح"})
-        
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({"success": False, "error": str(e)}), 500
+        return jsonify(success=False,error="ليست لديك صلاحية الجرد"),403
+    return jsonify(success=False,code="audit_workflow_required",
+        error="الجرد يحتاج جلسة ومراجعة واعتماد؛ افتح صفحة الجرد المحدثة",next_url=url_for("inventory.smart_audit_app")),409
 
 # ======================================
 @inventory_bp.route("/add-supplier", methods=["POST"])
@@ -1473,13 +1533,110 @@ def toggle_product_store_visibility(id):
         return redirect(url_for("inventory.inventory"))
 
     p = Product.query.get_or_404(id)
-    p.store_visible = not bool(p.store_visible)
+    _apply_catalog_visibility(p, "store_visible", not bool(p.store_visible))
     db.session.commit()
+    _refresh_storefront()
     flash(
         "تم إظهار المنتج في المتجر." if p.store_visible else "تم إخفاء المنتج من المتجر.",
         "success",
     )
     return redirect(url_for("inventory.inventory"))
+
+
+def _apply_pos_visible(product: Product, visible: bool) -> list[int]:
+    """Set POS visibility on the product and any shared-catalog siblings."""
+    return _apply_catalog_visibility(product, "pos_visible", visible)
+
+
+def _refresh_storefront() -> None:
+    """A product edit (visibility, price, name…) shows in the online store at once, not after its caches expire."""
+    try:
+        from modules.search import engine
+        from modules.storefront.services.catalog_service import invalidate_catalog_cache
+        from routes import storefront as storefront_routes
+
+        slug = str(getattr(g, "tenant", "") or "")
+        invalidate_catalog_cache(slug or None)
+        engine.invalidate(slug or None)
+        storefront_routes._PAGE_CACHE.clear()
+    except Exception:
+        current_app.logger.exception("storefront cache refresh failed")
+
+
+def _apply_catalog_visibility(product: Product, field: str, visible: bool) -> list[int]:
+    assert field in {"pos_visible", "store_visible"}
+    targets = [product]
+    group_id = str(getattr(product, "catalog_group_id", "") or "").strip()
+    if group_id and not independent_branches_enabled():
+        siblings = (
+            Product.query.filter(Product.catalog_group_id == group_id)
+            .execution_options(skip_branch_scope=True)
+            .all()
+        )
+        if siblings:
+            targets = siblings
+    updated_ids: list[int] = []
+    for row in targets:
+        setattr(row, field, bool(visible))
+        updated_ids.append(int(row.id))
+    return updated_ids
+
+
+@inventory_bp.route("/toggle-pos/<int:id>", methods=["POST", "GET"])
+def toggle_product_pos_visibility(id):
+    if not check_permission("can_manage_inventory"):
+        return redirect("/pos"), 403
+    if request.method != "POST":
+        flash("لإظهار/إخفاء المنتج من نقطة البيع استخدم زر القائمة.", "warning")
+        return redirect(url_for("inventory.inventory"))
+
+    p = Product.query.get_or_404(id)
+    new_visible = not bool(getattr(p, "pos_visible", True))
+    _apply_pos_visible(p, new_visible)
+    db.session.commit()
+    flash(
+        "تم إظهار المنتج في نقطة البيع." if new_visible else "تم إخفاء المنتج من نقطة البيع.",
+        "success",
+    )
+    return redirect(url_for("inventory.inventory"))
+
+
+@inventory_bp.route("/bulk-pos-visibility", methods=["POST"])
+def bulk_pos_visibility():
+    """إخفاء/إظهار منتجات متعددة من نقطة البيع (تحديد الكل أو تحديد جزئي)."""
+    if not check_permission("can_manage_inventory"):
+        return jsonify({"success": False, "error": "غير مصرح"}), 403
+
+    payload = request.get_json(silent=True) or {}
+    raw_ids = payload.get("ids") if "ids" in payload else payload.get("product_ids")
+    if not isinstance(raw_ids, list) or not raw_ids:
+        return jsonify({"success": False, "error": "أرسل قائمة ids"}), 400
+
+    visible = bool(payload.get("pos_visible", payload.get("visible", True)))
+    updated: list[int] = []
+    seen: set[int] = set()
+    for raw in raw_ids[:500]:
+        try:
+            product_id = int(raw)
+        except (TypeError, ValueError):
+            continue
+        if product_id <= 0 or product_id in seen:
+            continue
+        product = Product.query.get(product_id)
+        if not product:
+            continue
+        for touched_id in _apply_pos_visible(product, visible):
+            if touched_id not in seen:
+                seen.add(touched_id)
+                updated.append(touched_id)
+
+    db.session.commit()
+    return jsonify({
+        "success": True,
+        "updated": updated,
+        "count": len(updated),
+        "pos_visible": visible,
+    })
 
 
 # ======================================
@@ -1569,9 +1726,26 @@ def edit_product(id):
 
     p.name = request.form["name"]
     p.sku = request.form.get("sku", "").strip() or None
-    p.barcode = request.form.get("barcode", "").strip() or None
+    new_barcode = request.form.get("barcode", "").strip() or None
+    if barcode_conflict(p.branch_id, new_barcode, exclude_product_id=p.id):
+        flash("الباركود مستخدم لمنتج آخر في هذا الفرع.", "error")
+        return redirect(url_for("inventory.inventory"))
+    p.barcode = new_barcode
     p.buy_price = int(request.form["buy_price"])
     p.sale_price = int(request.form["sale_price"])
+    if tenant_feature_enabled("trade_in_sales", default=False):
+        p.exchange_sale_price = (
+            max(0, int(request.form.get("exchange_sale_price") or 0)) or None
+        )
+    dual_region = bool(request.form.get("dual_region_pricing"))
+    from utils.product_region_pricing import set_dual_region_pricing_flag
+
+    meta = set_dual_region_pricing_flag(meta, dual_region)
+    if dual_region:
+        gov_raw = (request.form.get("governorate_sale_price") or "").strip()
+        p.governorate_sale_price = max(0, int(gov_raw or 0)) or None if gov_raw != "" else None
+    else:
+        p.governorate_sale_price = None
     p.low_stock_threshold = int(request.form.get("low_stock_threshold", 5) or 5)
     p.shipping_cost = 0  # إلغاء الحقل
     p.marketing_cost = 0  # إلغاء الحقل
@@ -1604,12 +1778,15 @@ def edit_product(id):
     
     # تحديث المخزون الحالي إذا تم توفيره (لا نعدّل المخزون الافتتاحي)
     if "current_stock" in request.form:
-        new_qty = max(0, int(request.form["current_stock"]) if request.form["current_stock"] else 0)
-        branch_id = _branch_id_for_product_stock(meta=meta)
-        if branch_id:
-            set_branch_stock(branch_id, p.id, new_qty)
+        if product_has_colors(p):
+            flash("مخزون المنتج الملوّن يُعدّل حسب اللون من التعديل السريع أو صفحة المنتج.", "warning")
         else:
-            p.quantity = new_qty
+            new_qty = max(0, int(request.form["current_stock"]) if request.form["current_stock"] else 0)
+            branch_id = int(p.branch_id or 0) or resolve_write_branch_id(request.form)
+            if branch_id:
+                set_branch_stock(branch_id, p.id, new_qty)
+            else:
+                p.quantity = new_qty
 
     if p.name != old_name:
         sync_product_name_to_order_items(p.id, p.name)
@@ -1641,12 +1818,12 @@ def update_opening_stock(id):
 
 
 # ======================================
-# Adjust Stock (تعديل المخزون)
+# Adjust Stock / Quick Edit (تعديل سريع)
 # ======================================
 @inventory_bp.route("/adjust-stock/<int:id>", methods=["POST"])
 def adjust_stock(id):
     """
-    تعديل المخزون يدوياً (مع سبب إلزامي)
+    تعديل سريع: مخزون الفرع و/أو سعر البيع
     
     السبب المحاسبي:
     - كل حركة مخزون يجب أن تكون مرتبطة بسبب واضح
@@ -1665,21 +1842,51 @@ def adjust_stock(id):
         data = request.form.to_dict()
     
     try:
-        adjustment = int(data.get("adjustment", 0))  # يمكن أن يكون موجب أو سالب
+        adjustment_raw = str(data.get("adjustment", "") or "").strip()
+        adjustment = int(adjustment_raw or 0)  # يمكن أن يكون موجب أو سالب
         reason = data.get("reason", "").strip()
-        branch_id = None
-        branch_id_raw = str(data.get("branch_id") or "").strip()
-        if branch_id_raw.isdigit():
-            from models.branch import Branch
+        try:
+            branch_id = _resolve_stock_adjust_branch_id(data)
+        except PermissionError as exc:
+            if request.is_json:
+                return jsonify({"success": False, "error": str(exc)}), 403
+            flash(str(exc), "error")
+            return redirect(url_for("inventory.inventory"))
+        except ValueError as exc:
+            if request.is_json:
+                return jsonify({"success": False, "error": str(exc)}), 400
+            flash(str(exc), "error")
+            return redirect(url_for("inventory.inventory"))
 
-            branch = Branch.query.filter_by(id=int(branch_id_raw), is_active=True).first()
-            if branch:
-                branch_id = branch.id
-        if not branch_id:
-            branch_id = _inventory_branch_id()
+        # في الوضع المستقل كل منتج يتبع فرعاً واحداً. في الوضع المشترك
+        # المخزون يُحفظ لكل فرع عبر BranchStock حتى لو كان المنتج على الفرع الرئيسي.
+        if independent_branches_enabled() and int(product.branch_id or 0) != int(branch_id):
+            return jsonify({"success": False, "error": "المنتج لا يتبع الفرع المختار"}), 403
+
+        sale_price_raw = data.get("sale_price", None)
+        price_changed = False
+        old_sale_price = int(product.sale_price or 0)
+        new_sale_price = old_sale_price
+        if sale_price_raw is not None and str(sale_price_raw).strip() != "":
+            new_sale_price = int(sale_price_raw)
+            if new_sale_price < 0:
+                raise ValueError("sale_price_negative")
+            if new_sale_price != old_sale_price:
+                product.sale_price = new_sale_price
+                price_changed = True
+
+        if adjustment == 0 and not price_changed:
+            if request.is_json:
+                return jsonify({
+                    "success": False,
+                    "error": "لم يتم إجراء أي تعديل. غيّر المخزون أو سعر البيع ثم احفظ.",
+                }), 400
+            from flask import flash
+            flash("لم يتم إجراء أي تعديل. غيّر المخزون أو سعر البيع ثم احفظ.", "error")
+            return redirect(url_for("inventory.inventory"))
         
-        # التحقق من وجود السبب
-        if not reason:
+        # التحقق من وجود السبب عند تغيير المخزون
+        if adjustment != 0 and not reason:
             if request.is_json:
                 return jsonify({
                     "success": False, 
@@ -1692,6 +1899,23 @@ def adjust_stock(id):
                 return redirect(url_for("inventory.inventory"))
         
         current_qty = get_branch_stock(branch_id, product.id) if branch_id else (product.quantity or 0)
+        color_name = str(data.get("color_name", "") or "").strip()
+        color_managed = product_has_colors(product)
+        local_colors = (
+            get_branch_product_colors(product.id, branch_id)
+            if branch_id and color_managed
+            else []
+        )
+        if color_managed and adjustment != 0:
+            if not local_colors:
+                raise ProductColorError("لا توجد أرصدة ألوان لهذا المنتج في الفرع المختار. عرّف الألوان أولاً من تعديل المنتج")
+            if adjustment != 0 and not color_name:
+                raise ProductColorError("يجب اختيار اللون عند تعديل مخزون منتج ملوّن")
+            selected_color = next((row for row in local_colors if row["name"] == color_name), None)
+            if adjustment != 0 and not selected_color:
+                raise ProductColorError("اللون المختار غير موجود في هذا الفرع")
+            if selected_color:
+                current_qty = int(selected_color.get("qty") or 0)
         if current_qty + adjustment < 0:
             if request.is_json:
                 return jsonify({
@@ -1705,36 +1929,67 @@ def adjust_stock(id):
         
         # تطبيق التعديل
         old_quantity = current_qty
-        if branch_id:
-            adjust_branch_stock(branch_id, product.id, adjustment)
-            new_quantity = get_branch_stock(branch_id, product.id)
-        else:
-            product.quantity += adjustment
-            new_quantity = product.quantity
+        new_quantity = current_qty
+        if adjustment != 0:
+            if color_managed:
+                old_quantity, new_quantity, _branch_total = adjust_color_stock(
+                    product.id,
+                    color_name,
+                    adjustment,
+                    branch_id=branch_id,
+                )
+            elif branch_id:
+                adjust_branch_stock(
+                    branch_id,
+                    product.id,
+                    adjustment,
+                    audit_context={
+                        "source_type": "manual_adjustment",
+                        "source_id": product.id,
+                        "reason": reason,
+                        "unit_cost": int(product.buy_price or 0),
+                    },
+                )
+                new_quantity = get_branch_stock(branch_id, product.id)
+            else:
+                product.quantity += adjustment
+                new_quantity = product.quantity
         
         db.session.commit()
         
         # تسجيل الحركة (للعرض فقط - لا نحفظها في قاعدة بيانات)
         # يمكن إضافة سجل حركات في المستقبل إذا لزم الأمر
+
+        parts = []
+        if adjustment != 0:
+            parts.append(f"المخزون {old_quantity} → {new_quantity}")
+        if price_changed:
+            parts.append(f"سعر البيع {old_sale_price} → {new_sale_price}")
+        message = "تم الحفظ بنجاح: " + " | ".join(parts)
+        if reason:
+            message += f". السبب: {reason}"
         
         if request.is_json:
             return jsonify({
                 "success": True, 
-                "message": f"تم تعديل المخزون بنجاح. السبب: {reason}",
+                "message": message,
                 "old_quantity": old_quantity,
                 "new_quantity": new_quantity,
-                "adjustment": adjustment
+                "adjustment": adjustment,
+                "old_sale_price": old_sale_price,
+                "new_sale_price": new_sale_price,
+                "price_changed": price_changed,
             })
         else:
             from flask import flash
-            flash(f"تم تعديل المخزون بنجاح. السبب: {reason}", "success")
+            flash(message, "success")
             return redirect(url_for("inventory.inventory"))
     except ValueError:
         if request.is_json:
-            return jsonify({"success": False, "error": "قيمة التعديل غير صحيحة"}), 400
+            return jsonify({"success": False, "error": "قيمة التعديل أو سعر البيع غير صحيحة"}), 400
         else:
             from flask import flash
-            flash("قيمة التعديل غير صحيحة", "error")
+            flash("قيمة التعديل أو سعر البيع غير صحيحة", "error")
             return redirect(url_for("inventory.inventory"))
     except Exception as e:
         db.session.rollback()
@@ -1796,3 +2051,274 @@ def product_report(id):
         product=product,
         report=report
     )
+
+
+# ======================================
+# Products JSON (desktop / API clients)
+# ======================================
+def _stock_state(qty: int, threshold: int) -> str:
+    if qty <= 0:
+        return "out"
+    if qty <= threshold:
+        return "low"
+    return "available"
+
+
+def _product_api_row(product, qty: int) -> dict:
+    threshold = int(product.low_stock_threshold if product.low_stock_threshold is not None else 5)
+    return {
+        "id": product.id,
+        "name": product.name,
+        "sku": product.sku or "",
+        "barcode": product.barcode or "",
+        "category": product.catalog_category or "",
+        "brand": str(_load_product_meta(product).get("brand") or ""),
+        "image_url": product.image_url or "",
+        "buy_price": int(product.buy_price or 0),
+        "sale_price": int(product.sale_price or 0),
+        "quantity": int(qty),
+        "low_stock_threshold": threshold,
+        "stock_state": _stock_state(int(qty), threshold),
+        "active": bool(product.active),
+    }
+
+
+@inventory_bp.route("/api/products")
+def products_api(*, _snapshot=False):
+    """Paginated product list with stock stats — same scope and quantities as the inventory page."""
+    if not check_permission("can_manage_inventory"):
+        return jsonify({"success": False, "error": "غير مصرح"}), 403
+    ensure_product_schema()
+
+    snapshot = _inventory_snapshot()
+    qty_map = snapshot["product_display_qty_map"]
+    rows = [_product_api_row(p, qty_map.get(int(p.id), 0)) for p in snapshot["products"]]
+
+    stats = {
+        "total": len(rows),
+        "available": sum(1 for r in rows if r["stock_state"] == "available"),
+        "low": sum(1 for r in rows if r["stock_state"] == "low"),
+        "out": sum(1 for r in rows if r["stock_state"] == "out"),
+    }
+    categories = sorted({r["category"] for r in rows if r["category"]})
+    brands = sorted({r["brand"] for r in rows if r["brand"]})
+
+    search = (request.args.get("search") or "").strip().lower()
+    if search:
+        rows = [
+            r for r in rows
+            if search in r["name"].lower() or search in r["sku"].lower() or search == r["barcode"].lower()
+            or (len(search) >= 4 and search in r["barcode"].lower())
+        ]
+    category = (request.args.get("category") or "").strip()
+    if category:
+        rows = [r for r in rows if r["category"] == category]
+    stock = (request.args.get("stock") or "").strip()
+    if stock in {"available", "low", "out"}:
+        rows = [r for r in rows if r["stock_state"] == stock]
+
+    sort_field = request.args.get("sort_field") or "name"
+    if sort_field not in {"name", "sku", "category", "buy_price", "sale_price", "quantity"}:
+        sort_field = "name"
+    rows.sort(key=lambda r: (r[sort_field] if not isinstance(r[sort_field], str) else r[sort_field].lower()),
+              reverse=request.args.get("sort_dir") == "desc")
+
+    page_size = (len(rows) or 1) if _snapshot else min(100, max(1, request.args.get("page_size", 25, type=int) or 25))
+    total = len(rows)
+    total_pages = max(1, (total + page_size - 1) // page_size)
+    page = min(max(1, request.args.get("page", 1, type=int) or 1), total_pages)
+    start = (page - 1) * page_size
+    return jsonify({
+        "success": True,
+        "rows": rows[start:start + page_size],
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "total_pages": total_pages,
+        "stats": stats,
+        "categories": categories,
+        "brands": brands,
+        "branch_scope_label": snapshot["branch_scope_label"],
+    })
+
+
+# Fields the desktop editor owns. Everything else on the product (specs,
+# gallery, video, delivery fees, region pricing, colours, custom fields) is
+# left exactly as it is - unlike the full web form, which rebuilds meta.
+_DESKTOP_META_KEYS = ("category", "brand", "unit")
+
+
+@inventory_bp.route("/api/products/<int:product_id>")
+def product_api_details(product_id):
+    if not check_permission("can_manage_inventory"):
+        return jsonify({"success": False, "error": "غير مصرح"}), 403
+    product = Product.query.get(product_id)
+    if not product:
+        return jsonify({"success": False, "error": "المنتج غير موجود أو تم حذفه"}), 404
+    meta = _load_product_meta(product)
+    return jsonify({
+        "success": True,
+        "product": {
+            "id": product.id,
+            "name": product.name or "",
+            "sku": product.sku or "",
+            "barcode": product.barcode or "",
+            "buy_price": int(product.buy_price or 0),
+            "sale_price": int(product.sale_price or 0),
+            "exchange_sale_price": product.exchange_sale_price,
+            "trade_in_sales_enabled": tenant_feature_enabled("trade_in_sales", default=False),
+            "editor_settings_supported": True,
+            "pos_visible": product.pos_visible is not False,
+            "store_visible": product.store_visible is not False,
+            "low_stock_threshold": int(product.low_stock_threshold if product.low_stock_threshold is not None else 5),
+            "description": product.description or "",
+            "image_url": product.image_url or "",
+            "active": bool(product.active),
+            "has_colors": product_has_colors(product),
+            "colors_supported": True,
+            "color_images_supported": True,
+            "options_supported": True,
+            "option_axes": option_config(product)["axes"],
+            "colors": local_color_rows(product.id),
+            "current_stock": _edit_current_stock_for_product(product, meta),
+            **{key: str(meta.get(key) or "") for key in _DESKTOP_META_KEYS},
+        },
+    })
+
+
+@inventory_bp.route("/api/products/<int:product_id>/update", methods=["POST"])
+def product_api_update(product_id):
+    """Update only the fields an API client sends (multipart form, optional product_image)."""
+    if not check_permission("can_manage_inventory"):
+        return jsonify({"success": False, "error": "غير مصرح"}), 403
+    ensure_product_schema()
+    product = Product.query.filter_by(id=product_id).with_for_update().first()
+    if not product:
+        return jsonify({"success": False, "error": "المنتج غير موجود أو تم حذفه"}), 404
+    form = request.form
+    if "add_colors" in form or "color_images" in form or "product_options" in form:
+        lock_color_product(product)
+
+    def as_int(key):
+        raw = (form.get(key) or "").strip()
+        if raw == "":
+            return None
+        value = int(raw)
+        if value < 0:
+            raise ValueError(key)
+        return value
+
+    try:
+        buy_price = as_int("buy_price")
+        sale_price = as_int("sale_price")
+        exchange_sale_price = as_int("exchange_sale_price") or None
+        low_stock = as_int("low_stock_threshold")
+        for field in ("pos_visible", "store_visible"):
+            if field in form and form.get(field) not in {"0", "1"}:
+                raise ValueError(field)
+    except ValueError:
+        return jsonify({"success": False, "error": "قيمة رقمية غير صحيحة"}), 400
+
+    price_changed = (buy_price is not None and buy_price != int(product.buy_price or 0)) or (
+        sale_price is not None and sale_price != int(product.sale_price or 0)
+    ) or ("exchange_sale_price" in form and exchange_sale_price != product.exchange_sale_price)
+    if price_changed and not check_permission("edit_price"):
+        return jsonify({"success": False, "error": "ليست لديك صلاحية تعديل الأسعار"}), 403
+    if "exchange_sale_price" in form and exchange_sale_price and not tenant_feature_enabled("trade_in_sales", default=False):
+        return jsonify(success=False, error="ميزة الاستبدال غير مفعّلة لهذه الشركة"), 400
+
+    editor_snapshot_fields = (*PRODUCT_SNAPSHOT_FIELDS, "buy_price", "sale_price", "exchange_sale_price", "pos_visible", "store_visible")
+    before = snapshot_attrs(product, *editor_snapshot_fields)
+    old_name = product.name
+    if "add_colors" in form or "color_images" in form or "product_options" in form:
+        before["colors"] = local_color_rows(product.id)
+    if "name" in form:
+        name = (form.get("name") or "").strip()
+        if not name:
+            return jsonify({"success": False, "error": "يرجى إدخال اسم المنتج."}), 400
+        product.name = name
+    if "sku" in form:
+        product.sku = (form.get("sku") or "").strip() or None
+    if "barcode" in form:
+        barcode = (form.get("barcode") or "").strip() or None
+        if barcode_conflict(product.branch_id, barcode, exclude_product_id=product.id):
+            return jsonify({"success": False, "error": "الباركود مستخدم لمنتج آخر في هذا الفرع."}), 409
+        product.barcode = barcode
+    if buy_price is not None:
+        product.buy_price = buy_price
+    if sale_price is not None:
+        product.sale_price = sale_price
+    if "exchange_sale_price" in form:
+        product.exchange_sale_price = exchange_sale_price
+    visibility_changes = {}
+    for field in ("pos_visible", "store_visible"):
+        if field in form:
+            visibility_changes[field] = _apply_catalog_visibility(product, field, form.get(field) == "1")
+    if low_stock is not None:
+        product.low_stock_threshold = low_stock
+    if "description" in form:
+        product.description = (form.get("description") or "").strip() or None
+    if "active" in form:
+        product.active = form.get("active") == "1"
+    meta = _load_product_meta(product)
+    meta_changed = False
+    for key in _DESKTOP_META_KEYS:
+        if key in form:
+            value = (form.get(key) or "").strip()
+            if value:
+                meta[key] = value
+            else:
+                meta.pop(key, None)
+            meta_changed = True
+    if meta_changed:
+        product.meta_json = json.dumps(meta, ensure_ascii=False) if meta else None
+    image_url = _save_uploaded_product_image(request.files.get("product_image"))
+    if image_url:
+        product.image_url = image_url
+    created_color_files = []
+    try:
+        if product.name != old_name:
+            sync_product_name_to_order_items(product.id, product.name)
+        if "add_colors" in form:
+            append_product_colors(product, form.get("add_colors"), form.get("color_stock"),
+                                  _edit_current_stock_for_product(product, _load_product_meta(product)))
+        if "product_options" in form:
+            apply_product_options(product, form.get("product_options"),
+                                  current_stock=_edit_current_stock_for_product(product, _load_product_meta(product)),
+                                  can_edit_price=check_permission("edit_price"))
+        if "color_images" in form:
+            apply_color_images(product, form.get("color_images"), request.files, created_color_files)
+        db.session.commit()
+        _refresh_storefront()
+    except ProductColorError as exc:
+        db.session.rollback()
+        cleanup_color_uploads(created_color_files)
+        return jsonify({"success": False, "error": str(exc)}), 409
+    except IntegrityError as exc:
+        db.session.rollback()
+        cleanup_color_uploads(created_color_files)
+        from utils.desktop_stock_reservations import GUARD_ERROR, GUARD_MESSAGE
+        if GUARD_ERROR in str(exc):
+            return jsonify({"success": False, "error": GUARD_MESSAGE}), 409
+        current_app.logger.exception("product update conflict")
+        return jsonify({"success": False, "error": "تعارض أثناء الحفظ؛ أعد تحميل المنتج وحاول مجدداً"}), 409
+    except (OSError, SQLAlchemyError):
+        db.session.rollback()
+        cleanup_color_uploads(created_color_files)
+        current_app.logger.exception("product color photo update failed")
+        return jsonify(success=False, error="تعذّر حفظ الصور؛ لم تُحفظ التعديلات. حاول مجدداً"), 500
+    try:
+        log_mutation(
+            "update",
+            "inventory",
+            "product",
+            product.id,
+            before,
+            {**snapshot_attrs(product, *editor_snapshot_fields),
+             **({"visibility_targets": visibility_changes} if visibility_changes else {}),
+             **({"colors": local_color_rows(product.id)} if "add_colors" in form or "color_images" in form or "product_options" in form else {})},
+            f"تعديل منتج: {product.name}",
+        )
+    except Exception:
+        current_app.logger.exception("product update audit failed")
+    return jsonify({"success": True, "product_id": product.id, "image_url": product.image_url or ""})

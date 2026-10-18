@@ -1,0 +1,1380 @@
+{% extends "base.html" %}
+{% block title %}{{ food_title }} - Finora{% endblock %}
+{% block body_class %}food-app-mode{% endblock %}
+{% block page_title %}{{ food_title }}{% endblock %}
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='food/food.css') }}?v=food-responsive-20260829">
+{% endblock %}
+{% block content %}
+<header class="food-app-header" dir="rtl" lang="ar">
+  <div class="food-app-header__inner">
+    <div class="food-brand-group">
+      <a href="/food/" class="food-brand" aria-label="الرئيسية">
+        <span class="food-brand__icon"><i class="fa fa-basket-shopping"></i></span>
+        <span><b>Finora Food</b><small>جملة ومفرد</small></span>
+      </a>
+    </div>
+
+    <nav class="food-quick-nav" aria-label="اختصارات نشاط المواد الغذائية">
+      <a href="/food/" class="{{ 'active' if food_page == 'dashboard' else '' }}"><i class="fa fa-house"></i><span>الرئيسية</span></a>
+      <a href="/food/cashier" class="food-nav-cashier {{ 'active' if food_page == 'cashier' else '' }}"><i class="fa fa-cash-register"></i><span>الكاشير</span></a>
+      <a href="/food/orders" class="{{ 'active' if food_page == 'orders' else '' }}"><i class="fa fa-receipt"></i><span>الفواتير</span></a>
+      <a href="/food/purchases" class="{{ 'active' if food_page in ['purchases', 'purchases_new'] else '' }}"><i class="fa fa-cart-plus"></i><span>المشتريات</span></a>
+      <a href="/food/inventory" class="{{ 'active' if food_page == 'inventory' else '' }}"><i class="fa fa-warehouse"></i><span>المخزن</span></a>
+      <a href="/food/products" class="{{ 'active' if food_page == 'products' else '' }}"><i class="fa fa-box-open"></i><span>المنتجات</span></a>
+      <a href="/food/customers" class="{{ 'active' if food_page == 'customers' else '' }}"><i class="fa fa-users"></i><span>العملاء</span></a>
+      <a href="/food/suppliers" class="{{ 'active' if food_page == 'suppliers' else '' }}"><i class="fa fa-truck-field"></i><span>الموردون</span></a>
+      <a href="/food/finance" class="{{ 'active' if food_page == 'finance' else '' }}"><i class="fa fa-money-bill-transfer"></i><span>المالية</span></a>
+      <a href="/food/reports" class="{{ 'active' if food_page == 'reports' else '' }}"><i class="fa fa-chart-pie"></i><span>التقارير</span></a>
+      <a href="/food/settings" class="{{ 'active' if food_page == 'settings' else '' }}"><i class="fa fa-sliders"></i><span>الإعدادات</span></a>
+    </nav>
+  </div>
+</header>
+<main class="food-shell" dir="rtl" lang="ar" data-food-page="{{ food_page }}">
+  <div id="foodNotice" class="food-notice" hidden></div>
+
+  {% if food_page == 'dashboard' %}
+  <div id="foodDashboard" class="fd-root" aria-live="polite">
+    <header class="fd-header">
+      <div class="fd-header__right">
+        <div class="fd-header__brand">
+          <span class="fd-header__icon"><i class="fa fa-chart-line"></i></span>
+          <div>
+            <span class="fd-kicker">Finora Food</span>
+            <h1>ملخص شغلك اليوم</h1>
+            <p>تابع المبيعات والمخزون والنقد والتنبيهات من مكان واحد</p>
+          </div>
+        </div>
+        <div class="fd-header__meta">
+          <span id="fdDateLabel">—</span>
+          <span id="fdLastUpdated">آخر تحديث —</span>
+        </div>
+      </div>
+      <div class="fd-header__controls">
+        <label class="fd-period">
+          <span>الفترة</span>
+          <select id="fdPeriod" aria-label="اختر الفترة">
+            <option value="today">اليوم</option>
+            <option value="yesterday">أمس</option>
+            <option value="last_7">آخر 7 أيام</option>
+            <option value="week">هذا الأسبوع</option>
+            <option value="month">هذا الشهر</option>
+            <option value="last_month">الشهر السابق</option>
+            <option value="custom">فترة مخصصة</option>
+          </select>
+        </label>
+        <div id="fdCustomRange" class="fd-custom-range" hidden>
+          <input id="fdStart" type="date" aria-label="من تاريخ">
+          <input id="fdEnd" type="date" aria-label="إلى تاريخ">
+          <button type="button" id="fdApplyCustom" class="food-ghost">تطبيق</button>
+        </div>
+        <button type="button" id="fdRefresh" class="fd-refresh" title="تحديث"><i class="fa fa-rotate"></i></button>
+      </div>
+    </header>
+
+    <nav class="fd-actions" aria-label="إجراءات سريعة">
+      <a class="fd-action fd-action--primary" href="/food/cashier"><i class="fa fa-cash-register"></i><span>فتح الكاشير</span></a>
+      <a class="fd-action" href="/food/orders?new=1"><i class="fa fa-file-invoice"></i><span>فاتورة بيع</span></a>
+      <a class="fd-action" href="/food/purchases"><i class="fa fa-cart-plus"></i><span>شراء</span></a>
+      <a class="fd-action" href="/food/finance"><i class="fa fa-hand-holding-dollar"></i><span>قبض</span></a>
+      <a class="fd-action" href="/food/finance"><i class="fa fa-money-bill-transfer"></i><span>تسديد</span></a>
+    </nav>
+
+    <section id="fdKpis" class="fd-kpis" aria-label="مؤشرات الأداء"></section>
+
+    <section class="fd-grid fd-grid--main">
+      <article class="fd-card fd-card--chart" id="fdSalesChartCard">
+        <header class="fd-card__head"><div><h2>حركة المبيعات</h2><p id="fdChartHint">حسب ساعات اليوم</p></div></header>
+        <div class="fd-chart-wrap"><canvas id="fdSalesChart" height="220"></canvas></div>
+        <div id="fdChartEmpty" class="fd-empty" hidden>لا توجد مبيعات خلال الفترة المحددة</div>
+      </article>
+      <article class="fd-card" id="fdInventoryCard">
+        <header class="fd-card__head"><div><h2>حالة المخزون</h2><p>تنبيهات تحتاج مراجعة</p></div></header>
+        <div id="fdInventoryStatus" class="fd-status-list"></div>
+        <div id="fdInventoryValue" class="fd-inv-value"></div>
+        <a class="fd-card__link" href="/food/inventory">عرض جميع تنبيهات المخزون</a>
+      </article>
+      <article class="fd-card" id="fdSalesTypeCard">
+        <header class="fd-card__head"><div><h2>المبيعات حسب النوع</h2><p>مفرد · جملة · مختلط</p></div></header>
+        <div id="fdSalesTypes" class="fd-type-bars"></div>
+      </article>
+    </section>
+
+    <section class="fd-grid fd-grid--second">
+      <article class="fd-card" id="fdCashCard">
+        <header class="fd-card__head"><div><h2>حركة الصندوق</h2><p>وارد وصادر الفترة</p></div></header>
+        <div id="fdCashFlow" class="fd-cash-list"></div>
+      </article>
+      <article class="fd-card" id="fdDebtsCard">
+        <header class="fd-card__head"><div><h2>الذمم</h2><p>عملاء وموردون</p></div></header>
+        <div id="fdDebts" class="fd-debts"></div>
+      </article>
+      <article class="fd-card" id="fdTopProductsCard">
+        <header class="fd-card__head">
+          <div><h2>الأكثر مبيعاً</h2><p>أداء المنتجات</p></div>
+          <div class="fd-mini-tabs" id="fdTopTabs" role="tablist">
+            <button type="button" class="active" data-top="best">الأكثر مبيعاً</button>
+            <button type="button" data-top="profit">الأعلى ربحاً</button>
+            <button type="button" data-top="slow">الأقل حركة</button>
+          </div>
+        </header>
+        <div id="fdTopProducts" class="fd-product-list"></div>
+        <a class="fd-card__link" href="/food/products">عرض جميع المنتجات</a>
+      </article>
+      <article class="fd-card" id="fdAlertsCard">
+        <header class="fd-card__head"><div><h2>تنبيهات تحتاج انتباهك</h2><p>الأهم فقط</p></div></header>
+        <div id="fdAlerts" class="fd-alerts"></div>
+        <a class="fd-card__link" href="/food/inventory">عرض كل التنبيهات</a>
+      </article>
+      <article class="fd-card" id="fdActivityCard">
+        <header class="fd-card__head"><div><h2>آخر الحركات</h2><p>سجل مختصر</p></div></header>
+        <div id="fdActivity" class="fd-timeline"></div>
+        <a class="fd-card__link" href="/food/finance">عرض كل الحركات</a>
+      </article>
+    </section>
+
+    <section class="fd-grid fd-grid--third">
+      <article class="fd-card" id="fdDeadStockCard">
+        <header class="fd-card__head"><div><h2>بضاعة راكدة</h2><p>لم تُبع منذ 30+ يوم</p></div></header>
+        <div id="fdDeadStock"></div>
+        <a class="fd-card__link" href="/food/inventory">عرض البضاعة الراكدة</a>
+      </article>
+      <article class="fd-card" id="fdExpiryCard">
+        <header class="fd-card__head"><div><h2>تنبيهات الصلاحية</h2><p>أقرب المنتجات للانتهاء</p></div></header>
+        <div id="fdExpiry"></div>
+        <a class="fd-card__link" href="/food/inventory">عرض المواد</a>
+      </article>
+      <article class="fd-card" id="fdReorderCard">
+        <header class="fd-card__head"><div><h2>مقترحات إعادة الطلب</h2><p>حسب المخزون ومعدل البيع</p></div></header>
+        <div id="fdReorder" class="fd-table-scroll"></div>
+        <a class="fd-card__link" id="fdReorderAction" href="/food/purchases">إنشاء طلب شراء</a>
+      </article>
+    </section>
+
+    <section class="fd-insights" id="fdInsights" aria-label="Finora Insights">
+      <header><span class="fd-insights__badge">Finora Insights</span><h2>ملاحظات تلقائية</h2></header>
+      <div id="fdInsightsList" class="fd-insights__list"></div>
+    </section>
+
+    <div id="fdSkeleton" class="fd-skeleton" hidden></div>
+    <div id="fdError" class="fd-error" hidden>
+      <p>تعذر تحميل البيانات</p>
+      <button type="button" id="fdRetry" class="food-primary">إعادة المحاولة</button>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if food_page == 'orders' %}
+  <section class="fi-root" id="foodInvoicesRoot" aria-label="فواتير المواد الغذائية">
+    <header class="food-page-head food-page-head--enterprise fi-header">
+      <div class="food-page-head__identity">
+        <span class="food-page-head__icon"><i class="fa fa-receipt"></i></span>
+        <div>
+          <span class="food-page-kicker">إدارة المبيعات</span>
+          <h1>الفواتير</h1>
+          <p>إدارة فواتير المبيعات والمدفوعات والمرتجعات</p>
+        </div>
+      </div>
+      <div class="fi-header__actions">
+        <button type="button" id="fiExportBtn" class="food-ghost"><i class="fa fa-file-export"></i> تصدير</button>
+        <button type="button" id="fiNewInvoiceBtn" class="food-primary"><i class="fa fa-plus"></i> فاتورة بيع</button>
+      </div>
+    </header>
+
+    <section id="fiKpis" class="fi-kpis" aria-label="مؤشرات الفواتير"></section>
+
+    <section class="food-panel fi-filters" aria-label="بحث وفلاتر">
+      <div class="fi-search-row">
+        <div class="food-search fi-search"><i class="fa fa-search"></i>
+          <input id="fiSearch" autocomplete="off" placeholder="ابحث برقم الفاتورة، اسم العميل، الهاتف، الباركود أو المنتج...">
+        </div>
+        <div class="fi-range-group">
+          <label class="fi-range">
+            <span>الفترة</span>
+            <select id="fiRange">
+              <option value="today">اليوم</option>
+              <option value="yesterday">أمس</option>
+              <option value="week">هذا الأسبوع</option>
+              <option value="month">هذا الشهر</option>
+              <option value="custom">مخصص</option>
+            </select>
+          </label>
+          <div id="fiCustomRange" class="fi-custom-range" hidden>
+            <input id="fiStart" type="date" aria-label="من تاريخ">
+            <input id="fiEnd" type="date" aria-label="إلى تاريخ">
+            <button type="button" id="fiApplyCustom" class="food-ghost">تطبيق</button>
+          </div>
+        </div>
+      </div>
+      <div class="fi-filter-row">
+        <label>الفرع<select id="fiBranch"><option value="">كل الفروع</option></select></label>
+        <label>الكاشير<select id="fiCashier"><option value="">كل الكاشيرين</option></select></label>
+        <label>نوع البيع<select id="fiSaleType"><option value="">الكل</option><option value="RETAIL">مفرد</option><option value="WHOLESALE">جملة</option><option value="MIXED">مختلط</option></select></label>
+        <label>طريقة الدفع<select id="fiPayMethod"><option value="">الكل</option><option value="cash">نقدي</option><option value="card">بطاقة</option><option value="transfer">تحويل</option><option value="credit">آجل</option><option value="mixed">مختلط</option></select></label>
+        <label>الحالة<select id="fiStatus"><option value="">الكل</option><option value="completed">مكتملة</option><option value="partial">مدفوعة جزئياً</option><option value="credit">غير مدفوعة</option><option value="partial_return">مرتجع جزئي</option><option value="full_return">مرتجع كامل</option><option value="void">ملغاة</option></select></label>
+      </div>
+    </section>
+
+    <div class="fi-toolbar">
+      <div class="fi-tabs" id="fiTabs" role="tablist">
+        <button type="button" class="active" data-tab="all">الكل <b id="fiTabAll">0</b></button>
+        <button type="button" data-tab="completed">مكتملة <b id="fiTabCompleted">0</b></button>
+        <button type="button" data-tab="due">مستحق <b id="fiTabDue">0</b></button>
+        <button type="button" data-tab="returns">مرتجعات <b id="fiTabReturns">0</b></button>
+        <button type="button" data-tab="void">ملغاة <b id="fiTabVoid">0</b></button>
+      </div>
+      <div id="fiBulkBar" class="fi-bulk-bar" hidden>
+        <span id="fiBulkCount">تم تحديد 0 فاتورة</span>
+        <button type="button" id="fiBulkPrint" class="food-ghost"><i class="fa fa-print"></i> طباعة</button>
+        <button type="button" id="fiBulkExport" class="food-ghost"><i class="fa fa-file-excel"></i> تصدير</button>
+      </div>
+    </div>
+
+    <section class="food-panel fi-table-panel">
+      <div id="fiTableWrap" class="food-table-wrap fi-table-wrap">
+        <table class="food-table fi-table" id="fiTable">
+          <thead>
+            <tr>
+              <th class="fi-check-col"><input type="checkbox" id="fiSelectAll" aria-label="تحديد الكل"></th>
+              <th>الفاتورة</th>
+              <th>العميل</th>
+              <th>نوع البيع</th>
+              <th>الدفع</th>
+              <th>المواد</th>
+              <th>الإجمالي</th>
+              <th>المتبقي</th>
+              <th>الحالة</th>
+              <th>إجراءات</th>
+            </tr>
+          </thead>
+          <tbody id="fiTableBody"></tbody>
+        </table>
+      </div>
+      <div id="fiMobileList" class="fi-mobile-list" hidden></div>
+      <div id="fiEmpty" class="fi-empty" hidden>
+        <i class="fa fa-receipt"></i>
+        <b>لا توجد فواتير ضمن الفترة المحددة</b>
+        <p>ابدأ ببيع سريع من الكاشير أو أنشئ فاتورة بيع يدوية.</p>
+        <div>
+          <a class="food-primary" href="/food/cashier"><i class="fa fa-cash-register"></i> فتح الكاشير</a>
+          <button type="button" class="food-ghost" id="fiEmptyNew"><i class="fa fa-plus"></i> فاتورة بيع</button>
+        </div>
+      </div>
+      <div id="fiSkeleton" class="fi-skeleton" hidden></div>
+      <footer class="fi-pager" id="fiPager">
+        <label>عرض
+          <select id="fiPageSize"><option value="20">20</option><option value="50">50</option><option value="100">100</option></select>
+        </label>
+        <div id="fiPagerButtons" class="fi-pager-buttons"></div>
+        <span id="fiPagerMeta" class="fi-pager-meta"></span>
+      </footer>
+    </section>
+
+    <aside id="fiDrawer" class="fi-drawer" hidden aria-hidden="true">
+      <div class="fi-drawer__backdrop" data-fi-close></div>
+      <div class="fi-drawer__panel" role="dialog" aria-labelledby="fiDrawerTitle">
+        <header class="fi-drawer__head">
+          <div>
+            <span class="food-page-kicker">تفاصيل الفاتورة</span>
+            <div class="fi-drawer__title-row">
+              <h2 id="fiDrawerTitle" title="">—</h2>
+              <button type="button" class="fi-copy-btn" id="fiCopyInvoice" title="نسخ رقم الفاتورة" aria-label="نسخ رقم الفاتورة" hidden><i class="fa fa-copy"></i></button>
+            </div>
+            <p id="fiDrawerMeta"></p>
+          </div>
+          <button type="button" class="food-ghost fi-drawer__close" data-fi-close aria-label="إغلاق"><i class="fa fa-times"></i></button>
+        </header>
+        <div id="fiDrawerBody" class="fi-drawer__body"></div>
+      </div>
+    </aside>
+
+    <dialog id="fiPayDialog" class="food-pos-dialog">
+      <header><div><h2>تسجيل قبض</h2><p id="fiPayRemainingHint">المتبقي</p></div><button data-close type="button"><i class="fa fa-times"></i></button></header>
+      <div class="food-dialog-body food-form-grid">
+        <label>المبلغ<input id="fiPayAmount" type="number" min="1" step="1" required></label>
+        <label>طريقة الدفع<select id="fiPayMethodDialog"><option value="cash">نقدي</option><option value="card">بطاقة</option><option value="transfer">تحويل</option></select></label>
+        <label class="food-field-wide">ملاحظة<input id="fiPayNote" placeholder="اختياري"></label>
+        <div id="fiPayError" class="food-inline-error" hidden></div>
+      </div>
+      <footer><button data-close class="food-ghost" type="button">إلغاء</button><button id="fiPayConfirm" class="food-primary" type="button">حفظ القبض</button></footer>
+    </dialog>
+
+    <dialog id="fiReturnDialog" class="food-pos-dialog food-return-dialog">
+      <header><div><h2>مرتجع مبيعات</h2><p>حدد الكميات المرتجعة وسبب الإرجاع.</p></div><button data-close type="button"><i class="fa fa-times"></i></button></header>
+      <div class="food-dialog-body">
+        <div id="fiReturnItems"></div>
+        <div class="food-form-grid" style="margin-top:14px">
+          <label>سبب المرتجع<select id="fiReturnReason"><option value="تالف">تالف</option><option value="خطأ في الطلب">خطأ في الطلب</option><option value="منتج غير مطابق">منتج غير مطابق</option><option value="قريب/منتهي الصلاحية">قريب/منتهي الصلاحية</option><option value="استبدال">استبدال</option><option value="سبب آخر">سبب آخر</option></select></label>
+          <label>طريقة الرد<select id="fiReturnRefund"><option value="cash">نقدي</option><option value="transfer">تحويل</option><option value="credit">إضافة لرصيد العميل</option><option value="card">بطاقة</option></select></label>
+          <label id="fiReturnNoteWrap" class="food-field-wide" hidden>ملاحظة<input id="fiReturnNote"></label>
+        </div>
+        <div id="fiReturnError" class="food-inline-error" hidden></div>
+      </div>
+      <footer><button data-close class="food-ghost" type="button">إلغاء</button><button id="fiReturnConfirm" class="food-primary" type="button">تأكيد المرتجع</button></footer>
+    </dialog>
+
+    <dialog id="fiManualDialog" class="food-pos-dialog fi-manual-dialog">
+      <header><div><h2>فاتورة بيع يدوية</h2><p>مناسبة للجملة والفواتير الكبيرة — إدخال سريع بالكيبورد.</p></div><button data-close type="button"><i class="fa fa-times"></i></button></header>
+      <div class="food-dialog-body">
+        <div class="food-form-grid">
+          <label>العميل<select id="fiManualCustomer"><option value="">عميل نقدي</option></select></label>
+          <label>المخزن<select id="fiManualWarehouse"></select></label>
+          <label>نوع البيع الافتراضي<select id="fiManualMode"><option value="WHOLESALE">جملة</option><option value="RETAIL">مفرد</option></select></label>
+          <label>طريقة الدفع<select id="fiManualPay"><option value="cash">نقدي</option><option value="credit">آجل</option><option value="partial">جزئي</option><option value="card">بطاقة</option><option value="transfer">تحويل</option></select></label>
+          <label id="fiManualPaidWrap" hidden>المدفوع الآن<input id="fiManualPaid" type="number" min="0" value="0"></label>
+          <label class="food-field-wide">ملاحظة<input id="fiManualNote"></label>
+        </div>
+        <div class="food-section-title"><h3>المواد</h3><button type="button" id="fiManualAddLine" class="food-ghost"><i class="fa fa-plus"></i> سطر</button></div>
+        <div class="food-table-wrap"><table class="food-table"><thead><tr><th>بحث / باركود</th><th>الوحدة</th><th>الكمية</th><th>السعر</th><th>الخصم</th><th>الإجمالي</th><th></th></tr></thead><tbody id="fiManualLines"></tbody></table></div>
+        <div class="fi-manual-total">الإجمالي <strong id="fiManualTotal">0 د.ع</strong></div>
+        <div id="fiManualError" class="food-inline-error" hidden></div>
+      </div>
+      <footer><button data-close class="food-ghost" type="button">إلغاء</button><button id="fiManualSave" class="food-primary" type="button">حفظ الفاتورة</button></footer>
+    </dialog>
+  </section>
+  {% endif %}
+
+  {% if food_page == 'cashier' %}
+  <section class="food-pos-app" aria-label="كاشير المواد الغذائية">
+    <header class="food-pos-toolbar">
+      <label class="food-pos-branch"><i class="fa fa-warehouse"></i><select id="cashierWarehouse" aria-label="الفرع والمخزن"></select></label>
+      <button id="customerButton" class="food-pos-tool" type="button"><i class="fa fa-user"></i><span>عميل نقدي</span></button>
+      <div class="food-segment" id="defaultSaleMode" aria-label="وضع التسعير الافتراضي"><button class="active" data-mode="RETAIL" type="button">مفرد</button><button data-mode="WHOLESALE" type="button">جملة</button></div>
+      <div class="food-pos-search-wrap">
+        <div class="food-search food-pos-search"><i class="fa fa-barcode"></i><input id="productSearch" autofocus autocomplete="off" aria-label="بحث أو باركود" placeholder="امسح الباركود أو ابحث بالاسم، SKU، الماركة، النكهة أو الحجم"><kbd>F2</kbd></div>
+        <div id="searchSuggestions" class="food-search-suggestions" hidden></div>
+      </div>
+      <button id="holdsButton" class="food-pos-tool" type="button"><i class="fa fa-pause"></i><span>المعلقة</span><b id="holdsCount">0</b></button>
+      <div class="food-pos-actions-wrap"><button id="actionsButton" class="food-pos-tool" type="button" aria-expanded="false"><i class="fa fa-ellipsis-vertical"></i><span>إجراءات</span></button><div id="actionsMenu" class="food-pos-menu" hidden><div id="cashierIdentity" class="food-connection"><i class="fa fa-user-clock"></i> الكاشير</div><div id="connectionStatus" class="food-connection online"><i class="fa fa-circle"></i> متصل</div><button data-action="price-check"><i class="fa fa-tags"></i> فحص سعر <kbd>F7</kbd></button><button data-action="return"><i class="fa fa-rotate-left"></i> مرتجع</button><button data-action="last-invoice"><i class="fa fa-receipt"></i> آخر فاتورة</button><button data-action="reprint"><i class="fa fa-print"></i> إعادة طباعة</button><button data-action="note"><i class="fa fa-note-sticky"></i> ملاحظة الفاتورة</button><button data-action="open-drawer"><i class="fa fa-cash-register"></i> فتح الدرج</button><button data-action="shift"><i class="fa fa-clock"></i> فتح / إغلاق الوردية</button><button data-action="shortcuts"><i class="fa fa-keyboard"></i> اختصارات الكيبورد</button></div></div>
+    </header>
+
+    <div class="food-pos-catalog-sticky">
+      <div id="categoryChips" class="food-chips food-pos-categories"></div>
+      <div id="subcategoryChips" class="food-chips food-pos-subcategories" hidden></div>
+      <div class="food-view-toggle" aria-label="طريقة عرض المنتجات"><button class="active" data-view="grid" type="button"><i class="fa fa-grip"></i><span>شبكي</span></button><button data-view="list" type="button"><i class="fa fa-list"></i><span>قائمة</span></button></div>
+    </div>
+
+    <section class="food-pos-layout">
+      <main class="food-pos-products">
+        <div id="cashierProducts" class="food-product-grid" aria-live="polite"></div>
+        <button id="loadMoreProducts" class="food-ghost food-load-more" type="button" hidden>عرض المزيد</button>
+      </main>
+      <aside id="cashierCart" class="food-cart food-pos-cart" aria-label="سلة البيع">
+        <div class="food-cart-head"><div><strong>سلة البيع</strong><small id="cartCount">0 مادة</small></div><button id="clearCart" class="food-ghost" type="button">تفريغ</button></div>
+        <div id="cartLines" class="food-cart-lines"><div class="food-empty"><i class="fa fa-barcode"></i><b>السلة فارغة</b><span>امسح باركود أو اختر منتجاً للبدء.</span></div></div>
+        <footer class="food-cart-footer">
+          <div class="food-cart-summary"><span>المجموع الفرعي <b id="cartSubtotal">0 د.ع</b></span><button id="invoiceDiscountButton" type="button">الخصم <b id="cartDiscount">0 د.ع</b></button><span>الضريبة <b id="cartTax">0 د.ع</b></span><strong>الإجمالي <b id="cartTotal">0 د.ع</b></strong></div>
+          <div class="food-cart-primary-actions"><button id="holdSale" class="food-ghost" type="button"><i class="fa fa-pause"></i> تعليق</button><button id="completeSale" class="food-primary" type="button" disabled><i class="fa fa-credit-card"></i><span>الدفع • 0 د.ع</span><kbd>F9</kbd></button></div>
+        </footer>
+      </aside>
+    </section>
+    <button id="mobileCartButton" class="food-mobile-cart" type="button" hidden>السلة • 0 مادة • 0 د.ع</button>
+  </section>
+
+  <dialog id="customerDialog" class="food-pos-dialog"><header><div><h2>اختيار العميل</h2><p>ابحث بالاسم أو الهاتف أو الشركة أو الكود.</p></div><button data-close type="button"><i class="fa fa-times"></i></button></header><div class="food-dialog-body"><div class="food-search"><i class="fa fa-search"></i><input id="customerSearch" autocomplete="off" placeholder="ابحث عن عميل"></div><button id="showNewCustomer" class="food-ghost" type="button"><i class="fa fa-user-plus"></i> عميل جديد</button><div id="customerResults" class="food-customer-results"></div><form id="quickCustomerForm" class="food-quick-customer" hidden><label>الاسم<input id="newCustomerName" required></label><label>الهاتف<input id="newCustomerPhone" required inputmode="tel"></label><label>العنوان<input id="newCustomerAddress"></label><button class="food-primary">حفظ واختيار</button></form></div></dialog>
+
+  <dialog id="paymentDialog" class="food-pos-dialog food-payment-dialog"><header><div><h2>الدفع</h2><p>تأكد من المبالغ قبل تأكيد البيع.</p></div><button data-close type="button"><i class="fa fa-times"></i></button></header><div class="food-dialog-body"><div class="food-payment-total"><span>الإجمالي</span><strong id="paymentTotal">0 د.ع</strong></div><div id="paymentMethods" class="food-payment-methods"><button class="active" data-method="cash" type="button">نقدي</button><button data-method="card" type="button">بطاقة</button><button data-method="transfer" type="button">تحويل</button><button data-method="credit" type="button">آجل</button><button data-method="mixed" type="button">مختلط</button></div><section id="singlePayment"><label>المستلم<input id="cashReceived" type="number" min="0" inputmode="decimal"></label><div id="quickCash" class="food-quick-cash"></div><div class="food-payment-change"><span>الباقي</span><strong id="cashChange">0 د.ع</strong></div></section><section id="mixedPayment" class="food-mixed-payments" hidden></section><div id="paymentError" class="food-inline-error" hidden></div></div><footer><button data-close class="food-ghost" type="button">إلغاء</button><button id="confirmPayment" class="food-primary" type="button">تأكيد البيع</button></footer></dialog>
+
+  <dialog id="holdsDialog" class="food-pos-dialog"><header><div><h2>الفواتير المعلقة</h2><p>تُراجع الكميات والمخزون عند الاسترجاع.</p></div><button data-close type="button"><i class="fa fa-times"></i></button></header><div id="holdsList" class="food-dialog-body"></div></dialog>
+  <dialog id="infoDialog" class="food-pos-dialog"><header><div><h2 id="infoDialogTitle">تفاصيل</h2><p id="infoDialogSubtitle"></p></div><button data-close type="button"><i class="fa fa-times"></i></button></header><div id="infoDialogBody" class="food-dialog-body"></div></dialog>
+  <dialog id="returnDialog" class="food-pos-dialog food-return-dialog"><header><div><h2>مرتجع مبيعات</h2><p>مرتجع مستقل مع حركة مخزون قابلة للتتبع.</p></div><button data-close type="button"><i class="fa fa-times"></i></button></header><div class="food-dialog-body"><div class="food-search"><i class="fa fa-search"></i><input id="returnSearch" placeholder="رقم الفاتورة، الباركود، العميل أو الهاتف"></div><div id="returnResults"></div></div></dialog>
+  {% endif %}
+
+  {% if food_page == 'products' %}
+  <section class="food-page-head food-page-head--enterprise">
+    <div class="food-page-head__identity"><span class="food-page-head__icon"><i class="fa fa-box-open"></i></span><div><span class="food-page-kicker">إدارة الكتالوج</span><h1>المنتجات الغذائية</h1><p>منتج واحد، أنواع متعددة، ووحدات بيع وشراء مرتبطة بالباركود الصحيح.</p></div></div>
+    <button id="newFoodProduct" class="food-primary"><i class="fa fa-plus"></i> إضافة منتج</button>
+  </section>
+
+  <section id="productForm" class="food-product-workbench" hidden>
+    <header class="food-product-workbench__head">
+      <div><span class="food-page-kicker">معالج المنتج</span><h2 id="productFormTitle">إضافة منتج جديد</h2><p>ابدأ بالمعلومات الضرورية، وافتح الإعدادات المتقدمة عند الحاجة فقط.</p></div>
+      <div class="food-product-progress" aria-label="مراحل المنتج"><span class="active">1 المعلومات</span><span>2 الأنواع</span><span>3 الوحدات</span><span>4 المخزون</span></div>
+    </header>
+    <div class="food-product-editor-layout">
+      <div class="food-product-editor-main">
+        <article class="food-editor-card">
+          <header class="food-editor-card__title"><span>1</span><div><h3>المعلومات الأساسية</h3><p>الحقول التي تعرّف المنتج في الكاشير والفواتير.</p></div></header>
+          <div class="food-form-grid food-form-grid--product">
+            <label class="food-field-wide">اسم المنتج <b>*</b><input id="fpName" required maxlength="150" placeholder="مثال: Master Chips"></label>
+            <label>الاسم المختصر<input id="fpShort" maxlength="100" placeholder="Master"></label>
+            <label>التصنيف<input id="fpCategory" list="foodCategoryOptions" placeholder="اختر أو اكتب تصنيفاً جديداً"><datalist id="foodCategoryOptions"></datalist></label>
+            <label>التصنيف الفرعي<input id="fpSubcategory" placeholder="مثال: عصائر"></label>
+            <label>الماركة<input id="fpBrand" list="foodBrandOptions" placeholder="Master"><datalist id="foodBrandOptions"></datalist></label>
+            <label>بلد المنشأ<input id="fpCountry" list="foodCountryOptions" placeholder="العراق"><datalist id="foodCountryOptions"><option value="العراق"><option value="تركيا"><option value="السعودية"><option value="الأردن"><option value="الإمارات"><option value="إيران"><option value="الصين"></datalist></label>
+            <label>المورد الافتراضي<select id="fpSupplier"><option value="">بدون مورد افتراضي</option></select></label>
+            <label>كود المنتج لدى المورد<input id="fpSupplierCode" maxlength="120"></label>
+            <label>حالة المنتج<select id="fpStatus"><option value="active">نشط</option><option value="paused">متوقف مؤقتاً</option><option value="seasonal">موسمي</option><option value="archived">متوقف نهائياً</option></select></label>
+          </div>
+          <div class="food-image-field">
+            <div id="fpImagePreview" class="food-image-preview"><i class="fa fa-image"></i><span>لا توجد صورة</span></div>
+            <div class="food-image-actions"><label class="food-upload-button"><i class="fa fa-upload"></i> رفع صورة<input id="fpImageFile" type="file" accept="image/png,image/jpeg,image/webp" hidden></label><label>أو رابط صورة<input id="fpImage" type="url" placeholder="https://..."></label><button id="removeProductImage" class="food-ghost" type="button"><i class="fa fa-trash"></i> حذف الصورة</button><small>JPG أو PNG أو WEBP، بحد أقصى 5MB.</small></div>
+          </div>
+          <label>الوصف<textarea id="fpDescription" rows="3" placeholder="وصف اختياري يظهر في تفاصيل المنتج"></textarea></label>
+          <div class="food-feature-switches">
+            <label class="food-feature-switch"><input id="fpStock" type="checkbox" checked><span><i class="fa fa-warehouse"></i><b>يتتبع المخزون</b><small>تسجيل الرصيد والحركات والتنبيهات</small></span></label>
+            <label class="food-feature-switch"><input id="fpExpiry" type="checkbox"><span><i class="fa fa-calendar-check"></i><b>يتتبع الصلاحية</b><small>دفعات وتواريخ انتهاء وصرف FEFO</small></span></label>
+          </div>
+        </article>
+
+        <article class="food-editor-card">
+          <header class="food-editor-card__title food-editor-card__title--actions"><span>2</span><div><h3>الأنواع والنكهات</h3><p>كل نوع نسخة من المنتج، مثل Cheese 30g أو Ketchup 30g.</p></div><div><button id="addVariant" class="food-ghost" type="button"><i class="fa fa-plus"></i> إضافة نوع</button><button id="addBulkVariants" class="food-ghost" type="button"><i class="fa fa-table-list"></i> إضافة عدة أنواع</button></div></header>
+          <div id="variantBuilder" class="food-variant-builder"></div>
+        </article>
+
+        <details id="stockSettings" class="food-editor-card food-editor-details" open>
+          <summary><span class="food-editor-step">4</span><div><h3>إعدادات المخزون</h3><p>حدود إعادة الطلب وموقع التخزين الافتراضي.</p></div><i class="fa fa-chevron-down"></i></summary>
+          <div class="food-details-body food-form-grid">
+            <label>حد إعادة الطلب<input id="fpMinimum" type="number" min="0" value="0"></label><label>كمية إعادة الطلب المقترحة<input id="fpReorderQty" type="number" min="0" value="0"></label><label>الحد الأعلى للمخزون<input id="fpMaximumStock" type="number" min="0"></label><label>موقع التخزين<input id="fpStorageLocation" placeholder="الممر 3 / الرف B"></label>
+          </div>
+        </details>
+
+        <details id="expirySettings" class="food-editor-card food-editor-details" hidden>
+          <summary><span class="food-editor-step">5</span><div><h3>الصلاحية والدفعات</h3><p>تظهر فقط للمنتجات التي تتبع الصلاحية.</p></div><i class="fa fa-chevron-down"></i></summary>
+          <div class="food-details-body food-form-grid">
+            <label class="food-check"><input id="fpTrackBatches" type="checkbox" checked> تتبع Batch / Lot</label><label>مدة الصلاحية الافتراضية<input id="fpShelfLife" type="number" min="1" placeholder="6"></label><label>وحدة المدة<select id="fpShelfLifeUnit"><option value="months">أشهر</option><option value="days">أيام</option><option value="years">سنوات</option></select></label><label>التنبيه قبل الانتهاء<select id="fpExpiryWarning"><option value="7">7 أيام</option><option value="15">15 يوماً</option><option value="30" selected>30 يوماً</option><option value="60">60 يوماً</option><option value="90">90 يوماً</option></select></label><label>سياسة الصرف<select id="fpIssuePolicy"><option value="FEFO">FEFO — الأقرب انتهاءً أولاً</option><option value="FIFO">FIFO — الأقدم دخولاً أولاً</option></select></label>
+          </div>
+        </details>
+
+        <details class="food-editor-card food-editor-details">
+          <summary><span class="food-editor-step">6</span><div><h3>إعدادات إضافية</h3><p>التخزين والإرجاع والضريبة.</p></div><i class="fa fa-chevron-down"></i></summary>
+          <div class="food-details-body food-form-grid">
+            <label>نوع التخزين<select id="fpStorageType"><option value="normal">عادي</option><option value="chilled">مبرد</option><option value="frozen">مجمد</option></select></label><label>سياسة الإرجاع<select id="fpReturnPolicy"><option value="normal">عادي</option><option value="non_returnable">غير قابل للإرجاع</option><option value="supplier">قابل للإرجاع للمورد</option><option value="supplier_expiry">إرجاع للمورد قرب/بعد الصلاحية</option></select></label><label class="food-check"><input id="fpTaxable" type="checkbox"> خاضع للضريبة</label><label id="fpTaxRateField" hidden>نسبة الضريبة %<input id="fpTaxRate" type="number" min="0" step="0.001" value="0"></label>
+          </div>
+        </details>
+
+        <footer class="food-product-actions"><button id="cancelProduct" class="food-ghost" type="button">إلغاء</button><span></span><button id="saveDraft" class="food-ghost" type="button"><i class="fa fa-file"></i> حفظ كمسودة</button><button id="saveAndNew" class="food-ghost" type="button"><i class="fa fa-plus"></i> حفظ وإضافة جديد</button><button id="saveProduct" class="food-primary" type="button"><i class="fa fa-save"></i> حفظ المنتج</button></footer>
+      </div>
+      <aside id="productLiveSummary" class="food-product-summary"><span class="food-page-kicker">ملخص مباشر</span><h3>منتج جديد</h3><p>أدخل اسم المنتج، ثم أضف الباركود والأسعار.</p></aside>
+    </div>
+  </section>
+
+  <section id="productSuccess" class="food-product-success" hidden><span><i class="fa fa-circle-check"></i></span><div><h3>تم إنشاء المنتج بنجاح</h3><p id="productSuccessText"></p></div><button id="successViewProducts" class="food-ghost" type="button">عرض المنتجات</button><button id="successAddAnother" class="food-primary" type="button">إضافة منتج آخر</button><a href="/food/cashier" class="food-ghost">فتح الكاشير</a><a href="/food/purchases" class="food-ghost">إضافة مشتريات</a></section>
+
+  <dialog id="bulkVariantsDialog" class="food-bulk-dialog" dir="rtl"><form method="dialog"><header><div><h3>إضافة عدة أنواع بسرعة</h3><p>أدخل كل نوع في سطر، وسيتم إنشاء وحدة أساسية له.</p></div><button value="cancel" aria-label="إغلاق"><i class="fa fa-times"></i></button></header><div class="food-table-wrap"><table class="food-table"><thead><tr><th>النكهة/النوع</th><th>الحجم</th><th>وحدة الحجم</th><th>SKU</th><th>الباركود</th></tr></thead><tbody id="bulkVariantRows"></tbody></table></div><footer><button value="cancel" class="food-ghost">إلغاء</button><button id="createBulkVariants" value="default" class="food-primary">إنشاء الأنواع</button></footer></form></dialog>
+
+  <section class="food-panel food-products-list"><div class="food-list-toolbar"><div class="food-search"><i class="fa fa-search"></i><input id="productsPageSearch" placeholder="ابحث بالمنتج أو النوع أو SKU أو الباركود"></div><span id="productsCount" class="food-live-status"></span></div><div id="productsTable"></div></section>
+  {% endif %}
+
+  {% if food_page == 'purchases' %}
+  <section class="food-invoices fp-page" id="foodPurchasesRoot" dir="rtl" data-fp-root>
+    <header class="fp-head">
+      <div class="fp-head__title">
+        <span class="fp-head__icon"><i class="fa fa-bag-shopping"></i></span>
+        <div>
+          <h1>المشتريات</h1>
+          <p>إدارة فواتير الشراء والموردين والمدفوعات والاستلام</p>
+        </div>
+      </div>
+      <div class="fp-head__actions">
+        <div class="fp-ops">
+          <button type="button" class="food-ghost fp-ops__btn" id="fpOpsBtn" aria-expanded="false">
+            <i class="fa fa-ellipsis-vertical"></i> عمليات
+          </button>
+          <div class="fp-ops__menu" id="fpOpsMenu" hidden>
+            <button type="button" id="fpExportBtn"><i class="fa fa-file-export"></i> تصدير CSV</button>
+            <a href="/food/suppliers"><i class="fa fa-truck-field"></i> الموردون</a>
+            <a href="/food/purchases/new"><i class="fa fa-file-circle-plus"></i> فاتورة جديدة</a>
+          </div>
+        </div>
+        <a href="/food/purchases/new" class="food-primary" id="fpNewPurchaseBtn"><i class="fa fa-plus"></i> فاتورة شراء</a>
+      </div>
+    </header>
+
+    <section id="fpKpis" class="fi-kpis fp-kpis" aria-label="مؤشرات المشتريات"></section>
+
+    <section class="food-panel fp-filters" aria-label="بحث وفلاتر">
+      <div class="fp-filters__top">
+        <div class="food-search fp-search"><i class="fa fa-search"></i>
+          <input id="fpSearch" autocomplete="off" placeholder="ابحث برقم الفاتورة، المورد، الهاتف، رقم فاتورة المورد، الباركود أو المنتج...">
+        </div>
+        <div class="fp-dates">
+          <label><span>من تاريخ</span><input id="fpStart" type="date"></label>
+          <label><span>إلى تاريخ</span><input id="fpEnd" type="date"></label>
+          <label><span>الفترة</span>
+            <select id="fpRange">
+              <option value="today">اليوم</option>
+              <option value="yesterday">أمس</option>
+              <option value="week">هذا الأسبوع</option>
+              <option value="month" selected>هذا الشهر</option>
+              <option value="custom">مخصص</option>
+            </select>
+          </label>
+        </div>
+      </div>
+      <div class="fp-filters__bottom">
+        <label><span>المخزن</span><select id="fpWarehouse"><option value="">كل المخازن</option></select></label>
+        <label><span>المورد</span><select id="fpSupplier"><option value="">كل الموردين</option></select></label>
+        <label><span>طريقة الدفع</span>
+          <select id="fpPayMethod">
+            <option value="">الكل</option>
+            <option value="cash">نقدي</option>
+            <option value="transfer">تحويل</option>
+            <option value="card">بطاقة</option>
+            <option value="credit">آجل</option>
+            <option value="partial">جزئي</option>
+            <option value="mixed">مختلط</option>
+          </select>
+        </label>
+        <label><span>الحالة</span>
+          <select id="fpStatus">
+            <option value="">كل الحالات</option>
+            <option value="draft">مسودة</option>
+            <option value="confirmed">معتمدة</option>
+            <option value="paid">مدفوعة</option>
+            <option value="partial">مدفوعة جزئياً</option>
+            <option value="credit">آجلة</option>
+            <option value="cancelled">ملغاة</option>
+          </select>
+        </label>
+        <div class="fp-filter-actions">
+          <button type="button" class="food-primary" id="fpApplyFilter"><i class="fa fa-filter"></i> فلتر</button>
+          <button type="button" class="fp-reset" id="fpResetFilter">إعادة تعيين</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="fp-tabs-wrap">
+      <div class="fp-tabs" id="fpTabs" role="tablist">
+        <button type="button" class="active" data-tab="all">الكل <span class="fp-count" id="fpTabAll">0</span></button>
+        <button type="button" data-tab="confirmed">معتمدة <span class="fp-count fp-count--ok" id="fpTabConfirmed">0</span></button>
+        <button type="button" data-tab="draft">مسودة <span class="fp-count fp-count--mute" id="fpTabDraft">0</span></button>
+        <button type="button" data-tab="due">مستحقة <span class="fp-count fp-count--warn" id="fpTabDue">0</span></button>
+        <button type="button" data-tab="paid">مدفوعة <span class="fp-count fp-count--info" id="fpTabPaid">0</span></button>
+        <button type="button" data-tab="returns">مرتجعة <span class="fp-count fp-count--purple" id="fpTabReturns">0</span></button>
+        <button type="button" data-tab="cancelled">ملغاة <span class="fp-count fp-count--danger" id="fpTabCancelled">0</span></button>
+      </div>
+    </div>
+
+    <section class="food-panel fi-table-panel fp-table-panel">
+      <div id="fpTableWrap" class="food-table-wrap fi-table-wrap">
+        <table class="food-table fi-table fp-table" id="fpTable">
+          <thead>
+            <tr>
+              <th>رقم الفاتورة</th>
+              <th>رقم فاتورة المورد</th>
+              <th>المورد</th>
+              <th>المخزن</th>
+              <th>طريقة الدفع</th>
+              <th>الإجمالي</th>
+              <th>المدفوع</th>
+              <th>المتبقي</th>
+              <th>الحالة</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="fpTableBody"></tbody>
+        </table>
+      </div>
+      <div id="fpEmpty" class="fi-empty" hidden>
+        <i class="fa fa-cart-plus"></i>
+        <b>لا توجد فواتير شراء ضمن الفترة المحددة</b>
+        <p>ابدأ بإدخال فاتورة شراء جديدة واستلام المواد.</p>
+        <div>
+          <a class="food-primary" href="/food/purchases/new"><i class="fa fa-plus"></i> فاتورة شراء</a>
+        </div>
+      </div>
+      <div id="fpSkeleton" class="fi-skeleton" hidden></div>
+      <footer class="fi-pager fp-pager" id="fpPager">
+        <span id="fpPagerMeta" class="fi-pager-meta">عرض 0 إلى 0 من 0 فاتورة</span>
+        <div id="fpPagerButtons" class="fi-pager-buttons"></div>
+        <label>عدد الصفوف
+          <select id="fpPageSize"><option value="20">20</option><option value="50">50</option><option value="100">100</option></select>
+        </label>
+      </footer>
+    </section>
+
+    <aside id="fpDrawer" class="fi-drawer" hidden aria-hidden="true">
+      <div class="fi-drawer__backdrop" data-fp-close></div>
+      <div class="fi-drawer__panel" role="dialog" aria-labelledby="fpDrawerTitle">
+        <header class="fi-drawer__head">
+          <div>
+            <span class="food-page-kicker">تفاصيل فاتورة الشراء</span>
+            <div class="fi-drawer__title-row">
+              <h2 id="fpDrawerTitle" title="">—</h2>
+            </div>
+            <p id="fpDrawerMeta"></p>
+          </div>
+          <button type="button" class="food-ghost fi-drawer__close" data-fp-close aria-label="إغلاق"><i class="fa fa-times"></i></button>
+        </header>
+        <div id="fpDrawerBody" class="fi-drawer__body"></div>
+      </div>
+    </aside>
+
+    <dialog id="fpPayDialog" class="food-pos-dialog">
+      <header><div><h2>تسجيل تسديد</h2><p id="fpPayRemainingHint">المتبقي</p></div><button data-close type="button"><i class="fa fa-times"></i></button></header>
+      <div class="food-dialog-body food-form-grid">
+        <label>المبلغ<input id="fpPayAmount" type="number" min="1" step="1" required></label>
+        <label>طريقة الدفع<select id="fpPayMethodDialog"><option value="cash">نقدي</option><option value="card">بطاقة</option><option value="transfer">تحويل</option></select></label>
+        <label class="food-field-wide">ملاحظة<input id="fpPayNote" placeholder="اختياري"></label>
+        <div id="fpPayError" class="food-inline-error" hidden></div>
+      </div>
+      <footer><button data-close class="food-ghost" type="button">إلغاء</button><button id="fpPayConfirm" class="food-primary" type="button">حفظ التسديد</button></footer>
+    </dialog>
+
+    <dialog id="fpReturnDialog" class="food-pos-dialog food-return-dialog">
+      <header><div><h2>مرتجع للمورد</h2><p>حدد الكميات المرتجعة دون حذف فاتورة الشراء الأصلية.</p></div><button data-close type="button"><i class="fa fa-times"></i></button></header>
+      <div class="food-dialog-body">
+        <div id="fpReturnItems"></div>
+        <div class="food-form-grid" style="margin-top:14px">
+          <label>سبب المرتجع
+            <select id="fpReturnReason">
+              <option value="تالف">تالف</option>
+              <option value="منتهي">منتهي</option>
+              <option value="قريب انتهاء">قريب انتهاء</option>
+              <option value="غير مطابق">غير مطابق</option>
+              <option value="زيادة بالكمية">زيادة بالكمية</option>
+              <option value="استبدال">استبدال</option>
+              <option value="سبب آخر">سبب آخر</option>
+            </select>
+          </label>
+          <label>التسوية
+            <select id="fpReturnSettlement">
+              <option value="credit">خصم من ذمة المورد</option>
+              <option value="cash">استرداد نقدي</option>
+            </select>
+          </label>
+          <label class="food-field-wide">ملاحظة<input id="fpReturnNote" placeholder="اختياري"></label>
+        </div>
+        <div id="fpReturnError" class="food-inline-error" hidden></div>
+      </div>
+      <footer><button data-close class="food-ghost" type="button">إلغاء</button><button id="fpReturnConfirm" class="food-primary" type="button">تأكيد المرتجع</button></footer>
+    </dialog>
+  </section>
+  {% endif %}
+
+  {% if food_page == 'purchases_new' %}
+  <section class="pn-page" id="purchaseFormRoot" dir="rtl" data-pn-root>
+    <header class="pn-head">
+      <div class="pn-head__title">
+        <span class="pn-head__icon"><i class="fa fa-file-circle-plus"></i></span>
+        <div>
+          <h1>إضافة فاتورة شراء</h1>
+          <p>إدخال مشتريات جديدة واستلام المواد وتحديث المخزون</p>
+        </div>
+      </div>
+      <div class="pn-head__actions">
+        <a href="/food/purchases" class="pn-btn pn-btn--cancel" id="pnCancel"><i class="fa fa-xmark"></i> إلغاء</a>
+        <button type="button" class="pn-btn pn-btn--draft" id="savePurchaseDraft"><i class="fa fa-floppy-disk"></i> حفظ كمسودة</button>
+        <button type="button" class="pn-btn pn-btn--primary" id="savePurchase"><i class="fa fa-check"></i> حفظ واعتماد وتحديث المخزون</button>
+      </div>
+    </header>
+
+    <div class="pn-layout">
+      <div class="pn-main">
+        <div class="pn-top-grid">
+          <section class="pn-card">
+            <h3 class="pn-card__title"><i class="fa fa-credit-card"></i> بيانات الدفع</h3>
+            <div class="pn-fields">
+              <label>نوع الدفع
+                <select id="purchasePayment">
+                  <option value="cash">نقدي</option>
+                  <option value="credit" selected>آجل</option>
+                  <option value="partial">جزئي</option>
+                  <option value="transfer">تحويل</option>
+                  <option value="card">بطاقة</option>
+                  <option value="mixed">مختلط</option>
+                </select>
+              </label>
+              <label>المدفوع الآن<input id="purchasePaid" type="number" min="0" value="0"></label>
+              <label>شروط الدفع
+                <select id="purchasePayTerm">
+                  <option value="0">فوري</option>
+                  <option value="7">7 أيام</option>
+                  <option value="15" selected>15 يوم</option>
+                  <option value="30">30 يوم</option>
+                  <option value="45">45 يوم</option>
+                  <option value="60">60 يوم</option>
+                </select>
+              </label>
+              <label>الحساب / الصندوق
+                <select id="purchaseTreasury"><option value="">الصندوق الرئيسي</option></select>
+              </label>
+            </div>
+            <div class="pn-remain-box">المتبقي <strong id="pnRemaining">0 د.ع</strong></div>
+          </section>
+
+          <section class="pn-card">
+            <h3 class="pn-card__title"><i class="fa fa-file-invoice"></i> بيانات المورد والفاتورة</h3>
+            <div class="pn-fields pn-fields--dense">
+              <label>المورد *
+                <select id="purchaseSupplier" required></select>
+              </label>
+              <label>رقم فاتورة المورد<input id="supplierInvoiceNo" autocomplete="off" placeholder="INV-7788"></label>
+              <label>تاريخ الفاتورة *<input id="purchaseDate" type="date" required></label>
+              <label>مخزن الاستلام *<select id="purchaseWarehouse"></select></label>
+              <label>العملة
+                <select id="purchaseCurrency"><option value="IQD">د.ع</option><option value="USD">USD</option></select>
+              </label>
+              <label class="pn-span-2">ملاحظات<input id="purchaseNotes" placeholder="ملاحظات الفاتورة"></label>
+            </div>
+            <div id="purchaseDupWarn" class="food-inline-error" hidden></div>
+          </section>
+
+          <section class="pn-card pn-supplier-info" id="purchaseSupplierCard">
+            <h3 class="pn-card__title"><i class="fa fa-building"></i> معلومات المورد</h3>
+            <div class="pn-supplier-empty" id="pnSupplierEmpty">اختر مورداً لعرض الرصيد والتفاصيل</div>
+            <div id="pnSupplierBody" hidden>
+              <div class="pn-supplier-name"><strong id="pnSupName">—</strong><small id="pnSupMeta">—</small></div>
+              <div class="pn-supplier-stats">
+                <div><span>الرصيد السابق</span><b id="pnSupDebt">0 د.ع</b></div>
+                <div><span>هذه الفاتورة</span><b id="pnSupThis">0 د.ع</b></div>
+                <div><span>المدفوع الآن</span><b id="pnSupPaid">0 د.ع</b></div>
+                <div class="pn-supplier-stats__expect"><span>الرصيد المتوقع</span><b id="pnSupExpect">0 د.ع</b></div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <section class="pn-card pn-items">
+          <div class="pn-items__toolbar">
+            <h3 class="pn-card__title"><i class="fa fa-boxes-stacked"></i> المواد</h3>
+            <div class="pn-items__actions">
+              <div class="food-search pn-barcode"><i class="fa fa-barcode"></i>
+                <input id="purchaseBarcode" placeholder="امسح الباركود أو ابحث عن المادة (اسم، باركود، SKU)" autocomplete="off">
+              </div>
+              <button type="button" class="pn-btn pn-btn--ghost" id="addPurchaseLine"><i class="fa fa-plus"></i> إضافة مادة</button>
+              <a href="/food/products" class="pn-btn pn-btn--ghost" target="_blank"><i class="fa fa-box-open"></i> منتج سريع</a>
+            </div>
+          </div>
+          <div class="pn-table-wrap">
+            <table class="pn-table">
+              <thead>
+                <tr>
+                  <th>المادة</th>
+                  <th>الوحدة</th>
+                  <th>الكمية</th>
+                  <th>البونص</th>
+                  <th>سعر الشراء</th>
+                  <th>الخصم</th>
+                  <th>الإجمالي</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="purchaseLines"></tbody>
+            </table>
+          </div>
+          <div id="pnItemsEmpty" class="pn-items-empty">أضف مادة أو امسح باركود للبدء</div>
+          <footer class="pn-items__foot"><span id="pnItemsFoot">0 مادة · 0 وحدة أساسية</span></footer>
+        </section>
+
+        <div class="pn-bottom-grid">
+          <section class="pn-card">
+            <h3 class="pn-card__title"><i class="fa fa-truck"></i> مصاريف إضافية</h3>
+            <div class="pn-expense-list" id="pnExpenseList">
+              <div class="pn-expense-row"><span>خصم الفاتورة</span><input id="purchaseDiscount" type="number" min="0" value="0"></div>
+              <div class="pn-expense-row"><span>أجور النقل</span><input id="purchaseShipping" type="number" min="0" value="0"></div>
+              <div class="pn-expense-row"><span>رسوم جمركية</span><input id="purchaseCustoms" type="number" min="0" value="0"></div>
+              <div class="pn-expense-row"><span>مصاريف أخرى</span><input id="purchaseOther" type="number" min="0" value="0"></div>
+            </div>
+            <p class="pn-hint">تُوزَّع المصاريف تلقائياً على تكلفة المواد عند الاعتماد.</p>
+          </section>
+          <section class="pn-card">
+            <h3 class="pn-card__title"><i class="fa fa-note-sticky"></i> ملاحظات أخرى</h3>
+            <label class="pn-notes-label">ملاحظات داخلية
+              <textarea id="purchaseInternalNotes" rows="4" placeholder="ملاحظات للموظفين فقط"></textarea>
+            </label>
+            <div class="pn-attach">
+              <i class="fa fa-cloud-arrow-up"></i>
+              <div>
+                <b>إرفاق فاتورة المورد</b>
+                <small>JPG أو PNG أو PDF — قريباً</small>
+              </div>
+            </div>
+          </section>
+        </div>
+      </div>
+
+      <aside class="pn-summary" id="pnSummary">
+        <div class="pn-summary__head">
+          <h3>ملخص الفاتورة</h3>
+          <button type="button" class="pn-icon-btn" id="pnRefreshSummary" title="تحديث"><i class="fa fa-rotate"></i></button>
+        </div>
+        <div class="pn-summary__rows">
+          <div><span>المجموع الفرعي</span><b id="pnSubtotal">0 د.ع</b></div>
+          <div class="pn-neg"><span>خصومات المواد</span><b id="pnLineDiscounts">0 د.ع</b></div>
+          <div class="pn-neg"><span>خصم الفاتورة</span><b id="pnHeaderDiscount">0 د.ع</b></div>
+          <div class="pn-pos"><span>مصاريف إضافية</span><b id="pnExtras">0 د.ع</b></div>
+        </div>
+        <div class="pn-summary__total">
+          <span>الإجمالي</span>
+          <strong id="purchaseTotal">0 د.ع</strong>
+        </div>
+        <div class="pn-summary__pay">
+          <div><span>المدفوع الآن</span><b id="pnPaidNow">0 د.ع</b></div>
+          <div class="pn-neg"><span>المتبقي</span><b id="pnRemainSide">0 د.ع</b></div>
+        </div>
+        <div class="pn-summary__meta">
+          <div><i class="fa fa-warehouse"></i> <span id="pnWhHint">مخزن الاستلام</span></div>
+          <div><i class="fa fa-sitemap"></i> توزيع المصاريف على التكلفة</div>
+          <div><i class="fa fa-boxes-stacked"></i> <span id="pnBaseHint">0 وحدة أساسية</span></div>
+        </div>
+        <div class="pn-summary__actions">
+          <button type="button" class="pn-btn pn-btn--draft" id="savePurchaseDraftBar"><i class="fa fa-floppy-disk"></i> مسودة</button>
+          <button type="button" class="pn-btn pn-btn--primary" id="savePurchaseBar"><i class="fa fa-check"></i> اعتماد وتحديث المخزون</button>
+        </div>
+      </aside>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if food_page == 'inventory' %}
+  <section class="food-page-head"><div><h1>مخزن المواد الغذائية</h1><p>الكميات الحقيقية محفوظة بالوحدة الأساسية.</p></div></section>
+  <div class="food-tabs" data-tabs="inventory"><button class="active" data-tab="current">المخزون الحالي</button><button data-tab="movements">حركة المخزون</button><button data-tab="count">الجرد</button><button data-tab="low">المواد الناقصة</button><button data-tab="expiry">الصلاحيات</button></div>
+  <section class="food-panel"><div id="inventoryContent"></div></section>
+  {% endif %}
+
+  {% if food_page in ['customers', 'suppliers'] %}
+  {% set is_customers = food_page == 'customers' %}
+  <section class="fp-page parties-page" id="foodPartiesRoot" dir="rtl" data-party-kind="{{ food_page }}">
+    <header class="fp-head">
+      <div class="fp-head__title">
+        <span class="fp-head__icon"><i class="fa {{ 'fa-users' if is_customers else 'fa-truck-field' }}"></i></span>
+        <div>
+          <h1>{{ food_title }}</h1>
+          <p>{% if is_customers %}فواتير وقبوضات ورصيد وحد ائتمان كل عميل.{% else %}مشتريات وتسديدات وذمة وأجل دفع كل مورد.{% endif %}</p>
+        </div>
+      </div>
+      <div class="fp-head__actions">
+        <a class="food-ghost" href="{{ '/food/finance' if is_customers else '/food/purchases' }}">
+          <i class="fa {{ 'fa-money-bill-transfer' if is_customers else 'fa-bag-shopping' }}"></i>
+          {{ 'المالية' if is_customers else 'المشتريات' }}
+        </a>
+        <button type="button" class="food-primary" id="partyAddBtn"><i class="fa fa-plus"></i> إضافة</button>
+      </div>
+    </header>
+
+    <section id="partyKpis" class="fi-kpis parties-kpis" aria-label="ملخص الحسابات"></section>
+
+    <section class="food-panel fp-filters parties-filters" aria-label="بحث وفلاتر">
+      <div class="fp-filters__top">
+        <div class="food-search fp-search"><i class="fa fa-search"></i>
+          <input id="partySearch" autocomplete="off" placeholder="{% if is_customers %}ابحث بالاسم أو الهاتف أو كود العميل أو الشركة...{% else %}ابحث باسم المورد أو الهاتف أو العنوان...{% endif %}">
+        </div>
+        <div class="fp-filter-actions">
+          <button type="button" class="food-primary" id="partyApplyFilter"><i class="fa fa-filter"></i> فلتر</button>
+          <button type="button" class="fp-reset" id="partyResetFilter">إعادة تعيين</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="fp-tabs-wrap">
+      <div class="fp-tabs" id="partyTabs" role="tablist">
+        <button type="button" class="active" data-tab="all">الكل <span class="fp-count" id="partyTabAll">0</span></button>
+        <button type="button" data-tab="debt">عليهم ذمم <span class="fp-count fp-count--warn" id="partyTabDebt">0</span></button>
+        <button type="button" data-tab="overdue">متأخر <span class="fp-count fp-count--danger" id="partyTabOverdue">0</span></button>
+        {% if is_customers %}<button type="button" data-tab="credit">بحد ائتمان <span class="fp-count fp-count--info" id="partyTabCredit">0</span></button>{% endif %}
+        <button type="button" data-tab="clear">بدون ذمة <span class="fp-count fp-count--ok" id="partyTabClear">0</span></button>
+        <button type="button" data-tab="inactive">متوقف <span class="fp-count fp-count--mute" id="partyTabInactive">0</span></button>
+      </div>
+    </div>
+
+    <section class="food-panel fi-table-panel">
+      <div id="partyTableWrap" class="food-table-wrap fi-table-wrap">
+        <table class="food-table fi-table" id="partyTable">
+          <thead>
+            <tr>
+              <th>{% if is_customers %}العميل{% else %}المورد{% endif %}</th>
+              <th>الهاتف</th>
+              {% if is_customers %}<th>حد الائتمان</th><th>الأجل</th>{% else %}<th>الأجل</th>{% endif %}
+              <th>إجمالي التعامل</th>
+              <th>المدفوع</th>
+              <th>الذمة</th>
+              <th>متأخر</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="partyTableBody"></tbody>
+        </table>
+      </div>
+      <div id="partyEmpty" class="fi-empty" hidden>
+        <i class="fa {{ 'fa-users' if is_customers else 'fa-truck-field' }}"></i>
+        <b>لا توجد نتائج مطابقة</b>
+        <p>{% if is_customers %}أضف عميلاً جديداً أو عدّل البحث والفلاتر.{% else %}أضف مورداً جديداً أو عدّل البحث والفلاتر.{% endif %}</p>
+        <div><button type="button" class="food-primary" id="partyEmptyAdd"><i class="fa fa-plus"></i> إضافة</button></div>
+      </div>
+      <div id="partySkeleton" class="fi-skeleton" hidden></div>
+    </section>
+
+    <dialog id="partyFormDialog" class="food-pos-dialog parties-dialog">
+      <header>
+        <div>
+          <h2 id="partyFormTitle">إضافة {% if is_customers %}عميل{% else %}مورد{% endif %}</h2>
+          <p id="partyFormSubtitle">{% if is_customers %}بيانات الاتصال وحد الائتمان وأجل التحصيل.{% else %}بيانات الاتصال وأجل التسديد.{% endif %}</p>
+        </div>
+        <button type="button" data-close aria-label="إغلاق"><i class="fa fa-times"></i></button>
+      </header>
+      <form id="partyForm" class="food-dialog-body parties-form">
+        <input type="hidden" id="partyId" value="">
+        <div class="food-form-grid parties-form-grid">
+          <label>الاسم <b>*</b><input id="partyName" required maxlength="150" placeholder="{% if is_customers %}اسم العميل{% else %}اسم المورد{% endif %}"></label>
+          <label>الهاتف{% if is_customers %} <b>*</b>{% endif %}<input id="partyPhone" {% if is_customers %}required{% endif %} maxlength="30" inputmode="tel" placeholder="07xxxxxxxxx"></label>
+          <label>هاتف إضافي<input id="partyPhone2" maxlength="30" inputmode="tel"></label>
+          {% if is_customers %}
+          <label>كود العميل<input id="partyCode" maxlength="60" placeholder="CUS-001"></label>
+          <label>اسم الشركة / المتجر<input id="partyCompany" maxlength="150"></label>
+          <label>المدينة<input id="partyCity" maxlength="100" placeholder="بغداد"></label>
+          {% endif %}
+          <label class="food-field-wide">العنوان<input id="partyAddress" maxlength="255"></label>
+          {% if is_customers %}
+          <label>حد الائتمان (د.ع)<input id="partyCredit" type="number" min="0" step="1" inputmode="numeric" placeholder="بدون حد"></label>
+          <label>أجل التحصيل (يوم)<input id="partyTerms" type="number" min="0" step="1" inputmode="numeric" placeholder="افتراضي من الإعدادات"></label>
+          {% else %}
+          <label>أجل التسديد (يوم)<input id="partyTerms" type="number" min="0" step="1" inputmode="numeric" placeholder="افتراضي من الإعدادات"></label>
+          {% endif %}
+          <label class="food-check parties-active-check"><input id="partyActive" type="checkbox" checked> الحساب نشط</label>
+          {% if is_customers %}<label class="food-field-wide">ملاحظات<textarea id="partyNotes" rows="2" maxlength="1000"></textarea></label>{% endif %}
+        </div>
+        <footer class="parties-form-actions">
+          <button type="button" class="food-ghost" data-close>إلغاء</button>
+          <button type="submit" class="food-primary" id="partySaveBtn"><i class="fa fa-save"></i> حفظ</button>
+        </footer>
+      </form>
+    </dialog>
+
+    <div id="partyDrawer" class="fi-drawer" hidden>
+      <div class="fi-drawer__backdrop" data-party-close></div>
+      <aside class="fi-drawer__panel" role="dialog" aria-modal="true" aria-labelledby="partyDrawerTitle">
+        <header class="fi-drawer__head">
+          <div>
+            <div class="fi-drawer__title-row">
+              <span class="food-page-kicker" id="partyDrawerKicker">{% if is_customers %}ملف العميل{% else %}ملف المورد{% endif %}</span>
+            </div>
+            <h2 id="partyDrawerTitle">—</h2>
+            <p id="partyDrawerMeta"></p>
+          </div>
+          <button type="button" class="food-ghost fi-drawer__close" data-party-close aria-label="إغلاق"><i class="fa fa-times"></i></button>
+        </header>
+        <div class="fi-drawer__body" id="partyDrawerBody"></div>
+      </aside>
+    </div>
+
+    <dialog id="partyPayDialog" class="food-pos-dialog parties-dialog parties-pay-dialog">
+      <header>
+        <div>
+          <h2 id="partyPayTitle">{% if is_customers %}سند قبض{% else %}تسديد مورد{% endif %}</h2>
+          <p id="partyPaySubtitle"></p>
+        </div>
+        <button type="button" data-close aria-label="إغلاق"><i class="fa fa-times"></i></button>
+      </header>
+      <form id="partyPayForm" class="food-dialog-body">
+        <input type="hidden" id="partyPayId" value="">
+        <label>المبلغ <b>*</b><input id="partyPayAmount" type="number" min="1" step="1" inputmode="numeric" required placeholder="0"></label>
+        <small id="partyPayHint" class="parties-pay-hint"></small>
+        <footer class="parties-form-actions">
+          <button type="button" class="food-ghost" data-close>إلغاء</button>
+          <button type="submit" class="food-primary" id="partyPaySave"><i class="fa fa-check"></i> تأكيد</button>
+        </footer>
+      </form>
+    </dialog>
+  </section>
+  {% endif %}
+
+  {% if food_page == 'finance' %}
+  <section class="food-page-head food-page-head--enterprise">
+    <div class="food-page-head__identity">
+      <span class="food-page-head__icon"><i class="fa fa-money-bill-transfer"></i></span>
+      <div>
+        <span class="food-page-kicker">الإدارة المالية</span>
+        <h1>الحركات المالية</h1>
+        <p>إدارة قبض العملاء وتسديد الموردين مع تحديث الذمم مباشرة.</p>
+      </div>
+    </div>
+    <span class="food-live-status"><i class="fa fa-circle-check"></i> الأرصدة محدثة</span>
+  </section>
+
+  <section id="financeOverview" class="food-finance-overview" aria-label="ملخص الذمم">
+    <article class="food-finance-stat"><span class="food-stat-icon"><i class="fa fa-users"></i></span><div><span>إجمالي ذمم العملاء</span><strong>—</strong><small>جاري تحميل البيانات</small></div></article>
+    <article class="food-finance-stat"><span class="food-stat-icon"><i class="fa fa-user-clock"></i></span><div><span>عملاء عليهم ذمم</span><strong>—</strong><small>حسابات مفتوحة</small></div></article>
+    <article class="food-finance-stat food-finance-stat--out"><span class="food-stat-icon"><i class="fa fa-truck-field"></i></span><div><span>إجمالي ذمم الموردين</span><strong>—</strong><small>جاري تحميل البيانات</small></div></article>
+    <article class="food-finance-stat food-finance-stat--out"><span class="food-stat-icon"><i class="fa fa-file-invoice-dollar"></i></span><div><span>موردون لهم ذمم</span><strong>—</strong><small>حسابات مفتوحة</small></div></article>
+  </section>
+  <section id="financeMovementCards" class="food-movement-cards" aria-label="أنواع الحركات المالية"></section>
+  {% endif %}
+
+  {% if food_page == 'finance_detail' %}
+  <section class="food-page-head food-page-head--enterprise food-finance-detail-head">
+    <div class="food-page-head__identity"><span class="food-page-head__icon"><i class="fa {{ finance_section_icon }}"></i></span><div><span class="food-page-kicker">سجل الحركات</span><h1>{{ finance_section_title }}</h1><p>عرض الحركات وإضافة حركة جديدة من مكان واحد.</p></div></div>
+    <a href="/food/finance" class="food-ghost"><i class="fa fa-arrow-right"></i> العودة للمالية</a>
+  </section>
+  <main class="food-finance-register" data-finance-section="{{ finance_section }}">
+    <section class="food-register-summary"><article><span>عدد الحركات</span><strong id="movementCount">—</strong></article><article><span>إجمالي المبلغ</span><strong id="movementTotal">—</strong></article><article><span>آخر حركة</span><strong id="movementLatest">—</strong></article></section>
+    <section class="food-register-toolbar"><div><h2>سجل الحركات</h2><p>الأحدث تظهر أولاً</p></div><div class="food-register-actions"><button id="printFinanceRegister" type="button" class="food-ghost"><i class="fa fa-print"></i> طباعة السجل</button><button id="toggleMovementForm" type="button" class="food-primary"><i class="fa fa-plus"></i> إضافة حركة</button></div></section>
+    <div id="movementModal" class="food-finance-modal" role="dialog" aria-modal="true" aria-labelledby="movementModalTitle" hidden>
+      <button class="food-finance-modal__backdrop" type="button" data-close-movement aria-label="إغلاق النافذة"></button>
+      <section id="movementFormPanel" class="food-finance-modal__dialog">
+        <header class="food-finance-modal__head"><div><span><i class="fa {{ finance_section_icon }}"></i> حركة مالية جديدة</span><h2 id="movementModalTitle">إضافة {{ finance_section_title }}</h2><p>أكمل البيانات ثم راجع المبلغ قبل الحفظ.</p></div><button type="button" class="food-finance-modal__close" data-close-movement aria-label="إغلاق"><i class="fa fa-xmark"></i></button></header>
+        <div class="food-finance-modal__body">
+          {% if finance_section == 'receipts' %}
+          <form id="customerReceiptForm" class="food-movement-form-pro">
+            <input id="receiptCustomer" type="hidden" required>
+            <div class="food-party-picker"><label>بحث عن العميل<div class="food-field-icon"><i class="fa fa-magnifying-glass"></i><input id="receiptPartySearch" autocomplete="off" placeholder="اكتب اسم العميل أو رقم الهاتف"></div></label><div id="receiptPartyResults" class="food-party-results" hidden></div><div id="receiptPartySelected" class="food-party-selected" hidden></div></div>
+            <div class="food-form-grid"><label>رقم المستند <small>اتركه فارغاً للتوليد التلقائي</small><input id="receiptDocumentNo" placeholder="تلقائي: RCV-..."></label><label>المبلغ المستلم<input id="receiptAmount" type="number" min="1" inputmode="numeric" required placeholder="0 د.ع"></label></div>
+            <label>ملاحظة<textarea id="receiptNote" rows="3" placeholder="تفاصيل إضافية تظهر في السند والطباعة"></textarea></label>
+            <div class="food-modal-actions"><button type="button" class="food-ghost" data-close-movement>إلغاء</button><button class="food-primary"><i class="fa fa-check"></i> حفظ سند القبض</button></div>
+          </form>
+          {% endif %}
+          {% if finance_section == 'payments' %}
+          <form id="supplierPaymentForm" class="food-movement-form-pro">
+            <input id="paymentSupplier" type="hidden" required>
+            <div class="food-party-picker"><label>بحث عن المورد<div class="food-field-icon"><i class="fa fa-magnifying-glass"></i><input id="paymentPartySearch" autocomplete="off" placeholder="اكتب اسم المورد أو رقم الهاتف"></div></label><div id="paymentPartyResults" class="food-party-results" hidden></div><div id="paymentPartySelected" class="food-party-selected" hidden></div></div>
+            <div class="food-form-grid"><label>رقم المستند <small>اتركه فارغاً للتوليد التلقائي</small><input id="paymentDocumentNo" placeholder="تلقائي: PAY-..."></label><label>المبلغ المدفوع<input id="paymentAmount" type="number" min="1" inputmode="numeric" required placeholder="0 د.ع"></label></div>
+            <label>ملاحظة<textarea id="paymentNote" rows="3" placeholder="طريقة التسديد أو أي تفاصيل إضافية"></textarea></label>
+            <div class="food-modal-actions"><button type="button" class="food-ghost" data-close-movement>إلغاء</button><button class="food-primary"><i class="fa fa-check"></i> حفظ سند التسديد</button></div>
+          </form>
+          {% endif %}
+          {% if finance_section == 'expenses' %}
+          <form id="expenseForm" class="food-movement-form-pro">
+            <div class="food-form-grid"><label>عنوان المصروف<input id="expenseTitle" required placeholder="مثال: أجور نقل"></label><label>التصنيف<input id="expenseCategory" placeholder="تشغيل، نقل، صيانة..."></label><label>رقم المستند <small>اتركه فارغاً للتوليد التلقائي</small><input id="expenseDocumentNo" placeholder="تلقائي: EXP-..."></label><label>المبلغ<input id="expenseAmount" type="number" min="1" inputmode="numeric" required placeholder="0 د.ع"></label><label>التاريخ<input id="expenseDate" type="date" required></label></div>
+            <label>ملاحظة<textarea id="expenseNote" rows="3" placeholder="تفاصيل المصروف"></textarea></label>
+            <div class="food-modal-actions"><button type="button" class="food-ghost" data-close-movement>إلغاء</button><button class="food-primary"><i class="fa fa-check"></i> حفظ المصروف</button></div>
+          </form>
+          {% endif %}
+          {% if finance_section == 'cash-sessions' %}
+          <form id="cashSessionForm" class="food-movement-form-pro"><div class="food-cash-modal-title"><h3>إدارة جلسة الصندوق</h3><span id="cashSessionBadge" class="food-operation-badge">—</span></div><div class="food-form-grid"><label>رقم المستند <small>اتركه فارغاً للتوليد التلقائي</small><input id="cashDocumentNo" placeholder="تلقائي: CSH-..."></label><label>التاريخ<input id="cashSessionDate" type="date" required></label><label>الرصيد الافتتاحي<input id="cashOpening" type="number" min="0" required></label><label>الرصيد الفعلي عند الإغلاق<input id="cashActual" type="number" min="0"></label></div><label>ملاحظة / سبب الفرق<textarea id="cashSessionNote" rows="3"></textarea></label><div id="cashSessionSummary" class="food-finance-stat"></div><div class="food-modal-actions"><button type="button" class="food-ghost" data-close-movement>إلغاء</button><button type="button" id="cashReopenBtn" class="food-ghost">إعادة فتح</button><button type="button" id="cashOpenBtn" class="food-primary">حفظ الافتتاح</button><button type="button" id="cashCloseBtn" class="food-primary">إغلاق الصندوق</button></div></form>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+    <section class="food-panel food-register-table"><div id="financeMovementsTable"><div class="food-empty">جاري تحميل الحركات…</div></div></section>
+  </main>
+  <section id="financePrintSheet" class="food-finance-print-sheet" aria-hidden="true"></section>
+  {% endif %}
+
+  {% if food_page == 'reports' %}
+  <div id="foodReports" class="fd-root fr-root" aria-live="polite">
+    <header class="fd-header">
+      <div class="fd-header__right">
+        <div class="fd-header__brand">
+          <span class="fd-header__icon"><i class="fa fa-chart-pie"></i></span>
+          <div>
+            <span class="fd-kicker">Finora Food</span>
+            <h1>التقارير التشغيلية</h1>
+            <p>مبيعات ونقد وذمم ومشتريات ومخزون مع مقارنة بالفترة السابقة.</p>
+          </div>
+        </div>
+        <div class="fd-header__meta">
+          <span id="frRangeMeta">—</span>
+          <span id="frCompareMeta"></span>
+        </div>
+      </div>
+      <div class="fd-header__controls">
+        <label class="fd-period">الفترة
+          <select id="frRange">
+            <option value="today">اليوم</option>
+            <option value="yesterday">أمس</option>
+            <option value="last_7">آخر 7 أيام</option>
+            <option value="week">هذا الأسبوع</option>
+            <option value="month">هذا الشهر</option>
+            <option value="last_month">الشهر السابق</option>
+            <option value="custom">فترة مخصصة</option>
+          </select>
+        </label>
+        <div id="frCustomRange" class="fd-custom-range" hidden>
+          <input id="frStart" type="date">
+          <span>إلى</span>
+          <input id="frEnd" type="date">
+        </div>
+        <button type="button" id="frApply" class="food-primary">تطبيق</button>
+        <button type="button" id="frRefresh" class="fd-refresh" title="تحديث"><i class="fa fa-rotate"></i></button>
+        <button type="button" id="frExport" class="food-ghost fr-tool-btn" title="تصدير CSV"><i class="fa fa-file-csv"></i> CSV</button>
+        <button type="button" id="frPrint" class="food-ghost fr-tool-btn" title="طباعة"><i class="fa fa-print"></i> طباعة</button>
+      </div>
+    </header>
+
+    <section id="frKpis" class="fd-kpis fr-kpis" aria-label="مؤشرات الفترة"></section>
+
+    <nav class="food-tabs fr-tabs" data-tabs="reports" aria-label="أنواع التقارير">
+      <button class="active" data-tab="sales">المبيعات</button>
+      <button data-tab="cash">الوارد اليومي</button>
+      <button data-tab="customers">ديون العملاء</button>
+      <button data-tab="suppliers">ديون الموردين</button>
+      <button data-tab="purchases">المشتريات</button>
+      <button data-tab="inventory">المخزون</button>
+      <button data-tab="products">أفضل المنتجات</button>
+    </nav>
+
+    <section id="frOverview" class="fd-grid fd-grid--main fr-overview">
+      <article class="fd-card fd-card--chart">
+        <header class="fd-card__head"><div><h2>اتجاه المبيعات</h2><p id="frChartHint">حسب الفترة</p></div></header>
+        <div class="fd-chart-wrap"><canvas id="frTrendChart" height="220"></canvas></div>
+        <div id="frTrendEmpty" class="fd-empty" hidden>لا توجد مبيعات خلال الفترة المحددة</div>
+      </article>
+      <article class="fd-card">
+        <header class="fd-card__head"><div><h2>توزيع نوع البيع</h2><p>مفرد · جملة · مختلط</p></div></header>
+        <div class="fr-mix-wrap"><canvas id="frMixChart" height="200"></canvas></div>
+        <div id="frMixEmpty" class="fd-empty" hidden>لا توجد بيانات توزيع</div>
+        <div id="frSalesBreakdown" class="fr-card-body"></div>
+      </article>
+      <article class="fd-card">
+        <header class="fd-card__head"><div><h2>لمحة مالية</h2><p>نقد وذمم</p></div></header>
+        <div id="frCashSnapshot" class="fr-card-body"></div>
+        <div id="frDebtsSnapshot" class="fr-card-body"></div>
+      </article>
+    </section>
+
+    <section class="fd-card fr-detail-card">
+      <header class="fd-card__head">
+        <div><h2 id="frTabTitle">المبيعات</h2><p>تفاصيل قابلة للبحث والفرز والتصدير</p></div>
+      </header>
+      <div id="frTabCards" class="food-metrics fr-tab-metrics"></div>
+      <div id="frContent" class="fr-content"></div>
+    </section>
+
+    <div id="frError" class="fd-error" hidden>
+      <p>تعذر تحميل التقرير</p>
+      <button type="button" class="food-primary" onclick="document.getElementById('frRefresh')?.click()">إعادة المحاولة</button>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if food_page == 'settings' %}
+  <section class="food-page-head food-page-head--enterprise">
+    <div class="food-page-head__identity">
+      <span class="food-page-head__icon"><i class="fa fa-sliders"></i></span>
+      <div>
+        <span class="food-page-kicker">ضبط النشاط</span>
+        <h1>إعدادات النشاط</h1>
+        <p>تحكم بسلوك الكاشير والمخزون والذمم وباركود الميزان والعروض من مكان واحد.</p>
+      </div>
+    </div>
+    <span class="food-live-status" id="settingsSavedBadge"><i class="fa fa-circle-check"></i> جاهز للتعديل</span>
+  </section>
+
+  <div class="food-settings-layout">
+    <nav class="food-settings-nav" aria-label="أقسام الإعدادات">
+      <button type="button" class="active" data-settings-jump="sale"><i class="fa fa-cash-register"></i><span>البيع والكاشير</span></button>
+      <button type="button" data-settings-jump="inventory"><i class="fa fa-boxes-stacked"></i><span>المخزون والصلاحية</span></button>
+      <button type="button" data-settings-jump="finance"><i class="fa fa-hand-holding-dollar"></i><span>الذمم والآجال</span></button>
+      <button type="button" data-settings-jump="print"><i class="fa fa-print"></i><span>الطباعة</span></button>
+      <button type="button" data-settings-jump="scale"><i class="fa fa-weight-scale"></i><span>باركود الميزان</span></button>
+      <button type="button" data-settings-jump="promotions"><i class="fa fa-tags"></i><span>العروض</span></button>
+    </nav>
+
+    <div class="food-settings-main">
+      <section id="settingsOverview" class="food-settings-overview" aria-label="ملخص الإعدادات">
+        <article><span>نوع البيع</span><strong id="overviewSaleMode">—</strong></article>
+        <article><span>تنبيه الصلاحية</span><strong id="overviewExpiry">—</strong></article>
+        <article><span>المخزون السالب</span><strong id="overviewNegative">—</strong></article>
+        <article><span>الميزان</span><strong id="overviewScale">—</strong></article>
+      </section>
+
+      <form id="foodSettingsForm" class="food-settings-form">
+        <section class="food-editor-card" id="settings-sale" data-settings-section="sale">
+          <div class="food-editor-card__title">
+            <span><i class="fa fa-cash-register"></i></span>
+            <div>
+              <h3>البيع والكاشير</h3>
+              <p>الوضع الافتراضي وسرعة الكاشير وعرض المنتجات</p>
+            </div>
+          </div>
+          <div class="food-form-grid food-form-grid--settings">
+            <label>نوع البيع الافتراضي
+              <select id="settingSaleMode">
+                <option value="RETAIL">مفرد</option>
+                <option value="WHOLESALE">جملة</option>
+              </select>
+              <small>يُطبَّق عند فتح الكاشير قبل أي اختيار يدوي</small>
+            </label>
+            <label>سلوك الطباعة بعد البيع
+              <select id="settingAutoPrint">
+                <option value="ask">اسأل المستخدم</option>
+                <option value="always">طباعة تلقائية</option>
+                <option value="never">دون طباعة</option>
+              </select>
+              <small>لا يؤثر على نجاح الفاتورة إذا فشلت الطباعة</small>
+            </label>
+          </div>
+          <div class="food-feature-switches">
+            <label class="food-feature-switch">
+              <input id="settingFastPos" type="checkbox">
+              <span>
+                <i class="fa fa-bolt"></i>
+                <b>وضع الكاشير السريع</b>
+                <small>واجهة مختصرة للمسح والدفع بسرعة أعلى</small>
+              </span>
+            </label>
+            <label class="food-feature-switch">
+              <input id="settingHideOutOfStock" type="checkbox">
+              <span>
+                <i class="fa fa-eye-slash"></i>
+                <b>إخفاء غير المتوفر</b>
+                <small>لا تظهر المنتجات التي رصيدها صفر في شبكة الكاشير</small>
+              </span>
+            </label>
+          </div>
+        </section>
+
+        <section class="food-editor-card" id="settings-inventory" data-settings-section="inventory">
+          <div class="food-editor-card__title">
+            <span><i class="fa fa-boxes-stacked"></i></span>
+            <div>
+              <h3>المخزون والصلاحية</h3>
+              <p>سياسات الصرف والتنبيه قبل انتهاء الصلاحية</p>
+            </div>
+          </div>
+          <div class="food-form-grid food-form-grid--settings">
+            <label>سياسة المخزون السالب
+              <select id="settingNegativePolicy">
+                <option value="prevent">منع المخزون السالب</option>
+                <option value="permission">السماح بصلاحية خاصة</option>
+                <option value="allow">السماح دائماً</option>
+              </select>
+              <small>المنع يمنع إتمام البيع عند نقص الرصيد</small>
+            </label>
+            <label>تنبيه الصلاحية قبل
+              <div class="food-input-with-unit">
+                <input id="settingExpiryDays" type="number" min="1" required>
+                <span>يوم</span>
+              </div>
+              <small>يُستخدم أيضاً كافتراضي للمنتجات الجديدة</small>
+            </label>
+            <label>سياسة الصرف الافتراضية للمنتجات
+              <select id="settingIssuePolicy">
+                <option value="FEFO">FEFO — الأقرب انتهاءً أولاً</option>
+                <option value="FIFO">FIFO — الأقدم دخولاً أولاً</option>
+              </select>
+              <small>تُطبَّق عند إنشاء منتج جديد ما لم يُحدَّد خلاف ذلك</small>
+            </label>
+          </div>
+        </section>
+
+        <section class="food-editor-card" id="settings-finance" data-settings-section="finance">
+          <div class="food-editor-card__title">
+            <span><i class="fa fa-hand-holding-dollar"></i></span>
+            <div>
+              <h3>الذمم والآجال</h3>
+              <p>آجال التحصيل والتسديد لحساب المتأخرات في التقارير والمالية</p>
+            </div>
+          </div>
+          <div class="food-form-grid food-form-grid--settings">
+            <label>أجل تحصيل العملاء (يوم)
+              <input id="settingReceivableDays" type="number" min="0" value="30">
+              <small>لحساب الديون المتأخرة على العملاء</small>
+            </label>
+            <label>أجل تسديد الموردين (يوم)
+              <input id="settingPayableDays" type="number" min="0" value="30">
+              <small>لحساب مستحقات الموردين المتأخرة</small>
+            </label>
+          </div>
+        </section>
+
+        <section class="food-editor-card" id="settings-print" data-settings-section="print">
+          <div class="food-editor-card__title">
+            <span><i class="fa fa-print"></i></span>
+            <div>
+              <h3>الطباعة والملاحظات</h3>
+              <p>نص يظهر أسفل فاتورة البيع عند الطباعة</p>
+            </div>
+          </div>
+          <div class="food-form-grid food-form-grid--settings">
+            <label class="food-field-wide">تذييل الفاتورة
+              <textarea id="settingReceiptFooter" rows="3" maxlength="255" placeholder="شكراً لتعاملكم معنا — الاستبدال خلال 7 أيام بشرط سلامة العبوة"></textarea>
+              <small>حد أقصى 255 حرفاً · يظهر في طباعة فواتير النشاط الغذائي</small>
+            </label>
+          </div>
+        </section>
+
+        <section class="food-editor-card" id="settings-scale" data-settings-section="scale">
+          <div class="food-editor-card__title">
+            <span><i class="fa fa-weight-scale"></i></span>
+            <div>
+              <h3>باركود الميزان الموزون</h3>
+              <p>مطابقة باركود الميزان مع كود المادة والوزن تلقائياً في الكاشير</p>
+            </div>
+          </div>
+          <div class="food-feature-switches">
+            <label class="food-feature-switch">
+              <input id="settingScaleBarcode" type="checkbox">
+              <span>
+                <i class="fa fa-barcode"></i>
+                <b>تفعيل باركود الميزان</b>
+                <small>عند المسح يُستخرج كود المادة والوزن حسب التنسيق أدناه</small>
+              </span>
+            </label>
+          </div>
+          <div class="food-form-grid food-form-grid--settings" id="scaleBarcodeFields">
+            <label>بادئة الباركود
+              <input id="settingScalePrefix" inputmode="numeric" maxlength="4" value="20">
+              <small>عادة 20 أو 21</small>
+            </label>
+            <label>خانات كود المادة
+              <input id="settingScaleProductDigits" type="number" min="1" max="8" value="5">
+            </label>
+            <label>خانات الوزن / القيمة
+              <input id="settingScaleValueDigits" type="number" min="1" max="8" value="5">
+            </label>
+            <label>مقسوم الوزن
+              <input id="settingScaleDivisor" type="number" min="1" value="1000">
+              <small>1000 يعني أن 01250 = 1.250 كغم</small>
+            </label>
+          </div>
+          <div class="food-scale-preview" id="scaleBarcodePreview" aria-live="polite">
+            <span>مثال الباركود</span>
+            <strong>—</strong>
+            <small>يُحدَّث تلقائياً حسب الحقول أعلاه</small>
+          </div>
+        </section>
+
+        <div class="food-settings-actions">
+          <span id="settingsDirtyHint">عدّل أي قسم ثم احفظ</span>
+          <button type="submit" class="food-primary" id="settingsSaveBtn"><i class="fa fa-floppy-disk"></i> حفظ الإعدادات</button>
+        </div>
+      </form>
+
+      <section class="food-editor-card" id="settings-promotions" data-settings-section="promotions">
+        <div class="food-editor-card__title food-editor-card__title--actions">
+          <span><i class="fa fa-tags"></i></span>
+          <div>
+            <h3>العروض التلقائية</h3>
+            <p>تُحسب داخل الخادم وتظهر للكاشير تلقائياً عند تحقق الشروط</p>
+          </div>
+        </div>
+        <form id="promotionForm" class="food-form-grid food-form-grid--settings food-promotion-form">
+          <label>اسم العرض<input id="promotionName" required placeholder="خصم الصيف"></label>
+          <label>النطاق
+            <select id="promotionScope">
+              <option value="all">كل المنتجات</option>
+              <option value="category">تصنيف</option>
+              <option value="subcategory">تصنيف فرعي</option>
+            </select>
+          </label>
+          <label>قيمة النطاق<input id="promotionScopeValue" placeholder="مثال: مشروبات"></label>
+          <label>نوع الخصم
+            <select id="promotionDiscountType">
+              <option value="percent">نسبة مئوية</option>
+              <option value="amount">مبلغ ثابت للسطر</option>
+            </select>
+          </label>
+          <label>قيمة الخصم<input id="promotionDiscountValue" type="number" min="0.001" step="0.001" required></label>
+          <label>الكمية الدنيا<input id="promotionMinimum" type="number" min="0.001" step="0.001" value="1"></label>
+          <label class="food-feature-switch food-feature-switch--compact">
+            <input id="promotionActive" type="checkbox" checked>
+            <span><i class="fa fa-toggle-on"></i><b>العرض نشط</b><small>يظهر فوراً في الكاشير</small></span>
+          </label>
+          <div class="food-promotion-submit">
+            <button class="food-primary" type="submit"><i class="fa fa-plus"></i> إضافة العرض</button>
+          </div>
+        </form>
+        <div id="promotionsList" class="food-promotions-list"></div>
+      </section>
+    </div>
+  </div>
+  {% endif %}
+</main>
+<script src="{{ url_for('static', filename='food/food.js') }}?v=food-en-nums-20260829"></script>
+{% if food_page == 'cashier' %}<script src="{{ url_for('static', filename='food/pos.js') }}?v=food-en-nums-20260829"></script>{% endif %}
+{% if food_page == 'orders' %}<script src="{{ url_for('static', filename='food/invoices.js') }}?v=food-en-nums-20260829"></script>{% endif %}
+{% if food_page == 'purchases' %}<script src="{{ url_for('static', filename='food/purchases.js') }}?v=food-en-nums-20260829"></script>{% endif %}
+{% if food_page == 'purchases_new' %}<script src="{{ url_for('static', filename='food/purchases_form.js') }}?v=food-en-nums-20260829"></script>{% endif %}
+{% if food_page in ['customers', 'suppliers'] %}<script src="{{ url_for('static', filename='food/parties.js') }}?v=food-en-nums-20260829"></script>{% endif %}
+{% if food_page == 'dashboard' %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='food/dashboard.js') }}?v=food-en-nums-20260829"></script>
+{% endif %}
+{% if food_page == 'reports' %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='food/reports.js') }}?v=food-en-nums-20260829"></script>
+{% endif %}
+{% endblock %}

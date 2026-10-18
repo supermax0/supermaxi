@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>حسابي | {{ settings.store_name if settings else 'Finora' }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installments.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installment_store.css', v='20260812-full-width-2') }}">
+</head>
+<body class="store-body">
+  {% include 'installments/store/_header.html' %}
+
+  {% if not account %}
+    <main class="store-account-auth">
+      <section class="store-account-auth__hero">
+        <div class="store-shell">
+          <span>حساب واحد لكل طلباتك</span>
+          <h1>تابع طلباتك وأقساطك بسهولة</h1>
+          <p>سجّل مرة واحدة، واحفظ بياناتك وشاهد آخر تحديثات الطلب والعقد من مكان واحد.</p>
+        </div>
+      </section>
+      <section class="store-shell store-account-auth__layout">
+        <article class="store-auth-card">
+          <div class="store-auth-tabs" role="tablist">
+            <button type="button" data-auth-tab="login" class="{{ 'is-active' if mode != 'register' }}">تسجيل الدخول</button>
+            <button type="button" data-auth-tab="register" class="{{ 'is-active' if mode == 'register' }}">إنشاء حساب</button>
+          </div>
+          {% if error %}<div class="store-auth-error" role="alert">{{ error }}</div>{% endif %}
+          <form class="store-auth-form {{ 'is-active' if mode != 'register' }}" data-auth-panel="login" method="post" action="{{ url_for('installments_store.account_login', tenant_slug=tenant_slug) }}">
+            <header><span>مرحباً بعودتك</span><h2>ادخل إلى حسابك</h2><p>استخدم رقم الهاتف الذي أنشأت به الحساب.</p></header>
+            <label>رقم الهاتف<input name="phone" dir="ltr" inputmode="tel" autocomplete="tel" placeholder="07xxxxxxxxx" required></label>
+            <label>كلمة المرور<span class="store-password-field"><input name="password" type="password" autocomplete="current-password" minlength="8" required><button type="button" data-password-toggle aria-label="إظهار كلمة المرور">عرض</button></span></label>
+            <button class="store-auth-submit" type="submit">دخول إلى حسابي</button>
+          </form>
+          <form class="store-auth-form {{ 'is-active' if mode == 'register' }}" data-auth-panel="register" method="post" action="{{ url_for('installments_store.account_register', tenant_slug=tenant_slug) }}">
+            <header><span>حسابك الجديد</span><h2>أنشئ حساباً مجاناً</h2><p>ستُضاف بياناتك مباشرة إلى سجل الزبائن في المتجر.</p></header>
+            <label>الاسم الرباعي<input name="name" autocomplete="name" placeholder="الاسم الأول واسم الأب والجد واللقب" minlength="7" maxlength="150" required></label>
+            <label>رقم الهاتف<input name="phone" dir="ltr" inputmode="tel" autocomplete="tel" placeholder="07xxxxxxxxx" required></label>
+            <label>كلمة المرور<span class="store-password-field"><input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required><button type="button" data-password-toggle aria-label="إظهار كلمة المرور">عرض</button></span><small>8 أحرف على الأقل</small></label>
+            <button class="store-auth-submit" type="submit">إنشاء الحساب</button>
+          </form>
+        </article>
+        <aside class="store-auth-benefits">
+          <span class="store-auth-benefits__icon">✓</span>
+          <h2>كل معلوماتك محفوظة بأمان</h2>
+          <p>بعد تسجيل الدخول، سنربط أي طلب جديد بحسابك تلقائياً.</p>
+          <ul>
+            <li><i>01</i><span><strong>طلباتك في مكان واحد</strong><small>شاهد حالة المراجعة والموافقة والعقد.</small></span></li>
+            <li><i>02</i><span><strong>عنوانك يتحدّث تلقائياً</strong><small>آخر محافظة وعنوان تدخلهما في الطلب يُحفظان بملفك.</small></span></li>
+            <li><i>03</i><span><strong>كلمة مرور مشفّرة</strong><small>لا تُحفظ كلمة المرور كنص ظاهر داخل النظام.</small></span></li>
+          </ul>
+        </aside>
+      </section>
+    </main>
+  {% else %}
+    <main class="store-account-page">
+      <section class="store-account-welcome">
+        <div class="store-shell store-account-welcome__row">
+          <div><span>أهلاً بك</span><h1>{{ customer.name }}</h1><p>تابع طلبات التقسيط والعقود وبيانات التواصل من حسابك.</p></div>
+          <form method="post" action="{{ url_for('installments_store.account_logout', tenant_slug=tenant_slug) }}"><button type="submit">تسجيل الخروج</button></form>
+        </div>
+      </section>
+      <div class="store-shell store-account-content">
+        {% if request.args.get('welcome') %}<div class="store-account-success"><span>✓</span><div><strong>تم إنشاء حسابك بنجاح</strong><small>يمكنك الآن التسوق، وستظهر طلباتك الجديدة هنا تلقائياً.</small></div></div>{% endif %}
+        <section class="store-account-stats">
+          <article><span>طلبات التقسيط</span><strong>{{ applications|length }}</strong><small>كل الطلبات المرتبطة برقمك</small></article>
+          <article><span>العقود</span><strong>{{ contract_count }}</strong><small>العقود الفعالة وغير الملغاة</small></article>
+          <article><span>الرصيد المتبقي</span><strong>{{ remaining_contract_balance|toLocaleString }} <i>{{ settings.currency }}</i></strong><small>إجمالي ما تبقى في العقود غير الملغاة</small></article>
+        </section>
+        <section class="store-account-grid">
+          <article class="store-account-orders">
+            <header><div><span>طلباتي</span><h2>طلبات التقسيط</h2></div><a href="{{ url_for('installments_store.store_index', tenant_slug=tenant_slug) }}">تسوّق الآن</a></header>
+            <div class="store-order-list">
+              {% for application in applications %}
+                <article class="store-account-order">
+                  <div class="store-account-order__head"><div><small>رقم الطلب</small><strong dir="ltr">{{ application.application_number }}</strong></div><span class="is-{{ application.status }}">{{ status_labels.get(application.status, application.status) }}</span></div>
+                  <div class="store-account-order__products">{% for item in application.items %}<span>{{ item.product_name_snapshot or 'منتج أقساط' }} <b>× {{ item.quantity }}</b></span>{% endfor %}</div>
+                  <dl><div><dt>تاريخ الطلب</dt><dd>{{ application.created_at.strftime('%Y/%m/%d') }}</dd></div><div><dt>إجمالي التقسيط</dt><dd>{{ application.items|sum(attribute='installment_total')|toLocaleString }} {{ settings.currency }}</dd></div>{% if application.contract %}<div><dt>رقم العقد</dt><dd dir="ltr">{{ application.contract.contract_number }}</dd></div><div><dt>المتبقي</dt><dd>{{ application.contract.remaining_amount|toLocaleString }} {{ settings.currency }}</dd></div>{% endif %}</dl>
+                  {% if application.status == 'rejected' and application.rejection_reason %}<p class="store-account-order__note">سبب الرفض: {{ application.rejection_reason }}</p>{% endif %}
+                </article>
+              {% else %}
+                <div class="store-account-empty"><span>▤</span><h3>لا توجد طلبات بعد</h3><p>اختر المنتج وخطة التقسيط المناسبة، وسيظهر طلبك هنا بعد الإرسال مباشرة.</p><a href="{{ url_for('installments_store.store_index', tenant_slug=tenant_slug) }}">استعرض المنتجات</a></div>
+              {% endfor %}
+            </div>
+          </article>
+          <aside class="store-account-profile">
+            <header><span>بياناتي</span><h2>ملف الزبون</h2></header>
+            <div class="store-profile-avatar">{{ customer.name[:1] }}</div>
+            <h3>{{ customer.name }}</h3>
+            <dl><div><dt>رقم الهاتف</dt><dd dir="ltr">{{ account.phone }}</dd></div><div><dt>المحافظة</dt><dd>{{ customer.city or 'تُضاف عند أول طلب' }}</dd></div><div><dt>العنوان</dt><dd>{{ customer.address or 'يُضاف عند أول طلب' }}</dd></div>{% if customer.phone2 %}<div><dt>الهاتف الثاني</dt><dd dir="ltr">{{ customer.phone2 }}</dd></div>{% endif %}</dl>
+            <p><span>i</span> يمكنك تحديث المحافظة والعنوان بإدخال البيانات الجديدة عند إرسال طلبك القادم.</p>
+            <a href="{{ url_for('installments_store.cart_page', tenant_slug=tenant_slug) }}">الذهاب إلى السلة</a>
+          </aside>
+        </section>
+      </div>
+    </main>
+  {% endif %}
+
+  {% include 'installments/store/_footer.html' %}
+  <script>
+    document.querySelectorAll('[data-auth-tab]').forEach(button => button.addEventListener('click', () => {
+      document.querySelectorAll('[data-auth-tab]').forEach(tab => tab.classList.toggle('is-active', tab === button));
+      document.querySelectorAll('[data-auth-panel]').forEach(panel => panel.classList.toggle('is-active', panel.dataset.authPanel === button.dataset.authTab));
+    }));
+    document.querySelectorAll('[data-password-toggle]').forEach(button => button.addEventListener('click', () => {
+      const input = button.parentElement.querySelector('input');
+      input.type = input.type === 'password' ? 'text' : 'password';
+      button.textContent = input.type === 'password' ? 'عرض' : 'إخفاء';
+    }));
+  </script>
+</body>
+</html>

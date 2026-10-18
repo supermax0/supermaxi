@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>اتصل بنا | {{ settings.store_name if settings else 'Finora' }}</title>
+  <meta name="description" content="تواصل مع فريق {{ settings.store_name if settings else 'Finora' }} عبر الهاتف أو واتساب.">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installments.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installment_store.css', v='20260812-full-width-2') }}">
+</head>
+<body class="store-body">
+  {% include 'installments/store/_header.html' %}
+
+  <main class="store-info-page">
+    <section class="store-info-hero">
+      <div class="store-shell">
+        <nav class="store-info-crumb" aria-label="مسار الصفحة">
+          <a href="{{ url_for('installments_store.store_index', tenant_slug=tenant_slug) }}">الرئيسية</a>
+          <span>/</span>
+          <strong>اتصل بنا</strong>
+        </nav>
+        <span>نحن هنا لمساعدتك</span>
+        <h1>تواصل معنا بسهولة</h1>
+        <p>للاستفسار عن منتج، حالة طلب، أو خطة تقسيط — اختر وسيلة التواصل الأنسب لك.</p>
+      </div>
+    </section>
+
+    <div class="store-shell store-info-body">
+      <section class="store-contact-layout">
+        <article class="store-contact-card">
+          <header>
+            <span>قنوات التواصل</span>
+            <h2>بيانات الاتصال</h2>
+            <p>يفضّل ذكر رقم الطلب أو اسم المنتج لتسريع الرد.</p>
+          </header>
+          <ul class="store-contact-channels">
+            {% if settings and settings.contact_phone %}
+              <li>
+                <i>☎</i>
+                <div>
+                  <strong>هاتف المتجر</strong>
+                  <a dir="ltr" href="tel:{{ settings.contact_phone }}">{{ settings.contact_phone }}</a>
+                </div>
+              </li>
+            {% endif %}
+            {% if settings and settings.whatsapp %}
+              <li>
+                <i>◉</i>
+                <div>
+                  <strong>واتساب</strong>
+                  <a dir="ltr" href="https://wa.me/{{ settings.whatsapp|replace('+','')|replace(' ','') }}" target="_blank" rel="noopener">{{ settings.whatsapp }}</a>
+                </div>
+              </li>
+            {% endif %}
+            {% if settings and settings.address %}
+              <li>
+                <i>⌂</i>
+                <div>
+                  <strong>العنوان</strong>
+                  {% if settings.map_url %}
+                    <a href="{{ settings.map_url }}" target="_blank" rel="noopener">{{ settings.address }}</a>
+                  {% else %}
+                    <span>{{ settings.address }}</span>
+                  {% endif %}
+                </div>
+              </li>
+            {% endif %}
+            {% if not (settings and (settings.contact_phone or settings.whatsapp or settings.address)) %}
+              <li>
+                <i>i</i>
+                <div>
+                  <strong>قريباً</strong>
+                  <span>سيتم تحديث بيانات التواصل من إعدادات المتجر.</span>
+                </div>
+              </li>
+            {% endif %}
+          </ul>
+          <div class="store-contact-actions">
+            {% if settings and settings.whatsapp %}
+              <a class="is-primary" href="https://wa.me/{{ settings.whatsapp|replace('+','')|replace(' ','') }}" target="_blank" rel="noopener">مراسلة واتساب</a>
+            {% endif %}
+            {% if settings and settings.contact_phone %}
+              <a href="tel:{{ settings.contact_phone }}">اتصال مباشر</a>
+            {% endif %}
+            {% if settings and settings.map_url %}
+              <a href="{{ settings.map_url }}" target="_blank" rel="noopener">الموقع على الخريطة</a>
+            {% endif %}
+            <a href="{{ url_for('installments_store.track_application', tenant_slug=tenant_slug) }}">تتبع طلبي</a>
+          </div>
+        </article>
+
+        <aside class="store-contact-aside">
+          <div>
+            <span>أوقات الخدمة</span>
+            <h3>نرد في أسرع وقت ممكن</h3>
+            <p>يمكنك إرسال استفسارك في أي وقت، وسنعود إليك خلال ساعات العمل.</p>
+          </div>
+          <ul>
+            <li><strong>استفسارات المنتجات</strong><small>المواصفات، التوفر، وخطط التقسيط</small></li>
+            <li><strong>حالة الطلب</strong><small>المراجعة، الموافقة، والتوصيل</small></li>
+            <li><strong>الحساب والعقد</strong><small>بياناتك، الأقساط، والمتابعة</small></li>
+          </ul>
+          <a href="{{ url_for('installments_store.faq_page', tenant_slug=tenant_slug) }}">راجع الأسئلة الشائعة أولاً</a>
+        </aside>
+      </section>
+    </div>
+  </main>
+
+  {% include 'installments/store/_footer.html' %}
+</body>
+</html>

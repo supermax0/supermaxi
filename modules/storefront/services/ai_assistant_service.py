@@ -9,7 +9,9 @@ from flask import url_for
 from modules.storefront.services.cart_service import StorefrontCartService
 from modules.storefront.services.inventory_knowledge import (
     build_catalog_text,
+    extract_foot_size,
     match_products,
+    product_foot_size,
     product_cards_for_chat,
 )
 from modules.storefront.services.settings_service import StorefrontSettingsService
@@ -117,16 +119,166 @@ def _normalize_track_text(text: str) -> str:
 
 
 def _build_system_prompt(assistant_name: str) -> str:
-    return f"""أنت {assistant_name} — مساعد ذكي لمتجر إلكتروني باللغة العربية.
+    return f"""أنت {assistant_name} — مساعد مبيعات ودود لمتجر إلكتروني عراقي.
 قواعد صارمة:
 - أجب فقط بناءً على بيانات المتجر والمخزون والسلة المرفقة في السياق.
 - لا تخترع أسعاراً أو منتجات أو حالات طلب غير موجودة.
-- عند السؤال عن منتج، اذكر الاسم والسعر والتوفر باختصار ووجّه لصفحة التفاصيل.
+- تحدث بعربية عراقية خفيفة ومفهومة، بطريقة طبيعية ومحترمة من دون مبالغة.
+- اجعل الرد جملة أو جملتين فقط، وبحد أقصى 35 كلمة.
+- لا تكتب روابط، ولا قوائم طويلة، ولا عناوين، ولا تكرر بيانات بطاقات المنتجات.
+- الأصل أن تسولف مع الزبون وتجاوبه نصياً عن السعر والتوفر والمواصفات.
+- لا تفترض أن مجرد سؤال الزبون عن منتج يعني أنه يريد بطاقة أو صورة؛ البطاقات تظهر فقط إذا طلب رؤيتها صراحةً.
+- عند ظهور بطاقات منتجات، قدّمها بكلام قصير ثم اسأل سؤال متابعة واحداً مفيداً.
 - عند السؤال عن السلة، استخدم ملخص السلة المرفق.
 - عند تتبع الطلب، اطلب رقم الطلب ورقم الهاتف إن لم تتوفر.
 - اذكر أن الدفع عند الاستلام عند الحاجة.
-- كن مختصراً، ودوداً، واحترافياً.
-- استخدم تنسيقاً واضحاً مع نقاط عند الحاجة."""
+- لا تذكر الذكاء الاصطناعي أو المفاتيح أو الأخطاء التقنية للزبون."""
+
+
+_NON_PRODUCT_TERMS = (
+    "سلة",
+    "سلتي",
+    "شحن",
+    "توصيل",
+    "تتبع",
+    "طلبي",
+    "حالة الطلب",
+    "الدفع",
+    "كوبون",
+)
+
+_PRODUCT_INQUIRY_TERMS = (
+    "منتج",
+    "منتجات",
+    "متوفر",
+    "متوفرة",
+    "موجود",
+    "سعر",
+    "أسعار",
+    "عرض",
+    "عروض",
+    "اشتري",
+    "شراء",
+    "ثلاجة",
+    "ثلاجه",
+    "مجمدة",
+    "مجمده",
+    "فريزر",
+    "شاشة",
+    "شاشه",
+    "تلفزيون",
+)
+
+
+def _normalize_card_intent(text: str) -> str:
+    return _normalize_track_text(text).translate(
+        str.maketrans({"أ": "ا", "إ": "ا", "آ": "ا", "ة": "ه", "ى": "ي", "ؤ": "و", "ئ": "ي"})
+    ).strip().lower()
+
+
+def _is_product_inquiry(message: str, products: list[Any]) -> bool:
+    text = _normalize_card_intent(message)
+    if not text or any(term in text for term in _NON_PRODUCT_TERMS):
+        return False
+    if any(_normalize_card_intent(term) in text for term in _PRODUCT_INQUIRY_TERMS):
+        return True
+
+    # A brand/model/name by itself is still a product inquiry, but it does not
+    # mean the customer asked to see a visual product card.
+    for product in products:
+        raw_name = product.get("name", "") if isinstance(product, dict) else getattr(product, "name", "")
+        name = _normalize_card_intent(str(raw_name or ""))
+        if not name:
+            continue
+        meaningful = [token for token in re.findall(r"[\u0600-\u06ffa-z0-9]{2,}", name) if len(token) > 2]
+        if any(token in text for token in meaningful):
+            return True
+    return False
+
+
+def _should_show_product_cards(message: str, products: list[Any]) -> bool:
+    """Show cards only after an explicit request to see the product visually."""
+    if not products:
+        return False
+
+    text = _normalize_card_intent(message)
+    if not text or any(term in text for term in _NON_PRODUCT_TERMS):
+        return False
+
+    direct_requests = (
+        "صوره",
+        "صورته",
+        "صورتها",
+        "صور المنتج",
+        "شكل المنتج",
+        "شكله",
+        "شكلها",
+        "وريني",
+        "فرجيني",
+        "اعرضلي",
+        "اعرض لي",
+        "افتحلي",
+        "افتح لي",
+        "دزلي",
+        "دز لي",
+        "ارسللي",
+        "ارسل لي",
+        "ابعثلي",
+        "ابعث لي",
+        "اريني",
+        "اعرض المنتج",
+        "اعرض المنتجات",
+        "بطاقه المنتج",
+        "رابط المنتج",
+        "تفاصيل المنتج",
+        "تفاصيله",
+        "تفاصيلها",
+        "عرض التفاصيل",
+    )
+    if any(term in text for term in direct_requests):
+        return True
+
+    # Covers conversational requests such as "أريد أشوف الشاشة" and
+    # "ممكن أشوفها؟" while keeping "أريد شاشة" as a text-only inquiry.
+    return bool(
+        re.search(
+            r"(?:اريد|ممكن|خليني|خل)\s+(?:ا)?شوف(?:ه|ها|هم|\s+(?:ال)?(?:منتج|شاشه|ثلاجه|مجمده|فريزر|تلفزيون))",
+            text,
+        )
+    )
+
+
+def _compact_reply(reply: str, *, has_products: bool = False) -> str:
+    text = str(reply or "").strip()
+    text = re.sub(r"\[([^\]]+)\]\(https?://[^)]+\)", r"\1", text)
+    text = re.sub(r"https?://\S+", "", text)
+    text = re.sub(r"(?im)^\s*(?:[-*•]|\d+[.)])\s*", "", text)
+    text = re.sub(r"\s*\n\s*", " ", text)
+    text = re.sub(r"\s{2,}", " ", text).strip(" -–—|\n")
+
+    if not text:
+        return "هاي المنتجات الموجودة 👇" if has_products else "شلون أگدر أساعدك؟"
+
+    max_chars = 190 if has_products else 240
+    if len(text) > max_chars:
+        shortened = text[: max_chars + 1].rsplit(" ", 1)[0].rstrip("،؛:.- ")
+        text = f"{shortened}…"
+    return text
+
+
+def _foot_size_reply(message: str, products: list[Any]) -> str:
+    requested_size = extract_foot_size(message)
+    if requested_size is None or not products:
+        return ""
+    selected_size = product_foot_size(products[0])
+    if selected_size is None:
+        return ""
+    if selected_size == requested_size:
+        return f"إي، متوفر قياس {requested_size} قدم 👌 عرضتلك الموجود بالأسفل."
+    return (
+        f"قياس {requested_size} قدم مو متوفر حالياً، "
+        f"أقرب حجم موجود هو {selected_size} قدم 👇"
+    )
 
 
 def _fallback_reply(
@@ -134,6 +286,8 @@ def _fallback_reply(
     products: list[dict[str, Any]],
     cart_summary: dict[str, Any],
     track_info: dict[str, Any] | None,
+    *,
+    show_product_cards: bool = True,
 ) -> str:
     lower = str(message or "").lower()
     if track_info and track_info.get("found"):
@@ -155,14 +309,23 @@ def _fallback_reply(
     if any(word in lower for word in ("شحن", "توصيل", "delivery")):
         return "رسوم الشحن تختلف حسب المدينة وتظهر عند إتمام الطلب. الدفع عند الاستلام."
 
-    if products:
-        names = "، ".join(p.get("name", "") for p in products[:4] if p.get("name"))
-        return f"إليك بعض المنتجات المناسبة: {names}. يمكنك عرض التفاصيل أو الإضافة للسلة من البطاقات."
+    if products and _is_product_inquiry(message, products):
+        if show_product_cards:
+            if len(products) == 1:
+                return "أكيد، هذا هو المنتج اللي طلبت تشوفه 👇"
+            return "أكيد، هاي أقرب الخيارات لطلبك 👇 تحب أساعدك تختار بينها؟"
 
-    return (
-        "أنا مساعد المتجر. اسألني عن منتج معين، السلة، الشحن، أو تتبع طلبك. "
-        "(تفعيل الذكاء الاصطناعي الكامل يتطلب مفتاح OpenAI.)"
-    )
+        first = products[0]
+        name = str(first.get("name") or "المنتج").strip()
+        price = int(float(first.get("price") or 0))
+        availability = "متوفر حالياً" if first.get("is_available") else "متاح بالطلب"
+        if len(products) == 1:
+            return f"إي، {name} {availability} وسعره {price:,} د.ع. شنو تحب تعرف عنه أكثر؟"
+        prices = [int(float(item.get("price") or 0)) for item in products if item.get("price")]
+        start_price = min(prices) if prices else price
+        return f"إي، عدنا أكثر من خيار قريب من طلبك وتبدأ الأسعار من {start_price:,} د.ع. شكد ميزانيتك حتى أحددلك الأنسب؟"
+
+    return "أكيد، شنو المنتج اللي ببالك؟ اكتب اسمه أو النوع والسعر المناسب إلك."
 
 
 class StorefrontAIAssistantService:
@@ -189,7 +352,9 @@ class StorefrontAIAssistantService:
 
         products_db = match_products(message, history)
         catalog_text = build_catalog_text(products_db, shop_slug)
-        product_cards = product_cards_for_chat(products_db, shop_slug)
+        show_product_cards = _should_show_product_cards(message, products_db)
+        matched_product_cards = product_cards_for_chat(products_db, shop_slug)[:4]
+        product_cards = matched_product_cards if show_product_cards else []
         cart_summary = cart.summary()
         store_context = _build_store_context(shop_slug, design, self._settings)
         cart_context = _build_cart_context(cart)
@@ -208,6 +373,12 @@ class StorefrontAIAssistantService:
                 store_context,
                 "=== ملخص السلة ===",
                 cart_context,
+                "=== أسلوب العرض لهذه الرسالة ===",
+                (
+                    "الزبون طلب رؤية المنتج صراحةً؛ ستظهر له بطاقات المنتجات مع الرد."
+                    if show_product_cards
+                    else "هذه محادثة نصية فقط؛ جاوب الزبون وتابع وياه من دون الإشارة إلى بطاقة أو صورة معروضة."
+                ),
                 "=== كتالوج المنتجات المطابقة ===",
                 catalog_text,
             ]
@@ -238,14 +409,29 @@ class StorefrontAIAssistantService:
 
             ok, text = ai_utils.call_openai(messages, timeout_sec=25)
             if ok:
-                reply = text
+                reply = _compact_reply(text, has_products=bool(product_cards))
                 ai_used = True
             else:
-                reply = _fallback_reply(message, product_cards, cart_summary, track_info)
-                if text and "OpenAI" in text:
-                    reply += f"\n\n({text})"
+                reply = _fallback_reply(
+                    message,
+                    matched_product_cards,
+                    cart_summary,
+                    track_info,
+                    show_product_cards=show_product_cards,
+                )
         else:
-            reply = _fallback_reply(message, product_cards, cart_summary, track_info)
+            reply = _fallback_reply(
+                message,
+                matched_product_cards,
+                cart_summary,
+                track_info,
+                show_product_cards=show_product_cards,
+            )
+
+        nearest_size_reply = _foot_size_reply(message, products_db if product_cards else [])
+        if nearest_size_reply:
+            reply = nearest_size_reply
+        reply = _compact_reply(reply, has_products=bool(product_cards))
 
         return {
             "success": True,

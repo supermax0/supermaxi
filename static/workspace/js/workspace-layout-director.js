@@ -17,9 +17,11 @@ class WorkspaceLayoutDirector {
     // window type -> { column, priority, pref }
     this.map = {
       courier_settlement_analysis: { zone: "left", priority: 1, pref: 640 },
+      purchase_invoice_analysis: { zone: "left", priority: 1, pref: 650 },
       live_report: { zone: "left", priority: 2, pref: 220 },
       document_intelligence: { zone: "left", priority: 3, pref: 320 },
       courier_issues: { zone: "left", priority: 4, pref: 240 },
+      order_details: { zone: "left", priority: 0, pref: 620 },
 
       document_viewer: { zone: "right", priority: 1, pref: 560 },
       assistant_notes: { zone: "right", priority: 2, pref: 220 },
@@ -30,7 +32,9 @@ class WorkspaceLayoutDirector {
       session_timeline: { zone: "bottom", priority: 4, pref: 200 },
 
       workflow_selector: { zone: "modal", priority: 1, pref: 260 },
-      approval_panel: { zone: "modal", priority: 1, pref: 240 },
+      approval_panel: { zone: "modal", priority: 1, pref: 330 },
+      employee_performance: { zone: "modal", priority: 0, pref: 680 },
+      inventory_forensics: { zone: "modal", priority: 0, pref: 760 },
     };
   }
 
@@ -63,6 +67,7 @@ class WorkspaceLayoutDirector {
     const docWindow = visible.find((w) => w.type === "document_viewer");
     const reportWindow =
       visible.find((w) => w.type === "courier_settlement_analysis") ||
+      visible.find((w) => w.type === "purchase_invoice_analysis") ||
       visible.find((w) => w.type === "live_report");
     const flowMode = docWindow && reportWindow;
 
@@ -95,11 +100,65 @@ class WorkspaceLayoutDirector {
         z_index: 12,
       });
       const aux = visible.filter((w) => w.id !== docWindow.id && w.id !== reportWindow.id);
+      const orderWindow = aux.find((w) => w.type === "order_details");
+      if (orderWindow) {
+        const orderW = Math.min(680, Math.max(520, Math.round(W * 0.36)));
+        const orderH = Math.min(690, Math.max(470, H - top - 96));
+        result.set(orderWindow.id, {
+          x: sidePad,
+          y: top,
+          width: orderW,
+          height: orderH,
+          z_index: 260,
+        });
+      }
+      const rowsWindow = aux.find((w) => w.type === "courier_rows");
+      if (rowsWindow) {
+        const rowsW = Math.min(1160, Math.max(760, W - 160));
+        const rowsH = Math.min(680, Math.max(440, H - 150));
+        result.set(rowsWindow.id, {
+          x: Math.round((W - rowsW) / 2),
+          y: Math.max(56, Math.round((H - rowsH) / 2)),
+          width: rowsW,
+          height: rowsH,
+          z_index: 220,
+        });
+      }
+      const employeeWindow = aux.find((w) => w.type === "employee_performance");
+      if (employeeWindow) {
+        const employeeW = Math.min(1240, Math.max(860, W - 72));
+        const employeeH = Math.min(760, Math.max(520, H - 92));
+        result.set(employeeWindow.id, {
+          x: Math.round((W - employeeW) / 2),
+          y: Math.max(30, Math.round((H - employeeH) / 2) - 12),
+          width: employeeW,
+          height: employeeH,
+          z_index: 1200,
+        });
+      }
+      const approvalWindow = aux.find((w) => w.type === "approval_panel");
+      if (approvalWindow) {
+        const approvalW = Math.min(720, Math.max(600, Math.round(W * 0.39)));
+        const approvalH = Math.min(560, Math.max(430, Math.round(H * 0.53)));
+        result.set(approvalWindow.id, {
+          x: Math.round((W - approvalW) / 2),
+          y: Math.max(42, Math.round((H - approvalH) / 2) - 18),
+          width: approvalW,
+          height: approvalH,
+          z_index: 1300,
+        });
+      }
+      const remainingAux = aux.filter(
+        (w) => w.id !== rowsWindow?.id
+          && w.id !== orderWindow?.id
+          && w.id !== employeeWindow?.id
+          && w.id !== approvalWindow?.id
+      );
       const auxW = Math.min(460, Math.max(340, Math.round(W * 0.24)));
       const auxH = Math.min(300, Math.max(220, Math.round(H * 0.32)));
       const auxX = Math.round(W / 2 - auxW / 2);
       const auxY = Math.max(top + 56, Math.round(H / 2 - auxH / 2));
-      aux.forEach((w, i) => {
+      remainingAux.forEach((w, i) => {
         result.set(w.id, {
           x: auxX + i * 18,
           y: auxY + i * 22,
@@ -178,14 +237,19 @@ class WorkspaceLayoutDirector {
 
   _placeModals(items, result, W, H) {
     items.forEach(({ w, cfg }, i) => {
-      const width = Math.min(460, Math.round(W * 0.5));
-      const height = cfg.pref;
+      const largeDashboard = ["employee_performance", "inventory_forensics"].includes(w.type);
+      const width = largeDashboard
+        ? Math.min(1400, Math.max(320, W - (W < 900 ? 24 : 72)))
+        : Math.min(460, Math.round(W * 0.5));
+      const height = largeDashboard
+        ? Math.min(820, Math.max(420, H - (H < 650 ? 24 : 72)))
+        : cfg.pref;
       result.set(w.id, {
         x: Math.round(W / 2 - width / 2),
-        y: Math.round(H / 2 - height / 2) + i * 24,
+        y: Math.max(12, Math.round(H / 2 - height / 2) + i * 24),
         width,
         height,
-        z_index: 1000 + i,
+        z_index: (largeDashboard ? 1200 : 1000) + i,
       });
     });
   }

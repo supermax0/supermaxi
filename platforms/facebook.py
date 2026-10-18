@@ -6,9 +6,9 @@ import logging
 from typing import Any, Dict, Optional, Tuple
 
 import requests
+from utils.meta_graph import GRAPH_BASE
 
 logger = logging.getLogger("facebook_publish")
-GRAPH_BASE = "https://graph.facebook.com/v19.0"
 
 
 def _published_flag(visibility: str | None) -> bool:

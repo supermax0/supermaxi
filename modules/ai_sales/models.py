@@ -42,6 +42,9 @@ class AISalesChannelAccount(db.Model):
     comments_public_text = db.Column(db.String(300), default="تم الرد على الخاص", nullable=False)
     default_employee_id = db.Column(db.Integer, db.ForeignKey("employee.id"), index=True)
     webhook_key = db.Column(db.String(64), unique=True, nullable=False, default=lambda: secrets.token_urlsafe(24))
+    tiktok_app_id = db.Column(db.String(100))
+    tiktok_refresh_token_encrypted = db.Column(db.Text)
+    tiktok_token_expires_at = db.Column(db.DateTime)
     access_token_encrypted = db.Column(db.Text)
     app_secret_encrypted = db.Column(db.Text)
     verify_token_encrypted = db.Column(db.Text)
@@ -94,6 +97,9 @@ class AISalesChannelAccount(db.Model):
             "has_access_token": bool(self.access_token_encrypted),
             "has_app_secret": bool(self.app_secret_encrypted),
             "has_verify_token": bool(self.verify_token_encrypted),
+            "tiktok_app_id": self.tiktok_app_id or "",
+            "has_tiktok_refresh_token": bool(self.tiktok_refresh_token_encrypted),
+            "tiktok_token_expires_at": self.tiktok_token_expires_at.isoformat() if self.tiktok_token_expires_at else None,
             "last_webhook_at": self.last_webhook_at.isoformat() if self.last_webhook_at else None,
             "last_sync_at": self.last_sync_at.isoformat() if self.last_sync_at else None,
             "sync_blocked_until": self.sync_blocked_until.isoformat() if self.sync_blocked_until else None,
@@ -548,6 +554,7 @@ class AISalesAgentProfile(db.Model):
     voice_instructions = db.Column(db.Text)
     max_context_messages = db.Column(db.Integer, default=18, nullable=False)
     max_audio_size_mb = db.Column(db.Integer, default=25, nullable=False)
+    max_video_seconds = db.Column(db.Integer, default=60, nullable=False)
     human_takeover_minutes = db.Column(db.Integer, default=30, nullable=False)
     ai_response_delay_ms = db.Column(db.Integer, default=0, nullable=False)
     auto_escalation = db.Column(db.Boolean, default=True, nullable=False)
@@ -587,6 +594,7 @@ class AISalesAgentProfile(db.Model):
             "voice_instructions": self.voice_instructions or "",
             "max_context_messages": int(self.max_context_messages or 18),
             "max_audio_size_mb": int(self.max_audio_size_mb or 25),
+            "max_video_seconds": int(self.max_video_seconds or 60),
             "human_takeover_minutes": int(self.human_takeover_minutes or 30),
             "ai_response_delay_ms": int(self.ai_response_delay_ms or 0),
             "auto_escalation": bool(self.auto_escalation),

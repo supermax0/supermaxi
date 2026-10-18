@@ -20,17 +20,23 @@ class CourierAnalysisClient {
       ...options,
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.message || data.error || `HTTP ${res.status}`);
+    if (!res.ok) {
+      const error = new Error(data.message || data.error || `HTTP ${res.status}`);
+      error.status = res.status;
+      error.code = data.error || null;
+      throw error;
+    }
     return data;
   }
 
-  async runForSession(sessionId, documentId = null) {
+  async runForSession(sessionId, documentId = null, options = {}) {
     const sid = sessionId || (this.getSessionId && this.getSessionId());
     if (!sid) throw new Error("لا توجد جلسة نشطة");
     this._busy = true;
     this.onStart();
     try {
       const body = documentId ? { document_id: documentId } : {};
+      if (options.forceDocumentAnalysis) body.force_document_analysis = true;
       const data = await this._api(`/sessions/${sid}/courier-analysis/run`, {
         method: "POST",
         body: JSON.stringify(body),
@@ -62,6 +68,76 @@ class CourierAnalysisClient {
     if (filters.page_size) params.set("page_size", String(filters.page_size));
     const q = params.toString();
     return this._api(`/courier-analysis/${analysisId}/rows${q ? `?${q}` : ""}`);
+  }
+
+  async runReturnForSession(sessionId, documentId = null, options = {}) {
+    const sid = sessionId || (this.getSessionId && this.getSessionId());
+    if (!sid) throw new Error("لا توجد جلسة نشطة");
+    this._busy = true;
+    this.onStart();
+    try {
+      const body = documentId ? { document_id: documentId } : {};
+      if (options.forceDocumentAnalysis) body.force_document_analysis = true;
+      const data = await this._api(`/sessions/${sid}/return-analysis/run`, {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      if (data.session) this.onSessionUpdate(data.session);
+      this.onComplete(data.analysis);
+      return data;
+    } catch (e) {
+      this.onError(e);
+      throw e;
+    } finally {
+      this._busy = false;
+    }
+  }
+
+  async correctRowOrder(analysisId, rowId, orderNumber) {
+    const data = await this._api(
+      `/courier-analysis/${analysisId}/rows/${rowId}/order`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ order_number: orderNumber }),
+      }
+    );
+    if (data.session) this.onSessionUpdate(data.session);
+    return data;
+  }
+
+  async approveRowCandidate(analysisId, rowId) {
+    const data = await this._api(
+      `/courier-analysis/${analysisId}/rows/${rowId}/candidate/approve`,
+      { method: "POST", body: "{}" }
+    );
+    if (data.session) this.onSessionUpdate(data.session);
+    return data;
+  }
+
+  async setRowPaymentMethod(analysisId, rowId, treasuryAccountId) {
+    return this._api(
+      `/courier-analysis/${analysisId}/rows/${rowId}/payment-method`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ treasury_account_id: treasuryAccountId }),
+      }
+    );
+  }
+
+  async confirmRowReplacement(analysisId, rowId) {
+    return this._api(
+      `/courier-analysis/${analysisId}/rows/${rowId}/replacement/confirm`,
+      { method: "POST", body: "{}" }
+    );
+  }
+
+  async deleteRow(analysisId, rowId) {
+    const data = await this._api(
+      `/courier-analysis/${analysisId}/rows/${rowId}`,
+      { method: "DELETE" }
+    );
+    if (data.session) this.onSessionUpdate(data.session);
+    return data;
   }
 
   async getIssues(analysisId) {
@@ -96,6 +172,37 @@ class CourierAnalysisClient {
 
   async approvePosting(analysisId, payload = {}) {
     const data = await this._api(`/courier-analysis/${analysisId}/posting/approve`, {
+      method: "POST",
+      body: JSON.stringify(payload || {}),
+    });
+    if (data.session) this.onSessionUpdate(data.session);
+    return data;
+  }
+
+  async getReturnPreview(analysisId) {
+    return this._api(`/courier-analysis/${analysisId}/return-preview`);
+  }
+
+  async prepareReturn(analysisId) {
+    const data = await this._api(`/courier-analysis/${analysisId}/return/prepare`, {
+      method: "POST",
+      body: "{}",
+    });
+    if (data.session) this.onSessionUpdate(data.session);
+    return data;
+  }
+
+  async cancelReturn(analysisId) {
+    const data = await this._api(`/courier-analysis/${analysisId}/return/cancel`, {
+      method: "POST",
+      body: "{}",
+    });
+    if (data.session) this.onSessionUpdate(data.session);
+    return data;
+  }
+
+  async approveReturn(analysisId, payload = {}) {
+    const data = await this._api(`/courier-analysis/${analysisId}/return/approve`, {
       method: "POST",
       body: JSON.stringify(payload || {}),
     });

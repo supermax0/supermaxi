@@ -1,0 +1,109 @@
+{% extends "superadmin_base.html" %}
+{% block title %}AI Tutor — System Map{% endblock %}
+{% block page_title %}Finora AI Tutor · System Map{% endblock %}
+{% block breadcrumb_current %}AI Tutor · System Map{% endblock %}
+
+{% block extra_style %}
+<style>
+  .sm { display: grid; gap: 18px; }
+  .sm-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+  .sm-kicker { font-size: 12px; letter-spacing: .12em; color: var(--text-muted); font-weight: 800; }
+  .sm-title { margin: 2px 0 0; font-size: 24px; font-weight: 900; }
+  .sm-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .sm-btn { border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-main); border-radius: 12px; padding: 10px 16px; font: inherit; font-weight: 700; cursor: pointer; }
+  .sm-btn--primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .sm-btn:disabled { opacity: .55; cursor: wait; }
+  .sm-input { border: 1px solid var(--border-strong); border-radius: 12px; padding: 9px 12px; font: inherit; background: var(--surface); color: var(--text-main); min-width: 200px; }
+  .sm-meta { display: flex; flex-wrap: wrap; gap: 8px 16px; color: var(--text-muted); font-size: 13px; align-items: center; }
+  .sm-meta b { color: var(--text-main); }
+  .sm-pill { border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 800; }
+  .sm-pill--ok { background: var(--success-soft); color: var(--success); }
+  .sm-pill--warn { background: var(--warning-soft); color: var(--warning); }
+  .sm-pill--bad { background: var(--danger-soft); color: var(--danger); }
+  .sm-pill--info { background: var(--primary-soft); color: var(--primary); }
+  .sm-banner { padding: 10px 14px; border-radius: 12px; background: var(--warning-soft); color: var(--warning); font-weight: 700; }
+  .sm-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .sm-card { padding: 16px; border: 1px solid var(--border-color); border-radius: 16px; background: var(--surface); }
+  .sm-card small { color: var(--text-muted); font-weight: 700; }
+  .sm-card strong { display: block; font-size: 28px; font-weight: 900; margin-top: 4px; }
+  .sm-cov { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+  .sm-cov h4 { margin: 0 0 6px; font-size: 14px; }
+  .sm-cov .sm-num { font-size: 22px; font-weight: 900; }
+  .sm-cov small { display: block; color: var(--text-muted); margin-top: 4px; }
+  .sm-bar { height: 6px; border-radius: 6px; background: var(--surface-soft); overflow: hidden; margin-top: 8px; }
+  .sm-bar i { display: block; height: 100%; background: var(--primary); }
+  .sm-panel { padding: 16px; border: 1px solid var(--border-color); border-radius: 16px; background: var(--surface); }
+  .sm-panel h3 { margin: 0 0 10px; font-size: 16px; }
+  .sm-tabs, .sm-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+  .sm-chip { border: 1px solid var(--border-color); background: var(--surface-soft); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 13px; font-weight: 700; cursor: pointer; color: var(--text-main); }
+  .sm-chip.is-active { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .sm-table-wrap { overflow-x: auto; }
+  .sm-table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .sm-table th { text-align: right; color: var(--text-muted); font-weight: 800; padding: 8px 10px; border-bottom: 1px solid var(--border-color); white-space: nowrap; }
+  .sm-table td { padding: 8px 10px; border-bottom: 1px solid var(--border-color); vertical-align: top; }
+  .sm-table code { direction: ltr; unicode-bidi: embed; font-size: 12.5px; }
+  .sm-yes { color: var(--success); font-weight: 900; }
+  .sm-no { color: var(--text-soft); font-weight: 900; }
+  .sm-status { border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 800; white-space: nowrap; }
+  .sm-status[data-status="verified"] { background: var(--success-soft); color: var(--success); }
+  .sm-status[data-status="discovered"] { background: var(--primary-soft); color: var(--primary); }
+  .sm-status[data-status="knowledge_missing"], .sm-status[data-status="tutorial_missing"] { background: var(--warning-soft); color: var(--warning); }
+  .sm-status[data-status="broken"] { background: var(--danger-soft); color: var(--danger); }
+  .sm-status[data-status="stale"], .sm-status[data-status="disabled"] { background: var(--surface-soft); color: var(--text-muted); }
+  .sm-new { margin-inline-start: 6px; }
+  .sm-problems { margin: 4px 0 0; padding-inline-start: 18px; color: var(--text-muted); font-size: 12.5px; }
+  .sm-diff { list-style: none; margin: 0; padding: 0; }
+  .sm-diff li { margin: 4px 0; direction: ltr; text-align: left; }
+  .sm-empty { color: var(--text-muted); padding: 24px; text-align: center; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="sm" id="smRoot" data-system-map>
+  <div class="sm-head">
+    <div>
+      <div class="sm-kicker">FINORA AI TUTOR</div>
+      <h2 class="sm-title">System Map</h2>
+    </div>
+    <div class="sm-actions">
+      <button type="button" class="sm-btn sm-btn--primary" id="smScan"><i class="fas fa-radar"></i> تشغيل الفحص</button>
+      <span id="smSimulateBox" hidden>
+        <input class="sm-input" id="smSimId" placeholder="محاكاة اختفاء عنصر (test only) مثل doctor.create" aria-label="id لمحاكاة اختفائه">
+        <button type="button" class="sm-btn" id="smSimulate">محاكاة</button>
+      </span>
+    </div>
+  </div>
+
+  <div id="smBanner" class="sm-banner" hidden></div>
+  <div class="sm-meta" id="smMeta" aria-live="polite"></div>
+
+  <div class="sm-cards" id="smCards"></div>
+  <div class="sm-cov" id="smCoverage"></div>
+
+  <section class="sm-panel" id="smDiffPanel" hidden>
+    <h3>التغييرات منذ آخر فحص</h3>
+    <ul class="sm-diff" id="smDiff"></ul>
+  </section>
+
+  <section class="sm-panel">
+    <div class="sm-tabs" id="smTabs" role="tablist"></div>
+    <div class="sm-filters" id="smFilters"></div>
+    <div class="sm-filters">
+      <input class="sm-input" id="smSearch" placeholder="بحث بالاسم أو الصفحة" aria-label="بحث">
+      <select class="sm-input" id="smCategory" aria-label="التصنيف">
+        <option value="all">كل التصنيفات</option>
+        <option value="feature">ميزات</option>
+        <option value="navigation">تنقل</option>
+        <option value="submit">حفظ</option>
+        <option value="chrome">واجهة عامة</option>
+      </select>
+    </div>
+    <div class="sm-table-wrap"><table class="sm-table" id="smTable"><thead></thead><tbody></tbody></table></div>
+    <div class="sm-empty" id="smEmpty" hidden>لا توجد نتائج.</div>
+  </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/superadmin_ai_tutor_map.js') }}?v=2" defer></script>
+{% endblock %}

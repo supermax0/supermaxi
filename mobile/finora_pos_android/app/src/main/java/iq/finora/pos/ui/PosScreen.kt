@@ -60,6 +60,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import coil.compose.AsyncImage
 import iq.finora.pos.data.PosRepository
+import iq.finora.pos.data.ProductRow
 import iq.finora.pos.ui.theme.Primary
 import iq.finora.pos.ui.theme.Secondary
 import kotlinx.coroutines.launch
@@ -87,7 +88,8 @@ fun PosRoute(repository: PosRepository, nav: NavHostController) {
     val msg by vm.message.collectAsState()
 
     var showAddCustomer by remember { mutableStateOf(false) }
-    var editPriceProductId by remember { mutableStateOf<Long?>(null) }
+    var editPriceLineKey by remember { mutableStateOf<String?>(null) }
+    var pendingProduct by remember { mutableStateOf<ProductRow?>(null) }
     var showInventory by remember { mutableStateOf(false) }
 
     val total = cart.sumOf { it.unitPrice * it.qty }
@@ -115,14 +117,25 @@ fun PosRoute(repository: PosRepository, nav: NavHostController) {
         )
     }
 
-    val lineToEdit = cart.firstOrNull { it.productId == editPriceProductId }
+    val lineToEdit = cart.firstOrNull { it.lineKey == editPriceLineKey }
     if (lineToEdit != null) {
         EditPriceDialog(
             currentPrice = lineToEdit.unitPrice,
-            onDismiss = { editPriceProductId = null },
+            onDismiss = { editPriceLineKey = null },
             onSave = { newPrice ->
-                vm.setUnitPrice(lineToEdit.productId, newPrice)
-                editPriceProductId = null
+                vm.setUnitPrice(lineToEdit.lineKey, newPrice)
+                editPriceLineKey = null
+            }
+        )
+    }
+
+    pendingProduct?.let { product ->
+        SaleConfigurationDialog(
+            product = product,
+            onDismiss = { pendingProduct = null },
+            onConfirm = { color, mode ->
+                vm.addConfiguredProduct(product, color, mode)
+                pendingProduct = null
             }
         )
     }
@@ -244,7 +257,12 @@ fun PosRoute(repository: PosRepository, nav: NavHostController) {
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(top = 6.dp)
-                            .clickable { vm.addProductFromSearch(p) }
+                            .clickable {
+                                pendingProduct = ProductRow(
+                                    p.id, p.name, p.price, p.quantity, p.imageUrl,
+                                    p.hasColors, p.colors, p.exchangeSalePrice, p.hasExchangeSale
+                                )
+                            }
                     ) {
                         Row(
                             modifier = Modifier
@@ -298,7 +316,7 @@ fun PosRoute(repository: PosRepository, nav: NavHostController) {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(top = 6.dp)
-                                .clickable { vm.addProductFromCatalog(p) }
+                                .clickable { pendingProduct = p }
                         ) {
                             Row(
                                 modifier = Modifier
@@ -373,24 +391,31 @@ fun PosRoute(repository: PosRepository, nav: NavHostController) {
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
+                                            Text(
+                                                buildString {
+                                                    append(if (line.saleMode == "exchange") "استبدال" else "بيع")
+                                                    if (line.color.isNotBlank()) append(" • ${line.color}")
+                                                },
+                                                style = MaterialTheme.typography.bodySmall
+                                            )
                                         }
                                     }
-                                    IconButton(onClick = { vm.removeLine(line.productId) }) {
+                                    IconButton(onClick = { vm.removeLine(line.lineKey) }) {
                                         Icon(Icons.Default.Delete, contentDescription = "حذف", tint = MaterialTheme.colorScheme.error)
                                     }
                                 }
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     TextButton(
-                                        onClick = { vm.setQty(line.productId, line.qty - 1) },
+                                        onClick = { vm.setQty(line.lineKey, line.qty - 1) },
                                         enabled = line.qty > 1
                                     ) { Text("−") }
                                     Text("${line.qty}", modifier = Modifier.padding(horizontal = 8.dp), style = MaterialTheme.typography.titleMedium)
                                     TextButton(
-                                        onClick = { vm.setQty(line.productId, line.qty + 1) },
+                                        onClick = { vm.setQty(line.lineKey, line.qty + 1) },
                                         enabled = line.qty < line.maxStock
                                     ) { Text("+") }
                                     Spacer(Modifier.size(8.dp))
-                                    TextButton(onClick = { editPriceProductId = line.productId }) {
+                                    TextButton(onClick = { editPriceLineKey = line.lineKey }) {
                                         Icon(Icons.Default.Edit, contentDescription = null)
                                         Text("السعر")
                                     }
@@ -581,6 +606,52 @@ private fun EditPriceDialog(
                 val v = value.toDoubleOrNull() ?: 0.0
                 if (v > 0) onSave(v)
             }) { Text("تطبيق") }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء") } }
+    )
+}
+
+@Composable
+private fun SaleConfigurationDialog(
+    product: ProductRow,
+    onDismiss: () -> Unit,
+    onConfirm: (color: String, saleMode: String) -> Unit
+) {
+    val availableColors = product.colors.filter { (it.quantity ?: it.qty) > 0 }
+    var color by remember(product.id) {
+        mutableStateOf(if (product.hasColors) availableColors.firstOrNull()?.name.orEmpty() else "")
+    }
+    var mode by remember(product.id) { mutableStateOf("normal") }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("إضافة ${product.name}") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (product.hasColors) {
+                    Text("اختر اللون", fontWeight = FontWeight.Bold)
+                    availableColors.forEach { row ->
+                        TextButton(onClick = { color = row.name }) {
+                            Text(if (color == row.name) "✓ ${row.name}" else row.name)
+                        }
+                    }
+                }
+                Text("نوع العملية", fontWeight = FontWeight.Bold)
+                TextButton(onClick = { mode = "normal" }) {
+                    Text(if (mode == "normal") "✓ بيع" else "بيع")
+                }
+                if (product.hasExchangeSale) {
+                    TextButton(onClick = { mode = "exchange" }) {
+                        Text(if (mode == "exchange") "✓ استبدال" else "استبدال")
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = !product.hasColors || color.isNotBlank(),
+                onClick = { onConfirm(color, mode) }
+            ) { Text("إضافة") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("إلغاء") } }
     )

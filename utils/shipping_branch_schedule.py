@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime, time
+from uuid import uuid4
 
 from models.branch import Branch
 from models.order_item import OrderItem
@@ -133,6 +134,10 @@ def _reassign_item_to_branch(item: OrderItem, order, target_branch_id: int) -> b
     if old_branch_id and int(old_branch_id) == target_branch_id:
         item.fulfillment_branch_id = target_branch_id
         return True
+    if not old_branch_id:
+        raise BranchStockError(
+            "تعذر تحديد الفرع الأصلي للمخزون المخصوم؛ أوقف النقل لحماية الرصيد"
+        )
 
     target_branch = Branch.query.filter_by(id=target_branch_id, is_active=True).first()
     if not target_branch:
@@ -146,14 +151,41 @@ def _reassign_item_to_branch(item: OrderItem, order, target_branch_id: int) -> b
             f"المتاح: {available}، المطلوب: {qty}"
         )
 
-    if old_branch_id:
-        receive_stock(int(old_branch_id), item.product_id, qty)
+    from utils.stock_movement_guard import claim_stock_movement
+
+    move_token = uuid4().hex
+    claim_stock_movement(
+        f"order:{order.id}:item:{item.id}:schedule:{move_token}:release",
+        movement_type="shipping_branch_release",
+        direction="in",
+        product_id=item.product_id,
+        branch_id=int(old_branch_id),
+        quantity=qty,
+        unit_cost=int(getattr(item, "cost", 0) or 0),
+        source_type="invoice",
+        source_id=order.id,
+        source_line_id=item.id,
+        details={"to_branch_id": target_branch_id},
+    )
+    receive_stock(int(old_branch_id), item.product_id, qty)
 
     try:
+        claim_stock_movement(
+            f"order:{order.id}:item:{item.id}:schedule:{move_token}:reserve",
+            movement_type="shipping_branch_reserve",
+            direction="out",
+            product_id=item.product_id,
+            branch_id=target_branch_id,
+            quantity=qty,
+            unit_cost=int(getattr(item, "cost", 0) or 0),
+            source_type="invoice",
+            source_id=order.id,
+            source_line_id=item.id,
+            details={"from_branch_id": int(old_branch_id)},
+        )
         deduct_stock(target_branch_id, item.product_id, qty)
     except BranchStockError:
-        if old_branch_id:
-            deduct_stock(int(old_branch_id), item.product_id, qty)
+        deduct_stock(int(old_branch_id), item.product_id, qty)
         raise
 
     item.fulfillment_branch_id = target_branch_id
@@ -168,6 +200,15 @@ def apply_shipping_branch_schedule(order, *, previous_status: str | None = None)
     prev = (previous_status or getattr(order, "status", None) or "").strip()
     if prev not in {"تم الطلب", "معباة"}:
         return
+
+    from utils.order_stock_policy import stock_is_deducted
+
+    # This function physically moves already-deducted units between branches.
+    # Never allow it to become an independent, untracked stock deduction path.
+    if not stock_is_deducted(order):
+        raise BranchStockError(
+            "لا يمكن نقل مخزون الطلب بين الفروع قبل تسجيل خصمه على الطلب"
+        )
 
     target_branch_id = resolve_shipping_branch_for_now()
     if not target_branch_id:

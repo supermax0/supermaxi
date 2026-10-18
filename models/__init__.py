@@ -1,5 +1,6 @@
 from .product import Product
 from .product_color_variant import ProductColorVariant
+from .trade_in_receipt import TradeInReceipt
 from .customer import Customer
 from .customer_credit import CustomerCreditPlan, CustomerInstallment, CustomerCreditPayment
 from .rotating_savings import (
@@ -14,14 +15,28 @@ from .treasury_account import TreasuryAccount
 from .treasury_transfer import TreasuryTransfer
 from .supplier import Supplier
 from .supplier_payment import SupplierPayment
+from .supplier_payment_allocation import SupplierPaymentAllocation
 from .supplier_sale import SupplierSale
 from .supplier_sale_item import SupplierSaleItem
 from .purchase import Purchase
 from .purchase_item import PurchaseItem
 from .purchase_payment import PurchasePayment
 from .purchase_attachment import PurchaseAttachment
+# PurchaseList.warehouse_id and Employee.default_warehouse_id reference the
+# shared warehouse table.  Import it in the model registry so lightweight app
+# factories (including clinic tests) can resolve the complete FK graph.
+from modules.wholesale.models.warehouse import Warehouse, WarehouseStock, WarehouseMovement
+from .purchase_list import PurchaseList, PurchaseListItem
 from .inventory_lot import InventoryLot, OrderItemCostLayer
+from .stock_movement import StockMovement
+from .inventory_audit import InventoryQuantityAudit, InventoryStockSnapshot
 from .branch import Branch, BranchStock, StockTransfer, StockTransferLine
+from .branch_profile import BranchProfile  # noqa: F401
+from .branch_cash_transfer import BranchCashTransfer  # noqa: F401
+from .branch_assignment import BranchUserAssignment  # noqa: F401
+from .employee_permission import EmployeePermissionOverride  # noqa: F401
+from .branch_distribution import BranchDistribution  # noqa: F401
+from .expense_allocation import ExpenseAllocation, ExpenseAllocationLine  # noqa: F401
 from .expense import Expense
 from .maintenance_record import MaintenanceRecord
 from .fixed_asset_category import FixedAssetCategory
@@ -36,12 +51,32 @@ from .fixed_asset_attachment import FixedAssetAttachment
 from .fixed_asset_disposal_request import FixedAssetDisposalRequest
 from .financial_period_close import FinancialPeriodClose
 from .daily_audit import DailyAudit
+from .daily_closing import (
+    DailySession,
+    DailyInventoryCount,
+    InventoryCountTemplate,
+    InventoryCountTemplateItem,
+    DailyClosingSnapshotHistory,
+    DailyCashAdjustment,
+    DailyClosingAuditLog,
+)
 from .employee import Employee
+from .page import Page, employee_pages
 from .employee_commission_line import EmployeeCommissionLine
 from .employee_commission_settlement import EmployeeCommissionSettlement
 from .employee_payment import EmployeePayment
+from .hr import (
+    HRAttendance,
+    HRDepartment,
+    HREmployeeDocument,
+    HREmployeeProfile,
+    HRLeaveRequest,
+    HRPayrollAdjustment,
+    HRSettings,
+)
 from .invoice import Invoice
 from .invoice_payment_ledger import InvoicePaymentLedger
+from .receipt import Receipt, ReceiptAllocation
 from .order_item import OrderItem
 from .ai_feedback import AIFeedback
 from .shipping import ShippingCompany
@@ -64,13 +99,21 @@ from .ai_assistant_control import (
     AIToolCallLog,
     AIUploadedFile,
 )
+from modules.finora_ai.models import (
+    FinoraAIConversation,
+    FinoraAIMessage,
+    FinoraAISettings,
+    FinoraAIToolCall,
+)
 from .investment_proposal import InvestmentProposal
 from .role import Role, Permission
+from .user import User
 from .tenant import Tenant  # SaaS multi-tenant support
 from .beauty_service import BeautyService
 from .beauty_service_product import BeautyServiceProduct
 from .beauty_appointment import BeautyAppointment
 from .beauty_session_note import BeautySessionNote
+from .note import Note, NoteRevision
 from .ai_agent import (
     Agent,
     AgentWorkflow,

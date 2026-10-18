@@ -325,7 +325,7 @@
                 {% for item in items %}
                 <tr>
                     <td style="text-align:center; color:#999;">{{ loop.index }}</td>
-                    <td>{{ item.product_name or (item.product.name if item.product else 'Unknown') }}</td>
+                    <td>{{ item.display_name }}</td>
                     <td>{{ "{:,.0f}".format(item.price) }}</td>
                     <td style="text-align:center;">{{ item.quantity }}</td>
                     <td class="amount">{{ "{:,.0f}".format(item.total) }} د.ع</td>

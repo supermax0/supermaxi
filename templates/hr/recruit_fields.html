@@ -1,0 +1,33 @@
+<form id="application" class="fields">
+  <p>{{ form.description }}</p>
+  {% for field in form.fields %}
+    {% if field.type in ['heading', 'description'] %}
+      {% if field.type == 'heading' %}<h2>{{ field.label }}</h2>{% else %}<p>{{ field.label }}</p>{% endif %}
+      {% if field.description %}<p class="hint">{{ field.description }}</p>{% endif %}
+    {% else %}
+      <div class="field" data-key="{{ field.key }}" data-kind="{{ field.type }}">
+        <label for="f_{{ field.key }}">{{ field.label }}{% if field.required %}<span class="required"> *</span>{% endif %}</label>
+        {% if field.description %}<p class="hint">{{ field.description }}</p>{% endif %}
+        {% if field.type == 'long_text' %}
+          <textarea id="f_{{ field.key }}" maxlength="{{ field.max_length }}" {% if field.required %}required{% endif %}></textarea>
+        {% elif field.type in ['single', 'multiple'] %}
+          <div class="choices" id="f_{{ field.key }}">
+          {% for option in field.options %}<label><input type="{{ 'checkbox' if field.type == 'multiple' else 'radio' }}" name="{{ field.key }}" value="{{ option }}" {% if field.required and field.type == 'single' %}required{% endif %}> {{ option }}</label>{% endfor %}
+          </div>
+        {% elif field.type == 'dropdown' %}
+          <select id="f_{{ field.key }}" {% if field.required %}required{% endif %}><option value="">اختر...</option>{% for option in field.options %}<option>{{ option }}</option>{% endfor %}</select>
+        {% elif field.type == 'consent' %}
+          <input id="f_{{ field.key }}" type="checkbox" {% if field.required %}required{% endif %}>
+        {% elif field.type in ['file', 'image'] %}
+          <input id="f_{{ field.key }}" type="file" accept="{{ 'image/png,image/jpeg' if field.type == 'image' else 'application/pdf,image/png,image/jpeg' }}" data-max-kb="{{ field.max_file_kb }}" {% if field.required %}required{% endif %}>
+          <small class="hint">الحجم الأقصى {{ field.max_file_kb }} كيلوبايت</small>
+        {% else %}
+          <input id="f_{{ field.key }}" type="{{ {'short_text':'text','phone':'tel'}.get(field.type, field.type) }}" maxlength="{{ field.max_length }}" {% if field.minimum is not none %}min="{{ field.minimum }}"{% endif %} {% if field.maximum is not none %}max="{{ field.maximum }}"{% endif %} {% if field.required %}required{% endif %}>
+        {% endif %}
+      </div>
+    {% endif %}
+  {% endfor %}
+  <label class="honeypot" aria-hidden="true">Website<input name="website" tabindex="-1" autocomplete="off"></label>
+  <p class="hint">تُحفظ المعلومات لغرض مراجعة طلب التوظيف لدى الشركة.</p>
+  <button type="submit">إرسال طلب التوظيف</button>
+</form>

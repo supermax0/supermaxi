@@ -1,0 +1,486 @@
+{
+  "schemaVersion": 1,
+  "revision": 3,
+  "planHash": "879a5e9f37d30508926731854971f2f7e703f0ec9278535793b6f7b654fcb545",
+  "title": "حجز الملاعب",
+  "nodes": [
+    {
+      "id": "page:venues",
+      "kind": "page",
+      "title": "الملاعب",
+      "description": "عرض الملاعب المتاحة",
+      "parentId": null,
+      "position": {
+        "x": 0,
+        "y": 0
+      },
+      "details": {
+        "phase": "mvp",
+        "features": [
+          "بحث",
+          "صور",
+          "وقت متاح"
+        ],
+        "roles": [
+          "زبون"
+        ],
+        "acceptance": [
+          "البحث يعرض الملاعب المتاحة فقط"
+        ]
+      }
+    },
+    {
+      "id": "feature:venues:0",
+      "kind": "feature",
+      "title": "بحث",
+      "description": "ميزة ضمن صفحة «الملاعب»: عرض الملاعب المتاحة",
+      "parentId": "page:venues",
+      "position": {
+        "x": 350,
+        "y": 0
+      },
+      "details": {
+        "page": "الملاعب",
+        "roles": [
+          "زبون"
+        ],
+        "pageAcceptance": [
+          "البحث يعرض الملاعب المتاحة فقط"
+        ]
+      }
+    },
+    {
+      "id": "feature:venues:1",
+      "kind": "feature",
+      "title": "صور",
+      "description": "ميزة ضمن صفحة «الملاعب»: عرض الملاعب المتاحة",
+      "parentId": "page:venues",
+      "position": {
+        "x": 350,
+        "y": 130
+      },
+      "details": {
+        "page": "الملاعب",
+        "roles": [
+          "زبون"
+        ],
+        "pageAcceptance": [
+          "البحث يعرض الملاعب المتاحة فقط"
+        ]
+      }
+    },
+    {
+      "id": "feature:venues:2",
+      "kind": "feature",
+      "title": "وقت متاح",
+      "description": "ميزة ضمن صفحة «الملاعب»: عرض الملاعب المتاحة",
+      "parentId": "page:venues",
+      "position": {
+        "x": 350,
+        "y": 260
+      },
+      "details": {
+        "page": "الملاعب",
+        "roles": [
+          "زبون"
+        ],
+        "pageAcceptance": [
+          "البحث يعرض الملاعب المتاحة فقط"
+        ]
+      }
+    },
+    {
+      "id": "page:booking",
+      "kind": "page",
+      "title": "الحجز",
+      "description": "حجز وقت بدون تعارض",
+      "parentId": null,
+      "position": {
+        "x": 0,
+        "y": 520
+      },
+      "details": {
+        "phase": "mvp",
+        "features": [
+          "اختيار وقت",
+          "تأكيد",
+          "إلغاء"
+        ],
+        "roles": [
+          "زبون",
+          "مالك"
+        ],
+        "acceptance": [
+          "يمنع حجز نفس الموعد مرتين"
+        ]
+      }
+    },
+    {
+      "id": "feature:booking:0",
+      "kind": "feature",
+      "title": "اختيار وقت",
+      "description": "ميزة ضمن صفحة «الحجز»: حجز وقت بدون تعارض",
+      "parentId": "page:booking",
+      "position": {
+        "x": 350,
+        "y": 520
+      },
+      "details": {
+        "page": "الحجز",
+        "roles": [
+          "زبون",
+          "مالك"
+        ],
+        "pageAcceptance": [
+          "يمنع حجز نفس الموعد مرتين"
+        ]
+      }
+    },
+    {
+      "id": "feature:booking:1",
+      "kind": "feature",
+      "title": "تأكيد",
+      "description": "ميزة ضمن صفحة «الحجز»: حجز وقت بدون تعارض",
+      "parentId": "page:booking",
+      "position": {
+        "x": 350,
+        "y": 650
+      },
+      "details": {
+        "page": "الحجز",
+        "roles": [
+          "زبون",
+          "مالك"
+        ],
+        "pageAcceptance": [
+          "يمنع حجز نفس الموعد مرتين"
+        ]
+      }
+    },
+    {
+      "id": "feature:booking:2",
+      "kind": "feature",
+      "title": "إلغاء",
+      "description": "ميزة ضمن صفحة «الحجز»: حجز وقت بدون تعارض",
+      "parentId": "page:booking",
+      "position": {
+        "x": 350,
+        "y": 780
+      },
+      "details": {
+        "page": "الحجز",
+        "roles": [
+          "زبون",
+          "مالك"
+        ],
+        "pageAcceptance": [
+          "يمنع حجز نفس الموعد مرتين"
+        ]
+      }
+    },
+    {
+      "id": "entity:c07a51ed0ff457a2",
+      "kind": "entity",
+      "title": "ملعب",
+      "description": "بيانات المشروع والعلاقات المحددة في الخطة",
+      "parentId": null,
+      "position": {
+        "x": 760,
+        "y": 0
+      },
+      "details": {
+        "fields": [
+          "الاسم",
+          "العنوان"
+        ],
+        "relatedTo": [
+          "حجز"
+        ]
+      }
+    },
+    {
+      "id": "entity:85e25ee5027d971c",
+      "kind": "entity",
+      "title": "حجز",
+      "description": "بيانات المشروع والعلاقات المحددة في الخطة",
+      "parentId": null,
+      "position": {
+        "x": 760,
+        "y": 150
+      },
+      "details": {
+        "fields": [
+          "الوقت",
+          "الزبون"
+        ],
+        "relatedTo": [
+          "ملعب"
+        ]
+      }
+    },
+    {
+      "id": "role:c2422dd11481d995",
+      "kind": "role",
+      "title": "زبون",
+      "description": "صلاحيات الدور المحددة في الخطة",
+      "parentId": null,
+      "position": {
+        "x": -350,
+        "y": 0
+      },
+      "details": {
+        "permissions": [
+          "حجز وإلغاء حجوزه فقط"
+        ]
+      }
+    },
+    {
+      "id": "role:15619ce34329d415",
+      "kind": "role",
+      "title": "مالك",
+      "description": "صلاحيات الدور المحددة في الخطة",
+      "parentId": null,
+      "position": {
+        "x": -350,
+        "y": 160
+      },
+      "details": {
+        "permissions": [
+          "إدارة ملاعبه وحجوزاتها فقط"
+        ]
+      }
+    },
+    {
+      "id": "workflow:reserve",
+      "kind": "workflow",
+      "title": "البحث وحجز الموعد",
+      "description": "الزبون يريد حجز ملعب",
+      "parentId": null,
+      "position": {
+        "x": 1150,
+        "y": 0
+      },
+      "details": {
+        "acceptance": [
+          "تعارض الموعد يرجع للاختيار ولا ينشئ حجزاً مكرراً"
+        ]
+      }
+    },
+    {
+      "id": "step:reserve:search",
+      "kind": "step",
+      "title": "يبحث عن ملعب",
+      "description": "تظهر الملاعب المتاحة",
+      "parentId": "workflow:reserve",
+      "position": {
+        "x": 1500,
+        "y": 0
+      },
+      "details": {
+        "role": "زبون",
+        "pageId": "page:venues",
+        "terminal": false,
+        "sequence": 1
+      }
+    },
+    {
+      "id": "step:reserve:confirm",
+      "kind": "step",
+      "title": "يؤكد الموعد",
+      "description": "يحفظ الحجز مرة واحدة",
+      "parentId": "workflow:reserve",
+      "position": {
+        "x": 1500,
+        "y": 140
+      },
+      "details": {
+        "role": "زبون",
+        "pageId": "page:booking",
+        "terminal": false,
+        "sequence": 2
+      }
+    },
+    {
+      "id": "step:reserve:finish",
+      "kind": "step",
+      "title": "يراجع الحجز",
+      "description": "حجز مؤكد والدفع عند الحضور",
+      "parentId": "workflow:reserve",
+      "position": {
+        "x": 1500,
+        "y": 280
+      },
+      "details": {
+        "role": "مالك",
+        "pageId": "page:booking",
+        "terminal": true,
+        "sequence": 3
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e:97cf316fcf992d74971a",
+      "source": "page:venues",
+      "target": "feature:venues:0",
+      "relation": "contains",
+      "label": "تحتوي على",
+      "basis": "declared"
+    },
+    {
+      "id": "e:1ef8c52cc9fa6bca8765",
+      "source": "page:venues",
+      "target": "feature:venues:1",
+      "relation": "contains",
+      "label": "تحتوي على",
+      "basis": "declared"
+    },
+    {
+      "id": "e:1c365762e059b1196bfd",
+      "source": "page:venues",
+      "target": "feature:venues:2",
+      "relation": "contains",
+      "label": "تحتوي على",
+      "basis": "declared"
+    },
+    {
+      "id": "e:386faa63cf9636c76488",
+      "source": "page:venues",
+      "target": "page:booking",
+      "relation": "navigation",
+      "label": "انتقال إلى",
+      "basis": "declared"
+    },
+    {
+      "id": "e:a0c3c9096579695221ee",
+      "source": "role:c2422dd11481d995",
+      "target": "page:venues",
+      "relation": "access",
+      "label": "له صلاحية الصفحة",
+      "basis": "declared"
+    },
+    {
+      "id": "e:4f13f5c39a7bf0ebff48",
+      "source": "page:booking",
+      "target": "feature:booking:0",
+      "relation": "contains",
+      "label": "تحتوي على",
+      "basis": "declared"
+    },
+    {
+      "id": "e:e75da7be22af815b4b67",
+      "source": "page:booking",
+      "target": "feature:booking:1",
+      "relation": "contains",
+      "label": "تحتوي على",
+      "basis": "declared"
+    },
+    {
+      "id": "e:a3bccd5cd93125c87e11",
+      "source": "page:booking",
+      "target": "feature:booking:2",
+      "relation": "contains",
+      "label": "تحتوي على",
+      "basis": "declared"
+    },
+    {
+      "id": "e:2813d5bebd3089ad6abb",
+      "source": "page:booking",
+      "target": "page:venues",
+      "relation": "navigation",
+      "label": "انتقال إلى",
+      "basis": "declared"
+    },
+    {
+      "id": "e:2a8ae1804cfb193f515e",
+      "source": "role:c2422dd11481d995",
+      "target": "page:booking",
+      "relation": "access",
+      "label": "له صلاحية الصفحة",
+      "basis": "declared"
+    },
+    {
+      "id": "e:f6c327703ba9b2edd91c",
+      "source": "role:15619ce34329d415",
+      "target": "page:booking",
+      "relation": "access",
+      "label": "له صلاحية الصفحة",
+      "basis": "declared"
+    },
+    {
+      "id": "e:0267ba32adf298040737",
+      "source": "entity:c07a51ed0ff457a2",
+      "target": "entity:85e25ee5027d971c",
+      "relation": "data_relation",
+      "label": "علاقة بيانات",
+      "basis": "declared"
+    },
+    {
+      "id": "e:6d68945150fa751cd0f7",
+      "source": "entity:85e25ee5027d971c",
+      "target": "entity:c07a51ed0ff457a2",
+      "relation": "data_relation",
+      "label": "علاقة بيانات",
+      "basis": "declared"
+    },
+    {
+      "id": "e:18a4874af3e43a84dc32",
+      "source": "workflow:reserve",
+      "target": "step:reserve:search",
+      "relation": "starts",
+      "label": "بداية المسار",
+      "basis": "declared"
+    },
+    {
+      "id": "e:7a680ec7f41d582a5bf5",
+      "source": "step:reserve:search",
+      "target": "page:venues",
+      "relation": "runs_on",
+      "label": "تجري في الصفحة",
+      "basis": "declared"
+    },
+    {
+      "id": "e:98279e13252a56089519",
+      "source": "step:reserve:search",
+      "target": "step:reserve:confirm",
+      "relation": "transition",
+      "label": "اختار ملعباً ووقتاً",
+      "basis": "declared"
+    },
+    {
+      "id": "e:63e5a1e971661d2852e2",
+      "source": "step:reserve:confirm",
+      "target": "page:booking",
+      "relation": "runs_on",
+      "label": "تجري في الصفحة",
+      "basis": "declared"
+    },
+    {
+      "id": "e:a1a44e6874c7435e2b6c",
+      "source": "step:reserve:confirm",
+      "target": "step:reserve:search",
+      "relation": "transition",
+      "label": "الموعد محجوز؛ يرجع لاختيار وقت آخر",
+      "basis": "declared"
+    },
+    {
+      "id": "e:244fdf8ed6715521008a",
+      "source": "step:reserve:confirm",
+      "target": "step:reserve:finish",
+      "relation": "transition",
+      "label": "الموعد متاح",
+      "basis": "declared"
+    },
+    {
+      "id": "e:b051af99463082d95c40",
+      "source": "step:reserve:finish",
+      "target": "page:booking",
+      "relation": "runs_on",
+      "label": "تجري في الصفحة",
+      "basis": "declared"
+    }
+  ],
+  "enriched": false,
+  "unresolvedFeatures": [],
+  "executable": false
+}

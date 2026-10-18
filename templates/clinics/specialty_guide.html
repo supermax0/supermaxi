@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>دليل تشغيل — {{ guide.name_ar }} | FINORA Clinics</title>
+  <style>
+    :root{
+      --ink:#172033; --muted:#687387; --brand:#243B6B; --brand-2:#315EA8;
+      --accent:#C3A35B; --soft:#F3F6FA; --soft-2:#E9EEF6; --line:#D9E0EA;
+      --ok:#0F766E; --white:#fff;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      margin:0; color:var(--ink); background:#e8edf4;
+      font-family:"Noto Sans Arabic", Tahoma, Arial, "Segoe UI", sans-serif;
+      line-height:1.78; -webkit-print-color-adjust:exact; print-color-adjust:exact;
+    }
+    .screen-tools{position:fixed;z-index:1000;left:22px;bottom:22px;display:flex;gap:10px;direction:rtl}
+    .screen-tools a,.screen-tools button{
+      border:0;border-radius:12px;padding:12px 18px;cursor:pointer;font-weight:700;
+      box-shadow:0 8px 25px rgba(20,30,50,.16);background:var(--brand);color:#fff;font-size:14px;text-decoration:none;font-family:inherit;
+    }
+    .screen-tools .secondary{background:#fff;color:var(--brand);border:1px solid var(--line)}
+    .document{width:210mm;margin:18px auto;background:#fff;box-shadow:0 16px 42px rgba(23,32,51,.13)}
+    .page{width:210mm;min-height:297mm;padding:18mm 16mm 16mm;position:relative;background:#fff;page-break-after:always;overflow:hidden}
+    .page:last-child{page-break-after:auto}
+    .page-header{display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:7px;margin-bottom:15px;font-size:11px;color:var(--muted)}
+    .page-footer{position:absolute;bottom:8mm;right:16mm;left:16mm;display:flex;align-items:center;justify-content:space-between;color:#818b9b;font-size:9.5px;border-top:1px solid #edf0f5;padding-top:4px}
+    .brandline{font-weight:800;color:var(--brand);letter-spacing:.6px}
+    .cover{padding:0;display:flex;flex-direction:column;background:radial-gradient(circle at 15% 10%, rgba(195,163,91,.13), transparent 27%),linear-gradient(150deg,#ffffff 0%,#f5f8fc 62%,#eef3f9 100%)}
+    .cover-top{background:linear-gradient(135deg,var(--brand) 0%,#172744 100%);color:#fff;padding:18mm 16mm 22mm;min-height:106mm;position:relative;overflow:hidden}
+    .cover-top:after{content:"";position:absolute;width:128mm;height:128mm;border:1px solid rgba(255,255,255,.12);border-radius:50%;left:-42mm;top:-35mm}
+    .logo-row{display:flex;justify-content:space-between;align-items:flex-start;gap:20px}
+    .finora-logo{direction:ltr;display:inline-flex;align-items:center;gap:9px;font-family:Arial,"Noto Sans Arabic",sans-serif;font-size:21px;font-weight:900;letter-spacing:2px}
+    .finora-mark{width:31px;height:31px;border:2px solid #fff;border-radius:9px;position:relative;display:inline-block}
+    .finora-mark:before,.finora-mark:after{content:"";position:absolute;background:#fff;border-radius:1px}
+    .finora-mark:before{width:15px;height:2px;right:6px;top:8px;box-shadow:0 6px 0 #fff}
+    .finora-mark:after{height:15px;width:2px;right:13px;top:7px;opacity:.48}
+    .badge{border:1px solid rgba(255,255,255,.32);color:#fff;padding:5px 10px;border-radius:999px;font-size:10px;font-weight:700}
+    .cover-title{margin-top:27mm;max-width:160mm}
+    .eyebrow{color:#dccb9c;font-size:12px;font-weight:800;letter-spacing:.4px;margin-bottom:8px}
+    h1{font-size:28px;line-height:1.4;margin:0 0 8px;font-weight:900}
+    .cover-sub{font-size:15px;color:#d6dfef;max-width:140mm;margin:0}
+    .cover-body{padding:18mm 16mm;display:flex;flex-direction:column;flex:1}
+    .identity-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+    .identity-card{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:rgba(255,255,255,.88)}
+    .identity-card .k{font-size:10.5px;color:var(--muted);margin-bottom:2px}
+    .identity-card .v{font-size:13px;font-weight:800;color:var(--ink)}
+    .cover-note{border-right:4px solid var(--accent);background:#fbf8f0;border-radius:10px;padding:10px 12px;margin-top:6px;font-size:11.2px;color:#5d5135}
+    .cover-statement{margin-top:auto;display:flex;justify-content:space-between;align-items:flex-end;gap:20px;border-top:1px solid var(--line);padding-top:10px;color:var(--muted);font-size:10px}
+    h2{font-size:20px;line-height:1.4;margin:0;color:var(--brand);font-weight:900}
+    h3{font-size:14px;margin:18px 0 8px;color:var(--brand);font-weight:900}
+    p{margin:6px 0}
+    .section-kicker{font-size:10px;color:var(--accent);font-weight:900;margin-bottom:4px}
+    .section-intro{color:var(--muted);font-size:11px;margin-top:6px;max-width:164mm}
+    table{width:100%;border-collapse:collapse;margin:10px 0 14px;font-size:10.6px;break-inside:avoid}
+    th{background:var(--brand);color:#fff;font-weight:800;padding:8px 7px;border:1px solid var(--brand);text-align:right}
+    td{padding:7px;border:1px solid var(--line);vertical-align:top;background:#fff}
+    tr:nth-child(even) td{background:#fbfcfe}
+    code{font-family:Consolas,"Courier New",monospace;direction:ltr;unicode-bidi:embed;font-size:.94em;background:#edf2f8;padding:2px 5px;border-radius:5px;color:#1f4677}
+    .alert{border:1px solid #ead8a3;background:#fffaf0;border-radius:10px;padding:9px 11px;font-size:10.7px;color:#6a5420;margin:9px 0 13px}
+    .info{border:1px solid #cddbed;background:#f5f8fc;border-radius:10px;padding:9px 11px;font-size:10.7px;color:#31496b;margin:9px 0 13px}
+    .success{border:1px solid #bfe0dc;background:#f2fbf9;border-radius:10px;padding:9px 11px;font-size:10.7px;color:#245f58;margin:9px 0 13px}
+    .check-list,.number-list{margin:7px 0 12px;padding:0;list-style:none}
+    .check-list li,.number-list li{position:relative;padding:4px 27px 4px 0;font-size:11px}
+    .check-list li:before{content:"✓";position:absolute;right:0;top:5px;width:18px;height:18px;background:#eef7f6;color:var(--ok);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:10px}
+    .number-list{counter-reset:item}
+    .number-list li{counter-increment:item}
+    .number-list li:before{content:counter(item);position:absolute;right:0;top:5px;width:18px;height:18px;background:var(--brand);color:#fff;border-radius:5px;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:9px}
+    .flow{display:grid;grid-template-columns:repeat(5,1fr);gap:6px;margin:14px 0 16px;direction:rtl}
+    .flow .step{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 7px;text-align:center;font-size:10px;font-weight:800;min-height:53px;display:flex;align-items:center;justify-content:center;position:relative}
+    .flow .step:not(:last-child):after{content:"←";position:absolute;left:-9px;top:16px;color:var(--accent);font-size:16px;font-weight:900;z-index:2}
+    .role-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;margin:12px 0}
+    .role-card{border:1px solid var(--line);border-radius:12px;padding:11px;background:#fff}
+    .role-card .icon{width:30px;height:30px;background:var(--soft);border:1px solid var(--line);border-radius:9px;display:flex;align-items:center;justify-content:center;color:var(--brand);font-weight:900;margin-bottom:7px}
+    .role-card h3{margin:0 0 4px;font-size:12.5px}
+    .role-card p{font-size:10px;color:var(--muted);margin:0}
+    .three-cols{display:grid;grid-template-columns:1fr 1.25fr 1fr;gap:8px;margin:11px 0}
+    .panel{border:1px solid var(--line);border-radius:10px;padding:9px;background:#fff;min-height:92px}
+    .panel .num{display:inline-flex;width:23px;height:23px;border-radius:7px;align-items:center;justify-content:center;background:var(--brand);color:white;font-size:10px;font-weight:900;margin-left:4px}
+    .panel b{font-size:10.7px;color:var(--brand)}
+    .panel p{font-size:9.7px;color:var(--muted);line-height:1.65}
+    .stickybar{border:1px solid var(--line);border-radius:11px;background:linear-gradient(180deg,#fbfcff,#f4f7fb);padding:9px;display:flex;gap:7px;justify-content:center;margin:10px 0}
+    .stickybar span{border-radius:8px;padding:6px 9px;background:#fff;border:1px solid var(--line);font-weight:800;font-size:9.7px;color:var(--brand)}
+    .tip-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:9px 0}
+    .tip{border:1px solid var(--line);border-right:4px solid var(--accent);border-radius:10px;padding:9px 10px;background:#fff}
+    .tip b{font-size:10.5px;color:var(--brand)}
+    .tip p{font-size:9.6px;color:var(--muted);margin:1px 0 0}
+    .timeline{margin:12px 0 0;position:relative;padding-right:18px}
+    .timeline:before{content:"";position:absolute;right:5px;top:3px;bottom:5px;width:2px;background:var(--soft-2)}
+    .timeline-item{position:relative;padding:0 13px 10px 0}
+    .timeline-item:before{content:"";position:absolute;right:-17px;top:5px;width:9px;height:9px;border-radius:50%;background:var(--accent);border:3px solid #fff;box-shadow:0 0 0 1px #d8c595}
+    .timeline-item b{font-size:10.8px;color:var(--brand)}
+    .timeline-item p{font-size:9.8px;color:var(--muted);margin:1px 0 0}
+    .closing{margin-top:13px;background:linear-gradient(135deg,var(--brand),#172744);color:#fff;border-radius:14px;padding:13px 14px;display:flex;justify-content:space-between;align-items:center;gap:14px}
+    .closing .big{font-size:13px;font-weight:900}
+    .closing .small{font-size:9.7px;color:#d8e1ef;margin-top:2px}
+    .chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+    .chip{border:1px solid var(--line);background:var(--soft);border-radius:999px;padding:4px 9px;font-size:10px;font-weight:800;color:var(--brand)}
+    .mono{font-family:Consolas,"Courier New",monospace;direction:ltr}
+    @page{size:A4;margin:0}
+    @media print{
+      body{background:#fff;margin:0}
+      .document{width:auto;margin:0;box-shadow:none}
+      .screen-tools{display:none!important}
+      .page{margin:0;box-shadow:none}
+    }
+    @media screen and (max-width:900px){
+      .document{width:100%;margin:0;box-shadow:none}
+      .page{width:100%;min-height:auto;padding:28px 22px 54px}
+      .role-grid,.three-cols,.tip-grid,.identity-grid{grid-template-columns:1fr}
+      .flow{grid-template-columns:1fr}
+      .flow .step:not(:last-child):after{content:"↓";left:50%;top:auto;bottom:-18px}
+      .page-footer{position:static;margin-top:24px}
+    }
+  </style>
+</head>
+<body>
+  <div class="screen-tools">
+    <button type="button" onclick="window.print()">طباعة / حفظ PDF</button>
+    <a class="secondary" href="/clinics/settings">العودة للإعدادات</a>
+  </div>
+
+  <main class="document">
+    <section class="page cover">
+      <div class="cover-top">
+        <div class="logo-row">
+          <div class="finora-logo"><span class="finora-mark"></span><span>FINORA</span></div>
+          <span class="badge">دليل تشغيل · {{ guide.name_ar }}</span>
+        </div>
+        <div class="cover-title">
+          <div class="eyebrow">FINORA CLINICS · دليل تشغيل العيادة</div>
+          <h1>دليل استخدام<br>{{ guide.clinic_name }}</h1>
+          <p class="cover-sub">دليل عملي مختصر لتشغيل الاستقبال، المعاينة الطبية، الفواتير، والحجز — موجّه لاختصاص <strong>{{ guide.name_ar }}</strong>.</p>
+        </div>
+      </div>
+      <div class="cover-body">
+        <div class="identity-grid">
+          <div class="identity-card"><div class="k">العيادة</div><div class="v">{{ guide.clinic_name }}</div></div>
+          <div class="identity-card"><div class="k">نوع المنشأة</div><div class="v">{{ guide.organization_label }}</div></div>
+          <div class="identity-card"><div class="k">الاختصاص</div><div class="v">{{ guide.name_ar }}{% if guide.name_en %} / {{ guide.name_en }}{% endif %}</div></div>
+          <div class="identity-card"><div class="k">معرف الشركة</div><div class="v mono">{{ guide.tenant_slug or "—" }}</div></div>
+        </div>
+        <div class="cover-note"><strong>تركيز الاختصاص:</strong> {{ guide.focus }}</div>
+        <div class="cover-statement">
+          <div>إصدار الدليل: {{ guide.guide_version }} · FINORA Clinics</div>
+          <div>مرجع تشغيلي للمالك · الطبيب · الاستقبال</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="page-header"><span class="brandline">FINORA CLINICS</span><span>البدء والتهيئة</span></div>
+      <div class="section-kicker">01 · البدء</div>
+      <h2>ما تم تجهيزه وما يُدار من الإعدادات</h2>
+      <p class="section-intro">هذا الدليل مرتبط بإعدادات عيادتك الحالية. عدّل الاسم والخدمات والاختصاصات من شاشة الإعدادات دون الحاجة لإعادة بناء التشغيل من الصفر.</p>
+
+      <h3>روابط مهمة</h3>
+      <table>
+        <thead><tr><th>العنصر</th><th>القيمة</th></tr></thead>
+        <tbody>
+          <tr><td><strong>معرف الشركة</strong></td><td class="mono">{{ guide.tenant_slug or "—" }}</td></tr>
+          <tr><td><strong>المعاينة الطبية</strong></td><td><code>/clinics/doctor</code></td></tr>
+          <tr><td><strong>الإعدادات</strong></td><td><code>/clinics/settings</code></td></tr>
+          {% if guide.booking_enabled and guide.tenant_slug %}
+          <tr><td><strong>الحجز العام</strong></td><td><code>{{ guide.booking_path }}</code></td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+
+      <h3>خدمات شائعة لهذا الاختصاص</h3>
+      <div class="chips">
+        {% for svc in guide.services %}
+        <span class="chip">{{ svc }}</span>
+        {% endfor %}
+      </div>
+      <div class="info">اضبط الأسعار من <strong>الخدمات</strong> في لوحة العيادة، واربط كل زيارة بالخدمة المناسبة حتى تكون الفاتورة صحيحة.</div>
+
+      <h3>ما الذي يعتمد عليه التشغيل اليومي؟</h3>
+      <ul class="check-list">
+        <li>اختصاص <strong>{{ guide.name_ar }}</strong> مفعّل ومرتبط بالطبيب.</li>
+        <li>نموذج زيارة الاختصاص منشور (تبويب <strong>الفحص</strong> في المعاينة).</li>
+        <li>خدمات وأسعار محدثة.</li>
+        <li>حسابات الاستقبال والطبيب فعالة.</li>
+        {% if guide.booking_enabled %}<li>الحجز الإلكتروني مفعّل عند الحاجة.</li>{% endif %}
+      </ul>
+      <div class="success"><strong>النتيجة:</strong> الاستقبال ينشئ الزيارة، الطبيب يعاين ضمن سياق {{ guide.name_ar }}، ثم الاستقبال يحصّل.</div>
+      <div class="page-footer"><span>FINORA Clinics · دليل تشغيل</span><span>01 / 06</span></div>
+    </section>
+
+    <section class="page">
+      <div class="page-header"><span class="brandline">FINORA CLINICS</span><span>مسار اليوم</span></div>
+      <div class="section-kicker">02 · التشغيل اليومي</div>
+      <h2>من الاستقبال حتى التحصيل</h2>
+      <div class="flow">
+        <div class="step">استقبال المريض</div>
+        <div class="step">موعد / طابور</div>
+        <div class="step">إدخال للطبيب</div>
+        <div class="step">المعاينة الطبية</div>
+        <div class="step">إنهاء والتحصيل</div>
+      </div>
+      <div class="role-grid">
+        <div class="role-card"><div class="icon">R</div><h3>الاستقبال</h3><p>تسجيل المريض، الموعد، الوصول، الطابور، إدخال للطبيب، ومتابعة الفاتورة.</p></div>
+        <div class="role-card"><div class="icon">D</div><h3>الطبيب</h3><p>المعاينة، التشخيص، الوصفة، الطلبات، الإجراءات ثم إنهاء الزيارة.</p></div>
+        <div class="role-card"><div class="icon">A</div><h3>المالك</h3><p>الإعدادات، الأسعار، الخدمات، التقارير، الموظفون والصلاحيات.</p></div>
+      </div>
+
+      <h3>أ) موظف الاستقبال</h3>
+      <ol class="number-list">
+        <li>افتح <strong>الاستقبال</strong> أو <strong>المواعيد</strong>.</li>
+        <li>سجّل المريض من <strong>المرضى</strong> — الاسم والهاتف على الأقل.</li>
+        <li>أنشئ موعداً واختر خدمة مناسبة مثل: <strong>{{ guide.training_service }}</strong>.</li>
+        <li>عند الوصول غيّر الحالة إلى <strong>وصل / بانتظار</strong>.</li>
+        <li>عند حلول الدور اضغط <strong>إدخال للطبيب</strong>.</li>
+        <li>بعد المعاينة راجع <strong>الفواتير</strong> وحصّل من <strong>الصندوق</strong> إن لزم.</li>
+      </ol>
+
+      <h3>ب) الطبيب — {{ guide.name_ar }}</h3>
+      <ol class="number-list">
+        <li>افتح <strong>المعاينة الطبية</strong>.</li>
+        <li>سجّل الشكوى والفحص، واستخدم الاختصارات الخاصة بالاختصاص.</li>
+        <li>أضف التشخيص والعلامات الحيوية والوصفة.</li>
+        <li>استخدم تبويب <strong>الفحص</strong> لنموذج {{ guide.name_ar }} عند ظهوره.</li>
+        <li><strong>حفظ كمسودة</strong> أثناء العمل، ثم <strong>إنهاء الزيارة</strong>.</li>
+      </ol>
+      <div class="page-footer"><span>الاستقبال يبدأ · الطبيب يعالج · الاستقبال يحصّل</span><span>02 / 06</span></div>
+    </section>
+
+    <section class="page">
+      <div class="page-header"><span class="brandline">FINORA CLINICS</span><span>المعاينة الطبية</span></div>
+      <div class="section-kicker">03 · قلب عمل الطبيب</div>
+      <h2>المعاينة — {{ guide.name_ar }}</h2>
+      <p class="section-intro">الشاشة من ثلاثة أعمدة: الانتظار، تفاصيل الزيارة، وملخص ملف المريض. الاختصاص يكيّف الاختصارات ونموذج الفحص.</p>
+
+      <div class="three-cols">
+        <div class="panel"><span class="num">1</span><b>المريض الحالي + التالي</b><p>الانتقال بين المنتظرين دون العودة للاستقبال.</p></div>
+        <div class="panel"><span class="num">2</span><b>مساحة الزيارة</b><p>الشكوى، الفحص، التشخيص، الوصفة، الفاتورة، وأدوات الاختصاص.</p></div>
+        <div class="panel"><span class="num">3</span><b>ملخص الملف</b><p>الحساسية، الأدوية، الزيارات السابقة والنتائج.</p></div>
+      </div>
+
+      <h3>محاور الفحص المقترحة</h3>
+      <div class="chips">
+        {% for item in guide.exam_focus %}
+        <span class="chip">{{ item }}</span>
+        {% endfor %}
+      </div>
+
+      <h3>ماذا يكتب الطبيب؟</h3>
+      <table>
+        <thead><tr><th>الجزء</th><th>الاستخدام</th><th>مثال</th></tr></thead>
+        <tbody>
+          <tr><td><strong>الشكوى</strong></td><td>سبب المراجعة الحالي</td><td>{{ guide.complaint_example }}</td></tr>
+          <tr><td><strong>الفحص</strong></td><td>موجودات تدعم القرار</td><td>{{ guide.exam_focus[0] if guide.exam_focus else "فحص سريري" }}</td></tr>
+          <tr><td><strong>التشخيص</strong></td><td>تشخيص أو أكثر</td><td>استخدم الاختصارات الشائعة إن ظهرت</td></tr>
+          <tr><td><strong>الوصفة/الطلبات</strong></td><td>أدوية، تحاليل، أشعة، إجراء</td><td>من الأزرار السريعة داخل الشاشة</td></tr>
+        </tbody>
+      </table>
+
+      <h3>الشريط السفلي</h3>
+      <div class="stickybar"><span>حفظ كمسودة</span><span>طباعة الوصفة</span><span>إنهاء الزيارة</span></div>
+      <div class="alert"><strong>تنبيه:</strong> لا تُنهِ زيارة على مريض غير متأكد من هويته. اطلب من الاستقبال التحقق أولاً.</div>
+      <div class="page-footer"><span>المعاينة الطبية · {{ guide.name_ar }}</span><span>03 / 06</span></div>
+    </section>
+
+    <section class="page">
+      <div class="page-header"><span class="brandline">FINORA CLINICS</span><span>تدريب سريع</span></div>
+      <div class="section-kicker">04 · سيناريو 15 دقيقة</div>
+      <h2>اختبار دورة العمل — {{ guide.name_ar }}</h2>
+      <div class="timeline">
+        <div class="timeline-item"><b>1. الاستقبال</b><p>أنشئ مريضاً تجريبياً برقم هاتف مخصص للاختبار.</p></div>
+        <div class="timeline-item"><b>2. الموعد</b><p>اختر خدمة <strong>{{ guide.training_service }}</strong>.</p></div>
+        <div class="timeline-item"><b>3. الوصول والإدخال</b><p>غيّر إلى وصل ثم اضغط إدخال للطبيب.</p></div>
+        <div class="timeline-item"><b>4. المعاينة</b><p>اكتب الشكوى: «{{ guide.training_complaint }}».</p></div>
+        <div class="timeline-item"><b>5. الإكمال</b><p>أضف تشخيصاً ووصفة بسيطة، ثم إنهاء الزيارة.</p></div>
+        <div class="timeline-item"><b>6. الفاتورة</b><p>من الاستقبال راجع الفاتورة والمبلغ.</p></div>
+      </div>
+      <div class="success"><strong>معيار النجاح:</strong> مريض → موعد → إدخال → معاينة {{ guide.name_ar }} → إنهاء → فاتورة صحيحة.</div>
+      <div class="page-footer"><span>سيناريو تدريب</span><span>04 / 06</span></div>
+    </section>
+
+    <section class="page">
+      <div class="page-header"><span class="brandline">FINORA CLINICS</span><span>نصائح ودعم</span></div>
+      <div class="section-kicker">05 · ممارسات {{ guide.name_ar }}</div>
+      <h2>نصائح تشغيلية + استكشاف مشاكل</h2>
+      <div class="tip-grid">
+        {% for title, text in guide.tips %}
+        <div class="tip"><b>{{ title }}</b><p>{{ text }}</p></div>
+        {% endfor %}
+      </div>
+
+      <h3>أين أطلب المساعدة؟</h3>
+      <table>
+        <thead><tr><th>المشكلة</th><th>الإجراء</th></tr></thead>
+        <tbody>
+          <tr><td><strong>الدخول</strong></td><td>تأكد من معرف الشركة ثم المستخدم وكلمة المرور.</td></tr>
+          <tr><td><strong>المعاينة لا تفتح</strong></td><td>تأكد أن الحساب طبيب وأن الاستقبال أدخل المريض.</td></tr>
+          <tr><td><strong>تبويب الفحص غير ظاهر</strong></td><td>من الإعدادات/الاختصاصات انشر نموذج الزيارة أو اضغط «الاختصاصات الافتراضية».</td></tr>
+          <tr><td><strong>الصلاحيات</strong></td><td>راجع الأدوار من حساب الإدارة.</td></tr>
+        </tbody>
+      </table>
+
+      <div class="closing">
+        <div>
+          <div class="big">الاستقبال يبدأ الزيارة — الطبيب يعالج — الاستقبال يحصّل.</div>
+          <div class="small">دليل {{ guide.name_ar }} · {{ guide.clinic_name }}</div>
+        </div>
+        <div class="finora-logo" style="font-size:14px"><span class="finora-mark" style="width:25px;height:25px;border-color:#fff"></span><span>FINORA</span></div>
+      </div>
+      <div class="page-footer"><span>نهاية الدليل · FINORA Clinics</span><span>05 / 06</span></div>
+    </section>
+
+    <section class="page">
+      <div class="page-header"><span class="brandline">FINORA CLINICS</span><span>طباعة</span></div>
+      <div class="section-kicker">06 · طباعة وحفظ</div>
+      <h2>إعدادات الطباعة الموصى بها</h2>
+      <table>
+        <thead><tr><th>الإعداد</th><th>القيمة</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Paper size</strong></td><td>A4</td></tr>
+          <tr><td><strong>Layout</strong></td><td>Portrait / عمودي</td></tr>
+          <tr><td><strong>Scale</strong></td><td>100%</td></tr>
+          <tr><td><strong>Background graphics</strong></td><td>مفعّل</td></tr>
+          <tr><td><strong>Headers and footers</strong></td><td>يفضل إيقافها</td></tr>
+        </tbody>
+      </table>
+      <div class="info">هذا الدليل يُنشأ تلقائياً من <strong>إعدادات العيادة</strong> حسب الاختصاص، ويتحدّث مع اسم العيادة ورابط الحجز دون كلمات مرور.</div>
+      <div class="page-footer"><span>طباعة A4</span><span>06 / 06</span></div>
+    </section>
+  </main>
+</body>
+</html>

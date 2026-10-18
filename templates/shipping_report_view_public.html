@@ -19,6 +19,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <link rel="stylesheet" href="/static/css/saas-admin.css">
+    <link rel="stylesheet" href="/static/css/stock-trace.css?v=20260803a">
+    <script src="/static/js/stock-trace.js?v=20260803a" defer></script>
     <style>
         * {
             margin: 0;
@@ -331,6 +333,7 @@
     </style>
 </head>
 <body>
+    <script type="application/json" id="stockTraceMap">{{ (stock_trace_map or {})|tojson }}</script>
     <div class="container">
         <div class="report-header">
             <h2>🚚 شركة النقل: {{ report.shipping_company_name }}</h2>
@@ -359,7 +362,8 @@
         </div>
 
         <div class="report-actions no-print">
-            <button class="btn btn-primary" onclick="window.print()">🖨️ طباعة</button>
+            <a class="btn btn-primary" href="{{ print_url or ('/delivery/report/' ~ report.id ~ '/print?autoprint=1') }}" target="_blank" rel="noopener">🖨️ طباعة مع المنتجات</a>
+            <button class="btn btn-primary" type="button" onclick="window.print()" style="background: linear-gradient(135deg, #0f766e, #0d9488);">طباعة الجدول فقط</button>
             <a href="/delivery/dashboard" class="btn btn-primary">← العودة للصفحة الرئيسية</a>
             {% if not report.is_executed %}
             <button class="btn btn-success" onclick="saveOrderStatuses()" id="saveBtn" style="background: linear-gradient(135deg, #10b981, #059669); display:none;">💾 حفظ الحالات</button>
@@ -393,6 +397,7 @@
                         <th>الهاتف</th>
                         <th>المحافظة</th>
                         <th>العنوان</th>
+                        <th>حركة المخزون</th>
                         <th>الإجمالي</th>
                         <th>المدفوع مسبقاً</th>
                         <th>الباقي</th>
@@ -417,6 +422,16 @@
                         <td style="direction: ltr; text-align: center; font-family: 'Courier New', monospace; font-weight: 600;">{{ order.customer_phone }}</td>
                         <td>{{ order.customer_city }}</td>
                         <td style="max-width: 220px; word-wrap: break-word; text-align: right; font-size: 13px;">{{ order.customer_address or order.address or "—" }}</td>
+                        <td>
+                            {% if order.stock_trace %}
+                            <div class="stock-trace-cell">
+                                <span class="stock-trace-cell__label">{{ order.stock_trace.summary_label if order.stock_trace else "لا توجد حركة" }}</span>
+                                <button type="button" class="stock-trace-help" data-stock-trace-order="{{ order.id }}" title="عرض تفاصيل خروج ورجوع الكميات" aria-label="تفاصيل حركة مخزون الطلب {{ order.id }}">؟</button>
+                            </div>
+                            {% else %}
+                            <span style="color: var(--report-muted);">غير متاح</span>
+                            {% endif %}
+                        </td>
                         <td style="font-weight: 600; font-size: 13px;">{{ "{:,.0f}".format(order.total|default(0)|int) }} د.ع</td>
                         <td style="color: #3b82f6; font-weight: 600; font-size: 13px;">{{ "{:,.0f}".format(order.paid_amount|default(0, true)|int) }} د.ع</td>
                         <td class="remaining-amount-cell" style="color: var(--report-success); font-weight: 700; font-size: 14px;">{{ "{:,.0f}".format(order.remaining|default(order.total, true)|int) }} د.ع</td>
@@ -435,7 +450,7 @@
                     </tr>
                     {% endfor %}
                     <tr class="total-summary-row" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.2)); font-weight: 700;">
-                        <td colspan="8" style="text-align: right; padding-right: 25px; font-size: 16px;">💰 <span id="reportTotalLabel">{{ display_total_label }}</span>:</td>
+                        <td colspan="9" style="text-align: right; padding-right: 25px; font-size: 16px;">💰 <span id="reportTotalLabel">{{ display_total_label }}</span>:</td>
                         <td id="reportTotalAmount" style="color: var(--report-success); font-size: 18px; font-weight: 800;">{{ "{:,.0f}".format(display_total_amount) }} دينار عراقي</td>
                         <td colspan="{% if not report.is_executed %}3{% else %}2{% endif %}"></td>
                     </tr>

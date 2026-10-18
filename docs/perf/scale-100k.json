@@ -1,0 +1,66 @@
+{
+  "products": 100000,
+  "machine": {
+    "cpu": 12,
+    "ram_gb": 15.7
+  },
+  "seed_seconds": 9.4,
+  "index": {
+    "docs": 100000,
+    "build_seconds": 20.89,
+    "memory_mb": 316.4
+  },
+  "engine_search_ms": {
+    "uncached_p50": 43.9,
+    "uncached_p95": 259.9,
+    "uncached_max": 298.7,
+    "cached_p95": 0.0
+  },
+  "pages": {
+    "home": {
+      "status": 200,
+      "kb": 120.8,
+      "ms_warm": 532,
+      "queries": 53
+    },
+    "category": {
+      "status": 200,
+      "kb": 59.9,
+      "ms_warm": 386,
+      "queries": 37
+    },
+    "category_page_50": {
+      "status": 200,
+      "kb": 60.5,
+      "ms_warm": 565,
+      "queries": 37
+    },
+    "product": {
+      "status": 200,
+      "kb": 53.4,
+      "ms_warm": 475,
+      "queries": 57
+    },
+    "sitemap_index": {
+      "status": 200,
+      "kb": 1.2,
+      "ms_warm": 19,
+      "queries": 0
+    },
+    "sitemap_products_1": {
+      "status": 200,
+      "kb": 780.3,
+      "ms_warm": 99,
+      "queries": 0
+    }
+  },
+  "http_search_page_ms": {
+    "p50": 220,
+    "p95": 642
+  },
+  "suggestions_api_ms": {
+    "p50": 73,
+    "p95": 285
+  },
+  "process_rss_mb": 651
+}

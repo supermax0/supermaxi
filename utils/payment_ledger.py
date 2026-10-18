@@ -85,24 +85,176 @@ def ensure_invoice_payment_ledger_table():
     from models.invoice_payment_ledger import InvoicePaymentLedger
 
     bind = _ledger_engine()
-    inspector = inspect(bind)
+    # In-memory SQLite uses one shared physical connection.  Opening an
+    # inspector connection while the business session has pending changes can
+    # roll that transaction back when the inspector closes.  Reuse the session
+    # connection there so appending a ledger row cannot silently undo the
+    # invoice update that immediately preceded it.
+    schema_bind = bind
+    is_memory_sqlite = (
+        getattr(getattr(bind, "dialect", None), "name", None) == "sqlite"
+        and ":memory:" in str(getattr(bind, "url", ""))
+    )
+    if is_memory_sqlite:
+        schema_bind = db.session.connection()
+
+    inspector = inspect(schema_bind)
     tables = inspector.get_table_names()
     if "invoice_payment_ledger" not in tables:
-        InvoicePaymentLedger.__table__.create(bind=bind, checkfirst=True)
+        InvoicePaymentLedger.__table__.create(bind=schema_bind, checkfirst=True)
+        return
+
+    columns = {col["name"] for col in inspector.get_columns("invoice_payment_ledger")}
+    # Older tenant databases predate the richer ledger model.  SQLAlchemy
+    # selects every mapped column even when callers only need amount_delta, so
+    # keep the physical table compatible before any ledger query is executed.
+    required_columns = {
+        "tenant_id": "INTEGER",
+        "currency": "VARCHAR(10)",
+        "exchange_rate": "FLOAT",
+        "source_module": "VARCHAR(40)",
+        "note": "TEXT",
+        "payment_method": "VARCHAR(40)",
+        "treasury_account_id": "INTEGER",
+    }
+    from sqlalchemy import text
+
+    for name, sql_type in required_columns.items():
+        if name in columns:
+            continue
+        try:
+            statement = text(
+                f'ALTER TABLE "invoice_payment_ledger" '
+                f'ADD COLUMN "{name}" {sql_type}'
+            )
+            if is_memory_sqlite:
+                schema_bind.execute(statement)
+            else:
+                with bind.begin() as conn:
+                    conn.execute(statement)
+        except Exception:
+            # Another worker may have added the same nullable compatibility
+            # column concurrently.  Only suppress the error when it now exists.
+            refreshed = {
+                col["name"]
+                for col in inspect(schema_bind).get_columns("invoice_payment_ledger")
+            }
+            if name not in refreshed:
+                raise
+        columns.add(name)
 
 
-def append_payment_ledger_delta(invoice_id: int, delta: int) -> None:
+def append_payment_ledger_delta(
+    invoice_id: int,
+    delta: int,
+    treasury_account_id: int | None = None,
+    *,
+    recorded_at: datetime | None = None,
+    source_module: str | None = None,
+    payment_method: str | None = None,
+    note: str | None = None,
+) -> None:
     """تسجيل فرق التحصيل الفعلي بعد تحديث الفاتورة (في نفس جلسة الحفظ)."""
     if delta == 0:
         return
     ensure_invoice_payment_ledger_table()
     from models.invoice_payment_ledger import InvoicePaymentLedger
+    from models.invoice import Invoice
+
+    invoice = db.session.get(Invoice, int(invoice_id))
+    branch_id = invoice.branch_id if invoice else None
+    if delta < 0 and invoice is not None:
+        from utils.order_status import is_returned
+        from modules.sales_returns.facts import documents
+
+        if is_returned(invoice.status, invoice.payment_status):
+            saved_returns = documents(invoice.id)
+            if saved_returns is not None and saved_returns.first() is not None:
+                net = int(db.session.query(func.sum(InvoicePaymentLedger.amount_delta)).filter_by(
+                    invoice_id=invoice.id).scalar() or 0)
+                from modules.sales_returns.collections import for_invoice
+                undated = for_invoice(invoice.id)
+                if undated:
+                    net += undated["amount"]
+                if net == int(invoice.paid_amount or 0):
+                    # The documented lifecycle already posted the exact refund.
+                    return
+    if invoice is not None:
+        from utils.invoice_installment_payments import sync_invoice_installments
+
+        previous_installment_paid = sync_invoice_installments(invoice, recorded_at=recorded_at, note=note)
+        if previous_installment_paid and not InvoicePaymentLedger.query.filter_by(invoice_id=invoice.id).first():
+            # Old balances previously used the invoice fallback in cash reports.
+            # Preserve that same attribution when the first itemized edit is added.
+            db.session.add(InvoicePaymentLedger(branch_id=branch_id, invoice_id=invoice.id,
+                amount_delta=previous_installment_paid, recorded_at=invoice.created_at,
+                treasury_account_id=getattr(invoice, "treasury_account_id", None),
+                source_module="invoice_legacy_baseline", payment_method="cash",
+                note="رصيد تحصيل سابق قبل سجل التعديل"))
+    if delta < 0 and invoice is not None:
+        from modules.finance.common import FinanceError
+        from utils.cash_calculations import _effective_paid_amount
+
+        protected = int(db.session.query(func.sum(InvoicePaymentLedger.amount_delta)).filter(
+            InvoicePaymentLedger.invoice_id == int(invoice_id),
+            InvoicePaymentLedger.source_module.like("finance:%"),
+        ).scalar() or 0)
+        if _effective_paid_amount(invoice) < protected:
+            raise FinanceError("التسديد مرتبط بسند حسابات؛ اعكس السند الأصلي من الحسابات قبل إنقاص التحصيل", "immutable_source", 409)
+
+    # A return/cancellation of a split payment must reverse the same accounts
+    # that originally received it instead of taking the whole amount from cash.
+    if delta < 0 and treasury_account_id is None:
+        rows = (
+            db.session.query(
+                InvoicePaymentLedger.treasury_account_id,
+                InvoicePaymentLedger.payment_method,
+                func.sum(InvoicePaymentLedger.amount_delta),
+            )
+            .filter(InvoicePaymentLedger.invoice_id == int(invoice_id))
+            .filter(or_(InvoicePaymentLedger.source_module.is_(None),
+                        ~InvoicePaymentLedger.source_module.like("finance:%")))
+            .group_by(InvoicePaymentLedger.treasury_account_id, InvoicePaymentLedger.payment_method)
+            .all()
+        )
+        remaining = abs(int(delta))
+        positive_balances = [
+            (account_id, method, int(balance or 0))
+            for account_id, method, balance in rows
+            if int(balance or 0) > 0
+        ]
+        if positive_balances:
+            for account_id, method, balance in positive_balances:
+                reversal = min(balance, remaining)
+                if reversal <= 0:
+                    continue
+                db.session.add(
+                    InvoicePaymentLedger(
+                        branch_id=branch_id,
+                        invoice_id=int(invoice_id),
+                        amount_delta=-reversal,
+                        treasury_account_id=account_id,
+                        recorded_at=recorded_at or datetime.utcnow(),
+                        source_module=source_module,
+                        payment_method="finance_offset" if method == "finance_offset" else payment_method or method,
+                        note=note,
+                    )
+                )
+                remaining -= reversal
+                if remaining <= 0:
+                    return
+            delta = -remaining
 
     db.session.add(
         InvoicePaymentLedger(
+            branch_id=branch_id,
             invoice_id=int(invoice_id),
             amount_delta=int(delta),
-            recorded_at=datetime.utcnow(),
+            treasury_account_id=treasury_account_id,
+            recorded_at=recorded_at or datetime.utcnow(),
+            source_module=source_module,
+            payment_method=payment_method,
+            note=note,
         )
     )
 

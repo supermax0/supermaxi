@@ -1,0 +1,261 @@
+{% extends "base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block page_title %}<i class="fas {{ icon }}" aria-hidden="true"></i> {{ title }}{% endblock %}
+
+{% block content %}
+<style>
+  .detail-report { --dr-border:var(--border,rgba(148,163,184,.22)); --dr-card:var(--surface,var(--card,#fff)); --dr-shadow:0 10px 30px rgba(15,23,42,.055); display:grid; gap:18px; }
+  .dr-nav { display:flex; gap:8px; flex-wrap:wrap; padding:5px; width:max-content; max-width:100%; border:1px solid var(--dr-border); border-radius:14px; background:var(--dr-card); box-shadow:0 4px 14px rgba(15,23,42,.03); }
+  .dr-nav a { color:var(--text-muted); text-decoration:none; padding:10px 15px; border-radius:10px; font-size:13px; font-weight:800; transition:.2s ease; }
+  .dr-nav a:hover { color:var(--primary); background:color-mix(in srgb,var(--primary) 7%,transparent); }
+  .dr-nav a.active { color:#fff; background:linear-gradient(135deg,var(--primary),#4f46e5); box-shadow:0 6px 16px color-mix(in srgb,var(--primary) 22%,transparent); }
+  .dr-head { position:relative; isolation:isolate; overflow:hidden; display:flex; align-items:center; justify-content:space-between; gap:18px; flex-wrap:wrap; padding:24px; border:1px solid color-mix(in srgb,var(--primary) 17%,var(--dr-border)); border-radius:20px; background:linear-gradient(115deg,color-mix(in srgb,var(--primary) 9%,var(--dr-card)),var(--dr-card) 62%); box-shadow:var(--dr-shadow); }
+  .dr-head::after { content:""; position:absolute; z-index:-1; width:210px; height:210px; inset-inline-end:-75px; top:-110px; border-radius:50%; background:color-mix(in srgb,var(--primary) 9%,transparent); }
+  .dr-title { display:flex; gap:15px; align-items:center; }
+  .dr-title-icon { width:54px; height:54px; flex:0 0 54px; display:grid; place-items:center; color:#fff; border-radius:16px; background:linear-gradient(135deg,var(--primary),#4f46e5); box-shadow:0 10px 24px color-mix(in srgb,var(--primary) 24%,transparent); font-size:21px; }
+  .dr-title h2 { margin:0; color:var(--text); font-size:22px; line-height:1.35; }
+  .dr-title p { margin:6px 0 0; color:var(--text-muted); font-size:13px; }
+  .dr-actions,.dr-filter-actions { display:flex; gap:9px; align-items:center; }
+  .dr-btn { min-height:42px; border:0; border-radius:11px; padding:10px 15px; font:inherit; font-size:13px; font-weight:800; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:8px; transition:transform .18s ease,box-shadow .18s ease,background .18s ease; }
+  .dr-btn:hover { transform:translateY(-1px); }
+  .dr-btn.primary { background:linear-gradient(135deg,var(--primary),#4f46e5); color:#fff; box-shadow:0 7px 17px color-mix(in srgb,var(--primary) 20%,transparent); }
+  .dr-btn.secondary { background:color-mix(in srgb,var(--primary) 8%,var(--dr-card)); color:var(--primary); border:1px solid color-mix(in srgb,var(--primary) 24%,transparent); }
+  .dr-btn.ghost { min-height:38px; padding:8px 12px; color:var(--text-muted); background:transparent; border:1px solid var(--dr-border); }
+  .dr-filter-card { border:1px solid var(--dr-border); border-radius:20px; background:var(--dr-card); box-shadow:var(--dr-shadow); overflow:hidden; }
+  .dr-filter-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:15px 18px; border-bottom:1px solid var(--dr-border); background:color-mix(in srgb,var(--primary) 3%,var(--dr-card)); }
+  .dr-filter-title { display:flex; align-items:center; gap:10px; color:var(--text); font-size:14px; font-weight:900; }
+  .dr-filter-title > i { width:34px; height:34px; display:grid; place-items:center; color:var(--primary); border-radius:10px; background:color-mix(in srgb,var(--primary) 10%,transparent); }
+  .dr-filter-count { display:inline-grid; place-items:center; min-width:22px; height:22px; margin-inline-start:3px; padding:0 6px; border-radius:999px; color:#fff; background:var(--primary); font-size:11px; }
+  .dr-filter { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); align-items:end; gap:13px; padding:18px; }
+  .dr-field { display:grid; grid-column:span 2; gap:7px; min-width:0; }
+  .dr-field.date-field { grid-column:span 2; }
+  .dr-field label { display:flex; align-items:center; gap:6px; color:var(--text-muted); font-size:12px; font-weight:850; }
+  .dr-field label i { color:var(--primary); font-size:11px; }
+  .dr-field select,.dr-field input { width:100%; min-height:45px; box-sizing:border-box; padding:9px 12px; border:1px solid var(--dr-border); border-radius:11px; outline:none; background:var(--bg,var(--dr-card)); color:var(--text); font:inherit; font-size:13px; transition:border-color .18s ease,box-shadow .18s ease; }
+  .dr-field select:focus,.dr-field input:focus { border-color:color-mix(in srgb,var(--primary) 70%,#fff); box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 11%,transparent); }
+  .dr-presets { grid-column:1/-1; display:flex; align-items:center; gap:7px; flex-wrap:wrap; padding-top:2px; }
+  .dr-presets::before { content:"فترة سريعة:"; color:var(--text-muted); font-size:12px; font-weight:800; margin-inline-end:2px; }
+  .dr-presets button { border:1px solid var(--dr-border); background:transparent; color:var(--text-muted); border-radius:999px; padding:7px 12px; font:inherit; font-size:12px; cursor:pointer; transition:.18s ease; }
+  .dr-presets button:hover,.dr-presets button.active { color:var(--primary); border-color:color-mix(in srgb,var(--primary) 55%,transparent); background:color-mix(in srgb,var(--primary) 9%,transparent); }
+  .dr-filter-actions { grid-column:1/-1; justify-content:flex-start; padding-top:4px; }
+  .dr-filter-actions .primary { min-width:145px; }
+  .dr-table-card { border:1px solid var(--dr-border); border-radius:20px; background:var(--dr-card); box-shadow:var(--dr-shadow); overflow:hidden; }
+  .dr-period { display:flex; align-items:center; gap:9px 18px; flex-wrap:wrap; padding:15px 18px; border-bottom:1px solid var(--dr-border); color:var(--text-muted); font-size:12px; font-weight:750; background:color-mix(in srgb,var(--primary) 2.5%,var(--dr-card)); }
+  .dr-period > span { display:inline-flex; align-items:center; gap:7px; }
+  .dr-period > span:last-child { margin-inline-start:auto; }
+  .dr-active-filters { display:flex; gap:6px; flex-wrap:wrap; }
+  .dr-active-filter { padding:5px 9px; border-radius:999px; color:var(--primary); background:color-mix(in srgb,var(--primary) 9%,transparent); font-size:11px; }
+  .dr-table-wrap { overflow:auto; max-height:62vh; scrollbar-width:thin; }
+  .dr-table { width:100%; border-collapse:separate; border-spacing:0; min-width:850px; }
+  .dr-table th { position:sticky; top:0; z-index:1; padding:13px 15px; text-align:right; background:color-mix(in srgb,var(--primary) 7%,var(--dr-card)); color:var(--text-muted); font-size:12px; white-space:nowrap; border-bottom:1px solid var(--dr-border); }
+  .dr-table td { padding:13px 15px; color:var(--text); font-size:13px; border-bottom:1px solid var(--dr-border); white-space:nowrap; }
+  .dr-table tbody tr:last-child td { border-bottom:0; }
+  .dr-table tbody tr { transition:background .18s ease; }
+  .dr-table tbody tr:hover { background:color-mix(in srgb,var(--primary) 4%,transparent); }
+  .dr-invoice-no { display:inline-grid; place-items:center; min-width:34px; height:28px; padding:0 7px; border-radius:8px; color:var(--primary); background:color-mix(in srgb,var(--primary) 9%,transparent); font-weight:900; }
+  .dr-payment { display:inline-flex; align-items:center; gap:6px; padding:6px 9px; border-radius:8px; font-size:12px; font-weight:800; background:rgba(100,116,139,.1); color:var(--text-muted); }
+  .dr-payment::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
+  .dr-payment[data-method="cash"] { color:#059669; background:rgba(16,185,129,.1); }
+  .dr-payment[data-method="bank"] { color:#2563eb; background:rgba(59,130,246,.1); }
+  .dr-payment[data-method="credit"] { color:#d97706; background:rgba(245,158,11,.11); }
+  .dr-payment[data-method="mixed"] { color:#7c3aed; background:rgba(139,92,246,.1); }
+  .dr-empty { padding:64px 20px; text-align:center; color:var(--text-muted); }
+  .dr-empty i { width:54px; height:54px; display:grid; place-items:center; margin:0 auto 12px; border-radius:16px; color:var(--primary); background:color-mix(in srgb,var(--primary) 9%,transparent); }
+  .dr-empty p { margin:0; }
+  .dr-summary { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; }
+  .dr-stat { position:relative; overflow:hidden; display:flex; align-items:center; gap:13px; min-height:82px; padding:16px; border:1px solid var(--dr-border); border-radius:16px; background:var(--dr-card); box-shadow:0 7px 22px rgba(15,23,42,.04); }
+  .dr-stat-icon { width:42px; height:42px; flex:0 0 42px; display:grid; place-items:center; border-radius:12px; background:color-mix(in srgb,currentColor 10%,transparent); }
+  .dr-stat-copy span { color:var(--text-muted); display:block; font-size:12px; font-weight:750; margin-bottom:6px; }
+  .dr-stat-copy strong { color:var(--text); font-size:18px; }
+  .dr-stat.success { color:#10b981; } .dr-stat.info { color:#3b82f6; } .dr-stat.warning { color:#f59e0b; } .dr-stat.primary { color:var(--primary); }
+  .dr-stat.success strong { color:#059669; } .dr-stat.info strong { color:#2563eb; } .dr-stat.warning strong { color:#d97706; } .dr-stat.primary strong { color:var(--primary); }
+  .dr-print-footer { display:none; }
+  @media (max-width:1050px) { .dr-filter { grid-template-columns:repeat(2,minmax(0,1fr)); } .dr-field,.dr-field.date-field { grid-column:span 1; } .dr-summary { grid-template-columns:1fr 1fr; } }
+  @media (max-width:650px) { .detail-report { gap:14px; } .dr-nav { width:100%; flex-wrap:nowrap; overflow:auto; box-sizing:border-box; } .dr-nav a { flex:0 0 auto; } .dr-head { padding:18px; } .dr-title-icon { width:46px; height:46px; flex-basis:46px; } .dr-title h2 { font-size:19px; } .dr-actions { width:100%; } .dr-actions .dr-btn { flex:1; } .dr-filter { grid-template-columns:1fr; padding:15px; } .dr-field,.dr-field.date-field { grid-column:auto; } .dr-presets,.dr-filter-actions { grid-column:auto; } .dr-filter-actions { display:grid; grid-template-columns:1fr auto; } .dr-summary { grid-template-columns:1fr; } .dr-period > span:last-child { margin-inline-start:0; } }
+  @page { size:A4 landscape; margin:10mm; }
+  @media print {
+    html,body { width:100%; min-height:0; margin:0 !important; padding:0 !important; background:#fff !important; }
+    body * { visibility:hidden !important; }
+    .detail-report,.detail-report * { visibility:visible !important; }
+    .sidebar,.topbar,.dr-nav,.dr-filter-card,.dr-actions { display:none !important; }
+    .app,.content,main.page-main { display:block !important; width:100% !important; min-width:0 !important; max-width:none !important; margin:0 !important; padding:0 !important; background:#fff !important; }
+    main.page-main > :not(.detail-report) { display:none !important; }
+    .detail-report { position:static; inset:auto; width:100%; display:block; color:#111; font-family:Tahoma,Arial,sans-serif; direction:rtl; }
+    .dr-head { padding:0 0 7mm; margin:0 0 5mm; border:0; border-bottom:2px solid #1d4ed8; border-radius:0; background:#fff; break-after:avoid; }
+    .dr-title-icon { width:12mm; height:12mm; border-radius:3mm; background:#1d4ed8 !important; color:#fff !important; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+    .dr-title h2 { font-size:18pt; }
+    .dr-title p { font-size:9pt; }
+    .dr-table-card,.dr-stat { border-color:#9ca3af; box-shadow:none; background:#fff; }
+    .dr-table-card { overflow:visible; border-radius:2mm; }
+    .dr-period { padding:3mm 4mm; font-size:8.5pt; color:#374151 !important; background:#f8fafc !important; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+    .dr-table-wrap { max-height:none; overflow:visible; }
+    .dr-table { min-width:0; width:100%; table-layout:fixed; }
+    .dr-table thead { display:table-header-group; }
+    .dr-table tr { break-inside:avoid; page-break-inside:avoid; }
+    .dr-table th { position:static; padding:2.4mm 2mm; color:#111 !important; background:#e5e7eb !important; border-color:#9ca3af; font-size:8pt; white-space:normal; print-color-adjust:exact; -webkit-print-color-adjust:exact; }
+    .dr-table td { padding:2.2mm 2mm; color:#111 !important; border-color:#d1d5db; font-size:8pt; line-height:1.35; white-space:normal; overflow-wrap:anywhere; }
+    .dr-table td,.dr-title h2,.dr-stat strong { color:#111 !important; }
+    .dr-title p,.dr-period,.dr-stat span { color:#555 !important; }
+    .dr-summary { grid-template-columns:repeat(4,1fr); gap:3mm; margin-top:5mm; break-inside:avoid; page-break-inside:avoid; }
+    .dr-stat { display:block; min-height:0; padding:3mm; border-radius:2mm; }
+    .dr-stat-icon { display:none; }
+    .dr-stat-copy span { margin-bottom:1.5mm; font-size:8pt; }
+    .dr-stat-copy strong { font-size:12pt; }
+    .dr-print-footer { display:flex; visibility:visible !important; justify-content:space-between; gap:10mm; margin-top:8mm; padding-top:4mm; border-top:1px solid #9ca3af; color:#4b5563; font-size:8pt; break-inside:avoid; }
+    .dr-print-footer * { visibility:visible !important; }
+  }
+</style>
+
+<div class="detail-report">
+  <nav class="dr-nav" aria-label="التقارير التفصيلية">
+    <a href="/reports/detailed/sales" class="{{ 'active' if report_type == 'sales' }}"><i class="fas fa-chart-line"></i> المبيعات</a>
+    <a href="/reports/detailed/materials" class="{{ 'active' if report_type == 'materials' }}"><i class="fas fa-box-open"></i> مبيعات المواد</a>
+    <a href="/reports/detailed/delivery" class="{{ 'active' if report_type == 'delivery' }}"><i class="fas fa-motorcycle"></i> مندوب التوصيل</a>
+    <a href="/reports/detailed/inventory" class="{{ 'active' if report_type == 'inventory' }}"><i class="fas fa-boxes-stacked"></i> جرد المخزن</a>
+    <a href="/reports/detailed/suppliers" class="{{ 'active' if report_type == 'suppliers' }}"><i class="fas fa-truck-field"></i> الموردون</a>
+  </nav>
+
+  <header class="dr-head">
+    <div class="dr-title">
+      <span class="dr-title-icon"><i class="fas {{ icon }}"></i></span>
+      <div><h2>{{ title }}</h2><p>{{ subtitle }}</p></div>
+    </div>
+    <div class="dr-actions">
+      <a class="dr-btn secondary" href="/reports"><i class="fas fa-arrow-right"></i> رجوع</a>
+      <button class="dr-btn primary" type="button" onclick="window.print()"><i class="fas fa-print"></i> طباعة</button>
+    </div>
+  </header>
+
+  <section class="dr-filter-card" aria-labelledby="filterTitle">
+    <div class="dr-filter-head">
+      <div class="dr-filter-title" id="filterTitle">
+        <i class="fas fa-sliders"></i>
+        <span>تصفية التقرير</span>
+        {% if active_filter_count %}<span class="dr-filter-count" title="عدد الفلاتر المفعلة">{{ active_filter_count }}</span>{% endif %}
+      </div>
+      <a class="dr-btn ghost" href="/reports/detailed/{{ report_type }}"><i class="fas fa-rotate-left"></i> مسح الفلاتر</a>
+    </div>
+    <form class="dr-filter" method="get" id="detailReportFilter">
+      <input type="hidden" name="period" id="reportPeriod" value="{{ period }}">
+      {% if filters %}
+        {% for filter in filters %}
+        <div class="dr-field">
+          <label for="filter-{{ filter.name }}"><i class="fas {{ filter.icon }}"></i> {{ filter.label }}</label>
+          <select id="filter-{{ filter.name }}" name="{{ filter.name }}">
+            <option value="">الكل</option>
+            {% for option_id, option_name in filter.options %}
+            <option value="{{ option_id }}" {{ 'selected' if filter.selected|string == option_id|string }}>{{ option_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="dr-field">
+          <label for="entityFilter"><i class="fas fa-list"></i> {{ filter_label }}</label>
+          <select id="entityFilter" name="{{ filter_name }}">
+            <option value="">الكل</option>
+            {% for option_id, option_name in filter_options %}
+            <option value="{{ option_id }}" {{ 'selected' if selected_filter == option_id }}>{{ option_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      {% endif %}
+      <div class="dr-field date-field">
+        <label for="dateFrom"><i class="fas fa-calendar-day"></i> من تاريخ</label>
+        <input id="dateFrom" type="date" name="date_from" value="{{ date_from.isoformat() }}">
+      </div>
+      <div class="dr-field date-field">
+        <label for="dateTo"><i class="fas fa-calendar-check"></i> إلى تاريخ</label>
+        <input id="dateTo" type="date" name="date_to" value="{{ date_to.isoformat() }}">
+      </div>
+      <div class="dr-presets">
+        <button type="button" data-period="today" class="{{ 'active' if period == 'today' }}">اليوم</button>
+        <button type="button" data-period="yesterday" class="{{ 'active' if period == 'yesterday' }}">أمس</button>
+        <button type="button" data-period="last_7_days" class="{{ 'active' if period == 'last_7_days' }}">آخر 7 أيام</button>
+        <button type="button" data-period="this_month" class="{{ 'active' if period == 'this_month' }}">هذا الشهر</button>
+      </div>
+      <div class="dr-filter-actions">
+        <button class="dr-btn primary" type="submit"><i class="fas fa-filter"></i> تطبيق التصفية</button>
+        <a class="dr-btn ghost" href="/reports/detailed/{{ report_type }}">إلغاء</a>
+      </div>
+    </form>
+  </section>
+
+  <section class="dr-table-card">
+    <div class="dr-period">
+      <span><i class="fas fa-calendar-days"></i> الفترة: {{ date_from.strftime('%Y-%m-%d') }} — {{ date_to.strftime('%Y-%m-%d') }}</span>
+      {% if filters %}
+      <div class="dr-active-filters" aria-label="الفلاتر المطبقة">
+        {% for filter in filters if filter.selected %}
+        <span class="dr-active-filter">{{ filter.label }}: {{ filter.selected_label }}</span>
+        {% else %}
+        <span class="dr-active-filter">جميع العملاء والموظفين وطرق الدفع</span>
+        {% endfor %}
+      </div>
+      {% else %}
+      <span>{{ filter_label }}: {{ selected_filter_label }}</span>
+      {% endif %}
+      <span><i class="fas fa-clock"></i> الإصدار: {{ generated_at.strftime('%Y-%m-%d %H:%M') }}</span>
+    </div>
+    {% if rows %}
+    <div class="dr-table-wrap">
+      <table class="dr-table">
+        <thead><tr>{% for key, label in columns %}<th>{{ label }}</th>{% endfor %}</tr></thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            {% for key, label in columns %}
+            <td>
+              {% if key == 'invoice_no' %}<span class="dr-invoice-no">#{{ row.get(key, '—') }}</span>
+              {% elif key == 'payment_method' %}<span class="dr-payment" data-method="{{ row.get('payment_method_key', '') }}">{{ row.get(key, '—') }}</span>
+              {% elif key in ('amount', 'paid', 'remaining', 'value', 'unit_price', 'cost', 'profit') %}<strong>{{ row.get(key, '—') }}</strong>
+              {% else %}{{ row.get(key, '—') }}{% endif %}
+            </td>
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="dr-empty"><i class="fas fa-folder-open"></i><p>لا توجد بيانات ضمن الفلاتر والفترة المحددة.</p></div>
+    {% endif %}
+  </section>
+
+  <section class="dr-summary">
+    {% for label, value, tone in summaries %}
+    <div class="dr-stat {{ tone }}">
+      <span class="dr-stat-icon"><i class="fas {% if loop.index == 1 %}fa-file-invoice{% elif loop.index == 2 %}fa-coins{% elif loop.index == 3 %}fa-circle-check{% else %}fa-hourglass-half{% endif %}"></i></span>
+      <div class="dr-stat-copy"><span>{{ label }}</span><strong>{{ value }}</strong></div>
+    </div>
+    {% endfor %}
+  </section>
+  <footer class="dr-print-footer">
+    <span>تم إنشاء التقرير من نظام Finora</span>
+    <span>التدقيق: ____________________</span>
+    <span>التوقيع: ____________________</span>
+  </footer>
+</div>
+
+<script>
+  (function () {
+    const form = document.getElementById('detailReportFilter');
+    const periodInput = document.getElementById('reportPeriod');
+    const fromInput = document.getElementById('dateFrom');
+    const toInput = document.getElementById('dateTo');
+    const iso = date => date.toISOString().slice(0, 10);
+    document.querySelectorAll('.dr-presets button').forEach(button => {
+      button.addEventListener('click', () => {
+        const today = new Date(); today.setHours(12, 0, 0, 0);
+        const from = new Date(today); const to = new Date(today);
+        const period = button.dataset.period;
+        if (period === 'yesterday') { from.setDate(from.getDate() - 1); to.setDate(to.getDate() - 1); }
+        if (period === 'last_7_days') from.setDate(from.getDate() - 6);
+        if (period === 'this_month') from.setDate(1);
+        periodInput.value = period; fromInput.value = iso(from); toInput.value = iso(to); form.submit();
+      });
+    });
+    [fromInput, toInput].forEach(input => input.addEventListener('change', () => { periodInput.value = 'custom'; }));
+  })();
+</script>
+{% endblock %}

@@ -1,0 +1,2178 @@
+# مهمة التطوير
+
+أريد إعادة بناء واجهة تطبيق **بوابة المندوب — Finora Delivery Agent** اعتماداً على التصاميم التي تم إنشاؤها في Google Stitch، مع الحفاظ على منطق النظام الحالي، الـ APIs، الصلاحيات، الجلسات، ومسار العمل الحالي.
+
+التطبيق عبارة عن:
+
+1. Web Application عربية RTL.
+2. Android App يعمل كـ WebView Wrapper ويفتح نفس تطبيق الويب.
+3. المندوب يرى طلباته فقط.
+4. المندوب لا ينفذ الكشف نهائياً.
+5. المحاسب هو الذي ينفذ الكشف من النظام الرئيسي.
+
+المطلوب ليس إنشاء نظام جديد من الصفر، بل:
+
+**إعادة بناء Frontend التطبيق بالكامل وربطه بالـ Backend الحالي مع الحفاظ على الوظائف الحالية.**
+
+---
+
+# المعلومات الأساسية
+
+اسم التطبيق:
+
+**بوابة المندوب**
+
+Package:
+
+`iq.finora.deliveryagent`
+
+Web URL:
+
+`https://www.finora.company/delivery-agent`
+
+Login:
+
+`/delivery-agent/login`
+
+Company login:
+
+`/delivery-agent/login/:company`
+
+Dashboard:
+
+`/delivery-agent/dashboard`
+
+APK:
+
+`/static/downloads/finora-delivery-agent.apk`
+
+---
+
+# الهدف الرئيسي
+
+استبدل التصميم القديم بالكامل بالتصميم الجديد المستخرج من Google Stitch.
+
+يجب أن تكون النتيجة:
+
+* حديثة
+* سريعة
+* Mobile First
+* عربية RTL
+* متجاوبة Responsive
+* متوافقة مع Android WebView
+* متوافقة مع Desktop وTablet
+* كل الصفحات تستخدم نفس Design System
+* بدون تكرار CSS
+* بدون تكرار Components
+* سهلة التطوير مستقبلاً
+
+---
+
+# قاعدة مهمة جداً
+
+قبل البدء:
+
+1. افحص المشروع الحالي بالكامل.
+2. حدد ملفات بوابة المندوب الحالية.
+3. حدد Routes.
+4. حدد APIs المستخدمة.
+5. حدد Authentication الحالي.
+6. حدد Session/Cookies.
+7. حدد طريقة تحميل الطلبات.
+8. حدد طريقة حفظ حالة الطلب.
+9. حدد كشف المندوب.
+10. حدد نظام المحادثة.
+11. حدد Android WebView.
+
+لا تغيّر الـ Backend الحالي إلا إذا كان ضرورياً جداً.
+
+الأولوية:
+
+**Frontend redesign + integration with existing backend.**
+
+---
+
+# عدم كسر النظام الحالي
+
+ممنوع إزالة أو تغيير:
+
+* Authentication logic
+* Company validation
+* Subscription validation
+* Agent permissions
+* Order ownership validation
+* Manifest logic
+* Accountant execution logic
+* Employee messaging
+* Cookies
+* Session handling
+* Existing API contracts
+
+إذا احتاج التصميم بيانات إضافية:
+
+أضفها بطريقة backward compatible.
+
+---
+
+# Design System
+
+أنشئ Design System مركزي للتطبيق.
+
+لا تضع الألوان مباشرة داخل كل Component.
+
+استخدم CSS Variables أو Theme Tokens.
+
+مثلاً:
+
+```css
+:root {
+  --primary: #2563EB;
+  --primary-light: #3B82F6;
+
+  --success: #059669;
+  --danger: #DC2626;
+  --warning: #D97706;
+  --purple: #8B5CF6;
+
+  --background: #F8FAFD;
+  --surface: #FFFFFF;
+
+  --text-primary: #101828;
+  --text-secondary: #667085;
+
+  --border: #E4EAF2;
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 22px;
+}
+```
+
+Dark Mode:
+
+```css
+[data-theme="dark"] {
+  --background: #0B1220;
+  --surface: #121A2A;
+
+  --text-primary: #E8EEF8;
+  --text-secondary: #A8B6C9;
+
+  --border: rgba(255,255,255,.08);
+}
+```
+
+---
+
+# الخط
+
+استخدم:
+
+**Tajawal**
+
+Weights:
+
+```text
+400
+500
+600
+700
+800
+```
+
+ضع الخط بشكل مركزي على التطبيق كله.
+
+---
+
+# RTL
+
+كل التطبيق:
+
+```html
+<html lang="ar" dir="rtl">
+```
+
+ولا تستخدم حلول RTL مؤقتة داخل كل Component.
+
+استخدم CSS منطقي مثل:
+
+```css
+margin-inline-start
+margin-inline-end
+padding-inline-start
+padding-inline-end
+```
+
+بدلاً من:
+
+```css
+margin-left
+margin-right
+```
+
+قدر الإمكان.
+
+---
+
+# بنية المشروع
+
+أعد تنظيم Frontend بالشكل التالي أو ما يعادله حسب Framework الحالي:
+
+```text
+delivery-agent/
+│
+├── pages/
+│   ├── Splash
+│   ├── CompanySetup
+│   ├── Login
+│   ├── Dashboard
+│   ├── ActiveOrders
+│   ├── CompletedOrders
+│   ├── OrderDetails
+│   ├── Chat
+│   ├── ChatRoom
+│   ├── Account
+│   └── Offline
+│
+├── components/
+│   ├── AppHeader
+│   ├── BottomNavigation
+│   ├── StatCard
+│   ├── OrderCard
+│   ├── ManifestGroup
+│   ├── StatusBadge
+│   ├── SearchBar
+│   ├── EmptyState
+│   ├── NoteModal
+│   ├── DatePicker
+│   ├── Toast
+│   ├── LoadingBar
+│   └── AccountMenu
+│
+├── services/
+│   ├── auth
+│   ├── orders
+│   ├── manifests
+│   ├── chat
+│   └── company
+│
+├── hooks/
+│
+├── store/
+│
+├── styles/
+│   ├── tokens
+│   ├── theme
+│   ├── rtl
+│   └── responsive
+│
+└── utils/
+```
+
+إذا المشروع Vanilla JS:
+
+طبّق نفس المبدأ Modules + Components.
+
+إذا React:
+
+استخدم Components/Hooks.
+
+لا تغيّر Framework بدون سبب.
+
+---
+
+# الشاشة 01 — Splash
+
+أنشئ Splash Screen يظهر عند تحميل التطبيق.
+
+يحتوي:
+
+* خلفية Dark Blue
+* شعار الشاحنة
+* بوابة المندوب
+* Finora
+* Loading Indicator
+
+لا تجعله ينتظر أكثر من اللازم.
+
+إذا Session موجودة:
+
+انتقل مباشرة إلى Dashboard.
+
+إذا لا يوجد Session:
+
+انتقل Login.
+
+إذا Android لم يخزن Company:
+
+انتقل Company Setup.
+
+---
+
+# الشاشة 02 — ربط الشركة
+
+تستخدم فقط داخل Android عند أول تشغيل.
+
+حقول:
+
+```text
+عنوان الخادم
+معرف الشركة
+```
+
+مثال:
+
+```text
+https://www.finora.company
+super
+```
+
+زر:
+
+**متابعة**
+
+عند الضغط:
+
+1. Validate URL.
+2. Validate Company.
+3. Save server URL locally.
+4. Save company identifier locally.
+5. Open:
+
+```text
+/delivery-agent/login/super
+```
+
+إذا التطبيق فتح Deep Link يحتوي Company:
+
+مثلاً:
+
+```text
+/delivery-agent/login/super
+```
+
+احفظ:
+
+```text
+server
+company
+```
+
+تلقائياً.
+
+---
+
+# الشاشة 03 — Login
+
+Route:
+
+```text
+/delivery-agent/login
+```
+
+أو:
+
+```text
+/delivery-agent/login/:company
+```
+
+إذا Company موجود في URL:
+
+لا تعرض حقل Company.
+
+أظهر:
+
+```text
+شركة Super
+```
+
+الحقول:
+
+```text
+اسم المستخدم
+كلمة المرور
+```
+
+زر Password Visibility.
+
+زر:
+
+**تسجيل الدخول**
+
+Authentication يجب أن يبقى Server Side.
+
+لا تخزن Password.
+
+بعد Login ناجح:
+
+```text
+/delivery-agent/dashboard
+```
+
+الأخطاء تظهر داخل Card.
+
+مثلاً:
+
+```text
+الشركة غير موجودة
+اشتراك الشركة متوقف
+اسم المستخدم أو كلمة المرور غير صحيحة
+الحساب معطل
+```
+
+---
+
+# الشاشة 04 — Dashboard
+
+Dashboard يجب أن يكون Container رئيسي لكل التطبيق.
+
+الـ Header ثابت Sticky.
+
+يحتوي:
+
+```text
+اسم المندوب
+بوابة المندوب — طلباتك المربوطة باسمك
+Avatar
+Account Menu
+```
+
+على Desktop:
+
+أظهر Chat button بالـ Header.
+
+على Mobile:
+
+Chat داخل Bottom Navigation.
+
+---
+
+# Statistics
+
+أنشئ Component:
+
+```text
+StatCard
+```
+
+ثلاث بطاقات:
+
+```text
+قيد التوصيل
+إجمالي المبالغ
+توصيل اليوم
+```
+
+يتم حسابها من البيانات الحالية.
+
+قيد التوصيل:
+
+عدد الطلبات النشطة.
+
+إجمالي المبالغ:
+
+Sum:
+
+```text
+remaining_amount
+```
+
+للطلبات النشطة.
+
+توصيل اليوم:
+
+المقصود ليس اليوم التقويمي.
+
+بل:
+
+كل الطلبات التي وضع المندوب حالتها:
+
+```text
+واصل
+```
+
+والكشف لم ينفذه المحاسب بعد.
+
+---
+
+# Navigation
+
+Mobile Bottom Navigation:
+
+```text
+الطلبات النشطة
+الطلبات المنفذة
+محادثة
+```
+
+أقل من:
+
+```text
+768px
+```
+
+يظهر Bottom Navigation.
+
+فوق:
+
+```text
+768px
+```
+
+استخدم Desktop Tabs.
+
+---
+
+# الشاشة 05 — الطلبات النشطة
+
+الطلبات تأتي من Backend الحالي.
+
+يجب عرض:
+
+```text
+الطلبات الموجودة في كشف المندوب
++
+الطلبات المربوطة مباشرة بالمندوب
+```
+
+الحالات التي تظهر:
+
+```text
+تم الطلب
+جاري الشحن
+قيد الشحن
+```
+
+---
+
+# Manifest Group
+
+أنشئ Component:
+
+```text
+ManifestGroup
+```
+
+مثلاً:
+
+```text
+AGT-22
+
+30 سبتمبر 2026
+
+5 طلبات
+
+850,000 د.ع
+```
+
+تحته Order Cards.
+
+---
+
+# Direct Assigned Orders
+
+إذا الطلب مربوط بالمندوب وليس داخل كشف:
+
+قسم مستقل:
+
+```text
+طلبات مرتبطة مباشرة
+```
+
+---
+
+# Order Card
+
+أنشئ Component موحد:
+
+```text
+OrderCard
+```
+
+Mobile:
+
+يعرض:
+
+```text
+رقم الطلب
+الحالة
+اسم الزبون
+المتبقي
+العنوان
+زر اتصال
+تحديث الحالة
+زر تطبيق
+زر ملاحظة
+```
+
+Desktop:
+
+يعرض Table Row.
+
+---
+
+# Search
+
+البحث يجب أن يطابق:
+
+```text
+customer name
+order number
+phone
+address
+```
+
+ولا يحتاج API جديد إذا البيانات موجودة.
+
+نفذ Client Side filtering إذا عدد الطلبات صغير.
+
+---
+
+# الشاشة 06 — Order Details
+
+عند الضغط على Order Card:
+
+افتح:
+
+```text
+OrderDetails
+```
+
+إما Route:
+
+```text
+/delivery-agent/orders/:id
+```
+
+أو Modal/Sheet حسب بنية المشروع الحالية.
+
+لكن الأفضل Route مستقل على Mobile.
+
+---
+
+# Customer Information
+
+اعرض:
+
+```text
+اسم الزبون
+رقم الهاتف
+العنوان
+المدينة
+```
+
+زر الهاتف:
+
+```text
+tel:
+```
+
+مثلاً:
+
+```html
+<a href="tel:07701234567">
+```
+
+---
+
+# Order Financial Information
+
+اعرض:
+
+```text
+الإجمالي
+المدفوع
+المتبقي
+```
+
+المتبقي يجب أن يكون الأكثر بروزاً.
+
+Format:
+
+```text
+250,000 د.ع
+```
+
+---
+
+# Update Delivery Status
+
+الحالات:
+
+```text
+تم الطلب
+واصل
+ملغي
+مؤجل
+```
+
+ألوان:
+
+```text
+تم الطلب = Blue
+واصل = Green
+ملغي = Red
+مؤجل = Purple
+```
+
+---
+
+# زر تطبيق
+
+عندما يختار Agent:
+
+```text
+واصل
+ملغي
+مؤجل
+```
+
+لا تغيّر Invoice Status.
+
+فقط احفظ Agent Result داخل كشف المندوب.
+
+بعد الحفظ:
+
+اعرض:
+
+```text
+واصل — بانتظار المحاسب
+```
+
+مثلاً.
+
+---
+
+# تعديل الحالة
+
+بعد الحفظ:
+
+زر:
+
+```text
+تطبيق
+```
+
+يتغير إلى:
+
+```text
+تعديل
+```
+
+ويستطيع المندوب تعديل اختياره طالما المحاسب لم ينفذ الكشف.
+
+---
+
+# مؤجل
+
+إذا Agent اختار:
+
+```text
+مؤجل
+```
+
+أظهر:
+
+```text
+تاريخ التأجيل
+```
+
+Date Picker.
+
+Mandatory.
+
+إذا لم يحدد تاريخ:
+
+```text
+يرجى تحديد تاريخ التأجيل
+```
+
+ولا ترسل Request.
+
+---
+
+# Note Modal
+
+عند الضغط:
+
+```text
+ملاحظة
+```
+
+افتح Bottom Sheet.
+
+العنوان:
+
+```text
+ملاحظة على الطلب
+```
+
+Textarea:
+
+max:
+
+```text
+1000
+```
+
+Save.
+
+بعد وجود Note:
+
+زر الملاحظة يصبح:
+
+Green state.
+
+أظهر نقطة Status.
+
+وعرض النص أسفل Action buttons.
+
+---
+
+# الشاشة 07 — Waiting Accountant State
+
+بعد حفظ:
+
+```text
+واصل
+```
+
+أظهر Box:
+
+```text
+تم تسجيل نتيجة التوصيل بنجاح.
+سيتم تحديث حالة الفاتورة بعد تنفيذ المحاسب للكشف.
+```
+
+ولا تعرض أي:
+
+```text
+تنفيذ الكشف
+```
+
+للمندوب.
+
+---
+
+# الشاشة 08 — كشف جاهز للمحاسب
+
+بعد تحديث كل طلبات الكشف:
+
+احسب:
+
+```text
+all orders have agent_result
+```
+
+أظهر:
+
+```text
+الكشف جاهز للمحاسب
+```
+
+النص:
+
+```text
+تم تحديث جميع طلبات الكشف AGT-104 وتم إشعار المحاسب ليقوم بالتنفيذ.
+```
+
+بدون Execute Button.
+
+---
+
+# الشاشة 09 — الطلبات المنفذة
+
+اعرض آخر:
+
+```text
+100
+```
+
+طلب.
+
+Search:
+
+```text
+name
+order
+phone
+address
+manifest number
+```
+
+Order History Card يعرض:
+
+```text
+رقم الطلب
+نتيجة المندوب
+اسم الزبون
+الإجمالي
+العنوان
+الهاتف
+حالة الفاتورة الحالية
+تاريخ التنفيذ
+رقم الكشف
+```
+
+---
+
+# Completed Status Colors
+
+```text
+واصل = Green
+ملغي = Red
+مؤجل = Purple
+```
+
+---
+
+# Empty States
+
+Active Empty:
+
+```text
+لا توجد طلبات مربوطة بك حالياً
+```
+
+Description:
+
+```text
+لم يتم ربط أي طلبات باسمك بعد.
+يرجى التواصل مع الإدارة لربط الطلبات من صفحة الطلبات.
+```
+
+Completed Empty:
+
+```text
+لا توجد طلبات منفذة بعد
+```
+
+Description:
+
+```text
+ستظهر هنا الطلبات بعد تنفيذ المحاسب للكشف.
+```
+
+---
+
+# المحادثة
+
+استخدم نظام Employee Messaging الحالي.
+
+لا تنشئ Messaging System جديد.
+
+المندوب يمتلك Employee Messaging Account محدود.
+
+صلاحية:
+
+```text
+messages only
+```
+
+بدون Dashboard Employee.
+
+---
+
+# Chat Screen
+
+Bottom nav tab:
+
+```text
+محادثة
+```
+
+اعرض:
+
+```text
+Conversations
+Last message
+Time
+Unread badge
+```
+
+Update unread every:
+
+```text
+15 seconds
+```
+
+باستخدام النظام الحالي.
+
+---
+
+# Chat Room
+
+اعرض:
+
+```text
+messages
+sender
+timestamp
+composer
+send button
+```
+
+استخدم Backend Chat الحالي.
+
+---
+
+# Account
+
+Account Page:
+
+```text
+اسم المندوب
+الدور
+اسم المستخدم
+```
+
+مسموح:
+
+```text
+معلومات الحساب
+اللغة
+مساعدة ودعم
+تسجيل الخروج
+```
+
+ممنوع عرض:
+
+```text
+الراتب
+العمولة
+رقم التحويل
+كلمة المرور
+```
+
+---
+
+# Account Menu
+
+Avatar بالـ Header.
+
+عند الضغط:
+
+Dropdown:
+
+```text
+اسم المندوب
+username
+
+حسابي
+تسجيل الخروج
+```
+
+---
+
+# Logout
+
+عند Logout:
+
+Destroy Session.
+
+ثم Redirect:
+
+```text
+/delivery-agent/login/:company
+```
+
+---
+
+# Toast System
+
+أنشئ Global Toast Component.
+
+Types:
+
+```text
+success
+error
+warning
+info
+```
+
+مثال:
+
+```text
+تم حفظ تحديث الطلب بنجاح
+```
+
+مدة تقريباً:
+
+```text
+1500ms
+```
+
+ولا يغطي Bottom Navigation.
+
+---
+
+# Loading
+
+أنشئ Top Loading Bar.
+
+height:
+
+```text
+3px
+```
+
+color:
+
+```text
+#2563EB
+```
+
+يظهر أثناء:
+
+```text
+page navigation
+API calls
+WebView loading
+```
+
+لكن لا يظهر لكل background polling.
+
+---
+
+# API Loading States
+
+كل صفحة يجب أن تحتوي:
+
+```text
+Loading
+Loaded
+Empty
+Error
+```
+
+لا تعرض صفحة بيضاء أثناء التحميل.
+
+استخدم Skeleton Cards بدل Spinner الكبير قدر الإمكان.
+
+---
+
+# Error State
+
+إذا API فشل:
+
+أظهر Card:
+
+```text
+تعذر تحميل البيانات
+```
+
+Button:
+
+```text
+إعادة المحاولة
+```
+
+---
+
+# Offline Detection
+
+راقب:
+
+```js
+navigator.onLine
+```
+
+والـ events:
+
+```js
+window.addEventListener("online")
+window.addEventListener("offline")
+```
+
+عند Offline:
+
+أظهر:
+
+```text
+تعذّر تحميل بوابة المندوب
+```
+
+مع:
+
+```text
+تحقق من الاتصال بالإنترنت ثم أعد المحاولة
+```
+
+زر:
+
+```text
+إعادة المحاولة
+```
+
+---
+
+# Theme
+
+Theme يجب أن يتبع:
+
+1. آخر اختيار محفوظ إذا موجود.
+2. وإلا System Theme.
+
+استخدم:
+
+```js
+window.matchMedia('(prefers-color-scheme: dark)')
+```
+
+لكن لا تضف Theme Toggle داخل بوابة المندوب حالياً.
+
+---
+
+# Responsive
+
+Breakpoints:
+
+```text
+< 768px
+Mobile cards
+Bottom navigation
+
+>= 768px
+Desktop/tablet layout
+Table
+Top tabs
+Chat button in header
+```
+
+---
+
+# Mobile Layout
+
+Maximum useable width:
+
+```text
+100%
+```
+
+padding:
+
+```text
+12px - 16px
+```
+
+Bottom navigation يجب أن يحترم:
+
+```css
+env(safe-area-inset-bottom)
+```
+
+Header:
+
+```css
+env(safe-area-inset-top)
+```
+
+---
+
+# Desktop Layout
+
+Maximum:
+
+```text
+1100px
+```
+
+Centered.
+
+Orders:
+
+Table.
+
+Columns:
+
+```text
+الرقم
+الطلب
+الزبون
+الهاتف
+العنوان
+المبلغ
+الحالة
+التحديث
+التأجيل
+```
+
+---
+
+# Android WebView
+
+راجع Android project الحالي.
+
+لا تبني Screens Native للطلبات.
+
+Android فقط Wrapper.
+
+MainActivity/WebView يقوم بتحميل:
+
+```text
+https://www.finora.company/delivery-agent
+```
+
+أو Saved Server.
+
+---
+
+# WebView Settings
+
+فعّل فقط الإعدادات المطلوبة مثل:
+
+```text
+JavaScript
+DOM Storage
+Cookies
+Mixed Content إذا كان ضرورياً فقط
+```
+
+لا تستخدم إعدادات WebView غير آمنة بدون حاجة.
+
+---
+
+# Cookies
+
+الجلسة يجب أن تبقى محفوظة.
+
+فعّل CookieManager المناسب.
+
+Session Login لا تضيع عند إغلاق التطبيق.
+
+---
+
+# External Links
+
+التعامل مع:
+
+```text
+tel:
+mailto:
+sms:
+geo:
+maps:
+```
+
+يجب أن يفتح Android Intent خارجي.
+
+---
+
+# Back Button
+
+Android Back:
+
+إذا WebView:
+
+```text
+canGoBack()
+```
+
+اعمل:
+
+```text
+goBack()
+```
+
+وإلا:
+
+Exit app.
+
+---
+
+# Pull To Refresh
+
+أضف SwipeRefreshLayout.
+
+السحب للأسفل:
+
+```text
+reload current page
+```
+
+---
+
+# Loading Bar Android
+
+اعرض ProgressBar رفيع أزرق أعلى WebView.
+
+Progress:
+
+```text
+0 - 100
+```
+
+اخفه عندما:
+
+```text
+100
+```
+
+---
+
+# WebView Error Screen
+
+إذا فشل تحميل Main URL:
+
+أخفِ WebView.
+
+أظهر Native Error View:
+
+```text
+تعذّر تحميل بوابة المندوب
+
+تحقق من الاتصال بالإنترنت ثم أعد المحاولة
+```
+
+Button:
+
+```text
+إعادة المحاولة
+```
+
+---
+
+# Company Storage Android
+
+استخدم:
+
+```text
+SharedPreferences
+```
+
+مثلاً:
+
+```text
+server_url
+company_identifier
+```
+
+---
+
+# First Launch
+
+إذا:
+
+```text
+company_identifier == null
+```
+
+اعرض Company Setup.
+
+بعد حفظ Company:
+
+Load:
+
+```text
+{server}/delivery-agent/login/{company}
+```
+
+---
+
+# Deep Link
+
+إذا التطبيق يستقبل URL مثل:
+
+```text
+https://www.finora.company/delivery-agent/login/super
+```
+
+استخرج:
+
+```text
+server = https://www.finora.company
+company = super
+```
+
+ثم Save.
+
+ثم افتح URL.
+
+---
+
+# Security
+
+لا تخزن:
+
+```text
+Password
+Access Token plain text
+Sensitive user data
+```
+
+إلا إذا architecture الحالية تحتاج Token.
+
+إذا Token مستخدم:
+
+استخدم Android secure storage إن أمكن.
+
+---
+
+# تحقق ملكية الطلب
+
+Backend يجب أن يتحقق لكل Request:
+
+إما:
+
+```text
+order.delivery_agent_id == current_agent.id
+```
+
+أو:
+
+```text
+order belongs to manifest owned by current_agent
+```
+
+ممنوع الاعتماد فقط على Frontend.
+
+---
+
+# Save Agent Result
+
+عند الحفظ:
+
+Frontend يرسل فقط:
+
+```json
+{
+  "order_id": 12345,
+  "result": "delivered",
+  "postponed_date": null,
+  "note": "..."
+}
+```
+
+المسميات الدقيقة تعتمد على API الحالية.
+
+استخدم API الحالية إذا موجودة.
+
+لا تغير Invoice Status مباشرة.
+
+---
+
+# حالة واصل
+
+Mapping UI:
+
+```text
+واصل
+```
+
+يمكن Backend أن يسميها مثلاً:
+
+```text
+delivered
+```
+
+---
+
+# حالة ملغي
+
+UI:
+
+```text
+ملغي
+```
+
+Backend:
+
+```text
+cancelled
+```
+
+---
+
+# حالة مؤجل
+
+UI:
+
+```text
+مؤجل
+```
+
+Backend:
+
+```text
+postponed
+```
+
+---
+
+# تم الطلب
+
+UI:
+
+```text
+تم الطلب
+```
+
+Backend mapping حسب النظام الحالي.
+
+---
+
+# مهم
+
+لا تخمن أسماء Enums.
+
+افحص Backend واستخدم القيم الحالية.
+
+---
+
+# Formatting Money
+
+أنشئ Utility:
+
+```js
+formatIQD(250000)
+```
+
+Result:
+
+```text
+250,000 د.ع
+```
+
+استخدم:
+
+```js
+Intl.NumberFormat('ar-IQ')
+```
+
+إذا كانت الأرقام العربية تسبب مشكلة UX، حافظ على digits الغربية حسب التصميم الحالي.
+
+---
+
+# Date Formatting
+
+استخدم Utility مركزي.
+
+مثلاً:
+
+```text
+30 سبتمبر 2026
+```
+
+أو:
+
+```text
+2026/09/30
+```
+
+حسب موقع التاريخ في الشاشة.
+
+---
+
+# Order Status Component
+
+أنشئ:
+
+```text
+StatusBadge
+```
+
+Mapping:
+
+```text
+ordered => Blue
+shipping => Amber
+delivered => Green
+cancelled => Red
+postponed => Purple
+waiting_accountant => neutral/blue
+```
+
+استخدم القيم الفعلية من Backend.
+
+---
+
+# Code Quality
+
+لا أريد:
+
+```text
+Duplicate CSS
+Inline styles بكل صفحة
+Copy paste components
+Hardcoded data
+Hardcoded customer names
+Hardcoded order values
+```
+
+كل البيانات من Backend.
+
+---
+
+# Assets من Google Stitch
+
+عند استيراد التصميم من Stitch:
+
+استخرج فقط:
+
+```text
+icons
+illustrations
+layout reference
+spacing
+component sizes
+```
+
+لكن لا تنسخ HTML السيء تلقائياً بدون تنظيف.
+
+حوّل التصميم إلى Components حقيقية.
+
+---
+
+# SVG
+
+يفضل استخدام SVG للأيقونات والرسومات.
+
+لا تستخدم PNG كبير إذا SVG متوفر.
+
+---
+
+# Performance
+
+حسّن التطبيق للأجهزة الضعيفة.
+
+لا تستخدم:
+
+* blur ضخم
+* heavy animation
+* large images
+* unnecessary libraries
+
+Backdrop blur يكون محدوداً.
+
+---
+
+# Animation
+
+استخدم Animations بسيطة فقط:
+
+```text
+150ms
+200ms
+250ms
+```
+
+للـ:
+
+```text
+buttons
+modal
+toast
+tab switch
+status selection
+```
+
+---
+
+# Touch Targets
+
+أي زر للمندوب يجب ألا يقل تقريباً عن:
+
+```text
+44px
+```
+
+والأزرار المهمة:
+
+```text
+46-52px
+```
+
+---
+
+# Accessibility
+
+أضف:
+
+```text
+aria-label
+button labels
+focus states
+contrast
+```
+
+خصوصاً:
+
+```text
+اتصال
+إظهار كلمة المرور
+رجوع
+إغلاق
+حفظ
+```
+
+---
+
+# Implementation Order
+
+نفذ بالتسلسل التالي:
+
+## المرحلة 1
+
+افحص المشروع الحالي واكتب تقرير داخلي:
+
+```text
+current routes
+current APIs
+current components
+auth flow
+manifest flow
+chat flow
+Android WebView flow
+```
+
+---
+
+## المرحلة 2
+
+أنشئ Design System.
+
+```text
+colors
+theme
+typography
+spacing
+buttons
+inputs
+cards
+badges
+layout
+```
+
+---
+
+## المرحلة 3
+
+ابنِ Shared Components:
+
+```text
+AppHeader
+BottomNavigation
+StatCard
+SearchBar
+StatusBadge
+OrderCard
+ManifestGroup
+EmptyState
+Modal
+Toast
+LoadingBar
+```
+
+---
+
+## المرحلة 4
+
+ابنِ:
+
+```text
+Login
+Company Setup
+Dashboard
+Active Orders
+```
+
+---
+
+## المرحلة 5
+
+ابنِ:
+
+```text
+Order Details
+Status update
+Postponed date
+Note modal
+Waiting accountant
+```
+
+---
+
+## المرحلة 6
+
+ابنِ:
+
+```text
+Completed Orders
+Chat
+Account
+Empty states
+Offline
+```
+
+---
+
+## المرحلة 7
+
+اربط جميع الصفحات بالـ APIs الحالية.
+
+---
+
+## المرحلة 8
+
+حدّث Android WebView.
+
+---
+
+## المرحلة 9
+
+اختبر Responsive.
+
+---
+
+# اختبارات ضرورية
+
+اختبر Login:
+
+```text
+شركة صحيحة
+شركة غير موجودة
+اشتراك موقوف
+user غلط
+password غلط
+account disabled
+```
+
+---
+
+# Agent Permissions Test
+
+مندوب A لا يستطيع رؤية Order تابع لـ B.
+
+حتى لو غيّر Order ID في URL.
+
+Backend يجب أن يرجع:
+
+```text
+403
+```
+
+أو:
+
+```text
+404
+```
+
+---
+
+# Delivery Test
+
+اختبر:
+
+```text
+واصل
+ملغي
+مؤجل
+```
+
+بعد اختيار الحالة:
+
+Invoice Status يجب ألا يتغير حتى المحاسب ينفذ الكشف.
+
+---
+
+# Postponed Test
+
+مؤجل بدون تاريخ:
+
+رفض.
+
+مؤجل مع تاريخ:
+
+حفظ.
+
+---
+
+# Manifest Test
+
+عند تحديث كل الطلبات:
+
+أظهر:
+
+```text
+الكشف جاهز للمحاسب
+```
+
+ولا يوجد Execute Button.
+
+---
+
+# Chat Test
+
+اختبر:
+
+```text
+send
+receive
+unread
+15 sec refresh
+```
+
+---
+
+# Offline Test
+
+اقطع الإنترنت.
+
+يجب أن تظهر Offline Screen.
+
+أعد الإنترنت.
+
+Retry يجب أن يعمل.
+
+---
+
+# WebView Test
+
+اختبر:
+
+```text
+Login persistence
+Back button
+Pull to refresh
+tel:
+mailto:
+geo:
+cookies
+deep links
+orientation
+keyboard
+safe area
+```
+
+---
+
+# مقاسات الأجهزة
+
+اختبر على الأقل:
+
+```text
+360 × 800
+390 × 844
+412 × 915
+768 × 1024
+1366 × 768
+1920 × 1080
+```
+
+---
+
+# النتيجة المطلوبة
+
+أريد بالنهاية تطبيق Delivery Agent متكامل بنفس تصميم Google Stitch لكن مبني فعلياً داخل المشروع.
+
+كل الصفحات مرتبطة ببعض.
+
+Flow:
+
+```text
+Splash
+↓
+Company Setup إذا أول مرة
+↓
+Login
+↓
+Dashboard
+↓
+Active Orders
+↓
+Order Details
+↓
+Call / Status / Note
+↓
+Save Agent Result
+↓
+Waiting Accountant
+↓
+Accountant Executes Manifest
+↓
+Completed Orders
+```
+
+والـ Navigation الرئيسي:
+
+```text
+الطلبات النشطة
+الطلبات المنفذة
+محادثة
+```
+
+مع:
+
+```text
+Account Menu
+Account Page
+Offline State
+Empty State
+Loading State
+Toast
+```
+
+---
+
+# شرط مهم جداً
+
+قبل كتابة أي كود جديد:
+
+افحص implementation الحالي.
+
+لا تنشئ API جديدة إذا API الحالية تؤدي نفس الوظيفة.
+
+لا تنشئ Authentication جديد.
+
+لا تنشئ Chat System جديد.
+
+لا تغيّر Database Schema إلا عند الضرورة.
+
+لا تعيد كتابة المشروع من الصفر.
+
+اعمل Refactor تدريجي وآمن.
+
+---
+
+# المطلوب منك أثناء التطوير
+
+بعد فحص المشروع:
+
+أنشئ أولاً ملف:
+
+```text
+DELIVERY_AGENT_UI_REFACTOR_PLAN.md
+```
+
+يحتوي:
+
+```text
+Current architecture
+Files to modify
+Files to create
+Existing APIs
+Routes
+Components
+Android changes
+Potential risks
+Implementation phases
+```
+
+ثم ابدأ التنفيذ مباشرة.
+
+بعد كل مرحلة:
+
+* شغل التطبيق
+* اختبر الصفحة
+* أصلح Console Errors
+* أصلح Network Errors
+* أصلح Responsive مشاكل
+* تأكد أن وظائف النظام القديم لا تزال تعمل
+
+لا تعتبر المهمة مكتملة بمجرد أن يطابق التصميم الصورة.
+
+المهمة مكتملة فقط عندما:
+
+**التصميم + الربط + الوظائف + الصلاحيات + Android WebView كلها تعمل معاً.**

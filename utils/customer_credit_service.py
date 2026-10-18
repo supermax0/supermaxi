@@ -13,7 +13,6 @@ from models.employee import Employee
 from utils.cash_calculations import _effective_paid_amount as _effective_paid_amount_inv
 from utils.payment_ledger import append_payment_ledger_delta
 from utils.inventory_movements import validate_sale_quantity
-from utils.inventory_lots import consume_lots_for_order_item
 
 
 ENTRY_TYPES = ("opening", "products", "manual")
@@ -99,6 +98,49 @@ def refresh_installment_statuses(plan: CustomerCreditPlan, today: date | None = 
         inst.status = compute_installment_status(inst, today)
 
 
+def remove_invoice_credit_plans(invoice_id: int, reason: str = "ترجيع أو إلغاء") -> int:
+    """Remove installment debt for a returned/canceled invoice while preserving payment history."""
+    plans = CustomerCreditPlan.query.filter_by(invoice_id=invoice_id).all()
+    with db.session.no_autoflush:
+        for plan in plans:
+            for payment in list(plan.payments):
+                payment.plan_id = None
+                payment.installment_id = None
+                # Financial history keeps its original source marker and text.
+                # The finance guard permits only detachment after full reversal.
+                if not (payment.note or "").startswith("[FV:"):
+                    return_note = f"خطة أقساط ملغاة بسبب {reason} الطلب #{invoice_id}"
+                    payment.note = f"{payment.note} — {return_note}" if payment.note else return_note
+            db.session.delete(plan)
+    return len(plans)
+
+
+def cleanup_voided_invoice_credit_plans(customer_id: int | None = None) -> int:
+    """Remove orphan credit plans linked to canceled or returned invoices."""
+    from utils.order_status import is_canceled, is_returned
+
+    query = CustomerCreditPlan.query.filter(CustomerCreditPlan.invoice_id.isnot(None))
+    if customer_id is not None:
+        query = query.filter_by(customer_id=customer_id)
+
+    removed = 0
+    seen_invoices: set[int] = set()
+    for plan in query.all():
+        invoice_id = int(plan.invoice_id)
+        if invoice_id in seen_invoices:
+            continue
+        seen_invoices.add(invoice_id)
+        invoice = Invoice.query.get(invoice_id)
+        if not invoice:
+            continue
+        if is_canceled(invoice.status, invoice.payment_status) or is_returned(
+            invoice.status, invoice.payment_status
+        ):
+            reason = "إلغاء" if is_canceled(invoice.status, invoice.payment_status) else "ترجيع"
+            removed += remove_invoice_credit_plans(invoice_id, reason=reason)
+    return removed
+
+
 def sync_invoice_from_plan(plan: CustomerCreditPlan):
     if not plan.invoice_id:
         return
@@ -161,8 +203,6 @@ def create_credit_invoice(customer: Customer, employee: Employee | None, items: 
             validation = validate_sale_quantity(product.id, qty)
             if not validation.get("valid"):
                 raise ValueError(validation.get("message") or "كمية غير متاحة")
-            if product.quantity < qty:
-                raise ValueError(f"الكمية المتوفرة ({product.quantity}) أقل من المطلوب ({qty})")
 
         custom_price = row.get("price")
         if custom_price and int(custom_price) > 0:
@@ -180,18 +220,20 @@ def create_credit_invoice(customer: Customer, employee: Employee | None, items: 
             cost=int(product.buy_price or 0),
             total=item_total,
         )
-        if not defer_stock:
-            product.quantity -= qty
         total += item_total
         db.session.add(order_item)
         db.session.flush()
-        if not defer_stock:
-            consume_lots_for_order_item(order_item)
 
     invoice.total = total
     if not defer_stock:
-        invoice.stock_is_deducted = True
-        invoice.stock_deducted_at = datetime.utcnow()
+        from utils.order_stock_policy import deduct_order_stock, select_order_stock_branch
+
+        preferred_branch_id = (
+            getattr(employee, "branch_id", None)
+            or getattr(customer, "branch_id", None)
+        )
+        select_order_stock_branch(invoice, preferred_branch_id)
+        deduct_order_stock(invoice)
     return invoice
 
 
@@ -233,7 +275,77 @@ def create_credit_plan(
     return plan
 
 
-def allocate_payment_fifo(customer_id: int, amount: int, note: str = "", employee_id: int | None = None):
+def _redistribute_installment_amounts(installments: list[CustomerInstallment], new_total: int):
+    rows = sorted(installments, key=lambda item: item.sequence)
+    if not rows:
+        raise ValueError("لا توجد أقساط لإعادة التوزيع")
+
+    new_total = int(new_total or 0)
+    paid_list = [int(inst.paid_amount or 0) for inst in rows]
+    paid_total = sum(paid_list)
+    if new_total < paid_total:
+        raise ValueError("المبلغ الجديد أقل من المسدد")
+
+    amounts = split_installment_amounts(new_total, len(rows))
+    for idx, paid_i in enumerate(paid_list):
+        if amounts[idx] >= paid_i:
+            continue
+        deficit = paid_i - amounts[idx]
+        amounts[idx] = paid_i
+        for j in range(len(rows) - 1, idx, -1):
+            available = amounts[j] - paid_list[j]
+            if available <= 0:
+                continue
+            take = min(available, deficit)
+            amounts[j] -= take
+            deficit -= take
+            if deficit <= 0:
+                break
+        if deficit > 0:
+            raise ValueError("تعذر إعادة توزيع الأقساط")
+
+    for inst, amount in zip(rows, amounts):
+        inst.amount = int(amount)
+        inst.status = compute_installment_status(inst)
+
+
+def update_credit_plan(
+    plan_id: int,
+    description: str | None = None,
+    total_amount: int | None = None,
+):
+    plan = CustomerCreditPlan.query.get(plan_id)
+    if not plan:
+        raise ValueError("البند غير موجود")
+
+    if description is not None:
+        cleaned = (description or "").strip()
+        plan.description = cleaned or None
+
+    if total_amount is not None:
+        if plan.entry_type == "products" and plan.invoice_id:
+            raise ValueError("لا يمكن تعديل مبلغ بند مرتبط بفاتورة منتجات")
+        new_total = int(total_amount or 0)
+        if new_total <= 0:
+            raise ValueError("المبلغ يجب أن يكون أكبر من صفر")
+        paid = int(plan.paid_amount or 0)
+        if new_total < paid:
+            raise ValueError("المبلغ الجديد أقل من المسدد")
+        plan.total_amount = new_total
+        _redistribute_installment_amounts(list(plan.installments), new_total)
+        refresh_installment_statuses(plan)
+        sync_invoice_from_plan(plan)
+
+    return plan
+
+
+def allocate_payment_fifo(
+    customer_id: int,
+    amount: int,
+    note: str = "",
+    employee_id: int | None = None,
+    payment_date: date | None = None,
+):
     amount = int(amount or 0)
     if amount <= 0:
         raise ValueError("المبلغ يجب أن يكون أكبر من صفر")
@@ -241,6 +353,7 @@ def allocate_payment_fifo(customer_id: int, amount: int, note: str = "", employe
     plans = (
         CustomerCreditPlan.query.filter_by(customer_id=customer_id)
         .order_by(CustomerCreditPlan.created_at.asc())
+        .with_for_update()
         .all()
     )
     total_remaining = sum(p.remaining for p in plans)
@@ -250,11 +363,27 @@ def allocate_payment_fifo(customer_id: int, amount: int, note: str = "", employe
     remaining_pay = amount
     payments_created = []
     touched_plans = set()
+    paid_at = datetime.utcnow()
+    if payment_date:
+        paid_at = datetime.combine(payment_date, datetime.min.time().replace(hour=12))
+
+    account, customer = None, None
+    if any(plan.invoice_id is None and plan.remaining > 0 for plan in plans):
+        from models.customer import Customer
+        from utils.treasury_helpers import get_default_cash_account
+        from utils.financial_period_guard import assert_date_period_open
+        customer = db.session.get(Customer, customer_id)
+        if not customer:
+            raise ValueError("العميل غير موجود")
+        assert_date_period_open(paid_at.date(), "تسديد دين مستقل")
+        # Account setup can commit schema/bootstrap changes; resolve it before any payment mutation.
+        account = get_default_cash_account(customer.branch_id)
 
     installments = (
         CustomerInstallment.query.join(CustomerCreditPlan)
         .filter(CustomerCreditPlan.customer_id == customer_id)
         .order_by(CustomerInstallment.due_date.asc(), CustomerInstallment.sequence.asc())
+        .with_for_update()
         .all()
     )
 
@@ -278,8 +407,15 @@ def allocate_payment_fifo(customer_id: int, amount: int, note: str = "", employe
             amount=pay_slice,
             note=note or None,
             employee_id=employee_id,
+            created_at=paid_at,
         )
         db.session.add(payment)
+        if plan.invoice_id is None:
+            from models.account_transaction import AccountTransaction
+            db.session.flush()
+            db.session.add(AccountTransaction(type="deposit", branch_id=customer.branch_id or account.branch_id,
+                treasury_account_id=account.id, amount=pay_slice, created_at=paid_at,
+                note=f"صندوق - تسديد دين مستقل #{plan.id} [CP:{payment.id}]"))
         payments_created.append(payment)
         remaining_pay -= pay_slice
 
@@ -307,8 +443,27 @@ def credit_plan_financial_summary() -> dict:
     }
 
 
+def visible_credit_plans(customer_id: int) -> list[CustomerCreditPlan]:
+    """Ignore obsolete invoice debt for display without deleting financial history."""
+    from sqlalchemy.orm import joinedload
+    from utils.order_status import is_canceled, is_returned
+
+    plans = (
+        CustomerCreditPlan.query.options(joinedload(CustomerCreditPlan.invoice))
+        .filter_by(customer_id=customer_id)
+        .order_by(CustomerCreditPlan.created_at.desc())
+        .all()
+    )
+    return [plan for plan in plans if not (
+        plan.invoice and (
+            is_canceled(plan.invoice.status, plan.invoice.payment_status)
+            or is_returned(plan.invoice.status, plan.invoice.payment_status)
+        )
+    )]
+
+
 def customer_credit_summary(customer_id: int) -> dict:
-    plans = CustomerCreditPlan.query.filter_by(customer_id=customer_id).all()
+    plans = visible_credit_plans(customer_id)
     total_debt = sum(int(p.total_amount or 0) for p in plans)
     total_paid = sum(int(p.paid_amount or 0) for p in plans)
     remaining = max(0, total_debt - total_paid)
@@ -317,7 +472,7 @@ def customer_credit_summary(customer_id: int) -> dict:
     today = date.today()
     installments = (
         CustomerInstallment.query.join(CustomerCreditPlan)
-        .filter(CustomerCreditPlan.customer_id == customer_id)
+        .filter(CustomerInstallment.plan_id.in_([plan.id for plan in plans]))
         .order_by(CustomerInstallment.due_date.asc(), CustomerInstallment.sequence.asc())
         .all()
     )
@@ -325,7 +480,6 @@ def customer_credit_summary(customer_id: int) -> dict:
     next_inst = None
     for inst in installments:
         st = compute_installment_status(inst, today)
-        inst.status = st
         if st == "overdue":
             overdue_count += 1
         if next_inst is None and st in ("pending", "partial", "overdue") and inst.remaining > 0:

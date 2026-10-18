@@ -9,15 +9,16 @@ Handles all Facebook Graph API interactions.
 
 from __future__ import annotations
 
+import json
 import logging
 import time
 from typing import Optional
 
 import requests
+from utils.meta_graph import GRAPH_BASE
 
 logger = logging.getLogger("publisher")
 
-GRAPH_BASE = "https://graph.facebook.com/v19.0"
 # FB rate-limit error codes
 _RATE_LIMIT_CODES = {4, 17, 32, 613}
 _MAX_RETRIES = 3
@@ -186,6 +187,62 @@ def publish_photo_post(page_id: str, page_token: str, text: str, image_path: str
         return {"success": False, "message": f"Image file not found: {image_path}"}
     if result.get("success"):
         logger.info("Photo post published to page %s", page_id)
+    return result
+
+
+def publish_multi_photo_post(
+    page_id: str,
+    page_token: str,
+    text: str,
+    image_paths: list[str],
+    visibility: str = "public",
+) -> dict:
+    """Publish up to ten local images as one Facebook Page post."""
+    page_id = (page_id or "").strip()
+    page_token = (page_token or "").strip()
+    image_paths = [str(path) for path in (image_paths or []) if str(path).strip()][:10]
+    if not page_id:
+        return {"success": False, "message": "Missing page_id", "error_code": None, "error_subcode": None}
+    if not page_token:
+        return {"success": False, "message": "Missing page access token", "error_code": None, "error_subcode": None}
+    if not image_paths:
+        return {"success": False, "message": "No images selected", "error_code": None, "error_subcode": None}
+    if len(image_paths) == 1:
+        return publish_photo_post(page_id, page_token, text, image_paths[0], visibility)
+
+    uploaded_ids: list[str] = []
+    photo_url = f"{GRAPH_BASE}/{page_id}/photos"
+    for image_path in image_paths:
+        try:
+            with open(image_path, "rb") as image_file:
+                upload = _retry_post(
+                    photo_url,
+                    page_id=page_id,
+                    data={"access_token": page_token, "published": "false"},
+                    files={"source": image_file},
+                )
+        except FileNotFoundError:
+            return {"success": False, "message": f"Image file not found: {image_path}"}
+        if not upload.get("success"):
+            return upload
+        media_id = str((upload.get("data") or {}).get("id") or "").strip()
+        if not media_id:
+            return {"success": False, "message": "Facebook did not return the uploaded photo id"}
+        uploaded_ids.append(media_id)
+
+    published = _published_flag(visibility)
+    payload = {
+        "message": text,
+        "access_token": page_token,
+        "published": "true" if published else "false",
+    }
+    for index, media_id in enumerate(uploaded_ids):
+        payload[f"attached_media[{index}]"] = json.dumps({"media_fbid": media_id})
+    _log_payload(page_id, f"/{page_id}/feed", payload)
+    result = _retry_post(f"{GRAPH_BASE}/{page_id}/feed", page_id=page_id, data=payload)
+    if result.get("success"):
+        result["media_count"] = len(uploaded_ids)
+        logger.info("Multi-photo post published to page %s with %d images", page_id, len(uploaded_ids))
     return result
 
 

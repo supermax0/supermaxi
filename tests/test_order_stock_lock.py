@@ -27,7 +27,7 @@ def test_pos_short_stock_creates_deferred_pending_order_without_stock_movement()
     from models.product import Product
     from routes.pos import create_order
     from utils.accounting_calculations import calculate_total_sales_for_display
-    from utils.branch_migration import ensure_branch_schema
+    from utils.branch_migration import ensure_branch_schema, get_default_branch
     from utils.inventory_movements import get_product_inventory_movements
     from utils.invoice_schema_guard import ensure_invoice_schema
 
@@ -36,16 +36,18 @@ def test_pos_short_stock_creates_deferred_pending_order_without_stock_movement()
         init_tenant_db(TENANT)
         ensure_invoice_schema()
         ensure_branch_schema()
+        branch = get_default_branch()
 
-        customer = Customer(name="Stock Lock Customer", phone="07700000001")
+        customer = Customer(branch_id=branch.id, name="Stock Lock Customer", phone="07700000001")
         employee = Employee(
             name="Stock Lock Cashier",
             username="stock-lock-cashier",
             password="x",
             role="cashier",
             is_active=True,
+            branch_id=branch.id,
         )
-        product = Product(name="Locked POS Item", buy_price=100, sale_price=500, quantity=0, active=True)
+        product = Product(branch_id=branch.id, name="Locked POS Item", buy_price=100, sale_price=500, quantity=0, active=True)
         db.session.add_all([customer, employee, product])
         db.session.commit()
         customer_id = customer.id

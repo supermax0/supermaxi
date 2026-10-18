@@ -418,6 +418,9 @@ def test_meta_webhook_routes_page_to_configured_employee():
     from extensions_tenant import init_tenant_db
     from flask import g, session
     from models.employee import Employee
+    from models.role import Permission, Role
+    from modules.facebook_routing.models import FacebookPageEmployee, FacebookPageRouting, FacebookRoutingEvent
+    from modules.facebook_routing.schema import ensure_facebook_routing_schema
     from modules.ai_sales.channels import MetaMessagingClient
     from modules.ai_sales.engine import get_or_create_conversation
     from modules.ai_sales.models import AISalesChannelAccount, AISalesConversation, AISalesMessage
@@ -429,7 +432,13 @@ def test_meta_webhook_routes_page_to_configured_employee():
         g.tenant = tenant
         init_tenant_db(tenant)
         ensure_ai_sales_schema()
+        ensure_facebook_routing_schema()
         employee = Employee(name="موظف ماسنجر", username="messenger-agent", password="test", role="cashier", is_active=True)
+        inbox_permission = Permission.query.filter_by(name="view_messages").first()
+        if not inbox_permission:
+            inbox_permission = Permission(name="view_messages")
+        inbox_role = Role(name="Messenger test inbox", permissions=[inbox_permission])
+        employee.roles.append(inbox_role)
         db.session.add(employee)
         db.session.flush()
         connector = AISalesChannelAccount(
@@ -454,6 +463,11 @@ def test_meta_webhook_routes_page_to_configured_employee():
             is_active=True,
         )
         db.session.add(page)
+        db.session.flush()
+        db.session.add_all([
+            FacebookPageRouting(page_id="page-123", channel_account_id=page.id, routing_enabled=True),
+            FacebookPageEmployee(page_id="page-123", employee_id=employee.id, is_enabled=True),
+        ])
         db.session.commit()
         webhook_key = connector.webhook_key
         employee_id = employee.id
@@ -520,6 +534,9 @@ def test_meta_webhook_routes_page_to_configured_employee():
         g.tenant = tenant
         conversation = AISalesConversation.query.filter_by(external_contact_id="psid-789").one()
         assert conversation.assigned_employee_id == employee_id
+        assert FacebookRoutingEvent.query.filter_by(
+            conversation_id=conversation.id, action="CONVERSATION_ASSIGNED"
+        ).count() == 1
         assert conversation.human_takeover is True
         assert conversation.ai_enabled is False
         assert conversation.contact_profile_picture_url == "https://cdn.example.test/customer.jpg"
@@ -535,6 +552,7 @@ def test_meta_webhook_routes_page_to_configured_employee():
             g.tenant = tenant
             session["user_id"] = employee_id
             session["role"] = "admin"
+            session["plan_key"] = "enterprise"
             response = api_meta_stop_ai()
             assert response.get_json()["mode"] == "inbox"
         page = AISalesChannelAccount.query.get(page_channel_id)
@@ -552,9 +570,18 @@ def test_meta_webhook_routes_page_to_configured_employee():
             contact_name="Inbox Customer",
         )
         assert inbox_conversation.ai_enabled is False
-        assert inbox_conversation.human_takeover is False
+        assert inbox_conversation.human_takeover is True
         assert inbox_conversation.assigned_employee_id == employee_id
-        assert inbox_conversation.status == "open"
+        assert inbox_conversation.status == "waiting_employee"
+        FacebookPageRouting.query.filter_by(page_id="page-123").one().routing_enabled = False
+        db.session.flush()
+        monitored = get_or_create_conversation(
+            page, external_contact_id="psid-monitor-only", phone="", contact_name="Monitored Customer"
+        )
+        assert monitored.assigned_employee_id is None
+        assert monitored.human_takeover is False
+        assert monitored.ai_enabled is False
+        assert monitored.status == "open"
         stale = AISalesChannelAccount(
             channel_type="messenger",
             name="Old Page",
@@ -693,7 +720,10 @@ def test_meta_multi_page_management_keeps_tokens_private_and_scales_past_thirty_
                 g.tenant = tenant
                 session["user_id"] = admin_id
                 session["role"] = "admin"
-                result = api_meta_sync_pages(connector.id).get_json()
+                session["plan_key"] = "enterprise"
+                response = app.make_response(api_meta_sync_pages(connector.id))
+                assert response.status_code == 200, response.get_json()
+                result = response.get_json()
                 assert result["pages_found"] == 35
         finally:
             routes.MetaMessagingClient = original_meta_client
@@ -731,6 +761,7 @@ def test_meta_multi_page_management_keeps_tokens_private_and_scales_past_thirty_
                 g.tenant = tenant
                 session["user_id"] = admin_id
                 session["role"] = "admin"
+                session["plan_key"] = "enterprise"
                 result = api_connect_meta_page().get_json()
                 assert result["success"] is True
                 assert result["created"] is False
@@ -747,6 +778,7 @@ def test_meta_multi_page_management_keeps_tokens_private_and_scales_past_thirty_
             g.tenant = tenant
             session["user_id"] = admin_id
             session["role"] = "admin"
+            session["plan_key"] = "enterprise"
             payload = api_channels().get_json()
             serialized = str(payload)
             assert all("verify_token" not in channel for channel in payload["channels"])
@@ -763,6 +795,7 @@ def test_meta_multi_page_management_keeps_tokens_private_and_scales_past_thirty_
             g.tenant = tenant
             session["user_id"] = admin_id
             session["role"] = "admin"
+            session["plan_key"] = "enterprise"
             result = api_meta_pages_bulk().get_json()
             assert result["pages_updated"] == 35
 
@@ -773,6 +806,7 @@ def test_meta_multi_page_management_keeps_tokens_private_and_scales_past_thirty_
             g.tenant = tenant
             session["user_id"] = admin_id
             session["role"] = "admin"
+            session["plan_key"] = "enterprise"
             result = api_delete_meta_page(first_page_id).get_json()
             assert result["archived"] is True
 
@@ -845,6 +879,7 @@ def test_inbox_read_close_reopen_and_incremental_messages():
             g.tenant = tenant
             session["user_id"] = employee_id
             session["role"] = "admin"
+            session["plan_key"] = "enterprise"
             payload = api_conversations().get_json()
             assert payload["conversations"][0]["unread_count"] == 2
 
@@ -852,6 +887,7 @@ def test_inbox_read_close_reopen_and_incremental_messages():
             g.tenant = tenant
             session["user_id"] = employee_id
             session["role"] = "admin"
+            session["plan_key"] = "enterprise"
             payload = api_messages(conversation_id).get_json()
             assert [row["text_content"] for row in payload["messages"]] == ["الرسالة الثانية"]
 
@@ -870,6 +906,7 @@ def test_inbox_read_close_reopen_and_incremental_messages():
             g.tenant = tenant
             session["user_id"] = employee_id
             session["role"] = "admin"
+            session["plan_key"] = "enterprise"
             payload = api_conversations().get_json()
             assert payload["conversations"][0]["unread_count"] == 0
 
@@ -888,6 +925,7 @@ def test_inbox_read_close_reopen_and_incremental_messages():
             g.tenant = tenant
             session["user_id"] = employee_id
             session["role"] = "admin"
+            session["plan_key"] = "enterprise"
             payload = api_conversations().get_json()
             assert payload["conversations"][0]["unread_count"] == 1
 
@@ -895,6 +933,7 @@ def test_inbox_read_close_reopen_and_incremental_messages():
             g.tenant = tenant
             session["user_id"] = employee_id
             session["role"] = "admin"
+            session["plan_key"] = "enterprise"
             assert api_mark_conversation_read(conversation_id).get_json()["unread_count"] == 0
             assert AISalesConversationRead.query.filter_by(conversation_id=conversation_id, employee_id=employee_id).count() == 1
 
@@ -902,6 +941,7 @@ def test_inbox_read_close_reopen_and_incremental_messages():
             g.tenant = tenant
             session["user_id"] = employee_id
             session["role"] = "admin"
+            session["plan_key"] = "enterprise"
             closed = api_close_conversation(conversation_id).get_json()["conversation"]
             assert closed["status"] == "closed"
             assert closed["ai_enabled"] is False
@@ -910,6 +950,7 @@ def test_inbox_read_close_reopen_and_incremental_messages():
             g.tenant = tenant
             session["user_id"] = employee_id
             session["role"] = "admin"
+            session["plan_key"] = "enterprise"
             reopened = api_reopen_conversation(conversation_id).get_json()["conversation"]
             assert reopened["status"] == "open"
             assert reopened["ai_enabled"] is True
@@ -919,6 +960,7 @@ def test_inbox_read_close_reopen_and_incremental_messages():
             g.tenant = tenant
             session["user_id"] = employee_id
             session["role"] = "admin"
+            session["plan_key"] = "enterprise"
             api_close_conversation(conversation_id)
         reopened_automatically = get_or_create_conversation(
             channel,
@@ -1009,6 +1051,7 @@ def test_message_actions_and_manual_media_delivery():
                 g.tenant = tenant
                 session["user_id"] = employee_id
                 session["role"] = "admin"
+                session["plan_key"] = "enterprise"
                 media_payload = routes.api_manual_send_media(conversation_id).get_json()
                 assert media_payload["message"]["status"] == "sent"
                 assert media_payload["message"]["message_type"] == "image"
@@ -1033,6 +1076,7 @@ def test_message_actions_and_manual_media_delivery():
                 g.tenant = tenant
                 session["user_id"] = employee_id
                 session["role"] = "admin"
+                session["plan_key"] = "enterprise"
                 edited = routes.api_message_action(failed_id).get_json()["message"]
                 assert edited["text_content"] == "نص مصحح"
                 assert edited["status"] == "sent"
@@ -1042,6 +1086,7 @@ def test_message_actions_and_manual_media_delivery():
                 g.tenant = tenant
                 session["user_id"] = employee_id
                 session["role"] = "admin"
+                session["plan_key"] = "enterprise"
                 deleted = routes.api_message_action(media_id).get_json()["message"]
                 assert deleted["is_deleted"] is True
                 assert deleted["media_url"] == ""
@@ -1050,6 +1095,7 @@ def test_message_actions_and_manual_media_delivery():
                 g.tenant = tenant
                 session["user_id"] = employee_id
                 session["role"] = "admin"
+                session["plan_key"] = "enterprise"
                 response, status = routes.api_message_action(failed_id)
                 assert status == 409
                 assert response.get_json()["unsupported"] is True

@@ -1,0 +1,117 @@
+{% extends "wholesale/base.html" %}
+{% block title %}المخازن — جملة{% endblock %}
+{% block page_title %}المخازن والتحويل{% endblock %}
+
+{% block ws_content %}
+<div class="ws-ops">
+  <header class="ws-page-head">
+    <div class="ws-page-head__identity">
+      <span class="ws-page-head__icon"><i class="fa fa-warehouse"></i></span>
+      <div>
+        <span class="ws-page-kicker">تجارة الجملة</span>
+        <h1>المخازن والتحويل</h1>
+        <p>مخزن مرتبط بفرع — رصيد مستقل لكل منتج وتحويل فوري بين المخازن</p>
+      </div>
+    </div>
+    <div class="ws-page-head__actions">
+      <a class="ws-btn" href="/wholesale/ops"><i class="fa fa-layer-group"></i> العمليات</a>
+    </div>
+  </header>
+
+  <div class="ws-split">
+    <div class="ws-panel" id="whPanel">
+      <h3><i class="fa fa-boxes-stacked" style="color:#0284c7;margin-inline-end:6px"></i> قائمة المخازن</h3>
+      <div class="ws-table-wrap">
+        <table class="ws-table" style="min-width:0">
+          <thead><tr><th>الرمز</th><th>الاسم</th><th>النوع</th><th>الفرع</th></tr></thead>
+          <tbody id="whBody"></tbody>
+        </table>
+      </div>
+      <div class="ws-grid-top" style="margin-top:12px;grid-template-columns:repeat(2,minmax(0,1fr))">
+        <label>رمز<input id="whCode" placeholder="MAIN"></label>
+        <label>اسم<input id="whName" placeholder="المخزن الرئيسي"></label>
+        <label>نوع
+          <select id="whKind"><option value="main">رئيسي</option><option value="damaged">تالف</option><option value="returns">مرتجعات</option></select>
+        </label>
+        <label>فرع<select id="whBranch"></select></label>
+      </div>
+      <button class="ws-btn primary" id="whCreate" type="button"><i class="fa fa-plus"></i> إضافة مخزن</button>
+    </div>
+
+    <div class="ws-panel" id="trPanel">
+      <h3><i class="fa fa-right-left" style="color:#059669;margin-inline-end:6px"></i> تحويل بين المخازن</h3>
+      <div class="ws-grid-top" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        <label>من<select id="trFrom"></select></label>
+        <label>إلى<select id="trTo"></select></label>
+        <label>منتج ID<input id="trProduct" type="number" placeholder="رقم المنتج"></label>
+        <label>كمية<input id="trQty" type="number" value="1" min="1"></label>
+      </div>
+      <button class="ws-btn secondary" id="trSend" type="button"><i class="fa fa-right-left"></i> تحويل واستلام فوري</button>
+      <div class="ws-table-wrap" style="margin-top:14px">
+        <table class="ws-table" style="min-width:0">
+          <thead><tr><th>#</th><th>مخزن</th><th>منتج</th><th>نوع</th><th>كمية</th><th>وقت</th></tr></thead>
+          <tbody id="mvBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(async function(){
+  const api = async (p, o) => {
+    const r = await fetch('/api/wholesale'+p, {headers:{'Content-Type':'application/json'}, credentials:'same-origin', ...o});
+    const j = await r.json(); if(!r.ok||j.ok===false) throw new Error(j.error||'فشل'); return j.data;
+  };
+  const kindLabel = {main:'رئيسي', damaged:'تالف', returns:'مرتجعات'};
+  const ctx = await api('/context');
+  const whSel = (el) => { el.innerHTML = (ctx.warehouses||[]).map(w=>`<option value="${w.id}">${w.name}</option>`).join(''); };
+  whSel(document.getElementById('trFrom')); whSel(document.getElementById('trTo'));
+  document.getElementById('whBranch').innerHTML = '<option value="">—</option>' + (ctx.branches||[]).map(b=>`<option value="${b.id}">${b.name}</option>`).join('');
+  const refreshWh = async () => {
+    const rows = await api('/warehouses');
+    document.getElementById('whBody').innerHTML = rows.map(w=>`<tr>
+      <td><b>${w.code}</b></td><td>${w.name}</td>
+      <td><span class="ws-badge">${kindLabel[w.kind]||w.kind}</span></td>
+      <td>${w.branch_name||'—'}</td>
+    </tr>`).join('') || '<tr><td colspan="4"><div class="ws-empty"><i class="fa fa-warehouse"></i><b>لا مخازن بعد</b></div></td></tr>';
+  };
+  const refreshMv = async () => {
+    const rows = await api('/warehouses/movements');
+    document.getElementById('mvBody').innerHTML = rows.map(m=>`<tr>
+      <td>${m.id}</td><td>${m.warehouse_id}</td><td>${m.product_id}</td>
+      <td>${m.movement_type}</td><td>${m.quantity}</td><td>${m.created_at||''}</td>
+    </tr>`).join('') || '<tr><td colspan="6"><div class="ws-empty"><i class="fa fa-inbox"></i><b>لا حركات تحويل</b></div></td></tr>';
+  };
+  document.getElementById('whCreate').onclick = async () => {
+    try {
+      await api('/warehouses', {method:'POST', body: JSON.stringify({
+        code: whCode.value, name: whName.value, kind: whKind.value, branch_id: whBranch.value||null
+      })});
+      await refreshWh();
+      const fresh = await api('/context');
+      whSel(trFrom); whSel(trTo);
+      Object.assign(ctx, fresh);
+      alert('تم إضافة المخزن');
+    } catch(e){ alert(e.message); }
+  };
+  document.getElementById('trSend').onclick = async () => {
+    try {
+      await api('/warehouses/transfer', {method:'POST', body: JSON.stringify({
+        from_warehouse_id: Number(trFrom.value), to_warehouse_id: Number(trTo.value),
+        lines:[{product_id:Number(trProduct.value), quantity:Number(trQty.value||1)}],
+        send:true, receive:true
+      })});
+      await refreshMv();
+      alert('تم التحويل');
+    } catch(e){ alert(e.message); }
+  };
+  {% if focus == 'transfers' %}
+  document.getElementById('trPanel')?.scrollIntoView({behavior:'smooth', block:'start'});
+  {% endif %}
+  await refreshWh(); await refreshMv();
+})();
+</script>
+{% endblock %}

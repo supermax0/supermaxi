@@ -10,8 +10,11 @@
         <i class="fas fa-th-large"></i> لوحة التطبيق
       </a>
       {% if business_allows('mobile_app_videos') %}
-      <a class="ma-subnav-item{% if '/mobile-app/videos' in ma_path %} active{% endif %}" href="{{ url_for('mobile_admin.videos_page') }}">
+      <a class="ma-subnav-item{% if '/mobile-app/videos' in ma_path and '/video-products' not in ma_path %} active{% endif %}" href="{{ url_for('mobile_admin.videos_page') }}">
         <i class="fas fa-video"></i> الفيديوهات
+      </a>
+      <a class="ma-subnav-item{% if '/mobile-app/video-products' in ma_path %} active{% endif %}" href="{{ url_for('mobile_admin.video_products_page') }}">
+        <i class="fas fa-link"></i> ربط المنتجات
       </a>
       {% endif %}
       {% if business_allows('mobile_app_users') %}

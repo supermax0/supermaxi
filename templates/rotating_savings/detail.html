@@ -37,10 +37,13 @@
       <thead><tr><th>#</th><th>التاريخ</th><th>المبلغ</th><th>الرسوم</th><th>الحالة</th><th>قيد</th><th>ملاحظات</th></tr></thead>
       <tbody>
         {% for p in saving.payments %}
-        <tr>
+        <tr class="{% if p.status == 'reversed' %}rs-row-reversed{% endif %}">
           <td>{{ p.payment_no or p.id }}</td>
           <td>{{ p.payment_date }}</td>
-          <td>{{ "{:,}".format(p.amount) }}</td>
+          <td>
+            {{ "{:,}".format(p.effective_amount) }}
+            {% if p.status == 'reversed' %}<small class="rs-reversed-note">ملغى بالكامل</small>{% endif %}
+          </td>
           <td>{{ "{:,}".format(p.fee_amount or 0) }}</td>
           <td>{{ p.status_label() }}</td>
           <td>{% if p.journal_entry_id %}#{{ p.journal_entry_id }}{% else %}—{% endif %}</td>

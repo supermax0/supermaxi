@@ -44,7 +44,24 @@ class SystemSettings(db.Model):
     @staticmethod
     def get_settings():
         """Get or create the single SystemSettings row."""
-        from utils.dashboard_ui_defaults import get_default_dashboard_ui_flags
+        from utils.dashboard_ui_defaults import (
+            get_default_dashboard_ui_flags,
+            migrate_dashboard_ui_defaults,
+        )
+
+        # Storefront requests (one company per request) opt in to reusing the row for the whole request: a store
+        # page asked for it ~11 times (~5 ms each). Everywhere else nothing changes.
+        memo = None
+        try:
+            from flask import g, has_request_context
+
+            memo = g.get("_settings_memo") if has_request_context() else None
+        except Exception:
+            memo = None
+        if memo is not None:
+            cached = memo.get(getattr(g, "tenant", None))
+            if cached is not None and cached in db.session:
+                return cached
 
         try:
             settings = SystemSettings.query.options(
@@ -70,6 +87,13 @@ class SystemSettings(db.Model):
             settings.set_ui_flags(get_default_dashboard_ui_flags())
             db.session.add(settings)
             db.session.commit()
+        else:
+            migrated_flags, changed = migrate_dashboard_ui_defaults(settings.get_ui_flags())
+            if changed:
+                settings.set_ui_flags(migrated_flags)
+                db.session.commit()
+        if memo is not None:
+            memo[getattr(g, "tenant", None)] = settings
         return settings
 
     def __repr__(self) -> str:  # pragma: no cover

@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+{% block title %}التقرير اليومي الحالي{% endblock %}
+{% block head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/daily-closing.css') }}?v=20260826-dark">
+{% endblock %}
+{% macro money(v) %}{{ "{:,.0f}".format(v or 0) }} د.ع{% endmacro %}
+{% macro status_label(status) %}
+  {% if status == 'closed' %}مغلقة{% elif status == 'under_review' %}تحت المراجعة{% else %}مفتوحة{% endif %}
+{% endmacro %}
+{% block content %}
+<main class="dc-page" dir="rtl">
+  <header class="dc-hero">
+    <div class="dc-title-row">
+      <a href="/reports" class="dc-back-link" aria-label="العودة إلى التقارير"><i class="fa-solid fa-arrow-right"></i></a>
+      <div>
+        <p class="dc-eyebrow"><i class="fa-solid fa-chart-pie"></i> التقارير</p>
+        <h1>التقرير اليومي <span>/ الحالي</span></h1>
+        <p>كل حركات اليوم محدثة في شاشة واحدة، بدون فتح أو إغلاق يدوي.</p>
+      </div>
+    </div>
+    {% if daily %}
+    <div class="dc-report-id"><span>رقم اليومية</span><strong>{{ daily.report_number }}</strong></div>
+    {% endif %}
+  </header>
+
+  <form class="dc-report-filter" method="get" aria-label="اختيار الفرع وفترة التقرير">
+    <label><span><i class="fa-solid fa-location-dot"></i> الفرع</span>
+      <select name="branch_id" {% if not can_switch_report_branch %}disabled{% endif %}>
+        {% if can_switch_report_branch %}<option value="all" {% if selected_all_branches %}selected{% endif %}>كل الفروع</option>{% endif %}
+        {% for branch in report_branches %}<option value="{{ branch.id }}" {% if not selected_all_branches and ((view_session and view_session.branch_id == branch.id) or (not view_session and (selected_branch_id or current_branch_id) == branch.id)) %}selected{% endif %}>{{ branch.name }}</option>{% endfor %}
+      </select>
+      {% if not can_switch_report_branch %}<input type="hidden" name="branch_id" value="{{ daily.branch_id if daily else current_branch_id }}">{% endif %}
+    </label>
+    <label><span><i class="fa-solid fa-calendar-day"></i> تاريخ اليومية</span><input type="date" name="report_date" value="{{ report_date_value }}"></label>
+    <label><span><i class="fa-regular fa-clock"></i> من الساعة</span><input type="time" name="period_from" value="{{ period_from_value }}"></label>
+    <label><span><i class="fa-regular fa-clock"></i> إلى الساعة</span><input type="time" name="period_to" value="{{ period_to_value }}"></label>
+    <button class="dc-btn primary" type="submit"><i class="fa-solid fa-filter"></i> عرض التقرير</button>
+    {% if report %}<a class="dc-btn" href="{{ url_for('daily_closing.dashboard', branch_id=('all' if selected_all_branches else view_session.branch_id), report_date=view_session.business_date.isoformat()) }}"><i class="fa-solid fa-rotate-left"></i> اليوم كامل</a>{% endif %}
+  </form>
+
+  {% if not report %}
+  <section class="dc-empty-start">
+    <div class="dc-empty-icon"><i class="fa-solid fa-door-open"></i></div>
+    {% if (all_branch_view and not selected_branch_id) or shared_mode %}
+    <h2>اختر الفرع لعرض أو بدء اليومية</h2>
+    <p>اختر الفرع المطلوب لعرض تقريره اليومي الحالي.</p>
+    {% if open_dailies %}
+    <div class="dc-open-dailies">
+      {% for item in open_dailies %}
+      <a href="{{ url_for('daily_closing.dashboard', session_id=item.id) }}">
+        <span>{{ item.branch.name if item.branch else 'فرع غير معروف' }}</span>
+        <strong>{{ item.report_number }}</strong>
+        <small>{{ status_label(item.status) }}</small>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+    {% else %}
+    <h2>لا توجد يومية لهذا الفرع بعد</h2>
+    <p>لا توجد حركات مسجلة ضمن التاريخ والفرع المحددين.</p>
+    {% endif %}
+  </section>
+  {% else %}
+  {% if report_mode %}<div class="dc-alert info"><i class="fa-solid fa-chart-line"></i><div><strong>عرض مباشر — {{ report.session.branch_name }}</strong><br>يعرض الحركات الفعلية للتاريخ والفترة المختارين.</div></div>{% endif %}
+  <section class="dc-session-bar">
+    <div class="dc-session-meta">
+      <div><span>التاريخ</span><strong>{{ report.session.business_date }}</strong></div>
+      <div><span>الفرع</span><strong>{{ report.session.branch_name }}</strong></div>
+      <div><span>الوردية</span><strong>{{ report.session.shift_name }}</strong></div>
+      <div><span>المسؤول</span><strong>{{ report.session.opened_by }}</strong></div>
+      <div><span>وقت البداية</span><strong class="js-local-time" data-time="{{ report.session.opened_at }}"></strong></div>
+      <div><span>آخر وقت محسوب</span><strong class="js-local-time" data-time="{{ report.period.end }}"></strong></div>
+      <div><span>الحالة</span><strong class="dc-status open">{{ 'عرض مباشر' if report_mode else 'حالي ومفتوح' }}</strong></div>
+    </div>
+    <div class="dc-actions">
+      {% if not report_mode and permissions['daily_report.edit'] %}<button class="dc-btn" id="saveDaily"><i class="fa-solid fa-floppy-disk"></i> حفظ التغييرات</button>{% endif %}
+      {% if not report_mode %}<button class="dc-btn" id="refreshDaily"><i class="fa-solid fa-rotate"></i> تحديث البيانات</button>{% endif %}
+      {% if not report_mode and (permissions['daily_report.print'] or permissions['daily_report.export']) %}<button class="dc-btn info" data-open="printModal"><i class="fa-solid fa-eye"></i> معاينة التقرير</button>{% endif %}
+      {% if not report_mode and permissions['daily_report.print'] %}<button class="dc-btn primary" data-open="printModal"><i class="fa-solid fa-print"></i> طباعة</button>{% endif %}
+    </div>
+  </section>
+
+  <section class="dc-kpis dc-kpis-primary">
+    {% for label, value, icon, tone in [
+      ('إجمالي المبيعات', report.sales.total_sales, 'fa-cart-shopping', 'blue'),
+      ('المقبوض اليوم', report.sales.received_today, 'fa-hand-holding-dollar', 'teal'),
+      ('الخارج من الصندوق', report.cash.total_out, 'fa-money-bill-transfer', 'orange'),
+      ('الصندوق المتوقع', report.cash.expected, 'fa-vault', 'teal'),
+      ('الصندوق الحالي', report.cash.actual, 'fa-money-bill-wave', 'violet'),
+      ('صافي الربح', report.sales.net_profit, 'fa-chart-line', 'green')
+    ] %}
+    <article class="dc-kpi {{ tone }}"><div class="dc-kpi-icon"><i class="fa-solid {{ icon }}"></i></div><div><span>{{ label }}</span><strong>{{ money(value) if value is not none else 'غير مُدخل' }}</strong></div></article>
+    {% endfor %}
+  </section>
+  <section class="dc-kpis dc-kpis-secondary" aria-label="مؤشرات إضافية">
+    {% for label, value, is_count in [
+      ('عدد الطلبات', report.sales.orders_count, true),
+      ('المبيعات النقدية', report.sales.cash_sales, false),
+      ('المبيعات الآجلة', report.sales.credit_sales, false),
+      ('بطاقة / إلكتروني', report.sales.electronic_sales, false),
+      ('تحويل بنكي', report.sales.bank_sales, false),
+      ('إجمالي المصروفات', report.expenses.total, false),
+      ('مصروفات من الصندوق', report.expenses.cash_total, false),
+      ('مصروفات من البنك', report.expenses.bank_total, false),
+      ('الصندوق أول الفترة', report.cash.opening, false),
+      ('المرتجعات', report.sales.returns, false),
+      ('الخصومات', report.sales.discounts, false),
+      ('فرق الصندوق', report.cash.variance, false),
+      ('إجمالي الربح', report.sales.gross_profit, false)
+    ] %}
+    <article class="dc-mini-kpi"><span>{{ label }}</span><strong class="{% if label == 'فرق الصندوق' and value %}{{ 'negative' if value < 0 else 'positive' }}{% endif %}">{{ value if is_count else (money(value) if value is not none else '—') }}</strong></article>
+    {% endfor %}
+  </section>
+
+  {% if report.period.is_custom %}
+  <div class="dc-alert info"><i class="fa-solid fa-clock"></i> الأرقام المعروضة للفترة المختارة من <strong class="js-local-time" data-time="{{ report.period.start }}"></strong> إلى <strong class="js-local-time" data-time="{{ report.period.end }}"></strong>.</div>
+  {% endif %}
+  {% if report.sales.orders_count and report.sales.received_today == 0 %}
+  <div class="dc-alert warning"><i class="fa-solid fa-circle-info"></i><div><strong>لا توجد مبالغ قبض مسجلة لهذه المبيعات.</strong><br>يوجد {{ report.sales.unpaid_orders_count }} طلب بحالة غير مسدد؛ لذلك تظهر المبيعات آجلة ولا تدخل الصندوق إلى أن تُسجل طريقة الدفع والمبلغ المقبوض في الطلب.</div></div>
+  {% endif %}
+
+  <div class="dc-overview-grid">
+  <section class="dc-card dc-overview-cash" id="cashSection">
+    <div class="dc-card-head"><div><p class="dc-eyebrow">حركة السيولة</p><h2><i class="fa-solid fa-cash-register"></i> الصندوق</h2></div><div class="dc-inline-actions">{% if not report_mode and view_session.status != 'closed' and permissions['daily_report.edit'] %}<button class="dc-btn small" data-open="cashAdjustmentModal"><i class="fa-solid fa-plus"></i> حركة يدوية</button>{% endif %}<button class="dc-btn small" data-toggle="cashDetails"><i class="fa-solid fa-list"></i> تفاصيل الصندوق</button></div></div>
+    <div class="dc-cash-grid">
+      <div><span>الصندوق أول الفترة</span><strong>{{ money(report.cash.opening) }}</strong></div>
+      <div class="positive"><span>جميع الحركات الداخلة</span><strong>+ {{ money(report.cash.total_in) }}</strong></div>
+      <div class="negative"><span>جميع الحركات الخارجة</span><strong>- {{ money(report.cash.total_out) }}</strong></div>
+      <div class="emphasis"><span>الصندوق المتوقع</span><strong>{{ money(report.cash.expected) }}</strong></div>
+       <label><span>الصندوق الحالي (السوبر أدمن)</span><input id="actualCash" type="number" min="0" value="{{ report.cash.actual if report.cash.actual is not none else '' }}" {% if report_mode or not permissions.can_edit_actual_cash %}disabled{% endif %}></label>
+    </div>
+    {% if report.cash.variance is not none %}
+      {% if report.cash.variance < 0 %}<div class="dc-alert danger"><i class="fa-solid fa-circle-exclamation"></i> يوجد عجز بالصندوق بقيمة {{ money(-report.cash.variance) }}</div>
+      {% elif report.cash.variance > 0 %}<div class="dc-alert warning"><i class="fa-solid fa-circle-exclamation"></i> يوجد فائض بالصندوق بقيمة {{ money(report.cash.variance) }}</div>
+      {% else %}<div class="dc-alert success"><i class="fa-solid fa-circle-check"></i> الصندوق مطابق</div>{% endif %}
+    {% endif %}
+    <div id="cashDetails" class="dc-collapsible">
+      <div class="dc-cash-breakdown">
+        {% for label, value, direction in [
+          ('المبيعات النقدية', report.cash.breakdown.cash_sales, 'in'),
+          ('قبض ديون العملاء', report.cash.breakdown.debt_receipts, 'in'),
+          ('إيداعات وحركات داخلة أخرى', report.cash.breakdown.other_in, 'in'),
+          ('مصروفات مدفوعة من الصندوق', report.cash.breakdown.cash_expenses, 'out'),
+          ('تسديد موردين', report.cash.breakdown.supplier_payments, 'out'),
+          ('سحب صاحب الشركة', report.cash.breakdown.owner_withdrawals, 'out'),
+          ('مبالغ مرتجعة للعملاء', report.cash.breakdown.customer_refunds, 'out'),
+          ('حركات خارجة أخرى', report.cash.breakdown.other_out, 'out')
+        ] %}<div><span>{{ label }}</span><strong class="{{ 'positive' if direction == 'in' else 'negative' }}">{{ '+' if direction == 'in' else '-' }} {{ money(value) }}</strong></div>{% endfor %}
+      </div>
+      <div class="dc-table-wrap"><table class="dc-table"><thead><tr><th>الوقت</th><th>نوع الحركة</th><th>البيان</th><th>المرجع</th><th>داخل</th><th>خارج</th><th>الرصيد</th></tr></thead><tbody>
+      {% for row in report.cash.movements %}<tr><td class="js-local-time" data-time="{{ row.time }}"></td><td>{{ row.type }}</td><td>{{ row.description }}</td><td><span class="dc-ref">{{ row.reference_type }} #{{ row.reference_id }}</span></td><td class="num positive">{{ money(row['in']) if row['in'] else '—' }}</td><td class="num negative">{{ money(row.out) if row.out else '—' }}</td><td class="num">{{ money(row.balance) }}</td></tr>{% else %}<tr><td colspan="7" class="dc-empty">لا توجد حركات صندوق ضمن الفترة.</td></tr>{% endfor %}
+      </tbody></table></div>
+    </div>
+  </section>
+
+  <section class="dc-card dc-overview-sales">
+    <div class="dc-card-head"><div><p class="dc-eyebrow">الإيرادات</p><h2><i class="fa-solid fa-chart-column"></i> ملخص المبيعات</h2></div></div>
+    <div class="dc-summary-grid">
+      <div><span>عدد الطلبات</span><strong>{{ report.sales.orders_count }}</strong></div><div><span>إجمالي المبيعات</span><strong>{{ money(report.sales.total_sales) }}</strong></div>
+      <div><span>نقدي</span><strong>{{ money(report.sales.cash_sales) }}</strong></div><div><span>آجل</span><strong>{{ money(report.sales.credit_sales) }}</strong></div>
+      <div><span>بطاقة / إلكتروني</span><strong>{{ money(report.sales.electronic_sales) }}</strong></div><div><span>تحويل بنكي</span><strong>{{ money(report.sales.bank_sales) }}</strong></div>
+      <div><span>مقبوضات ديون</span><strong>{{ money(report.sales.debt_receipts) }}</strong></div><div><span>الخصومات</span><strong>{{ money(report.sales.discounts) }}</strong></div>
+      <div><span>المرتجعات</span><strong>{{ money(report.sales.returns) }}</strong></div><div><span>تكلفة البضاعة</span><strong>{{ money(report.sales.cogs) }}</strong></div>
+      <div><span>إجمالي الربح</span><strong>{{ money(report.sales.gross_profit) }}</strong></div><div><span>صافي الربح</span><strong>{{ money(report.sales.net_profit) }}</strong></div>
+    </div>
+    <p class="dc-note"><i class="fa-solid fa-circle-info"></i> المبيعات الآجلة داخلة في المبيعات، ولا تدخل صندوق الكاش إلا عند وجود قبض فعلي مسجل.</p>
+  </section>
+
+  <section class="dc-card dc-overview-stock">
+    <div class="dc-card-head"><div><p class="dc-eyebrow">المخزون</p><h2><i class="fa-solid fa-arrow-up-from-bracket"></i> حركة المواد الخارجة</h2></div><input class="dc-search" data-table-search="stockOutTable" placeholder="بحث بالمادة..."></div>
+    <div class="dc-table-wrap"><table class="dc-table" id="stockOutTable"><thead><tr><th>المادة</th><th>مبيعات</th><th>تسليم مندوب</th><th>نقل</th><th>تلف</th><th>استخدام داخلي</th><th>مرتجع مورد</th><th>أخرى</th><th>إجمالي الخارج</th></tr></thead><tbody>
+    {% for row in report.stock.outgoing %}<tr><td>{{ row.product_name }}</td>{% for key in ['sales','delivery_out','transfer_out','damage','internal_use','purchase_return','other_out'] %}<td><button class="dc-number-link" data-stock-detail="{{ row.product_id }}:{{ key }}">{{ row[key] }}</button></td>{% endfor %}<td class="num strong">{{ row.total_out }}</td></tr>{% else %}<tr><td colspan="9" class="dc-empty">لا توجد مواد خارجة ضمن الفترة.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </section>
+  </div>
+
+  <section class="dc-card">
+    <div class="dc-card-head"><div><p class="dc-eyebrow">المخزون</p><h2><i class="fa-solid fa-arrow-down-to-bracket"></i> حركة المواد الداخلة</h2></div><input class="dc-search" data-table-search="stockInTable" placeholder="بحث بالمادة..."></div>
+    <div class="dc-table-wrap"><table class="dc-table" id="stockInTable"><thead><tr><th>المادة</th><th>شراء</th><th>مرتجع عميل</th><th>نقل داخلي</th><th>مرتجع مندوب</th><th>تسوية</th><th>إجمالي الداخل</th></tr></thead><tbody>
+    {% for row in report.stock.incoming %}<tr><td>{{ row.product_name }}</td>{% for key in ['purchase','sale_return','transfer_in','delivery_return','adjustment'] %}<td><button class="dc-number-link" data-stock-detail="{{ row.product_id }}:{{ key }}">{{ row[key] }}</button></td>{% endfor %}<td class="num strong">{{ row.total_in }}</td></tr>{% else %}<tr><td colspan="7" class="dc-empty">لا توجد مواد داخلة ضمن الفترة.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </section>
+
+  <div class="dc-close-grid">
+  <section class="dc-card dc-inventory-panel" id="inventorySection">
+    <div class="dc-card-head"><div><p class="dc-eyebrow">جرد انتقائي</p><h2><i class="fa-solid fa-clipboard-list"></i> الجرد اليومي</h2></div><div class="dc-inline-actions">
+      {% if ((not report_mode and view_session.status != 'closed') or selected_all_branches) and permissions['daily_report.inventory_count'] %}<button class="dc-btn primary" data-open="productModal"><i class="fa-solid fa-plus"></i> اختيار مواد للجرد</button>{% if not report_mode %}<button class="dc-btn" id="saveTemplate"><i class="fa-solid fa-bookmark"></i> حفظ كقائمة جرد</button>{% endif %}{% endif %}
+      {% if not report_mode and view_session.status != 'closed' and templates %}<select id="templateSelect"><option value="">تحميل قائمة محفوظة</option>{% for item in templates %}<option value="{{ item.id }}">{{ item.name }}</option>{% endfor %}</select>{% endif %}
+    </div></div>
+    <div class="dc-chips">{% for row in report.inventory_counts %}<span class="dc-chip">{{ row.product_name }} {% if not report_mode and view_session.status != 'closed' %}<button data-remove-count="{{ row.id }}" aria-label="حذف">×</button>{% endif %}</span>{% endfor %}</div>
+    <div class="dc-table-wrap"><table class="dc-table"><thead><tr><th>المادة</th><th>أول الفترة</th><th>الداخل</th><th>الخارج</th><th>الرصيد بالنظام</th><th>الجرد الفعلي</th><th>الفرق</th></tr></thead><tbody>
+    {% for row in report.inventory_counts %}<tr><td>{{ row.product_name }}</td><td>{{ row.opening }}</td><td class="positive">{{ row.incoming }}</td><td class="negative">{{ row.outgoing }}</td><td class="strong">{{ row.expected }}</td><td>{% if report_mode or view_session.status == 'closed' %}{{ row.actual if row.actual is not none else '—' }}{% else %}<input class="dc-count-input" type="number" min="0" value="{{ row.actual if row.actual is not none else '' }}" data-count-id="{{ row.id }}" aria-label="الجرد الفعلي لـ {{ row.product_name }}">{% endif %}</td><td class="num {% if row.variance is not none and row.variance < 0 %}negative{% elif row.variance is not none and row.variance > 0 %}positive{% endif %}">{% if row.variance is none %}—{% elif row.variance > 0 %}+{{ row.variance }}{% else %}{{ row.variance }}{% endif %}</td></tr>{% else %}<tr><td colspan="7" class="dc-empty">{{ 'لا توجد لقطة مخزون مسجلة للفروع.' if report_mode else 'لم يتم اختيار مواد للجرد. الجرد غير إلزامي لكل المخزون.' }}</td></tr>{% endfor %}
+    </tbody></table></div>
+  </section>
+
+  <section class="dc-card dc-expenses-panel">
+    <div class="dc-card-head"><div><p class="dc-eyebrow">النفقات</p><h2><i class="fa-solid fa-file-invoice-dollar"></i> مصروفات اليوم</h2></div></div>
+    <div class="dc-expense-summary"><div><span>إجمالي المصروفات</span><strong>{{ money(report.expenses.total) }}</strong></div><div><span>من الصندوق</span><strong>{{ money(report.expenses.cash_total) }}</strong></div><div><span>بطاقة / حساب بنكي</span><strong>{{ money(report.expenses.bank_total) }}</strong></div><div><span>طرق أخرى</span><strong>{{ money(report.expenses.other_total) }}</strong></div></div>
+    <div class="dc-table-wrap"><table class="dc-table"><thead><tr><th>الوقت</th><th>النوع</th><th>البيان</th><th>الموظف</th><th>طريقة الدفع</th><th>المبلغ</th></tr></thead><tbody>
+    {% for row in report.expenses.rows %}<tr><td class="js-local-time" data-time="{{ row.time }}"></td><td>{{ row.type }}</td><td>{{ row.description }}</td><td>{{ row.employee_name }}</td><td><span class="dc-badge">{{ row.payment_method }}</span></td><td class="num negative">{{ money(row.amount) }}</td></tr>{% else %}<tr><td colspan="6" class="dc-empty">لا توجد مصروفات ضمن الفترة.</td></tr>{% endfor %}
+    </tbody></table></div>
+  </section>
+
+  <section class="dc-card dc-review-panel">
+    <div class="dc-card-head"><div><p class="dc-eyebrow">مراجعة مباشرة</p><h2><i class="fa-solid fa-clipboard-check"></i> سلامة التقرير الحالي</h2></div></div>
+    <div class="dc-review-list">
+      <p><i class="fa-solid fa-circle-check"></i><span>تم احتساب جميع المبيعات</span></p>
+      <p><i class="fa-solid fa-circle-check"></i><span>تم احتساب المصروفات</span></p>
+      <p><i class="fa-solid fa-circle-check"></i><span>تم احتساب حركة المواد</span></p>
+      <p><i class="fa-solid fa-circle-check"></i><span>تم احتساب المواد المختارة للجرد</span></p>
+      {% if report.cash.variance %}<p class="has-warning"><i class="fa-solid fa-triangle-exclamation"></i><span>فرق الصندوق: {{ money(report.cash.variance) }}</span></p>{% endif %}
+      {% for row in report.inventory_counts if row.variance %}<p class="has-warning"><i class="fa-solid fa-triangle-exclamation"></i><span>{{ row.product_name }}: {{ '+' if row.variance > 0 else '' }}{{ row.variance }}</span></p>{% endfor %}
+    </div>
+  </section>
+  </div>
+
+  <div class="dc-two-col">
+    <section class="dc-card"><div class="dc-card-head"><div><p class="dc-eyebrow">التوصيل</p><h2><i class="fa-solid fa-motorcycle"></i> حركة المندوبين</h2></div></div><div class="dc-table-wrap"><table class="dc-table"><thead><tr><th>المندوب</th><th>المادة</th><th>المسلمة</th><th>المباعة</th><th>المرتجعة</th><th>المتبقي</th></tr></thead><tbody>{% for row in report.couriers %}<tr><td>{{ row.agent }}</td><td>{{ row.product }}</td><td>{{ row.delivered }}</td><td>{{ row.sold }}</td><td>{{ row.returned }}</td><td>{{ row.remaining }}</td></tr>{% else %}<tr><td colspan="6" class="dc-empty">لا توجد حركة مندوبين.</td></tr>{% endfor %}</tbody></table></div></section>
+    <section class="dc-card"><div class="dc-card-head"><div><p class="dc-eyebrow">الاسترجاع</p><h2><i class="fa-solid fa-rotate-left"></i> المرتجعات</h2></div></div><div class="dc-summary-grid compact"><div><span>عدد المرتجعات</span><strong>{{ report.returns.count }}</strong></div><div><span>قيمة المرتجعات</span><strong>{{ money(report.returns.value) }}</strong></div><div><span>مرجع نقداً</span><strong>{{ money(report.returns.cash_refund) }}</strong></div><div><span>مرجع إلكترونياً</span><strong>{{ money(report.returns.electronic_refund) }}</strong></div><div><span>مواد رجعت للمخزون</span><strong>{{ report.returns.returned_to_stock }}</strong></div><div><span>مواد لم ترجع للمخزون</span><strong class="{% if report.returns.not_returned_to_stock %}negative{% endif %}">{{ report.returns.not_returned_to_stock }}</strong></div></div></section>
+  </div>
+
+  <section class="dc-card">
+    <div class="dc-card-head"><div><p class="dc-eyebrow">توثيق</p><h2><i class="fa-solid fa-note-sticky"></i> الملاحظات</h2></div></div>
+    <textarea id="dailyNotes" rows="4" placeholder="ملاحظات الموظف أو المدير..." {% if report_mode or view_session.status == 'closed' or not permissions['daily_report.edit'] %}disabled{% endif %}>{{ report.session.notes }}</textarea>
+  </section>
+
+  <section class="dc-card">
+    <div class="dc-card-head"><div><p class="dc-eyebrow">أثر رقابي</p><h2><i class="fa-solid fa-clock-rotate-left"></i> سجل التغييرات</h2></div></div>
+    <div class="dc-table-wrap"><table class="dc-table"><thead><tr><th>الوقت</th><th>الإجراء</th><th>المستخدم</th><th>القيمة القديمة</th><th>القيمة الجديدة</th><th>السبب</th></tr></thead><tbody>{% for row in audit_rows %}<tr><td class="js-local-time" data-time="{{ row.created_at.isoformat() }}"></td><td>{{ row.action }}</td><td>{{ row.user_name or row.user_id or 'النظام' }}</td><td class="dc-json">{{ row.old_value_json or '—' }}</td><td class="dc-json">{{ row.new_value_json or '—' }}</td><td>{{ row.reason or '—' }}</td></tr>{% else %}<tr><td colspan="6" class="dc-empty">لا توجد تغييرات مسجلة.</td></tr>{% endfor %}</tbody></table></div>
+  </section>
+
+  {% include 'daily_closing_modals.html' %}
+  <script id="dcConfig" type="application/json">{{ {'sessionId': (daily.id if daily else none), 'branchId': view_session.branch_id, 'branchName': report.session.branch_name, 'status': view_session.status, 'cashExpected': report.cash.expected, 'inventoryCounts': report.inventory_counts, 'permissions': permissions, 'reportMode': report_mode, 'allBranches': selected_all_branches}|tojson }}</script>
+  {% endif %}
+</main>
+{% endblock %}
+{% block scripts %}<script src="{{ url_for('static', filename='js/daily-closing.js') }}?v=20260827-current" defer></script>{% endblock %}

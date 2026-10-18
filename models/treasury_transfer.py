@@ -7,6 +7,7 @@ class TreasuryTransfer(db.Model):
     __tablename__ = "treasury_transfer"
 
     id = db.Column(db.Integer, primary_key=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey("branch.id"), nullable=True, index=True)
     from_account_id = db.Column(
         db.Integer,
         db.ForeignKey("treasury_account.id"),

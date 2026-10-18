@@ -90,6 +90,11 @@ class Invoice(db.Model):
         db.Text
     )
 
+    agent_note = db.Column(
+        db.Text,
+        nullable=True,
+    )  # ملاحظة المندوب على الطلب
+
     # =====================
     # Shipping
     # =====================
@@ -193,6 +198,25 @@ class Invoice(db.Model):
     stock_is_deducted = db.Column(db.Boolean, default=True, nullable=False)
     stock_deducted_at = db.Column(db.DateTime, nullable=True)
     stock_restored_at = db.Column(db.DateTime, nullable=True)
+
+    # =====================
+    # Wholesale extensions (nullable — general/beauty unaffected)
+    # =====================
+    warehouse_id = db.Column(db.Integer, nullable=True, index=True)
+    currency = db.Column(db.String(10), nullable=True, default="IQD")
+    exchange_rate = db.Column(db.Float, nullable=True, default=1.0)
+    payment_currency = db.Column(db.String(10), nullable=True)
+    sale_type = db.Column(db.String(30), nullable=True)  # cash|credit|partial
+    is_draft = db.Column(db.Boolean, default=False, nullable=True)
+    deleted_at = db.Column(db.DateTime, nullable=True)
+    source_module = db.Column(db.String(40), nullable=True)
+    facebook_thread_json = db.Column(db.Text, nullable=True)
+    invoice_no = db.Column(db.String(80), nullable=True, index=True)
+    shipping_fee = db.Column(db.Integer, nullable=True, default=0)
+    location_lat = db.Column(db.Float, nullable=True)
+    location_lng = db.Column(db.Float, nullable=True)
+    location_url = db.Column(db.String(500), nullable=True)
+    location_label = db.Column(db.String(120), nullable=True)
 
     # =====================
     # Time

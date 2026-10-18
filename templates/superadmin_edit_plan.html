@@ -47,9 +47,23 @@
     }
 
     .feature-toggle-list {
+        display: flex;
+        flex-direction: column;
+        gap: 22px;
+    }
+
+    .feature-group-title {
+        margin: 0 0 12px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid var(--border-color);
+        color: var(--primary);
+        font-size: 15px;
+    }
+
+    .feature-group-list {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 16px;
+        gap: 12px;
     }
 
     .feature-toggle {
@@ -101,6 +115,18 @@
     .btn-save:hover {
         transform: translateY(-2px);
         box-shadow: 0 15px 30px rgba(99, 102, 241, 0.3);
+    }
+
+    @media (max-width: 1100px) {
+        .edit-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .feature-group-list {
+            grid-template-columns: 1fr;
+        }
     }
 </style>
 {% endblock %}
@@ -159,33 +185,19 @@
         <div class="settings-card">
             <h3 style="margin-bottom: 24px;"><i class="fas fa-tasks"></i> الميزات المفعّلة لهذه الخطة</h3>
 
-            {% set feats = plan.get_features() %}
             <div class="feature-toggle-list">
-                {% set feature_labels = [
-                ('orders', 'إدارة الطلبات'),
-                ('pos', 'نقطة البيع (POS)'),
-                ('inventory', 'المخزون'),
-                ('customers', 'إدارة الزبائن'),
-                ('cashflow', 'التحصيل والمدفوعات'),
-                ('printing', 'الطباعة والفواتير'),
-                ('expenses', 'إدارة المصروفات'),
-                ('suppliers', 'الموردون'),
-                ('purchases', 'المشتريات'),
-                ('shipping', 'شركات النقل'),
-                ('reports_adv', 'تقارير مالية متقدمة'),
-                ('rbac', 'صلاحيات RBAC'),
-                ('agents', 'مناديب التوصيل'),
-                ('accounts', 'دفتر الحسابات'),
-                ('ai_assistant', 'مساعد AI'),
-                ('ai_workspace', 'مساحة LEON (AI Workspace)'),
-                ('messages', 'نظام الرسائل')
-                ] %}
-
-                {% for key, label in feature_labels %}
-                <label class="feature-toggle">
-                    <input type="checkbox" name="feat_{{ key }}" {% if feats.get(key) %}checked{% endif %}>
-                    <span>{{ label }}</span>
-                </label>
+                {% for group in feature_groups %}
+                <section class="feature-group">
+                    <h4 class="feature-group-title">{{ group.label }}</h4>
+                    <div class="feature-group-list">
+                        {% for key, label in group.features %}
+                        <label class="feature-toggle">
+                            <input type="checkbox" name="feat_{{ key }}" {% if effective_features.get(key) %}checked{% endif %}>
+                            <span>{{ label }}</span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                </section>
                 {% endfor %}
             </div>
 

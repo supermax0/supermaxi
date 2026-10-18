@@ -1,66 +1,139 @@
-{% extends "base.html" %}
-{% from "payment_flow/_macros.html" import pf_topbar, pf_steps %}
-{% block title %}الدفع عبر زين كاش — Finora{% endblock %}
-{% block page_title %}{% endblock %}
+{% extends "public_flow/base.html" %}
+{% from "payment_flow/_macros.html" import pf_topbar, pf_steps with context %}
+{% block title %}تحويل زين كاش — Finora{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/payment-flow.css') }}">
-<div class="pf-page">
-  {{ pf_topbar('/payment', 'العودة') }}
+<div class="pf-page pf-page--checkout">
+  {{ pf_topbar('/payment?plan=' ~ plan_key ~ '&billing=' ~ billing, 'العودة لملخص الدفع') }}
   {{ pf_steps(2) }}
 
-  <div class="pf-wrap-narrow">
-    <div class="pf-card">
-      <div class="pf-header">
-        <h1>الدفع عبر ZainCash</h1>
-        <p>حوّل المبلغ إلى الرقم أدناه ثم أرفق صورة الوصل لتفعيل نظامك المحاسبي.</p>
-      </div>
+  <div class="pf-wrap">
+    <div class="pf-header pf-payment-header">
+      <span class="pf-eyebrow"><i class="fas fa-mobile-screen-button"></i> دفع عبر زين كاش</span>
+      <h1>حوّل المبلغ ثم ارفع الوصل</h1>
+      <p>اتبع الخطوات التالية وسنستلم طلب التفعيل فوراً.</p>
+    </div>
 
-      <div class="pf-zain-box">
-        <p style="font-size:14px;color:var(--pf-muted)">رقم محفظة زين كاش المعتمد:</p>
-        <div class="pf-zain-number">{{ zaincash_transfer_phone | default('07734049148') }}</div>
-        <p style="font-size:16px;color:var(--pf-text)">المبلغ المطلوب: <strong>{{ amount|default('0') }} دينار</strong></p>
-      </div>
-
-      <form method="post" action="/payments/zaincash-submit" enctype="multipart/form-data">
-        <input type="hidden" name="amount" value="{{ amount }}">
-
-        <div class="pf-field" style="margin-bottom:16px">
-          <label>اسم الشركة (إنجليزي، بدون مسافات)</label>
-          <input type="text" name="tenant_name" required placeholder="مثال: mycompany" dir="ltr">
-          <div class="pf-hint">مثال: acme</div>
+    <div class="pf-checkout-grid">
+      <aside class="pf-card pf-transfer-card" aria-label="تعليمات التحويل">
+        <div class="pf-transfer-brand">
+          <i class="fas fa-wallet"></i>
+          <div>
+            <strong>بيانات التحويل</strong>
+            <span>محفظة Finora المعتمدة</span>
+          </div>
         </div>
 
-        <div class="pf-field" style="margin-bottom:16px">
-          <label>اسم المالك الكامل</label>
-          <input type="text" name="owner_name" required placeholder="الاسم الرباعي">
+        <div class="pf-copy-box">
+          <small>رقم محفظة زين كاش</small>
+          <div class="pf-zain-number" id="zainCashNumber">{{ zaincash_transfer_phone | default('07734049148') }}</div>
+          <button type="button" class="pf-copy-btn" id="copyZainNumber"><i class="fas fa-copy"></i> نسخ الرقم</button>
         </div>
 
-        <div class="pf-field" style="margin-bottom:16px">
-          <label>رقم الهاتف</label>
-          <input type="tel" name="phone" required placeholder="07...">
+        <div class="pf-transfer-amount">
+          <span>المبلغ المطلوب</span>
+          <strong>{{ "{:,.0f}".format(amount|float) }} د.ع</strong>
         </div>
 
-        <div class="pf-field" style="margin-bottom:16px">
-          <label>البريد الإلكتروني</label>
-          <input type="email" name="email" required placeholder="example@gmail.com" dir="ltr">
+        <div class="pf-mini-steps">
+          <div class="pf-mini-step"><b>1</b><span>افتح تطبيق زين كاش وحوّل المبلغ إلى الرقم أعلاه.</span></div>
+          <div class="pf-mini-step"><b>2</b><span>احتفظ بصورة واضحة من إيصال العملية.</span></div>
+          <div class="pf-mini-step"><b>3</b><span>أكمل بياناتك وارفع الوصل من النموذج.</span></div>
         </div>
+      </aside>
 
-        <div class="pf-field" style="margin-bottom:16px">
-          <label>رقم المرجع (إن وجد)</label>
-          <input type="text" name="zaincash_reference" placeholder="رقم العملية من تطبيق زين كاش">
-        </div>
+      <section class="pf-card pf-checkout-form" aria-labelledby="checkoutFormTitle">
+        <h2 id="checkoutFormTitle"><i class="fas fa-receipt" style="color:var(--pf-primary)"></i> بيانات طلب التفعيل</h2>
+        <form method="post" action="/payments/zaincash-submit" enctype="multipart/form-data">
+          <input type="hidden" name="plan_key" value="{{ plan_key }}">
+          <input type="hidden" name="billing" value="{{ billing }}">
 
-        <div class="pf-field" style="margin-bottom:20px">
-          <label>صورة إيصال التحويل *</label>
-          <input type="file" name="receipt_image" accept="image/*" required>
-        </div>
+          <div class="pf-form-grid">
+            <div class="pf-field">
+              <label for="tenant_name">معرّف الشركة <span class="req">*</span></label>
+              <input type="text" id="tenant_name" name="tenant_name" required placeholder="مثال: mycompany" dir="ltr" value="{{ checkout_prefill.tenant_name or '' }}" {% if checkout_prefill.tenant_name %}readonly{% endif %} autocomplete="organization">
+              <div class="pf-hint">بالإنجليزية وبدون مسافات</div>
+            </div>
 
-        <button type="submit" class="pf-btn pf-btn-zain pf-btn-block">
-          <i class="fas fa-paper-plane"></i> إرسال طلب الاشتراك
-        </button>
-      </form>
+            <div class="pf-field">
+              <label for="owner_name">اسم صاحب الحساب <span class="req">*</span></label>
+              <input type="text" id="owner_name" name="owner_name" required placeholder="الاسم الكامل" value="{{ checkout_prefill.owner_name or '' }}" autocomplete="name">
+            </div>
+
+            <div class="pf-field">
+              <label for="checkout_phone">رقم الهاتف <span class="req">*</span></label>
+              <input type="tel" id="checkout_phone" name="phone" required inputmode="tel" placeholder="07xxxxxxxxx" dir="ltr" value="{{ checkout_prefill.phone or '' }}" autocomplete="tel">
+            </div>
+
+            <div class="pf-field">
+              <label for="checkout_email">البريد الإلكتروني <span class="req">*</span></label>
+              <input type="email" id="checkout_email" name="email" required placeholder="example@gmail.com" dir="ltr" value="{{ checkout_prefill.email or '' }}" autocomplete="email">
+            </div>
+
+            <div class="pf-field pf-field-full">
+              <label for="zaincash_reference">رقم العملية <span class="pf-optional">اختياري</span></label>
+              <input type="text" id="zaincash_reference" name="zaincash_reference" placeholder="ستجده في إيصال زين كاش" dir="ltr">
+            </div>
+
+            <div class="pf-field pf-field-full">
+              <label class="pf-upload-field" for="receipt_image">
+                <i class="fas fa-cloud-arrow-up"></i>
+                <strong>اضغط لاختيار صورة الوصل</strong>
+                <span>PNG أو JPG أو PDF</span>
+                <input type="file" id="receipt_image" name="receipt_image" accept="image/png,image/jpeg,application/pdf" required>
+                <div class="pf-file-name" id="receiptFileName">لم يتم اختيار ملف</div>
+              </label>
+            </div>
+          </div>
+
+          <details class="pf-help-details">
+            <summary><i class="fas fa-circle-question"></i> ماذا يجب أن يظهر في الوصل؟</summary>
+            <div>
+              <span>رقم العملية أو المرجع.</span>
+              <span>المبلغ المحوّل وتاريخ العملية.</span>
+              <span>رقم المحفظة المستلمة، مع صورة واضحة غير مقصوصة.</span>
+            </div>
+          </details>
+
+          <button type="submit" class="pf-btn pf-btn-zain pf-btn-block">
+            <i class="fas fa-paper-plane"></i> إرسال طلب التفعيل
+          </button>
+          <p class="pf-payment-note"><i class="fas fa-shield-halved"></i> يُستخدم الوصل لمطابقة التحويل فقط.</p>
+        </form>
+      </section>
     </div>
   </div>
 </div>
+
+<script>
+  (function () {
+    var copyButton = document.getElementById('copyZainNumber');
+    var number = document.getElementById('zainCashNumber');
+    var fileInput = document.getElementById('receipt_image');
+    var fileName = document.getElementById('receiptFileName');
+
+    if (copyButton && number) {
+      copyButton.addEventListener('click', function () {
+        var value = number.textContent.trim();
+        var copied = navigator.clipboard && navigator.clipboard.writeText
+          ? navigator.clipboard.writeText(value)
+          : Promise.reject();
+        copied.then(function () {
+          copyButton.innerHTML = '<i class="fas fa-check"></i> تم النسخ';
+          setTimeout(function () { copyButton.innerHTML = '<i class="fas fa-copy"></i> نسخ الرقم'; }, 1800);
+        }).catch(function () {
+          window.prompt('انسخ رقم المحفظة:', value);
+        });
+      });
+    }
+
+    if (fileInput && fileName) {
+      fileInput.addEventListener('change', function () {
+        fileName.textContent = fileInput.files && fileInput.files[0]
+          ? fileInput.files[0].name
+          : 'لم يتم اختيار ملف';
+      });
+    }
+  })();
+</script>
 {% endblock %}

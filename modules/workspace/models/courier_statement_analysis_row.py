@@ -28,6 +28,14 @@ class CourierStatementAnalysisRow(db.Model):
     collected_amount = db.Column(db.Integer, nullable=True)
     delivery_fee = db.Column(db.Integer, nullable=True)
     net_amount = db.Column(db.Integer, nullable=True)
+    # The collection account can be selected independently for every statement
+    # row (for example cash versus a "Master" bank-transfer account).
+    treasury_account_id = db.Column(
+        db.Integer,
+        db.ForeignKey("treasury_account.id"),
+        nullable=True,
+        index=True,
+    )
     statement_date = db.Column(db.String(30), nullable=True)
     matched_invoice_id = db.Column(db.Integer, nullable=True, index=True)
     match_score = db.Column(db.Float, default=0.0)
@@ -86,6 +94,7 @@ class CourierStatementAnalysisRow(db.Model):
             "collected_amount": self.collected_amount,
             "delivery_fee": self.delivery_fee,
             "net_amount": self.net_amount,
+            "treasury_account_id": self.treasury_account_id,
             "statement_date": self.statement_date,
             "matched_invoice_id": self.matched_invoice_id,
             "match_score": self.match_score,

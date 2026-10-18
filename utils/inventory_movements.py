@@ -37,14 +37,22 @@ def get_product_inventory_movements(product_id, branch_id=None):
     product = Product.query.get(product_id)
     if not product:
         return []
+
+    from utils.branch_stock_service import _branch_product_id, _catalog_product_ids
+
+    movement_product_ids = (
+        [_branch_product_id(branch_id, product_id)]
+        if branch_id
+        else _catalog_product_ids(product_id)
+    )
     
     movements = []
 
     if branch_id:
         from models.branch import BranchStock
-
+        local_product_id = _branch_product_id(branch_id, product_id)
         branch_stock = BranchStock.query.filter_by(
-            product_id=product_id,
+            product_id=local_product_id,
             branch_id=branch_id,
         ).first()
         opening_stock = int(branch_stock.opening_stock or 0) if branch_stock else 0
@@ -54,7 +62,7 @@ def get_product_inventory_movements(product_id, branch_id=None):
 
             branch_opening = (
                 db.session.query(db.func.coalesce(db.func.sum(BranchStock.opening_stock), 0))
-                .filter(BranchStock.product_id == product_id)
+                .filter(BranchStock.product_id.in_(movement_product_ids))
                 .scalar()
             )
             opening_stock = int(branch_opening or 0)
@@ -88,7 +96,7 @@ def get_product_inventory_movements(product_id, branch_id=None):
     purchase_items_query = (
         PurchaseItem.query
         .join(Purchase, Purchase.id == PurchaseItem.purchase_id)
-        .filter(PurchaseItem.product_id == product_id)
+        .filter(PurchaseItem.product_id.in_(movement_product_ids))
     )
     if branch_id:
         purchase_items_query = purchase_items_query.filter(Purchase.branch_id == branch_id)
@@ -120,7 +128,7 @@ def get_product_inventory_movements(product_id, branch_id=None):
             "description": f"شراء من مورد #{purchase.supplier_id if purchase.supplier_id else 'غير محدد'}"
         })
 
-    legacy_purchases_query = Purchase.query.filter_by(product_id=product_id)
+    legacy_purchases_query = Purchase.query.filter(Purchase.product_id.in_(movement_product_ids))
     if branch_id:
         legacy_purchases_query = legacy_purchases_query.filter(Purchase.branch_id == branch_id)
     legacy_purchases = legacy_purchases_query.order_by(Purchase.created_at).all()
@@ -150,7 +158,13 @@ def get_product_inventory_movements(product_id, branch_id=None):
     # ==========================
     # 3. المبيعات (Sales)
     # ==========================
-    order_items = OrderItem.query.filter_by(product_id=product_id).join(Invoice).order_by(OrderItem.id).all()
+    order_items = (
+        OrderItem.query
+        .filter(OrderItem.product_id.in_(movement_product_ids))
+        .join(Invoice)
+        .order_by(OrderItem.id)
+        .all()
+    )
     
     for item in order_items:
         invoice = item.invoice
@@ -217,7 +231,7 @@ def get_product_inventory_movements(product_id, branch_id=None):
         )
         for transfer in transfers:
             for line in transfer.lines:
-                if line.product_id != product_id:
+                if line.product_id not in movement_product_ids:
                     continue
                 if transfer.from_branch_id == branch_id and transfer.status in ("sent", "received"):
                     current_balance -= line.quantity
@@ -252,32 +266,44 @@ def get_product_inventory_movements(product_id, branch_id=None):
     
     try:
         from models.branch import BranchStock
+        from utils.branch_stock_service import get_branch_stock, get_total_stock
 
         if branch_id:
-            actual_quantity = int(
-                db.session.query(db.func.coalesce(db.func.sum(BranchStock.quantity), 0))
-                .filter(
-                    BranchStock.product_id == product_id,
-                    BranchStock.branch_id == branch_id,
-                )
-                .scalar()
-                or 0
-            )
+            actual_quantity = get_branch_stock(branch_id, product_id)
         else:
-            rows_count = BranchStock.query.filter_by(product_id=product_id).count()
+            rows_count = BranchStock.query.filter(
+                BranchStock.product_id.in_(movement_product_ids)
+            ).count()
             if rows_count:
-                actual_quantity = int(
-                    db.session.query(db.func.coalesce(db.func.sum(BranchStock.quantity), 0))
-                    .filter(BranchStock.product_id == product_id)
-                    .scalar()
-                    or 0
-                )
+                actual_quantity = get_total_stock(product_id)
             else:
                 actual_quantity = int(product.quantity or 0)
     except Exception:
         db.session.rollback()
         actual_quantity = int(product.quantity or 0)
 
+    # The new audit posts into the existing immutable movement ledger. Include
+    # only that new source, never duplicate the legacy invoice/purchase rows above.
+    from sqlalchemy import inspect
+    if inspect(db.session.connection()).has_table("stock_movement"):
+        import json
+        from models.stock_movement import StockMovement
+        from models.inventory_audit import InventoryQuantityAudit
+        counts = StockMovement.query.filter(StockMovement.product_id.in_(movement_product_ids),
+                                             StockMovement.source_type == "inventory_count")
+        if branch_id:
+            counts = counts.filter_by(branch_id=branch_id)
+        for count in counts:
+            details = json.loads(count.details_json or "{}")
+            audit = InventoryQuantityAudit.query.filter_by(movement_id=count.id).first()
+            quantity = int(count.quantity)
+            movements.append({"date": count.created_at.date(), "type":"inventory_count_adjustment",
+                "type_ar":"تسوية جرد معتمدة", "quantity_in":quantity if count.direction == "in" else 0,
+                "quantity_out":quantity if count.direction == "out" else 0, "balance_after":None,
+                "_physical_after":audit.after_quantity if audit and branch_id else None,
+                "cost_per_unit":count.unit_cost, "total_cost":count.total_cost,
+                "reference_type":"inventory_count", "reference_id":count.source_id,
+                "description":details.get("reason", "تسوية جرد معتمدة")})
     documented_balance = sum(int(m.get("quantity_in") or 0) for m in movements) - sum(
         int(m.get("quantity_out") or 0) for m in movements
     )
@@ -309,7 +335,7 @@ def get_product_inventory_movements(product_id, branch_id=None):
     for movement in movements:
         running_balance += int(movement.get("quantity_in") or 0)
         running_balance -= int(movement.get("quantity_out") or 0)
-        movement["balance_after"] = running_balance
+        movement["balance_after"] = movement.pop("_physical_after", running_balance)
     
     return movements
 
@@ -323,24 +349,31 @@ def get_product_inventory_summary(product_id):
     """
     movements = get_product_inventory_movements(product_id)
     
-    total_in = sum(m["quantity_in"] for m in movements)
-    total_out = sum(m["quantity_out"] for m in movements)
-    current_balance = (movements[-1]["balance_after"] if movements else 0)
+    # Reconciliation is a display-only explanation of the unexplained gap. It
+    # must never be included in the documented balance used by the integrity
+    # audit, otherwise every discrepancy is forced to zero before it is tested.
+    documented_movements = [
+        movement for movement in movements
+        if movement.get("type") != "stock_reconciliation"
+    ]
+    total_in = sum(m["quantity_in"] for m in documented_movements)
+    total_out = sum(m["quantity_out"] for m in documented_movements)
+    current_balance = total_in - total_out
     
     # التحقق من تطابق الرصيد
     product = Product.query.get(product_id)
     actual_quantity = int(product.quantity or 0) if product else 0
     try:
         from models.branch import BranchStock
+        from utils.branch_stock_service import get_total_stock
 
-        rows_count = BranchStock.query.filter_by(product_id=product_id).count()
+        from utils.branch_stock_service import _catalog_product_ids
+
+        rows_count = BranchStock.query.filter(
+            BranchStock.product_id.in_(_catalog_product_ids(product_id))
+        ).count()
         if rows_count:
-            actual_quantity = int(
-                db.session.query(db.func.coalesce(db.func.sum(BranchStock.quantity), 0))
-                .filter(BranchStock.product_id == product_id)
-                .scalar()
-                or 0
-            )
+            actual_quantity = get_total_stock(product_id)
     except Exception:
         db.session.rollback()
     
@@ -412,15 +445,11 @@ def validate_sale_quantity(product_id, requested_quantity, branch_id=None):
     else:
         try:
             from models.branch import BranchStock
+            from utils.branch_stock_service import get_total_stock
 
             rows_count = BranchStock.query.filter_by(product_id=product_id).count()
             if rows_count:
-                available = int(
-                    db.session.query(db.func.coalesce(db.func.sum(BranchStock.quantity), 0))
-                    .filter(BranchStock.product_id == product_id)
-                    .scalar()
-                    or 0
-                )
+                available = get_total_stock(product_id)
             else:
                 available = int(product.quantity or 0)
         except Exception:

@@ -1,0 +1,197 @@
+{
+  "id": "employee.create",
+  "version": 1,
+  "status": "verified",
+  "level": 2,
+  "title_ar": "إضافة موظف",
+  "description_ar": "إنشاء حساب موظف (استقبال، محاسب، ممرض…) بدور وصلاحيات.",
+  "chip_ar": "الموظفون",
+  "requires_permissions": [
+    "clinics_admin"
+  ],
+  "next_lessons": [
+    "permissions.manage"
+  ],
+  "curriculum": {"group": "setup", "order": 4},
+  "result": "employee.created",
+  "completion_validator": "employee.created_since_start",
+  "steps": [
+    {
+      "id": "open-staff-menu",
+      "type": "wait_click",
+      "target": {
+        "action": "nav.doctors"
+      },
+      "reveal": [
+        {
+          "action": "nav.menu.open"
+        },
+        {
+          "section": "nav.group.admin"
+        }
+      ],
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "page": "staff"
+        }
+      },
+      "nav_message_ar": "جاري فتح الأطباء والموظفين",
+      "message_ar": "حسابات الموظفين تُدار من هنا. اضغط «الأطباء والموظفون»."
+    },
+    {
+      "id": "on-staff-page",
+      "type": "navigate",
+      "route": "/clinics/staff",
+      "page": "staff",
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "page": "staff"
+        }
+      },
+      "message_ar": "نفتح الآن صفحة الأطباء والموظفين."
+    },
+    {
+      "id": "click-add-employee",
+      "type": "wait_click",
+      "page": "staff",
+      "target": {
+        "action": "employee.create"
+      },
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "field": "employee.name"
+          }
+        }
+      },
+      "message_ar": "اضغط «إضافة موظف» (وليس «إضافة طبيب وحساب»؛ الأطباء لهم درسهم الخاص)."
+    },
+    {
+      "id": "form-open",
+      "type": "wait_modal",
+      "page": "staff",
+      "target": {
+        "field": "employee.name"
+      },
+      "reconcile": {
+        "kind": "ui",
+        "when": {
+          "visible": {
+            "field": "employee.name"
+          }
+        }
+      },
+      "message_ar": "ننتظر ظهور نموذج الموظف."
+    },
+    {
+      "id": "name",
+      "type": "wait_input",
+      "page": "staff",
+      "target": {
+        "field": "employee.name"
+      },
+      "condition": {
+        "min_length": 3
+      },
+      "message_ar": "اكتب الاسم الكامل للموظف (3 أحرف على الأقل)."
+    },
+    {
+      "id": "phone",
+      "type": "highlight",
+      "page": "staff",
+      "target": {
+        "field": "employee.phone"
+      },
+      "message_ar": "رقم الهاتف اختياري. أضفه إن أردت ثم اضغط «فهمت»."
+    },
+    {
+      "id": "username",
+      "type": "wait_input",
+      "page": "staff",
+      "target": {
+        "field": "employee.username"
+      },
+      "condition": {
+        "min_length": 3
+      },
+      "message_ar": "اكتب اسم المستخدم الذي سيدخل به الموظف (لا يتكرر)."
+    },
+    {
+      "id": "password",
+      "type": "wait_input",
+      "page": "staff",
+      "target": {
+        "field": "employee.password"
+      },
+      "condition": {
+        "min_length": 6
+      },
+      "message_ar": "اكتب كلمة مرور (6 أحرف على الأقل)."
+    },
+    {
+      "id": "role",
+      "type": "wait_input",
+      "page": "staff",
+      "target": {
+        "field": "employee.role"
+      },
+      "condition": {
+        "min_length": 1
+      },
+      "message_ar": "اختر الدور الوظيفي (استقبال، محاسب، ممرض، مخزون، مدير). الدور يحدد الصلاحيات الافتراضية. لا تختر «طبيب» هنا لأن الأطباء يُضافون بدرسهم."
+    },
+    {
+      "id": "branch",
+      "type": "highlight",
+      "page": "staff",
+      "target": {
+        "field": "employee.branch"
+      },
+      "message_ar": "الفرع اختياري، ويقيّد الموظف بفرع محدد إن كانت العيادة متعددة الفروع. اضغط «فهمت»."
+    },
+    {
+      "id": "permissions",
+      "type": "highlight",
+      "page": "staff",
+      "target": {
+        "section": "employee.permissions"
+      },
+      "message_ar": "الصلاحيات المحددة تأتي من الدور، ويمكنك تعديلها قبل الحفظ. للتفصيل راجع درس «إدارة الصلاحيات»."
+    },
+    {
+      "id": "save",
+      "type": "wait_api_success",
+      "page": "staff",
+      "allow_back": false,
+      "target": {
+        "action": "employee.save"
+      },
+      "match": {
+        "method": "POST",
+        "url": "^/clinics/api/staff$"
+      },
+      "reconcile": {
+        "kind": "backend",
+        "validator": "employee.created_since_start"
+      },
+      "success_ar": "تم إنشاء حساب الموظف.",
+      "message_ar": "راجع البيانات ثم اضغط «حفظ»."
+    },
+    {
+      "id": "verify",
+      "type": "wait_state",
+      "allow_back": false,
+      "validator": "employee.created_since_start",
+      "message_ar": "نتأكد الآن من إنشاء حساب الموظف في النظام…"
+    },
+    {
+      "id": "done",
+      "type": "complete",
+      "allow_back": false,
+      "message_ar": "تم إنشاء حساب الموظف وتأكدنا من ذلك داخل النظام."
+    }
+  ]
+}

@@ -1,0 +1,137 @@
+{
+  "id": "payment.record",
+  "version": 1,
+  "status": "verified",
+  "level": 3,
+  "title_ar": "تسجيل دفعة",
+  "description_ar": "تسجيل دفعة (كاملة أو جزئية) على فاتورة فيها رصيد متبقٍ.",
+  "chip_ar": "التحصيل",
+  "requires_permissions": [
+    "clinics_billing"
+  ],
+  "availability": {
+    "required_features": [
+      "billing"
+    ]
+  },
+  "curriculum": {
+    "group": "collections",
+    "order": 1
+  },
+  "dependencies": [
+    {
+      "fact": {
+        "name": "payable_invoices_count",
+        "op": "gt",
+        "value": 0
+      },
+      "tutorial": "invoice.create",
+      "message_ar": "لتسجيل دفعة نحتاج فاتورة فيها مبلغ متبقٍ. ما عندك فاتورة قابلة للتحصيل الآن، ننشئ واحدة أولاً ثم نرجع.",
+      "action_label_ar": "إنشاء فاتورة الآن"
+    }
+  ],
+  "result": "payment.recorded",
+  "completion_validator": "payment.recorded_since_start",
+  "steps": [
+    {
+      "id": "open-billing-menu",
+      "type": "wait_click",
+      "target": { "action": "nav.billing" },
+      "reveal": [
+        { "action": "nav.menu.open" },
+        { "section": "nav.group.finance" }
+      ],
+      "reconcile": { "kind": "ui", "when": { "page": "billing" } },
+      "nav_message_ar": "جاري فتح الفواتير والمدفوعات",
+      "message_ar": "التحصيل يتم من صفحة الفواتير. اضغط «الفواتير»."
+    },
+    {
+      "id": "on-billing-page",
+      "type": "navigate",
+      "route": "/clinics/billing",
+      "page": "billing",
+      "reconcile": { "kind": "ui", "when": { "page": "billing" } },
+      "message_ar": "نفتح الآن صفحة الفواتير والمدفوعات."
+    },
+    {
+      "id": "check-drawer-open",
+      "type": "branch",
+      "page": "billing",
+      "if": { "exists": { "section": "invoice.drawer" } },
+      "then": "click-pay-drawer",
+      "else": "click-pay-list"
+    },
+    {
+      "id": "click-pay-drawer",
+      "type": "wait_click",
+      "page": "billing",
+      "target": { "action": "payment.record.drawer" },
+      "reconcile": { "kind": "ui", "when": { "visible": { "section": "payment.form" } } },
+      "message_ar": "الفاتورة المفتوحة فيها رصيد متبقٍ. اضغط «تسجيل دفعة» بأسفل تفاصيلها."
+    },
+    {
+      "id": "skip-list",
+      "type": "branch",
+      "page": "billing",
+      "if": { "exists": { "action": "nav.billing" } },
+      "then": "amount",
+      "else": "amount"
+    },
+    {
+      "id": "click-pay-list",
+      "type": "wait_click",
+      "page": "billing",
+      "target": { "action": "payment.record" },
+      "reconcile": { "kind": "ui", "when": { "visible": { "section": "payment.form" } } },
+      "message_ar": "اضغط «تحصيل» أو «تسجيل دفعة» على الفاتورة التي فيها رصيد متبقٍ."
+    },
+    {
+      "id": "amount",
+      "type": "wait_input",
+      "page": "billing",
+      "target": { "field": "payment.amount" },
+      "condition": { "min_length": 1 },
+      "message_ar": "اكتب مبلغ الدفعة. يمكنك كتابة كامل المبلغ المتبقي أو جزء منه فقط — الدفعة الجزئية لا تغلق الفاتورة، وتبقى حالتها «مدفوعة جزئياً» حتى تسدد الباقي."
+    },
+    {
+      "id": "method",
+      "type": "highlight",
+      "page": "billing",
+      "target": { "field": "payment.method" },
+      "message_ar": "حدد طريقة الدفع المستخدمة فعلياً (نقدي، بطاقة، تحويل…). لا تخترها نيابة عنك؛ اختر ما يطابق الواقع ثم اضغط «فهمت»."
+    },
+    {
+      "id": "notes",
+      "type": "highlight",
+      "page": "billing",
+      "target": { "field": "payment.notes" },
+      "message_ar": "الملاحظة اختيارية. اضغط «فهمت» للمتابعة."
+    },
+    {
+      "id": "save",
+      "type": "wait_api_success",
+      "page": "billing",
+      "allow_back": false,
+      "target": { "action": "payment.confirm" },
+      "match": { "method": "POST", "url": "^/clinics/api/invoices/\\d+/pay$" },
+      "reconcile": { "kind": "backend", "validator": "payment.recorded_since_start" },
+      "success_ar": "تم تسجيل الدفعة.",
+      "message_ar": "راجع مبلغ الدفعة وطريقة الدفع قبل التأكيد، ثم اضغط «حفظ». أنت من يضغط الحفظ — المدرّس لا ينفذ الدفع نيابة عنك."
+    },
+    {
+      "id": "verify",
+      "type": "wait_state",
+      "allow_back": false,
+      "validator": "payment.recorded_since_start",
+      "recovery_message_ar": "ما تأكد تسجيل الدفعة. لا تعيد الدفع قبل التحقق من حالة الفاتورة — اضغط «تحقق من حالة الفاتورة» وسنتأكد من السجل الحقيقي قبل أي محاولة ثانية.",
+      "recovery_retry_label_ar": "تحقق من حالة الفاتورة",
+      "message_ar": "نتأكد الآن من تسجيل الدفعة وتحديث رصيد الفاتورة في النظام…"
+    },
+    {
+      "id": "done",
+      "type": "complete",
+      "allow_back": false,
+      "message_ar": "تم تسجيل الدفعة وتحديث رصيد الفاتورة، وتأكدنا من ذلك داخل النظام."
+    }
+  ]
+}

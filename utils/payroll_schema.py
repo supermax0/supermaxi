@@ -54,6 +54,7 @@ def ensure_payroll_schema() -> None:
                     ("pay_weekday", "pay_weekday INTEGER DEFAULT 4"),
                     ("payroll_effective_from", f"payroll_effective_from {date_type}"),
                     ("last_salary_paid_at", f"last_salary_paid_at {datetime_type}"),
+                    ("transfer_number", "transfer_number VARCHAR(50)"),
                 ):
                     if _add_column_if_missing(conn, "employee", columns, name, ddl):
                         changed = True
@@ -68,6 +69,17 @@ def ensure_payroll_schema() -> None:
                     ("last_salary_paid_at", f"last_salary_paid_at {datetime_type}"),
                 ):
                     if _add_column_if_missing(conn, "delivery_agent", columns, name, ddl):
+                        changed = True
+
+            if "employee_payment" in set(inspect(engine).get_table_names()):
+                columns = {col["name"] for col in inspect(engine).get_columns("employee_payment")}
+                for name, ddl in (
+                    ("payout_method", "payout_method VARCHAR(30)"),
+                    ("voucher_code", "voucher_code VARCHAR(40)"),
+                    ("period_year", "period_year INTEGER"),
+                    ("period_month", "period_month INTEGER"),
+                ):
+                    if _add_column_if_missing(conn, "employee_payment", columns, name, ddl):
                         changed = True
 
             if "expense" in tables:

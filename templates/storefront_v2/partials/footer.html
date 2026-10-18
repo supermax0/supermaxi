@@ -1,0 +1,27 @@
+<footer class="sm-footer">
+  <div class="sm-shell sm-footer__grid">
+    <section>
+      <strong class="sm-footer__brand">{{ store_design.store_name }}</strong>
+      <p>أجهزة كهربائية وإلكترونيات أصلية، أسعار واضحة، وتوصيل لكل المحافظات.</p>
+    </section>
+    <section aria-label="المتجر">
+      <h3>المتجر</h3>
+      <a href="{{ url_for('storefront.categories_page', tenant_slug=shop_tenant_slug) }}">الأقسام</a>
+      <a href="{{ url_for('storefront.offers_page', tenant_slug=shop_tenant_slug) }}">العروض</a>
+      <a href="{{ url_for('storefront.about_page', tenant_slug=shop_tenant_slug) }}">عن المتجر</a>
+    </section>
+    <section aria-label="المساعدة">
+      <h3>المساعدة</h3>
+      <a href="{{ url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug) }}">تتبع الطلب</a>
+      <a href="{{ url_for('storefront.faq_page', tenant_slug=shop_tenant_slug) }}">الأسئلة الشائعة</a>
+      <a href="{{ url_for('storefront.terms_page', tenant_slug=shop_tenant_slug) }}">الشروط وسياسة الطلب</a>
+      <a href="{{ url_for('storefront.personalization_page', tenant_slug=shop_tenant_slug) }}">الخصوصية والتخصيص</a>
+    </section>
+    <section aria-label="تواصل">
+      <h3>تواصل معنا</h3>
+      {% if store_design.whatsapp %}<a dir="ltr" href="https://wa.me/{{ store_design.whatsapp|replace('+','')|replace(' ','') }}">WhatsApp {{ store_design.whatsapp }}</a>{% endif %}
+      <a href="{{ url_for('storefront.contact_page', tenant_slug=shop_tenant_slug) }}">وسائل التواصل</a>
+    </section>
+  </div>
+  <p class="sm-shell sm-footer__copy">© {{ current_year }} {{ store_design.store_name }}</p>
+</footer>

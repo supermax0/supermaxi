@@ -346,7 +346,10 @@ def _default_delivery_text(product: Product, profile: AISalesProductProfile | No
 
 
 def _serialize_product(product: Product, profile: AISalesProductProfile | None) -> dict[str, Any]:
+    from utils.tenant_feature_flags import tenant_feature_enabled
+
     allow_price = not profile or bool(profile.allow_price)
+    trade_in_enabled = tenant_feature_enabled("trade_in_sales", default=False)
     colors = profile.get_colors() if profile else []
     variant_colors = [
         str(row.color_name or "").strip()
@@ -382,6 +385,16 @@ def _serialize_product(product: Product, profile: AISalesProductProfile | None) 
         "model": model,
         "metadata": metadata,
         "price": int(product.sale_price or 0) if allow_price else None,
+        "exchange_sale_price": (
+            int(product.exchange_sale_price)
+            if allow_price and trade_in_enabled and int(getattr(product, "exchange_sale_price", 0) or 0) > 0
+            else None
+        ),
+        "sale_modes": (
+            ["normal", "exchange"]
+            if trade_in_enabled and int(getattr(product, "exchange_sale_price", 0) or 0) > 0
+            else ["normal"]
+        ),
         "price_visible": allow_price,
         "stock": int(product.quantity or 0),
         "available_for_reservation": bool(product.active),
@@ -415,7 +428,11 @@ def get_products_by_ids(product_ids: list[int], *, in_stock_only: bool = True) -
             ordered_ids.append(product_id)
     if not ordered_ids:
         return []
-    q = Product.query.filter(Product.id.in_(ordered_ids), Product.active.is_(True))
+    q = Product.query.filter(
+        Product.id.in_(ordered_ids),
+        Product.active.is_(True),
+        Product.store_visible.is_(True),
+    )
     if in_stock_only:
         q = q.filter(Product.quantity > 0)
     products = {product.id: product for product in q.all()}
@@ -440,6 +457,7 @@ def get_available_screen_products(*, size: int | None = None, limit: int = 10, i
         AISalesProductProfile.product_id == Product.id,
     ).filter(
         Product.active.is_(True),
+        Product.store_visible.is_(True),
         or_(
             Product.name.ilike("%شاشه%"),
             Product.name.ilike("%شاشة%"),
@@ -476,6 +494,7 @@ def get_fridge_products(*, foot_size: int | None = None, limit: int = 10, in_sto
         AISalesProductProfile.product_id == Product.id,
     ).filter(
         Product.active.is_(True),
+        Product.store_visible.is_(True),
         or_(
             Product.name.ilike("%ثلاجه%"),
             Product.name.ilike("%ثلاجة%"),
@@ -533,7 +552,10 @@ def search_products(
     limit: int = 3,
     exclude_ids: list[int] | None = None,
 ) -> list[dict[str, Any]]:
-    q = Product.query.outerjoin(AISalesProductProfile, AISalesProductProfile.product_id == Product.id).filter(Product.active.is_(True))
+    q = Product.query.outerjoin(AISalesProductProfile, AISalesProductProfile.product_id == Product.id).filter(
+        Product.active.is_(True),
+        Product.store_visible.is_(True),
+    )
     excluded = {int(value) for value in exclude_ids or [] if str(value).isdigit()}
 
     def constrained(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -706,7 +728,11 @@ def find_nearest_smaller_foot_products(reference: dict[str, Any], *, limit: int 
     if reference_size is None:
         return []
     normalized = _normalize(reference_name)
-    q = Product.query.filter(Product.active.is_(True), Product.quantity > 0)
+    q = Product.query.filter(
+        Product.active.is_(True),
+        Product.store_visible.is_(True),
+        Product.quantity > 0,
+    )
     if re.search(r"ثلاجه|ثلاجات", normalized):
         q = q.filter(or_(Product.name.ilike("%ثلاجه%"), Product.name.ilike("%ثلاجة%")))
     else:

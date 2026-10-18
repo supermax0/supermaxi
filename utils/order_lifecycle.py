@@ -47,26 +47,30 @@ def clear_order_barcodes(order) -> None:
         order.shipping_barcodes_json = None
 
 
-def restore_order_stock_once(order, return_branch_id: int | str | None = None) -> bool:
+def restore_order_stock_once(order, return_branch_id: int | str | None = None,return_location_id: int | None = None) -> bool:
     """
     Restore line quantities to inventory once.
     Returns True if stock was restored, False if already returned/canceled.
     """
     from utils.order_stock_policy import restore_order_stock
 
-    return restore_order_stock(order, return_branch_id=return_branch_id)
+    return restore_order_stock(order, return_branch_id=return_branch_id,return_location_id=return_location_id)
 
 
 def process_order_return(
     order,
     scanned_barcode: Optional[str],
     return_branch_id: int | str | None = None,
+    return_location_id: int | None = None,
 ) -> Tuple[bool, str]:
     """
     Validate barcode, restore stock once, mark returned, clear barcodes.
     Returns (already_returned, message).
     """
-    if is_canceled(order.status, order.payment_status):
+    # Only a fully canceled order (status=ملغي) is blocked. Payment-only ملغي with
+    # an active fulfillment status (e.g. جاري الشحن) is an inconsistent state that
+    # staff must be able to correct into راجع.
+    if normalize_status(order.status) == "ملغي":
         raise OrderLifecycleError("لا يمكن ترجيع طلب ملغي")
 
     if is_returned(order.status, order.payment_status):
@@ -78,8 +82,22 @@ def process_order_return(
     if not verify_order_barcode(order, scanned_barcode):
         raise OrderLifecycleError("الباركود لا يطابق الطلب")
 
+    from modules.sales_returns.facts import documents
+    saved_returns = documents(order.id)
+    if saved_returns is not None and saved_returns.first() is not None:
+        from modules.sales_returns.service import return_remaining
+        from modules.finance.common import FinanceError
+        from modules.sales_returns.preview import ReturnPreviewError
+
+        try:
+            return_remaining(order, branch_id=return_branch_id, location_id=return_location_id)
+        except (FinanceError, ReturnPreviewError) as exc:
+            raise OrderLifecycleError(str(exc), getattr(exc, "status", 409)) from exc
+        clear_order_barcodes(order)
+        return False, "تم ترجيع الكمية المتبقية وإرجاعها للمخزون"
+
     try:
-        restore_order_stock_once(order, return_branch_id=return_branch_id)
+        restore_order_stock_once(order, return_branch_id=return_branch_id,return_location_id=return_location_id)
     except Exception as exc:
         from utils.order_stock_policy import OrderStockError
 
@@ -89,22 +107,58 @@ def process_order_return(
     order.status = RETURN_STATUS
     order.payment_status = RETURN_STATUS
     order.paid_amount = 0
+    if hasattr(order, "shipping_status"):
+        order.shipping_status = RETURN_STATUS
+    from utils.shipping_settlement_service import reverse_returned_shipping_settlement
+
+    reverse_returned_shipping_settlement(order)
     clear_order_barcodes(order)
+    from utils.customer_credit_service import remove_invoice_credit_plans
+
+    remove_invoice_credit_plans(order.id, reason="ترجيع")
+    try:
+        from modules.order_installment_lifecycle.service import on_order_returned
+
+        on_order_returned(order)
+    except Exception:
+        pass
     return False, "تم ترجيع الطلب وإرجاع الكمية للمخزون"
 
 
-def process_order_cancel(order) -> None:
-    """Cancel a pending order; restore only if it was actually deducted."""
+def _sync_installment_cancellation(order, actor_id: int | None, reason: str | None) -> None:
+    if str(getattr(order, "source_module", "") or "").strip().lower() != "installments":
+        return
+    from modules.installments.services import CancellationService, InstallmentError
+
+    try:
+        CancellationService.cancel_from_invoice(order, employee_id=actor_id, reason=reason)
+    except InstallmentError as exc:
+        raise OrderLifecycleError(str(exc)) from exc
+
+
+def process_order_cancel(order, *, actor_id: int | None = None, reason: str | None = None) -> None:
+    """Cancel a pending order and synchronize any linked installment records."""
     status = normalize_status(order.status)
-    if status != "تم الطلب":
+    already_canceled = is_canceled(order.status, order.payment_status)
+    if status != "تم الطلب" and not already_canceled:
         raise OrderLifecycleError("يمكن إلغاء الطلب فقط عندما تكون حالته «تم الطلب»")
 
-    if is_canceled(order.status, order.payment_status):
-        if status != "ملغي":
-            order.status = "ملغي"
-            order.payment_status = "ملغي"
-            order.paid_amount = 0
-            clear_order_barcodes(order)
+    from utils.customer_credit_service import remove_invoice_credit_plans
+
+    if already_canceled:
+        # Repair partially cancelled legacy orders without returning stock twice.
+        order.status = "ملغي"
+        order.payment_status = "ملغي"
+        order.paid_amount = 0
+        clear_order_barcodes(order)
+        remove_invoice_credit_plans(order.id, reason="إلغاء")
+        _sync_installment_cancellation(order, actor_id, reason)
+        try:
+            from modules.order_installment_lifecycle.service import on_order_cancelled
+
+            on_order_cancelled(order, employee_id=actor_id)
+        except Exception:
+            pass
         return
 
     restore_order_stock_once(order)
@@ -112,3 +166,11 @@ def process_order_cancel(order) -> None:
     order.payment_status = "ملغي"
     order.paid_amount = 0
     clear_order_barcodes(order)
+    remove_invoice_credit_plans(order.id, reason="إلغاء")
+    _sync_installment_cancellation(order, actor_id, reason)
+    try:
+        from modules.order_installment_lifecycle.service import on_order_cancelled
+
+        on_order_cancelled(order, employee_id=actor_id)
+    except Exception:
+        pass

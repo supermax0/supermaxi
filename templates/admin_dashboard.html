@@ -1,134 +1,285 @@
 {% extends "superadmin_base.html" %}
 {% block title %}لوحة القيادة — Finora Superadmin{% endblock %}
-{% block page_title %}الإحصائيات والمؤشرات العامة{% endblock %}
-{% block breadcrumb_current %}لوحة القيادة{% endblock %}
-
-{% block extra_style %}
-<style>
-    .amount-text { font-weight: 800; color: var(--success); }
-    .id-text { color: var(--text-muted); font-size: 12px; }
-</style>
-{% endblock %}
+{% block page_title %}لوحة القيادة{% endblock %}
+{% block breadcrumb_current %}نظرة عامة{% endblock %}
 
 {% block content %}
-<div class="metrics-grid">
-    <div class="premium-card metric-card metric-revenue">
-        <i class="fas fa-coins metric-icon-bg"></i>
-        <div class="metric-info">
-            <div class="metric-title">إجمالي المبيعات</div>
-            <div class="metric-value">{{ "{:,.0f}".format(total_revenue) }} د.ع</div>
+<main class="dashboard-page" id="dashboardPage">
+    <section class="dashboard-hero" aria-labelledby="dashboardWelcome">
+        <div class="dashboard-hero-copy">
+            <div class="dashboard-eyebrow"><i class="fas fa-wand-magic-sparkles"></i> مركز التحكم الذكي</div>
+            <h2 id="dashboardWelcome">مرحباً SuperMax، هذه خلاصة اليوم</h2>
+            <p>راقب الإيرادات والشركات والطلبات التي تحتاج قرارك من مكان واحد.</p>
+            <div class="dashboard-update-line">
+                <span class="live-dot" aria-hidden="true"></span><span>البيانات محدّثة الآن</span><span class="dashboard-update-time" id="dashboardUpdateTime"></span>
+            </div>
         </div>
-        <div class="metric-footer">
-            <i class="fas fa-chart-line"></i>
-            <span>إجمالي الإيرادات المحققة</span>
+        <div class="dashboard-hero-actions" aria-label="إجراءات سريعة">
+            <a href="/superadmin/tenants/create" class="dashboard-primary-action"><i class="fas fa-plus"></i><span>إنشاء شركة</span></a>
+            <a href="/superadmin/requests" class="dashboard-secondary-action"><i class="fas fa-clipboard-check"></i><span>مراجعة الطلبات</span>{% if pending_count %}<b>{{ pending_count }}</b>{% endif %}</a>
         </div>
+    </section>
+
+    <section class="dashboard-metrics" aria-label="المؤشرات الرئيسية">
+        <article class="dashboard-metric dashboard-metric-revenue">
+            <div class="dashboard-metric-head"><span class="dashboard-metric-icon"><i class="fas fa-wallet"></i></span><span class="dashboard-metric-label">إجمالي الإيرادات</span></div>
+            <strong class="dashboard-metric-value">{{ "{:,.0f}".format(total_revenue) }} <small>د.ع</small></strong>
+            <div class="dashboard-metric-foot"><span class="positive"><i class="fas fa-arrow-trend-up"></i> {{ "{:,.0f}".format(revenue_this_month) }} د.ع</span><span>هذا الشهر</span></div>
+        </article>
+        <article class="dashboard-metric dashboard-metric-pending">
+            <div class="dashboard-metric-head"><span class="dashboard-metric-icon"><i class="fas fa-hourglass-half"></i></span><span class="dashboard-metric-label">بانتظار قرارك</span></div>
+            <strong class="dashboard-metric-value">{{ pending_count }}</strong>
+            <div class="dashboard-metric-foot"><span class="{% if pending_count %}attention{% else %}positive{% endif %}"><i class="fas {% if pending_count %}fa-bell{% else %}fa-circle-check{% endif %}"></i> {% if pending_count %}يحتاج مراجعة{% else %}لا توجد طلبات معلّقة{% endif %}</span><a href="/superadmin/requests">فتح <i class="fas fa-arrow-left"></i></a></div>
+        </article>
+        <article class="dashboard-metric dashboard-metric-tenants">
+            <div class="dashboard-metric-head"><span class="dashboard-metric-icon"><i class="fas fa-building-circle-check"></i></span><span class="dashboard-metric-label">الشركات النشطة</span></div>
+            <strong class="dashboard-metric-value">{{ active_tenants }} <small>من {{ total_tenants }}</small></strong>
+            <div class="dashboard-metric-foot"><span class="positive"><i class="fas fa-plus"></i> {{ new_tenants_this_month }} جديدة</span><span>هذا الشهر</span></div>
+        </article>
+        <article class="dashboard-metric dashboard-metric-visits dashboard-visit-card">
+            <div class="dashboard-metric-head visit-card-head">
+                <div><span class="dashboard-metric-icon"><i class="fas fa-arrow-pointer"></i></span><span class="dashboard-metric-label" id="visitMetricLabel">زيارات اليوم</span></div>
+                <label class="visit-period-select"><span class="sr-only">فترة الزيارات</span><select id="visitPeriodSelect"><option value="today">اليوم</option><option value="7d">7 أيام</option><option value="30d">30 يوماً</option></select><i class="fas fa-chevron-down"></i></label>
+            </div>
+            <div class="visit-value-row">
+                <strong class="dashboard-metric-value" id="visitMetricValue">{{ "{:,.0f}".format(landing_visits_today or 0) }}</strong>
+                <span class="visit-trend is-neutral" id="visitMetricTrend"><i class="fas fa-minus"></i><b>0%</b><small id="visitTrendLabel">عن أمس</small></span>
+            </div>
+            <div class="visit-spark-bars" id="visitSparkBars" aria-label="نشاط الزيارات للفترة المحددة"></div>
+            <div class="dashboard-metric-foot"><span><i class="fas fa-globe"></i> <b>{{ "{:,.0f}".format(landing_visits or 0) }}</b> إجمالياً</span><button type="button" class="visit-details-button" id="visitDetailsButton">عرض التحليلات <i class="fas fa-arrow-left"></i></button></div>
+        </article>
+    </section>
+
+    <section class="dashboard-insights" aria-label="ملخص الأداء">
+        <div class="dashboard-insight">
+            <div class="insight-ring" style="--progress: {{ approval_rate }}" aria-label="نسبة قبول الطلبات {{ approval_rate }} بالمئة"><span>{{ approval_rate }}<small>%</small></span></div>
+            <div><b>نسبة قبول الطلبات</b><small>{{ approved_count }} طلباً مكتملاً</small></div>
+        </div>
+        <div class="dashboard-insight"><span class="insight-icon insight-icon-blue"><i class="fas fa-chart-simple"></i></span><div><b>{{ requests_this_month }} طلباً</b><small>الطلبات الواردة هذا الشهر</small></div></div>
+        <div class="dashboard-insight"><span class="insight-icon insight-icon-green"><i class="fas fa-signal"></i></span><div><b>{{ activation_rate }}% نشطة</b><small>نسبة تفعيل الشركات</small></div></div>
+        <div class="dashboard-insight"><span class="insight-icon {% if expiring_soon %}insight-icon-orange{% else %}insight-icon-green{% endif %}"><i class="fas fa-calendar-check"></i></span><div><b>{{ expiring_soon }} اشتراك</b><small>ينتهي خلال 7 أيام</small></div></div>
+    </section>
+
+    <div class="dashboard-layout">
+        <section class="dashboard-panel dashboard-requests-panel" aria-labelledby="recentRequestsTitle">
+            <div class="dashboard-panel-head">
+                <div><span class="dashboard-panel-kicker">آخر النشاطات</span><h3 id="recentRequestsTitle">طلبات الدفع والتسجيل</h3></div>
+                <div class="dashboard-panel-actions"><button type="button" class="dashboard-refresh" id="dashboardRefresh" aria-label="تحديث البيانات" title="تحديث البيانات"><i class="fas fa-rotate"></i></button><a href="/superadmin/requests" class="dashboard-view-all">عرض الكل <i class="fas fa-arrow-left"></i></a></div>
+            </div>
+            <div class="dashboard-table-tools">
+                <label class="dashboard-search"><i class="fas fa-magnifying-glass"></i><input type="search" id="requestSearch" placeholder="ابحث باسم الشركة أو رقم الطلب" autocomplete="off"></label>
+                <div class="dashboard-filter-tabs" role="group" aria-label="تصفية حسب الحالة"><button type="button" class="active" data-request-filter="all">الكل</button><button type="button" data-request-filter="pending">منتظر</button><button type="button" data-request-filter="approved">مكتمل</button><button type="button" data-request-filter="rejected">مرفوض</button></div>
+            </div>
+            <div class="dashboard-table-wrap">
+                <table class="dashboard-table">
+                    <thead><tr><th>رقم الطلب</th><th>الشركة</th><th>المبلغ</th><th>التاريخ</th><th>الحالة</th><th></th></tr></thead>
+                    <tbody id="requestsTableBody">
+                        {% for req in recent_requests %}
+                        <tr data-request-row data-status="{{ req.status }}" data-search="#{{ req.id }} {{ req.tenant_name|lower }} {{ req.amount }}">
+                            <td><span class="request-id">#{{ req.id }}</span></td>
+                            <td><div class="request-company"><span>{{ req.tenant_name[:1]|upper }}</span><b>{{ req.tenant_name }}</b></div></td>
+                            <td><strong class="request-amount">{{ "{:,.0f}".format(req.amount) }} <small>د.ع</small></strong></td>
+                            <td><time datetime="{{ req.created_at.isoformat() }}">{{ req.created_at.strftime('%Y-%m-%d') }}<small>{{ req.created_at.strftime('%H:%M') }}</small></time></td>
+                            <td><span class="status-badge status-{{ req.status }}"><i class="fas fa-circle"></i>{% if req.status == 'pending' %}قيد الانتظار{% elif req.status == 'approved' %}مكتمل{% else %}مرفوض{% endif %}</span></td>
+                            <td><a href="/superadmin/requests" class="request-open" aria-label="فتح الطلب #{{ req.id }}"><i class="fas fa-chevron-left"></i></a></td>
+                        </tr>
+                        {% else %}
+                        <tr class="dashboard-empty-row"><td colspan="6"><div class="dashboard-empty"><span><i class="fas fa-inbox"></i></span><b>لا توجد طلبات حديثة</b><p>ستظهر هنا طلبات الدفع والتسجيل الجديدة.</p></div></td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <div class="dashboard-no-results" id="requestNoResults" hidden><i class="fas fa-search"></i><span>لا توجد نتائج تطابق بحثك</span></div>
+            </div>
+        </section>
+
+        <aside class="dashboard-side-column">
+            <section class="dashboard-panel quick-actions-panel" aria-labelledby="quickActionsTitle">
+                <div class="dashboard-panel-head compact"><div><span class="dashboard-panel-kicker">اختصارات</span><h3 id="quickActionsTitle">إجراءات سريعة</h3></div></div>
+                <div class="quick-actions-grid">
+                    <a href="/superadmin/tenants"><span class="quick-action-icon blue"><i class="fas fa-building"></i></span><span><b>الشركات</b><small>عرض وإدارة</small></span><i class="fas fa-chevron-left"></i></a>
+                    <a href="/superadmin/plans"><span class="quick-action-icon purple"><i class="fas fa-layer-group"></i></span><span><b>الخطط</b><small>الأسعار والمزايا</small></span><i class="fas fa-chevron-left"></i></a>
+                    <a href="/superadmin/announcements"><span class="quick-action-icon orange"><i class="fas fa-bullhorn"></i></span><span><b>إعلان جديد</b><small>تواصل مع الشركات</small></span><i class="fas fa-chevron-left"></i></a>
+                    <a href="/superadmin/settings"><span class="quick-action-icon green"><i class="fas fa-sliders"></i></span><span><b>الإعدادات</b><small>تخصيص المنصة</small></span><i class="fas fa-chevron-left"></i></a>
+                </div>
+            </section>
+            <section class="dashboard-panel system-health-panel" aria-labelledby="systemHealthTitle">
+                <div class="dashboard-panel-head compact"><div><span class="dashboard-panel-kicker">المتابعة</span><h3 id="systemHealthTitle">حالة المنصة</h3></div><span class="health-badge"><i class="fas fa-circle-check"></i> تعمل</span></div>
+                <div class="health-list"><div><span><i class="fas fa-database"></i> قاعدة بيانات المنصة</span><b>متصلة</b></div><div><span><i class="fas fa-globe"></i> تتبّع صفحة الهبوط</span><b class="{% if not landing_tracking_ok %}health-warning{% endif %}">{% if landing_tracking_ok %}متاح{% else %}يحتاج فحصاً{% endif %}</b></div><div><span><i class="fas fa-shield-halved"></i> جلسة مركز التحكم</span><b>محمية</b></div></div>
+                <a href="/superadmin/database-repair" class="system-health-link"><i class="fas fa-stethoscope"></i> فحص وإصلاح قواعد البيانات</a>
+            </section>
+        </aside>
     </div>
 
-    <div class="premium-card metric-card metric-pending">
-        <i class="fas fa-clock metric-icon-bg"></i>
-        <div class="metric-info">
-            <div class="metric-title">بانتظار المراجعة</div>
-            <div class="metric-value">{{ pending_count }}</div>
+    <dialog class="landing-analytics-dialog" id="landingAnalyticsDialog" aria-labelledby="landingAnalyticsTitle">
+        <div class="analytics-dialog-shell">
+            <header class="analytics-dialog-head">
+                <div><span class="dashboard-panel-kicker">تحليلات صفحة الهبوط</span><h3 id="landingAnalyticsTitle">تفاصيل الزيارات</h3><p>هذه الأرقام تمثل مشاهدات الصفحة، وليس الزوار الفريدين.</p></div>
+                <button type="button" class="analytics-dialog-close" id="analyticsDialogClose" aria-label="إغلاق"><i class="fas fa-xmark"></i></button>
+            </header>
+            <div class="analytics-summary-grid">
+                <div><span class="analytics-summary-icon blue"><i class="fas fa-eye"></i></span><small>إجمالي المشاهدات</small><b>{{ "{:,.0f}".format(landing_visits or 0) }}</b></div>
+                <div><span class="analytics-summary-icon green"><i class="fas fa-chart-line"></i></span><small>متوسط اليوم</small><b id="analyticsAverage">{{ landing_visit_analytics.average_7d }}</b></div>
+                <div><span class="analytics-summary-icon purple"><i class="fas fa-trophy"></i></span><small>أفضل يوم</small><b id="analyticsBestDay">—</b></div>
+                <div><span class="analytics-summary-icon {% if landing_tracking_ok %}green{% else %}orange{% endif %}"><i class="fas {% if landing_tracking_ok %}fa-circle-check{% else %}fa-triangle-exclamation{% endif %}"></i></span><small>حالة التتبّع</small><b>{% if landing_tracking_ok %}يعمل{% else %}يحتاج فحصاً{% endif %}</b></div>
+            </div>
+            <section class="analytics-chart-panel" aria-labelledby="analyticsChartTitle">
+                <div class="analytics-chart-head"><div><h4 id="analyticsChartTitle">النشاط خلال 30 يوماً</h4><p>قارن حجم المشاهدات يوماً بيوم.</p></div><span id="analyticsPeriodTotal">0 مشاهدة</span></div>
+                <div class="analytics-bar-chart" id="analyticsBarChart"></div>
+                <div class="analytics-chart-axis"><span id="analyticsChartStart">—</span><span>اليوم</span></div>
+            </section>
+            <section class="analytics-recent-panel">
+                <div class="analytics-chart-head"><div><h4>آخر 7 أيام</h4><p>تفصيل يومي للمشاهدات المسجلة.</p></div></div>
+                <div class="analytics-day-list" id="analyticsDayList"></div>
+            </section>
+            <footer class="analytics-dialog-footer"><a href="/superadmin/landing" class="dashboard-primary-action"><i class="fas fa-pen-to-square"></i> إدارة صفحة الهبوط</a><button type="button" class="dashboard-secondary-action" id="analyticsDialogDone">إغلاق</button></footer>
         </div>
-        <div class="metric-footer">
-            <i class="fas fa-exclamation-circle"></i>
-            <span>طلبات دفع ZainCash جديدة</span>
-        </div>
-    </div>
+    </dialog>
+    <script id="landingVisitAnalyticsData" type="application/json">{{ landing_visit_analytics|tojson }}</script>
+</main>
+{% endblock %}
 
-    <div class="premium-card metric-card metric-active">
-        <i class="fas fa-building metric-icon-bg"></i>
-        <div class="metric-info">
-            <div class="metric-title">الشركات النشطة</div>
-            <div class="metric-value">{{ active_tenants }}</div>
-        </div>
-        <div class="metric-footer">
-            <i class="fas fa-check-double"></i>
-            <span>إجمالي الشركات المسجلة</span>
-        </div>
-    </div>
+{% block scripts %}
+<script>
+(function () {
+    "use strict";
+    var page = document.getElementById("dashboardPage");
+    if (!page) return;
+    var time = document.getElementById("dashboardUpdateTime");
+    if (time) time.textContent = new Intl.DateTimeFormat("ar-IQ", { weekday: "long", hour: "2-digit", minute: "2-digit" }).format(new Date());
 
-    <div class="premium-card metric-card metric-rejected">
-        <i class="fas fa-ban metric-icon-bg"></i>
-        <div class="metric-info">
-            <div class="metric-title">الطلبات المرفوضة</div>
-            <div class="metric-value">{{ rejected_count }}</div>
-        </div>
-        <div class="metric-footer">
-            <i class="fas fa-times-circle"></i>
-            <span>أحدث الطلبات غير المكتملة</span>
-        </div>
-    </div>
+    var analyticsNode = document.getElementById("landingVisitAnalyticsData");
+    var analytics = { periods: {}, daily: [], average_7d: 0, best_day: null };
+    try { analytics = JSON.parse(analyticsNode && analyticsNode.textContent || "{}"); } catch (error) {}
+    var numberFormatter = new Intl.NumberFormat("ar-IQ");
+    var shortDateFormatter = new Intl.DateTimeFormat("ar-IQ", { month: "short", day: "numeric" });
+    var longDateFormatter = new Intl.DateTimeFormat("ar-IQ", { weekday: "short", month: "short", day: "numeric" });
+    var visitPeriodSelect = document.getElementById("visitPeriodSelect");
+    var visitMetricLabel = document.getElementById("visitMetricLabel");
+    var visitMetricValue = document.getElementById("visitMetricValue");
+    var visitMetricTrend = document.getElementById("visitMetricTrend");
+    var visitTrendLabel = document.getElementById("visitTrendLabel");
+    var visitSparkBars = document.getElementById("visitSparkBars");
+    var periodLabels = { today: "زيارات اليوم", "7d": "زيارات آخر 7 أيام", "30d": "زيارات آخر 30 يوماً" };
+    var comparisonLabels = { today: "عن أمس", "7d": "عن الأسبوع السابق", "30d": "عن الشهر السابق" };
 
-    <div class="premium-card metric-card metric-landing">
-        <i class="fas fa-mouse-pointer metric-icon-bg"></i>
-        <div class="metric-info">
-            <div class="metric-title">زيارات صفحة الهبوط (إجمالي)</div>
-            <div class="metric-value">{{ "{:,.0f}".format(landing_visits or 0) }}</div>
-        </div>
-        <div class="metric-footer">
-            <i class="fas fa-globe"></i>
-            <span>إجمالي زيارات الصفحة العامة (finora.company)</span>
-        </div>
-    </div>
+    function parseLocalDate(value) {
+        var parts = String(value || "").split("-");
+        return new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    }
 
-    <div class="premium-card metric-card metric-landing">
-        <i class="fas fa-bullseye metric-icon-bg"></i>
-        <div class="metric-info">
-            <div class="metric-title">الزيارات النشطة (اليوم)</div>
-            <div class="metric-value">{{ "{:,.0f}".format(landing_visits_today or 0) }}</div>
-        </div>
-        <div class="metric-footer">
-            <i class="fas fa-calendar-day"></i>
-            <span>عدد زيارات صفحة الهبوط خلال هذا اليوم</span>
-        </div>
-    </div>
-</div>
+    function periodSeries(period) {
+        var daily = Array.isArray(analytics.daily) ? analytics.daily : [];
+        if (period === "today") return daily.slice(-1);
+        if (period === "7d") return daily.slice(-7);
+        return daily.slice(-30);
+    }
 
-<div class="section-header">
-    <div class="section-title">
-        <i class="fas fa-bolt" style="color: var(--warning)"></i>
-        <span>أحدث طلبات الدفع والتسجيل</span>
-    </div>
-    <a href="/superadmin/requests" class="btn-action">عرض جميع الطلبات</a>
-</div>
+    function renderBars(container, series, barClass) {
+        if (!container) return;
+        container.textContent = "";
+        var maxValue = Math.max.apply(null, series.map(function (item) { return Number(item.value) || 0; }).concat([1]));
+        series.forEach(function (item) {
+            var bar = document.createElement("span");
+            bar.className = barClass || "visit-spark-bar";
+            bar.style.setProperty("--bar-height", Math.max(7, Math.round(((Number(item.value) || 0) / maxValue) * 100)) + "%");
+            bar.title = longDateFormatter.format(parseLocalDate(item.date)) + ": " + numberFormatter.format(item.value || 0) + " مشاهدة";
+            bar.setAttribute("aria-label", bar.title);
+            container.appendChild(bar);
+        });
+    }
 
-<div class="premium-card table-card">
-    <table class="custom-table">
-        <thead>
-            <tr>
-                <th>رقم الطلب</th>
-                <th>الشركة</th>
-                <th>المبلغ</th>
-                <th>التاريخ</th>
-                <th>الحالة</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for req in recent_requests %}
-            <tr>
-                <td class="id-text">#{{ req.id }}</td>
-                <td style="font-weight: 800;">{{ req.tenant_name }}</td>
-                <td class="amount-text">{{ "{:,.0f}".format(req.amount) }} د.ع</td>
-                <td style="color: var(--text-muted); font-size: 13px;">{{ req.created_at.strftime('%Y-%m-%d %H:%M') }}
-                </td>
-                <td>
-                    <span class="status-badge status-{{ req.status }}">
-                        {% if req.status == 'pending' %}قيد الانتظار
-                        {% elif req.status == 'approved' %}مكتمل
-                        {% else %}مرفوض{% endif %}
-                    </span>
-                </td>
-            </tr>
-            {% else %}
-            <tr>
-                <td colspan="5" style="text-align: center; padding: 60px; color: var(--text-muted);">
-                    <i class="fas fa-inbox" style="font-size: 40px; margin-bottom: 16px; opacity: 0.3;"></i>
-                    <p>لا توجد طلبات حديثة حالياً</p>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-</div>
+    function updateVisitCard(period) {
+        var summary = analytics.periods && analytics.periods[period] || { value: 0, change: 0 };
+        var hasComparablePeriod = summary.change !== null && typeof summary.change !== "undefined";
+        var change = hasComparablePeriod ? (Number(summary.change) || 0) : 0;
+        if (visitMetricLabel) visitMetricLabel.textContent = periodLabels[period];
+        if (visitMetricValue) visitMetricValue.textContent = numberFormatter.format(summary.value || 0);
+        if (visitTrendLabel) visitTrendLabel.textContent = comparisonLabels[period];
+        if (visitMetricTrend) {
+            visitMetricTrend.classList.toggle("is-up", change > 0 || !hasComparablePeriod);
+            visitMetricTrend.classList.toggle("is-down", change < 0);
+            visitMetricTrend.classList.toggle("is-neutral", change === 0 && hasComparablePeriod);
+            visitMetricTrend.querySelector("i").className = "fas " + (!hasComparablePeriod ? "fa-sparkles" : change > 0 ? "fa-arrow-trend-up" : change < 0 ? "fa-arrow-trend-down" : "fa-minus");
+            visitMetricTrend.querySelector("b").textContent = !hasComparablePeriod ? "نشاط جديد" : (change > 0 ? "+" : "") + numberFormatter.format(change) + "%";
+        }
+        renderBars(visitSparkBars, periodSeries(period));
+    }
+
+    if (visitPeriodSelect) {
+        visitPeriodSelect.addEventListener("change", function () { updateVisitCard(visitPeriodSelect.value); });
+        updateVisitCard(visitPeriodSelect.value);
+    }
+
+    var analyticsDialog = document.getElementById("landingAnalyticsDialog");
+    var analyticsBarChart = document.getElementById("analyticsBarChart");
+    var analyticsDayList = document.getElementById("analyticsDayList");
+    var daily30 = periodSeries("30d");
+    renderBars(analyticsBarChart, daily30, "analytics-chart-bar");
+    var total30 = analytics.periods && analytics.periods["30d"] ? analytics.periods["30d"].value : 0;
+    var periodTotal = document.getElementById("analyticsPeriodTotal");
+    if (periodTotal) periodTotal.textContent = numberFormatter.format(total30 || 0) + " مشاهدة";
+    var chartStart = document.getElementById("analyticsChartStart");
+    if (chartStart && daily30.length) chartStart.textContent = shortDateFormatter.format(parseLocalDate(daily30[0].date));
+    var analyticsAverage = document.getElementById("analyticsAverage");
+    if (analyticsAverage) analyticsAverage.textContent = numberFormatter.format(analytics.average_7d || 0) + " / يوم";
+    var analyticsBestDay = document.getElementById("analyticsBestDay");
+    if (analyticsBestDay && analytics.best_day && Number(analytics.best_day.value) > 0) analyticsBestDay.textContent = shortDateFormatter.format(parseLocalDate(analytics.best_day.date)) + " · " + numberFormatter.format(analytics.best_day.value);
+
+    if (analyticsDayList) {
+        var recent = daily30.slice(-7).reverse();
+        var maxRecent = Math.max.apply(null, recent.map(function (item) { return Number(item.value) || 0; }).concat([1]));
+        recent.forEach(function (item) {
+            var row = document.createElement("div");
+            row.className = "analytics-day-row";
+            var label = document.createElement("span");
+            label.textContent = longDateFormatter.format(parseLocalDate(item.date));
+            var track = document.createElement("i");
+            var fill = document.createElement("em");
+            fill.style.setProperty("--day-width", Math.round(((Number(item.value) || 0) / maxRecent) * 100) + "%");
+            track.appendChild(fill);
+            var value = document.createElement("b");
+            value.textContent = numberFormatter.format(item.value || 0);
+            row.appendChild(label); row.appendChild(track); row.appendChild(value);
+            analyticsDayList.appendChild(row);
+        });
+    }
+
+    function openAnalyticsDialog() {
+        if (!analyticsDialog) return;
+        if (typeof analyticsDialog.showModal === "function") analyticsDialog.showModal();
+        else analyticsDialog.setAttribute("open", "");
+    }
+
+    function closeAnalyticsDialog() {
+        if (!analyticsDialog) return;
+        if (typeof analyticsDialog.close === "function") analyticsDialog.close();
+        else analyticsDialog.removeAttribute("open");
+    }
+
+    var visitDetailsButton = document.getElementById("visitDetailsButton");
+    if (visitDetailsButton) visitDetailsButton.addEventListener("click", openAnalyticsDialog);
+    [document.getElementById("analyticsDialogClose"), document.getElementById("analyticsDialogDone")].forEach(function (button) { if (button) button.addEventListener("click", closeAnalyticsDialog); });
+    if (analyticsDialog) analyticsDialog.addEventListener("click", function (event) { if (event.target === analyticsDialog) closeAnalyticsDialog(); });
+
+    var search = document.getElementById("requestSearch");
+    var rows = Array.prototype.slice.call(document.querySelectorAll("[data-request-row]"));
+    var filters = Array.prototype.slice.call(document.querySelectorAll("[data-request-filter]"));
+    var noResults = document.getElementById("requestNoResults");
+    var activeFilter = "all";
+    function updateRows() {
+        var query = (search && search.value || "").trim().toLowerCase();
+        var shown = 0;
+        rows.forEach(function (row) {
+            var visible = (activeFilter === "all" || row.dataset.status === activeFilter) && (!query || (row.dataset.search || "").indexOf(query) !== -1);
+            row.hidden = !visible;
+            if (visible) shown += 1;
+        });
+        if (noResults) noResults.hidden = shown !== 0 || rows.length === 0;
+    }
+    if (search) search.addEventListener("input", updateRows);
+    filters.forEach(function (button) { button.addEventListener("click", function () { activeFilter = button.dataset.requestFilter; filters.forEach(function (item) { item.classList.toggle("active", item === button); }); updateRows(); }); });
+    var refresh = document.getElementById("dashboardRefresh");
+    if (refresh) refresh.addEventListener("click", function () { refresh.classList.add("is-loading"); refresh.disabled = true; window.location.reload(); });
+})();
+</script>
 {% endblock %}

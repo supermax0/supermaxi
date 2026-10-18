@@ -17,7 +17,7 @@
 {% block topbar_actions %}{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/ai-sales-inbox.css', v='20260716-02') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/ai-sales-inbox.css', v='20261001-03') }}">
 
 <div class="sales-ai-app" id="salesAiApp" data-can-manage="{{ 'true' if can_manage else 'false' }}">
   <section class="sales-ai-workspace" id="workspace">
@@ -169,7 +169,9 @@
         <button type="button" data-tab="learning"><i class="fa-solid fa-graduation-cap"></i><span>التعلّم والمشاكل</span></button>
         <button type="button" data-tab="channel"><i class="fa-brands fa-whatsapp"></i><span>واتساب</span></button>
         <button type="button" data-tab="meta"><i class="fa-brands fa-meta"></i><span>Meta والصفحات</span></button>
+        <button type="button" data-tab="tiktok"><i class="fa-brands fa-tiktok"></i><span>تيك توك</span></button>
         <button type="button" data-tab="media"><i class="fa-regular fa-images"></i><span>الوسائط</span></button>
+        <button type="button" data-tab="verify"><i class="fa-solid fa-flask-vial"></i><span>اختبار الذكاء الحقيقي</span></button>
       </nav>
       <div class="sales-ai-settings-content">
         <form class="sales-ai-form" id="agentForm" data-pane="agent">
@@ -232,6 +234,7 @@
             <div class="sales-ai-field"><label for="agentVoiceSpeed">سرعة الكلام <output id="agentVoiceSpeedValue">0.96×</output></label><input id="agentVoiceSpeed" type="range" min="0.75" max="1.25" step="0.01" value="0.96"><small>السرعة 0.96 تعطي نطقاً عراقياً أهدأ وأكثر طبيعية.</small></div>
             <div class="sales-ai-field"><label for="agentAudioFormat">صيغة الصوت</label><select id="agentAudioFormat"><option value="opus">Opus · موصى للبصمات</option><option value="mp3">MP3</option><option value="aac">AAC</option><option value="wav">WAV</option><option value="flac">FLAC</option></select></div>
             <div class="sales-ai-field"><label for="agentMaxAudio">أقصى حجم للتسجيل</label><input id="agentMaxAudio" type="number" min="1" max="25"><small>بالميغابايت، والحد الأعلى 25 MB.</small></div>
+            <div class="sales-ai-field"><label for="agentMaxVideoSeconds">أقصى مدة فيديو يحلّلها الذكاء</label><input id="agentMaxVideoSeconds" type="number" min="10" max="180"><small>بالثواني؛ فيديو أطول يُحوَّل مباشرة لموظف.</small></div>
             <div class="sales-ai-field"><label for="agentHumanPause">توقف الذكاء بعد رد الموظف</label><input id="agentHumanPause" type="number" min="1" max="1440"><small>بالدقائق؛ بعدها يعود للرد تلقائياً على القنوات الذكية.</small></div>
             <div class="sales-ai-field full"><label for="agentVoiceInstructions">تعليمات نبرة الصوت</label><textarea id="agentVoiceInstructions" rows="3" placeholder="تكلم باللهجة العراقية الطبيعية بصوت بشري دافئ وواضح وواثق، مع وقفات قصيرة ونطق دقيق للأسعار وأسماء المنتجات"></textarea></div>
             <label class="sales-ai-switch-row"><span><strong>الردود الصوتية</strong><small>الرد بصوت حسب النمط المحدد</small></span><input id="agentVoiceEnabled" type="checkbox"><i></i></label>
@@ -411,6 +414,24 @@
           </div>
         </form>
 
+        <form class="sales-ai-form" id="tiktokForm" data-pane="tiktok" hidden>
+          <div class="sales-ai-section-heading">
+            <h3>قناة تيك توك <span class="sales-ai-beta-badge">Beta</span></h3>
+            <p>Business Messaging API من تيك توك لا يزال Open Beta ويدعم الرسائل النصية والصور فقط — لا يوجد دعم لإرسال فيديو أو صوت حتى الآن. أنشئ تطبيق مطوّر على TikTok for Business واحصل على بياناته أدناه قبل الحفظ.</p>
+          </div>
+          <div id="tiktokSummary"></div><input id="tiktokChannelId" type="hidden">
+          <div class="sales-ai-form-grid">
+            <div class="sales-ai-field"><label for="tiktokName">اسم القناة</label><input id="tiktokName" value="TikTok"></div>
+            <div class="sales-ai-field"><label for="tiktokAppId">App ID (client_id)</label><input id="tiktokAppId" dir="ltr" autocomplete="off"></div>
+            <div class="sales-ai-field"><label for="tiktokBusinessId">Business ID (open_id)</label><input id="tiktokBusinessId" dir="ltr" autocomplete="off"></div>
+            <div class="sales-ai-field full"><label class="sales-ai-secret-label" for="tiktokSecret"><span>App Secret</span><span class="sales-ai-saved" id="tiktokSecretSaved"><i class="fa-solid fa-check"></i> محفوظ</span></label><input id="tiktokSecret" type="password" autocomplete="new-password" placeholder="اتركه فارغاً للاحتفاظ بالمحفوظ"></div>
+            <div class="sales-ai-field"><label class="sales-ai-secret-label" for="tiktokToken"><span>Access Token</span><span class="sales-ai-saved" id="tiktokTokenSaved"><i class="fa-solid fa-check"></i> محفوظ</span></label><input id="tiktokToken" type="password" autocomplete="new-password" placeholder="صالح 24 ساعة فقط"><small>يُجدَّد تلقائياً من Refresh Token عند الحاجة.</small></div>
+            <div class="sales-ai-field"><label class="sales-ai-secret-label" for="tiktokRefreshToken"><span>Refresh Token</span><span class="sales-ai-saved" id="tiktokRefreshTokenSaved"><i class="fa-solid fa-check"></i> محفوظ</span></label><input id="tiktokRefreshToken" type="password" autocomplete="new-password" placeholder="صالح سنة واحدة"></div>
+            <label class="sales-ai-switch-row full"><span><strong>تشغيل قناة تيك توك</strong><small>استقبال الرسائل وإرسال ردود الذكاء</small></span><input id="tiktokActive" type="checkbox"><i></i></label>
+          </div>
+          <div class="sales-ai-form-footer"><button class="sales-ai-btn secondary" type="submit"><i class="fa-brands fa-tiktok"></i>حفظ قناة تيك توك</button></div>
+        </form>
+
         <form class="sales-ai-form" id="mediaForm" data-pane="media" hidden>
           <div class="sales-ai-section-heading"><h3>وسائط المنتجات</h3><p>الصور والفيديوهات والأصوات المعتمدة التي يرسلها الموظف الذكي.</p></div>
           <div class="sales-ai-form-grid">
@@ -425,6 +446,23 @@
           <div class="sales-ai-form-footer"><button class="sales-ai-btn primary" type="submit"><i class="fa-solid fa-cloud-arrow-up"></i>إضافة الوسيط</button></div>
           <div class="sales-ai-media-list" id="mediaList"></div>
         </form>
+
+        <section class="sales-ai-form sales-ai-verify-pane" data-pane="verify" hidden>
+          <div class="sales-ai-section-heading">
+            <h3>اختبار الذكاء الحقيقي</h3>
+            <p>محادثة تجريبية تستخدم نفس محرك الذكاء الفعلي (نفس نموذج OpenAI الذي يرد على الزبائن) — لمعرفة هل تعلّم الذكاء من ردود الموظفين فعلاً أم لا. هذه المحادثة منفصلة تماماً ولا تظهر في صندوق الوارد.</p>
+          </div>
+          <div class="sales-ai-verify-toolbar">
+            <button class="sales-ai-btn" id="verifyNewThreadBtn" type="button"><i class="fa-solid fa-rotate-right"></i>بدء محادثة جديدة</button>
+          </div>
+          <div class="sales-ai-verify-messages" id="verifyMessages" aria-live="polite">
+            <p class="sales-ai-verify-empty">اكتب سؤال زبون حقيقي بالأسفل لتجربة رد الذكاء الفعلي.</p>
+          </div>
+          <form class="sales-ai-verify-composer" id="verifyComposerForm">
+            <input id="verifyInput" type="text" placeholder="اكتب سؤال زبون حقيقي..." autocomplete="off" required>
+            <button class="sales-ai-btn primary" type="submit"><i class="fa-solid fa-paper-plane"></i>إرسال</button>
+          </form>
+        </section>
       </div>
     </div>
   </section>
@@ -436,5 +474,5 @@
 {% endblock %}
 
 {% block scripts %}
-<script src="{{ url_for('static', filename='js/ai-sales-inbox.js', v='20260716-02') }}"></script>
+<script src="{{ url_for('static', filename='js/ai-sales-inbox.js', v='20261001-03') }}"></script>
 {% endblock %}

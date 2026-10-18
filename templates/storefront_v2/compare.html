@@ -1,0 +1,64 @@
+{% extends "storefront_v2/base.html" %}
+{% block legacy_assets %}{% endblock %}
+{% block body_class %} sm-native{% endblock %}
+{% block title %}مقارنة المنتجات — {{ store_design.store_name }}{% endblock %}
+{% block meta %}<meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+{% set home_url = url_for('storefront.store_index', tenant_slug=shop_tenant_slug) %}
+<section class="sm-shell sm-section sm-compare" data-sm-compare-page>
+  <h1 class="sm-h1">مقارنة المنتجات</h1>
+  {% if compare_error or not comparison %}
+  <div class="sm-empty">
+    <h3>{{ compare_error or "اختر منتجين على الأقل للمقارنة" }}</h3>
+    <p>افتح صفحة أي منتج واضغط «أضف للمقارنة» — حتى 4 منتجات.</p>
+    <a class="sm-btn sm-btn--primary" href="{{ home_url }}">تصفّح المنتجات</a>
+  </div>
+  {% else %}
+  {% set items = comparison.products %}
+  {% if not comparison.same_category %}<p class="sm-alert" role="note">هذه المنتجات من أقسام مختلفة، لذلك قد لا تتطابق مواصفاتها.</p>{% endif %}
+  <label class="sm-compare__toggle"><input type="checkbox" data-sm-compare-diff> عرض الاختلافات فقط</label>
+  <div class="sm-compare__scroll">
+    <table class="sm-compare__table" style="--cols: {{ items|length }}">
+      <thead>
+        <tr>
+          <th scope="col"><span class="sm-visually-hidden">المواصفة</span></th>
+          {% for p in items %}
+          <th scope="col">
+            <a class="sm-compare__img" href="{{ p.url }}">{% if p.image_url %}<img src="{{ p.image_url }}" alt="" width="120" height="120" loading="lazy" decoding="async">{% endif %}</a>
+            <a class="sm-compare__name" href="{{ p.url }}">{{ p.name }}</a>
+            <button class="sm-link" type="button" data-sm-compare-remove="{{ p.id }}">إزالة</button>
+          </th>
+          {% endfor %}
+        </tr>
+      </thead>
+      <tbody>
+        <tr class="{{ 'is-diff' if (items|map(attribute='price')|unique|list|length) > 1 else 'is-same' }}">
+          <th scope="row">السعر</th>
+          {% for p in items %}<td><strong>{% if p.price and p.price > 0 %}{{ p.price|toLocaleString }} {{ p.currency_label }}{% else %}عند الطلب{% endif %}</strong></td>{% endfor %}
+        </tr>
+        {% set states = [] %}{% for p in items %}{% set _ = states.append('in' if p.is_available else ('order' if p.is_reservation else 'out')) %}{% endfor %}
+        <tr class="{{ 'is-diff' if (states|unique|list|length) > 1 else 'is-same' }}">
+          <th scope="row">التوفر</th>
+          {% for p in items %}<td>{% if p.is_available %}<span class="sm-stock is-in">متوفر</span>{% elif p.is_reservation %}<span class="sm-stock is-order">متاح للطلب</span>{% else %}<span class="sm-stock is-out">غير متوفر</span>{% endif %}</td>{% endfor %}
+        </tr>
+        <tr class="{{ 'is-diff' if (items|map(attribute='brand')|map('default', '')|unique|list|length) > 1 else 'is-same' }}">
+          <th scope="row">العلامة التجارية</th>
+          {% for p in items %}<td>{{ p.brand or "—" }}</td>{% endfor %}
+        </tr>
+        {% for row in comparison.rows %}
+        <tr class="{{ 'is-diff' if row.differs else 'is-same' }}">
+          <th scope="row">{{ row.label }}</th>
+          {% for v in row["values"] %}<td>{{ v or "—" }}</td>{% endfor %}
+        </tr>
+        {% endfor %}
+        <tr>
+          <th scope="row"><span class="sm-visually-hidden">الشراء</span></th>
+          {% for p in items %}<td>{% if p.is_available or p.is_reservation %}<button class="sm-btn sm-btn--primary" type="button" data-sf-add-cart="{{ p.id }}">أضف إلى السلة</button>{% endif %}</td>{% endfor %}
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  {% if not comparison.rows %}<p class="sm-muted">لا توجد مواصفات مسجّلة لهذه المنتجات للمقارنة بعد.</p>{% endif %}
+  {% endif %}
+</section>
+{% endblock %}

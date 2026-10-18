@@ -2,8 +2,23 @@
   'use strict';
 
   var state = null;
+  var freePlanState = null;
+  var openCards = {};
   var apiBase = '/api/superadmin/landing';
   var alertBox = document.getElementById('landingAdminAlert');
+
+  var freeFeatureLabels = {
+    orders: 'إدارة الطلبات', pos: 'نقطة البيع (POS)', inventory: 'إدارة المخزون',
+    customers: 'إدارة الزبائن', cashflow: 'التحصيل والمدفوعات', printing: 'الطباعة والفواتير',
+    expenses: 'إدارة المصروفات', suppliers: 'الموردون', purchases: 'المشتريات', shipping: 'شركات النقل',
+    reports_adv: 'التقارير المالية المتقدمة', rbac: 'الصلاحيات', agents: 'مناديب التوصيل', accounts: 'دفتر الحسابات',
+    ai_assistant: 'المساعد الذكي', ai_workspace: 'مساحة العمل الذكية', messages: 'نظام الرسائل'
+  };
+
+  var collectionIcons = {
+    sections: 'fa-layer-group', features: 'fa-stars', modules: 'fa-table-cells-large', pricing: 'fa-tags',
+    faqs: 'fa-circle-question', testimonials: 'fa-comment-dots', ctas: 'fa-bullhorn'
+  };
 
   var labels = {
     site_name: 'اسم الموقع',
@@ -105,6 +120,13 @@
     showAlert.timer = setTimeout(function () { alertBox.hidden = true; }, 4500);
   }
 
+  function setBusy(button, busy, label) {
+    if (!button) return;
+    if (!button.dataset.originalHtml) button.dataset.originalHtml = button.innerHTML;
+    button.disabled = !!busy;
+    button.innerHTML = busy ? '<i class="fas fa-circle-notch fa-spin"></i>' + (label || 'جاري الحفظ…') : button.dataset.originalHtml;
+  }
+
   function request(url, options) {
     return fetch(url, Object.assign({
       headers: { 'Content-Type': 'application/json' }
@@ -177,9 +199,11 @@
     }).join('') + '<div class="landing-form-actions"><button class="btn-primary" type="submit"><i class="fas fa-save"></i>حفظ المسودة</button></div>';
     form.onsubmit = function (e) {
       e.preventDefault();
+      var submit = form.querySelector('[type="submit"]');
+      setBusy(submit, true);
       request(endpoint, { method: 'PUT', body: JSON.stringify(collectForm(form)) })
         .then(function () { showAlert('تم حفظ المسودة'); return load(); })
-        .catch(function (err) { showAlert(err.message, true); });
+        .catch(function (err) { showAlert(err.message, true); setBusy(submit, false); });
     };
   }
 
@@ -192,21 +216,38 @@
     if (!list) return;
     var items = state[collection] || [];
     list.innerHTML = items.map(function (item) {
-      return '<article class="landing-edit-card" data-id="' + item.id + '">' +
-        '<div class="landing-edit-card-head"><h4>' + escapeHtml(titleFor(collection, item)) + '</h4><span>#' + item.id + '</span></div>' +
+      var cardKey = collection + ':' + item.id;
+      var isOpen = !!openCards[cardKey];
+      return '<article class="landing-edit-card' + (isOpen ? ' open' : '') + '" data-id="' + item.id + '" data-card-key="' + cardKey + '">' +
+        '<div class="landing-edit-card-head" role="button" tabindex="0" aria-expanded="' + (isOpen ? 'true' : 'false') + '"><div><i class="fas ' + (collectionIcons[collection] || 'fa-pen') + '"></i><div><h4>' + escapeHtml(titleFor(collection, item)) + '</h4><small>#' + item.id + ' · ' + (item.is_visible === false ? 'مخفي' : 'ظاهر') + '</small></div></div><button type="button" class="landing-card-toggle" aria-label="فتح التفاصيل"><i class="fas fa-chevron-down"></i></button></div>' +
         '<form class="landing-item-form">' +
         fields[collection].map(function (field) { return fieldHtml(field, valueFor(item, field)); }).join('') +
         '<div class="landing-item-actions"><button class="btn-primary" type="submit"><i class="fas fa-save"></i>حفظ</button><button class="btn-danger" type="button" data-delete="' + collection + '" data-id="' + item.id + '"><i class="fas fa-trash"></i>حذف</button></div>' +
         '</form></article>';
     }).join('');
 
+    list.querySelectorAll('.landing-edit-card-head').forEach(function (head) {
+      function toggleCard() {
+        var card = head.closest('.landing-edit-card');
+        var open = card.classList.toggle('open');
+        openCards[card.dataset.cardKey] = open;
+        head.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
+      head.addEventListener('click', toggleCard);
+      head.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); toggleCard(); }
+      });
+    });
+
     list.querySelectorAll('form').forEach(function (form) {
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         var id = form.closest('[data-id]').getAttribute('data-id');
+        var submit = form.querySelector('[type="submit"]');
+        setBusy(submit, true);
         request(apiBase + '/' + collection + '/' + id, { method: 'PUT', body: JSON.stringify(collectForm(form)) })
           .then(function () { showAlert('تم حفظ العنصر'); return load(); })
-          .catch(function (err) { showAlert(err.message, true); });
+          .catch(function (err) { showAlert(err.message, true); setBusy(submit, false); });
       });
     });
   }
@@ -229,13 +270,87 @@
   function renderMetrics() {
     var box = document.getElementById('landingMetrics');
     box.innerHTML = [
-      ['الأقسام', state.sections.length],
-      ['المميزات', state.features.length],
-      ['الخطط', state.pricing.length],
-      ['FAQ', state.faqs.length]
+      ['الأقسام', state.sections.length, 'fa-layer-group'],
+      ['المميزات', state.features.length, 'fa-stars'],
+      ['بطاقات الخطط', state.pricing.length, 'fa-tags'],
+      ['الأسئلة', state.faqs.length, 'fa-circle-question']
     ].map(function (m) {
-      return '<div class="landing-metric"><strong>' + m[1] + '</strong><span>' + m[0] + '</span></div>';
+      return '<div class="landing-metric"><i class="fas ' + m[2] + '"></i><div><strong>' + m[1] + '</strong><span>' + m[0] + '</span></div></div>';
     }).join('');
+  }
+
+  function freePlanPayloadFromForm() {
+    var featureValues = {};
+    document.querySelectorAll('#freePlanFeatures input[data-feature]').forEach(function (input) {
+      featureValues[input.dataset.feature] = input.checked;
+    });
+    return {
+      enabled: document.getElementById('freePlanEnabled').checked,
+      trial_days: document.getElementById('freeTrialDays').value,
+      name: document.getElementById('freePlanName').value.trim(),
+      max_users: document.getElementById('freePlanMaxUsers').value,
+      max_orders_monthly: document.getElementById('freePlanMaxOrders').value,
+      badge_text: document.getElementById('freePlanBadge').value.trim(),
+      description: document.getElementById('freePlanDescription').value.trim(),
+      cta_text: document.getElementById('freePlanCta').value.trim(),
+      landing_features: document.getElementById('freePlanLandingFeatures').value.split(/\r?\n/).map(function (item) { return item.trim(); }).filter(Boolean),
+      system_features: featureValues
+    };
+  }
+
+  function syncFreePlanPreview() {
+    if (!document.getElementById('freePlanForm')) return;
+    var data = freePlanPayloadFromForm();
+    var days = Math.max(1, Number(data.trial_days) || 1);
+    document.getElementById('freePlanEnabledLabel').textContent = data.enabled ? 'مفعّل' : 'متوقف';
+    document.getElementById('freePlanPreview').classList.toggle('is-disabled', !data.enabled);
+    document.getElementById('freePreviewName').textContent = data.name || 'الخطة المجانية';
+    document.getElementById('freePreviewBadge').textContent = data.badge_text || 'تجربة مجانية';
+    document.getElementById('freePreviewDescription').textContent = data.description || 'جرّب أساسيات فينورا مجاناً.';
+    document.getElementById('freePreviewDuration').textContent = days + (days === 1 ? ' يوم مجاناً' : ' يوماً مجاناً');
+    document.getElementById('freePreviewCta').textContent = data.cta_text || 'ابدأ مجاناً';
+    document.getElementById('freePreviewFeatures').innerHTML = data.landing_features.slice(0, 6).map(function (feature) {
+      return '<li><i class="fas fa-circle-check"></i>' + escapeHtml(feature) + '</li>';
+    }).join('') || '<li><i class="fas fa-circle-check"></i>ميزات فينورا الأساسية</li>';
+    document.querySelectorAll('[data-trial-days]').forEach(function (button) {
+      button.classList.toggle('active', Number(button.dataset.trialDays) === days);
+    });
+  }
+
+  function renderFreePlan() {
+    if (!freePlanState || !document.getElementById('freePlanForm')) return;
+    document.getElementById('freePlanEnabled').checked = !!freePlanState.enabled;
+    document.getElementById('freeTrialDays').value = freePlanState.trial_days || 14;
+    document.getElementById('freePlanName').value = freePlanState.name || 'الخطة المجانية';
+    document.getElementById('freePlanMaxUsers').value = freePlanState.max_users == null ? '' : freePlanState.max_users;
+    document.getElementById('freePlanMaxOrders').value = freePlanState.max_orders_monthly == null ? '' : freePlanState.max_orders_monthly;
+    document.getElementById('freePlanBadge').value = freePlanState.badge_text || '';
+    document.getElementById('freePlanDescription').value = freePlanState.description || '';
+    document.getElementById('freePlanCta').value = freePlanState.cta_text || '';
+    document.getElementById('freePlanLandingFeatures').value = (freePlanState.landing_features || []).join('\n');
+    document.getElementById('freePlanFeatures').innerHTML = Object.keys(freeFeatureLabels).map(function (key) {
+      var checked = freePlanState.system_features && freePlanState.system_features[key];
+      return '<label class="free-feature-toggle"><input type="checkbox" data-feature="' + key + '"' + (checked ? ' checked' : '') + '><span>' + freeFeatureLabels[key] + '</span></label>';
+    }).join('');
+
+    document.querySelectorAll('#freePlanForm input, #freePlanForm textarea').forEach(function (input) { input.oninput = syncFreePlanPreview; input.onchange = syncFreePlanPreview; });
+    document.querySelectorAll('[data-trial-days]').forEach(function (button) {
+      button.onclick = function () { document.getElementById('freeTrialDays').value = button.dataset.trialDays; syncFreePlanPreview(); };
+    });
+    document.getElementById('freePlanForm').onsubmit = function (event) {
+      event.preventDefault();
+      var submit = document.getElementById('saveFreePlanBtn');
+      setBusy(submit, true, 'جاري الحفظ…');
+      request(apiBase + '/free-plan', { method: 'PUT', body: JSON.stringify(freePlanPayloadFromForm()) })
+        .then(function (data) {
+          freePlanState = data.item;
+          showAlert('تم حفظ الاشتراك المجاني. المدة تطبّق فوراً، وانشر لإظهار البطاقة للزوار.');
+          renderFreePlan();
+          setBusy(submit, false);
+        })
+        .catch(function (error) { showAlert(error.message, true); setBusy(submit, false); });
+    };
+    syncFreePlanPreview();
   }
 
   function renderAll() {
@@ -245,24 +360,45 @@
     renderSingleForm('seoForm', state.seo || {}, apiBase + '/seo');
     ['sections', 'features', 'modules', 'pricing', 'faqs', 'testimonials', 'ctas'].forEach(renderCollection);
     renderMedia();
+    renderFreePlan();
   }
 
   function load() {
-    return request(apiBase, { method: 'GET' }).then(function (data) {
-      state = data.data;
+    return Promise.all([
+      request(apiBase, { method: 'GET' }),
+      request(apiBase + '/free-plan', { method: 'GET' })
+    ]).then(function (results) {
+      state = results[0].data;
+      freePlanState = results[1].item;
       renderAll();
     }).catch(function (err) {
       showAlert(err.message, true);
     });
   }
 
-  document.querySelectorAll('.landing-admin-tabs button').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      var tab = btn.getAttribute('data-tab');
-      document.querySelectorAll('.landing-admin-tabs button').forEach(function (b) { b.classList.remove('active'); });
-      document.querySelectorAll('.landing-panel').forEach(function (p) { p.classList.remove('active'); });
-      btn.classList.add('active');
-      document.querySelector('[data-panel="' + tab + '"]').classList.add('active');
+  function activateTab(tab, shouldScroll) {
+    var button = document.querySelector('.landing-admin-tabs button[data-tab="' + tab + '"]');
+    var panel = document.querySelector('[data-panel="' + tab + '"]');
+    if (!button || !panel) return;
+    document.querySelectorAll('.landing-admin-tabs button').forEach(function (item) { item.classList.toggle('active', item === button); });
+    document.querySelectorAll('.landing-panel').forEach(function (item) { item.classList.toggle('active', item === panel); });
+    if (window.history && history.replaceState) history.replaceState(null, '', '#' + tab);
+    if (shouldScroll && window.innerWidth < 901) panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  document.querySelectorAll('.landing-admin-tabs button[data-tab]').forEach(function (btn) {
+    btn.addEventListener('click', function () { activateTab(btn.getAttribute('data-tab'), true); });
+  });
+
+  document.querySelectorAll('[data-jump-tab]').forEach(function (card) {
+    card.addEventListener('click', function () { activateTab(card.getAttribute('data-jump-tab'), true); });
+  });
+
+  var navSearch = document.getElementById('landingNavSearch');
+  if (navSearch) navSearch.addEventListener('input', function () {
+    var query = navSearch.value.trim().toLowerCase();
+    document.querySelectorAll('.landing-admin-tabs button[data-tab]').forEach(function (button) {
+      button.hidden = !!query && button.textContent.toLowerCase().indexOf(query) === -1;
     });
   });
 
@@ -271,7 +407,7 @@
     if (addBtn) {
       var collection = addBtn.getAttribute('data-add');
       request(apiBase + '/' + collection, { method: 'POST', body: JSON.stringify(defaultItem(collection)) })
-        .then(function () { showAlert('تمت إضافة عنصر جديد'); return load(); })
+        .then(function (data) { if (data.item) openCards[collection + ':' + data.item.id] = true; showAlert('تمت إضافة عنصر جديد'); return load(); })
         .catch(function (err) { showAlert(err.message, true); });
     }
     var delBtn = e.target.closest('[data-delete]');
@@ -298,10 +434,26 @@
   }
 
   document.getElementById('publishLandingBtn').addEventListener('click', function () {
+    var freePlanForm = document.getElementById('freePlanForm');
+    if (freePlanForm && !freePlanForm.reportValidity()) {
+      activateTab('free-plan', true);
+      showAlert('راجع بيانات الاشتراك المجاني قبل النشر.', true);
+      return;
+    }
     if (!confirm('نشر المسودة الحالية للزوار؟')) return;
-    request(apiBase + '/publish', { method: 'POST', body: '{}' })
-      .then(function () { showAlert('تم نشر صفحة الهبوط بنجاح'); return load(); })
-      .catch(function (err) { showAlert(err.message, true); });
+    var publishButton = document.getElementById('publishLandingBtn');
+    setBusy(publishButton, true, 'جاري الحفظ والنشر…');
+    var saveFreePlan = freePlanForm
+      ? request(apiBase + '/free-plan', { method: 'PUT', body: JSON.stringify(freePlanPayloadFromForm()) }).then(function (data) {
+          freePlanState = data.item;
+          return data;
+        })
+      : Promise.resolve();
+    saveFreePlan
+      .then(function () { return request(apiBase + '/publish', { method: 'POST', body: '{}' }); })
+      .then(function () { showAlert('تم حفظ إعدادات الاشتراك ونشر صفحة الهبوط بنجاح'); return load(); })
+      .then(function () { setBusy(publishButton, false); })
+      .catch(function (err) { showAlert(err.message, true); setBusy(publishButton, false); });
   });
 
   document.getElementById('mediaUploadForm').addEventListener('submit', function (e) {
@@ -318,5 +470,7 @@
       .catch(function (err) { showAlert(err.message, true); });
   });
 
+  var initialTab = (window.location.hash || '').replace('#', '');
+  if (initialTab) activateTab(initialTab, false);
   load();
 })();

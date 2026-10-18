@@ -39,6 +39,37 @@ def sync_beauty_cash_transaction(appointment: BeautyAppointment) -> None:
         if existing:
             db.session.delete(existing)
         return
+    from models.treasury_account import TreasuryAccount
+    from utils.branch_context import current_branch_id
+
+    branch_id = current_branch_id()
+    method = str(appointment.payment_method or "cash").strip().lower()
+    if method in {"bank", "card", "بنك", "بطاقة"}:
+        query = TreasuryAccount.query.execution_options(skip_branch_scope=True).filter_by(
+            account_type="bank", is_active=True
+        )
+        if branch_id:
+            query = query.filter(TreasuryAccount.branch_id == int(branch_id))
+        treasury_account = query.order_by(TreasuryAccount.id.asc()).first()
+        if not treasury_account:
+            raise ValueError("لا يوجد حساب بنكي فعال لتسجيل دفعة الجلسة")
+    else:
+        query = TreasuryAccount.query.execution_options(skip_branch_scope=True).filter_by(
+            account_type="cash", is_default=True, is_active=True
+        )
+        if branch_id:
+            query = query.filter(TreasuryAccount.branch_id == int(branch_id))
+        treasury_account = query.order_by(TreasuryAccount.id.asc()).first()
+        if not treasury_account:
+            treasury_account = TreasuryAccount(
+                branch_id=branch_id,
+                name="الصندوق",
+                account_type="cash",
+                is_default=True,
+                is_active=True,
+            )
+            db.session.add(treasury_account)
+            db.session.flush()
     note = f"{note_prefix} - {appointment.customer.name if appointment.customer else ''}"
     if appointment.payment_method:
         note = f"{note} - {appointment.payment_method}"
@@ -46,8 +77,16 @@ def sync_beauty_cash_transaction(appointment: BeautyAppointment) -> None:
         existing.type = "deposit"
         existing.amount = paid
         existing.note = note
+        existing.branch_id = treasury_account.branch_id
+        existing.treasury_account_id = treasury_account.id
     else:
-        db.session.add(AccountTransaction(type="deposit", amount=paid, note=note))
+        db.session.add(AccountTransaction(
+            branch_id=treasury_account.branch_id,
+            type="deposit",
+            amount=paid,
+            note=note,
+            treasury_account_id=treasury_account.id,
+        ))
 
 
 def _expenses_amount_for_beauty_range(date_from: date | None, date_to: date | None) -> int:

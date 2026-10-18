@@ -1,0 +1,12 @@
+<!doctype html>
+<html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>FINORA · وردية CS-{{ data.id }}</title>
+<style>
+@page{size:A4;margin:16mm}*{box-sizing:border-box}body{font-family:Tahoma,Arial,sans-serif;color:#202037;line-height:1.7;font-size:13px}h1{font-size:22px;color:#6849b9;margin-bottom:6px}header{border-bottom:2px solid #6849b9;padding-bottom:10px}table{width:100%;border-collapse:collapse;margin:18px 0}th,td{text-align:right;border:1px solid #dcd9e8;padding:8px}th{background:#f3f0fa;width:50%}footer{margin-top:24px;color:#555;font-size:11px}.signatures{display:flex;justify-content:space-between;margin-top:35px}tr{break-inside:avoid}
+</style></head><body>
+<header><h1>FINORA · كشف وردية الصندوق</h1><div>CS-{{ data.id }} · {{ data.name }} · {{ data.account_name }}</div><div>{{ 'مغلقة — أرقام محفوظة وقت الإقفال' if data.status == 'closed' else 'مفتوحة — معاينة حالية' }}</div></header>
+{% set fields = [('فتحها',data.opened_by),('وقت الافتتاح (بغداد)',data.opened_at_local),('الافتتاح المحاسبي',data.opening_ledger),('الافتتاح الفعلي',data.opening_actual),('فرق الافتتاح',data.opening_variance),('سبب فرق الافتتاح',data.opening_reason or '—'),('الإقفال المتوقع',data.expected if data.status == 'closed' else data.preview.expected),('الإقفال الفعلي',data.actual),('فرق الإقفال',data.variance),('سبب فرق الإقفال',data.reason or '—'),('أغلقها',data.closed_by or '—'),('وقت الإقفال (بغداد)',data.closed_at_local)] %}
+<table><tbody>{% for label,value in fields %}<tr><th>{{ label }}</th><td>{% if value is number %}<bdi dir="ltr">{{ '{:,}'.format(value) }} د.ع</bdi>{% else %}{{ value if value is not none else '—' }}{% endif %}</td></tr>{% endfor %}</tbody></table>
+<p>المتوقع = الافتتاح الفعلي + تغير الرصيد المحاسبي منذ الافتتاح. فرق الافتتاح مستقل عن فرق الإقفال. حفظ الفرق لا ينشئ قبضاً أو صرفاً ولا يغير الربح؛ تسويته تحتاج مراجعة وسنداً مستقلاً.</p>
+{% if data.ledger_changed_since_close %}<p>تغيّرت مصادر الصندوق بعد الإقفال؛ هذا الكشف يعرض لقطة الإقفال الأصلية.</p>{% endif %}
+<div class="signatures"><span>الكاشير: ______________</span><span>المراجع: ______________</span></div><footer>FINORA · المبالغ بالدينار العراقي · الأوقات بتوقيت بغداد</footer>
+</body></html>

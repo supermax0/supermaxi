@@ -1,0 +1,316 @@
+{% extends "base.html" %}
+{% block body_class %}page-notebook{% endblock %}
+{% block page_title %}دفتر الملاحظات{% endblock %}
+
+{% block topbar_actions %}
+<div class="notes-save-state" id="notesSaveState" aria-live="polite">
+  <i class="fas fa-cloud"></i><span>محفوظ</span>
+</div>
+<button class="dq-btn notes-new-top" type="button" data-action="new-note">
+  <i class="fas fa-plus"></i><span class="dq-label">ملاحظة جديدة</span>
+</button>
+<button class="dq-btn notes-templates-top" type="button" data-action="open-templates">
+  <i class="fas fa-shapes"></i><span class="dq-label">القوالب</span>
+</button>
+{{ super() }}
+{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/notebook.css', v='20260725-5') }}">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+<div class="notes-app" id="notesApp">
+  <aside class="notes-library">
+    <div class="notes-library-head">
+      <div>
+        <span class="notes-eyebrow">مساحتك الخاصة</span>
+        <h1>دفتر ملاحظاتي</h1>
+      </div>
+      <div class="notes-library-actions">
+        <button type="button" class="notes-icon-btn notes-collapse-btn" data-action="toggle-library" title="طي مكتبة الملاحظات">
+          <i class="fas fa-angles-right"></i>
+        </button>
+        <button type="button" class="notes-icon-btn" data-action="open-templates" title="القوالب الجاهزة">
+          <i class="fas fa-shapes"></i>
+        </button>
+        <button type="button" class="notes-icon-btn notes-primary" data-action="new-note" title="ملاحظة جديدة">
+          <i class="fas fa-plus"></i>
+        </button>
+      </div>
+    </div>
+
+    <label class="notes-search">
+      <i class="fas fa-search"></i>
+      <input id="notesSearch" type="search" placeholder="ابحث في العنوان والمحتوى والوسوم...">
+      <kbd>Ctrl K</kbd>
+    </label>
+    <button type="button" class="notes-template-launch" data-action="open-templates">
+      <span><i class="fas fa-shapes"></i></span>
+      <b>ابدأ من قالب جاهز</b>
+      <small>مهام، اجتماعات، تخطيط وأكثر</small>
+      <i class="fas fa-chevron-left"></i>
+    </button>
+
+    <nav class="notes-filters" aria-label="تصفية الملاحظات">
+      <button class="active" data-filter="all"><i class="far fa-note-sticky"></i><span>الكل</span><b id="countAll">0</b></button>
+      <button data-filter="pinned"><i class="fas fa-thumbtack"></i><span>المثبتة</span><b id="countPinned">0</b></button>
+      <button data-filter="tasks"><i class="fas fa-list-check"></i><span>المهام</span><b id="countTasks">0</b></button>
+      <button data-filter="archived"><i class="fas fa-box-archive"></i><span>الأرشيف</span><b id="countArchived">0</b></button>
+    </nav>
+
+    <div class="notes-list-head">
+      <span id="notesListLabel">أحدث الملاحظات</span>
+      <select id="notesSort" aria-label="ترتيب الملاحظات">
+        <option value="updated">آخر تعديل</option>
+        <option value="title">العنوان</option>
+        <option value="priority">الأولوية</option>
+        <option value="due">الموعد</option>
+      </select>
+    </div>
+    <div class="notes-list" id="notesList"></div>
+  </aside>
+
+  <button type="button" class="notes-library-restore" data-action="toggle-library" title="إظهار مكتبة الملاحظات">
+    <i class="fas fa-book-open"></i>
+  </button>
+
+  <main class="notes-workspace">
+    <section class="notes-empty" id="notesEmpty">
+      <div class="notes-empty-art">
+        <i class="fas fa-feather-pointed"></i>
+      </div>
+      <span class="notes-eyebrow">أهلاً {{ session.get("name", "") }}</span>
+      <h2>حوّل أفكارك إلى عمل منظّم</h2>
+      <p>أنشئ ملاحظتك الأولى، ثم استخدم مساعد الكتابة لترتيبها أو تحويلها إلى مهام وخلاصة واضحة.</p>
+      <button class="notes-main-btn" type="button" data-action="new-note"><i class="fas fa-plus"></i> ابدأ ملاحظة جديدة</button>
+    </section>
+
+    <section class="notes-editor-shell" id="notesEditorShell" hidden>
+      <header class="notes-document-head">
+        <button type="button" class="notes-icon-btn notes-mobile-back" data-action="back-library" title="العودة إلى الملاحظات">
+          <i class="fas fa-arrow-right"></i>
+        </button>
+        <div class="notes-title-wrap">
+          <span class="notes-doc-dot" id="notesDocDot"></span>
+          <input id="noteTitle" class="notes-title-input" maxlength="200" placeholder="عنوان الملاحظة">
+        </div>
+        <div class="notes-document-actions">
+          <button type="button" class="notes-icon-btn" data-action="pin" title="تثبيت"><i class="fas fa-thumbtack"></i></button>
+          <button type="button" class="notes-icon-btn" data-action="history" title="النسخ السابقة"><i class="fas fa-clock-rotate-left"></i></button>
+          <button type="button" class="notes-icon-btn" data-action="duplicate" title="إنشاء نسخة"><i class="far fa-copy"></i></button>
+          <button type="button" class="notes-icon-btn" data-action="print" title="طباعة"><i class="fas fa-print"></i></button>
+          <button type="button" class="notes-icon-btn" data-action="export" title="تصدير HTML"><i class="fas fa-download"></i></button>
+          <button type="button" class="notes-icon-btn notes-focus-btn" data-action="focus-mode" title="وضع التركيز"><i class="fas fa-expand"></i></button>
+          <div class="notes-more-wrap">
+            <button type="button" class="notes-icon-btn" data-action="more" aria-expanded="false"><i class="fas fa-ellipsis"></i></button>
+            <div class="notes-more-menu" id="notesMoreMenu" hidden>
+              <button data-action="toggle-done"><i class="fas fa-check"></i> تعليم كمكتملة</button>
+              <button data-action="archive"><i class="fas fa-box-archive"></i> نقل إلى الأرشيف</button>
+              <button class="danger" data-action="delete"><i class="fas fa-trash"></i> حذف نهائياً</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div class="notes-meta-row">
+        <label><i class="fas fa-folder"></i><input id="noteCategory" maxlength="80" placeholder="التصنيف" list="noteCategories"></label>
+        <datalist id="noteCategories"><option value="عام"><option value="عمل"><option value="اجتماع"><option value="أفكار"><option value="مهام"><option value="مالي"></datalist>
+        <label class="notes-tags-field"><i class="fas fa-tags"></i><input id="noteTags" placeholder="وسوم مفصولة بفاصلة"></label>
+        <label><i class="fas fa-flag"></i>
+          <select id="notePriority">
+            <option value="low">منخفضة</option><option value="normal">عادية</option>
+            <option value="high">مهمة</option><option value="urgent">عاجلة</option>
+          </select>
+        </label>
+        <label><i class="far fa-calendar"></i><input id="noteDueAt" type="datetime-local" title="موعد التذكير"></label>
+        <div class="notes-color-picker" aria-label="لون الملاحظة">
+          {% for color in ["#7c3aed","#2563eb","#0891b2","#059669","#ca8a04","#ea580c","#dc2626","#db2777"] %}
+          <button type="button" data-color="{{ color }}" style="--note-color:{{ color }}" title="اختيار اللون"></button>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="notes-toolbar" id="notesToolbar" role="toolbar" aria-label="أدوات تنسيق النص">
+        <button type="button" class="notes-mobile-tools-toggle" data-action="toggle-tools" aria-expanded="false">
+          <i class="fas fa-sliders"></i><span>كل الأدوات</span><i class="fas fa-chevron-down"></i>
+        </button>
+        <div class="notes-tool-group notes-tool-history">
+          <button type="button" data-cmd="undo" title="تراجع"><i class="fas fa-rotate-left"></i></button>
+          <button type="button" data-cmd="redo" title="إعادة"><i class="fas fa-rotate-right"></i></button>
+        </div>
+        <div class="notes-tool-group notes-tool-type">
+          <select data-format="formatBlock" title="نمط الفقرة">
+            <option value="p">نص عادي</option><option value="h1">عنوان كبير</option>
+            <option value="h2">عنوان</option><option value="h3">عنوان فرعي</option><option value="blockquote">اقتباس</option>
+          </select>
+          <select data-format="fontName" title="نوع الخط">
+            <option value="Tajawal">Tajawal</option><option value="Arial">Arial</option>
+            <option value="Tahoma">Tahoma</option><option value="Georgia">Georgia</option><option value="Courier New">Courier</option>
+          </select>
+          <select data-format="fontSize" title="حجم الخط">
+            <option value="2">صغير</option><option value="3" selected>عادي</option><option value="4">كبير</option><option value="5">أكبر</option>
+          </select>
+        </div>
+        <div class="notes-tool-group notes-tool-format">
+          <button type="button" data-cmd="bold" title="عريض"><i class="fas fa-bold"></i></button>
+          <button type="button" data-cmd="italic" title="مائل"><i class="fas fa-italic"></i></button>
+          <button type="button" data-cmd="underline" title="تحته خط"><i class="fas fa-underline"></i></button>
+          <button type="button" data-cmd="strikeThrough" title="يتوسطه خط"><i class="fas fa-strikethrough"></i></button>
+          <label class="notes-color-tool" title="لون النص"><i class="fas fa-font"></i><input type="color" data-color-command="foreColor" value="#111827"></label>
+          <label class="notes-color-tool" title="تظليل النص"><i class="fas fa-highlighter"></i><input type="color" data-color-command="hiliteColor" value="#fef08a"></label>
+        </div>
+        <div class="notes-tool-group notes-tool-list">
+          <button type="button" data-cmd="insertUnorderedList" title="تعداد نقطي"><i class="fas fa-list-ul"></i></button>
+          <button type="button" data-cmd="insertOrderedList" title="ترقيم"><i class="fas fa-list-ol"></i></button>
+          <button type="button" data-cmd="outdent" title="تقليل المسافة"><i class="fas fa-outdent"></i></button>
+          <button type="button" data-cmd="indent" title="زيادة المسافة"><i class="fas fa-indent"></i></button>
+        </div>
+        <div class="notes-tool-group notes-tool-align">
+          <button type="button" data-cmd="justifyRight" title="محاذاة لليمين"><i class="fas fa-align-right"></i></button>
+          <button type="button" data-cmd="justifyCenter" title="توسيط"><i class="fas fa-align-center"></i></button>
+          <button type="button" data-cmd="justifyLeft" title="محاذاة لليسار"><i class="fas fa-align-left"></i></button>
+        </div>
+        <div class="notes-tool-group notes-tool-insert">
+          <button type="button" data-action="link" title="رابط"><i class="fas fa-link"></i></button>
+          <button type="button" data-action="table" title="إدراج جدول"><i class="fas fa-table-cells"></i></button>
+          <button type="button" data-action="chart" title="إدراج رسم بياني"><i class="fas fa-chart-column"></i></button>
+          <button type="button" data-action="draw" title="قلم ورسم حر"><i class="fas fa-pen"></i></button>
+          <button type="button" data-cmd="insertHorizontalRule" title="فاصل"><i class="fas fa-minus"></i></button>
+          <button type="button" data-cmd="removeFormat" title="مسح التنسيق"><i class="fas fa-eraser"></i></button>
+        </div>
+        <div class="notes-ai-wrap">
+          <button type="button" class="notes-ai-btn" data-action="smart-menu">
+            <i class="fas fa-wand-magic-sparkles"></i> مساعد الكتابة <i class="fas fa-chevron-down"></i>
+          </button>
+          <div class="notes-ai-menu" id="notesAiMenu" hidden>
+            <button data-smart="organize"><i class="fas fa-layer-group"></i><span><b>رتّب الكتابة</b><small>عناوين وفقرات واضحة</small></span></button>
+            <button data-smart="tasks"><i class="fas fa-list-check"></i><span><b>حوّل إلى مهام</b><small>قائمة قابلة للمتابعة</small></span></button>
+            <button data-smart="summary"><i class="fas fa-compress"></i><span><b>استخرج الخلاصة</b><small>أهم النقاط فقط</small></span></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="notes-paper-wrap">
+        <article id="noteEditor" class="notes-paper" contenteditable="true" spellcheck="true" data-placeholder="ابدأ الكتابة هنا..."></article>
+      </div>
+      <footer class="notes-statusbar">
+        <span id="noteUpdatedAt">—</span>
+        <span><b id="noteWordCount">0</b> كلمة</span>
+        <span><b id="noteCharCount">0</b> حرف</span>
+        <span class="notes-private"><i class="fas fa-lock"></i> ملاحظة خاصة بك</span>
+      </footer>
+    </section>
+  </main>
+</div>
+
+<div class="notes-modal" id="notesDrawModal" hidden>
+  <div class="notes-modal-card notes-draw-card">
+    <header><div><h3>لوحة الرسم</h3><p>اكتب أو ارسم بالقلم ثم أدرجه داخل الملاحظة.</p></div><button data-action="close-draw">×</button></header>
+    <div class="notes-draw-tools">
+      <label>لون القلم <input id="drawColor" type="color" value="#111827"></label>
+      <label>السُمك <input id="drawSize" type="range" min="1" max="18" value="4"></label>
+      <button data-action="clear-draw"><i class="fas fa-eraser"></i> مسح</button>
+    </div>
+    <canvas id="notesDrawCanvas" width="900" height="420"></canvas>
+    <footer><button data-action="close-draw">إلغاء</button><button class="notes-main-btn" data-action="insert-drawing"><i class="fas fa-check"></i> إدراج الرسم</button></footer>
+  </div>
+</div>
+
+<div class="notes-modal" id="notesHistoryModal" hidden>
+  <div class="notes-modal-card">
+    <header><div><h3>النسخ السابقة</h3><p>يمكنك معاينة نسخة سابقة وإعادتها إلى المحرر.</p></div><button data-action="close-history">×</button></header>
+    <div id="notesHistoryList" class="notes-history-list"></div>
+  </div>
+</div>
+
+<div class="notes-modal notes-assistant-modal" id="notesAssistantModal" hidden>
+  <div class="notes-modal-card notes-assistant-card">
+    <header>
+      <div>
+        <span class="notes-assistant-badge"><i class="fas fa-wand-magic-sparkles"></i> مساعد الكتابة</span>
+        <h3 id="notesAssistantTitle">ترتيب الملاحظة</h3>
+        <p>راجع النتيجة قبل إضافتها إلى ملاحظتك.</p>
+      </div>
+      <button type="button" data-action="close-assistant" aria-label="إغلاق">×</button>
+    </header>
+    <div class="notes-assistant-modes">
+      <button type="button" data-assistant-mode="organize"><i class="fas fa-layer-group"></i> تنظيم</button>
+      <button type="button" data-assistant-mode="tasks"><i class="fas fa-list-check"></i> مهام</button>
+      <button type="button" data-assistant-mode="summary"><i class="fas fa-compress"></i> خلاصة</button>
+    </div>
+    <div class="notes-assistant-loading" id="notesAssistantLoading" hidden>
+      <span></span><span></span><span></span>
+      <p>يتم الآن ترتيب الكتابة…</p>
+    </div>
+    <div class="notes-assistant-preview" id="notesAssistantPreview" tabindex="0"></div>
+    <div class="notes-assistant-error" id="notesAssistantError" hidden></div>
+    <footer>
+      <button type="button" data-action="close-assistant">إلغاء</button>
+      <button type="button" data-action="assistant-append"><i class="fas fa-plus"></i> إضافة أسفل النص</button>
+      <button type="button" class="notes-main-btn" data-action="assistant-apply"><i class="fas fa-check"></i> استبدال وتنظيم</button>
+    </footer>
+  </div>
+</div>
+
+<div class="notes-modal notes-templates-modal" id="notesTemplatesModal" hidden>
+  <div class="notes-modal-card notes-templates-card">
+    <header>
+      <div>
+        <span class="notes-assistant-badge"><i class="fas fa-shapes"></i> ابدأ بسرعة</span>
+        <h3>قوالب الملاحظات الجاهزة</h3>
+        <p>اختر قالباً وسننشئ لك ملاحظة مرتبة وقابلة للتعديل فوراً.</p>
+      </div>
+      <button type="button" data-action="close-templates" aria-label="إغلاق">×</button>
+    </header>
+    <div class="notes-template-filters">
+      <button type="button" class="active" data-template-filter="all">الكل</button>
+      <button type="button" data-template-filter="tasks">مهام</button>
+      <button type="button" data-template-filter="work">عمل</button>
+      <button type="button" data-template-filter="planning">تخطيط</button>
+    </div>
+    <div class="notes-template-grid">
+      <button type="button" class="notes-template-card featured" data-template="daily_tasks" data-template-category="tasks">
+        <span class="notes-template-icon purple"><i class="fas fa-calendar-check"></i></span>
+        <span class="notes-template-copy"><b>مهام اليوم</b><small>جدول بالوقت والأولوية ومربع صح لكل مهمة</small></span>
+        <span class="notes-template-mini"><i></i><i></i><i></i></span>
+        <em>الأكثر استخداماً</em>
+      </button>
+      <button type="button" class="notes-template-card" data-template="quick_checklist" data-template-category="tasks">
+        <span class="notes-template-icon blue"><i class="fas fa-list-check"></i></span>
+        <span class="notes-template-copy"><b>قائمة إنجاز سريعة</b><small>نقاط واضحة يمكن تحديد المنجز منها</small></span>
+        <span class="notes-template-mini checks"><i></i><i></i><i></i></span>
+      </button>
+      <button type="button" class="notes-template-card" data-template="meeting" data-template-category="work">
+        <span class="notes-template-icon green"><i class="fas fa-users"></i></span>
+        <span class="notes-template-copy"><b>محضر اجتماع</b><small>الحضور، القرارات، والمهام المسندة</small></span>
+        <span class="notes-template-mini columns"><i></i><i></i><i></i></span>
+      </button>
+      <button type="button" class="notes-template-card" data-template="weekly_plan" data-template-category="planning">
+        <span class="notes-template-icon orange"><i class="fas fa-calendar-week"></i></span>
+        <span class="notes-template-copy"><b>الخطة الأسبوعية</b><small>أهداف الأسبوع ومهام كل يوم</small></span>
+        <span class="notes-template-mini columns"><i></i><i></i><i></i></span>
+      </button>
+      <button type="button" class="notes-template-card" data-template="customer_followup" data-template-category="work">
+        <span class="notes-template-icon pink"><i class="fas fa-user-clock"></i></span>
+        <span class="notes-template-copy"><b>متابعة العملاء</b><small>اسم العميل، التواصل، النتيجة والمتابعة</small></span>
+        <span class="notes-template-mini columns"><i></i><i></i><i></i></span>
+      </button>
+      <button type="button" class="notes-template-card" data-template="ideas" data-template-category="planning">
+        <span class="notes-template-icon cyan"><i class="fas fa-lightbulb"></i></span>
+        <span class="notes-template-copy"><b>بنك الأفكار</b><small>جمع الأفكار وتقييمها وتحديد الخطوة التالية</small></span>
+        <span class="notes-template-mini"><i></i><i></i><i></i></span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="notes-check-menu" id="notesCheckMenu" hidden role="menu" aria-label="حالة النقطة">
+  <span>اختر الحالة</span>
+  <button type="button" data-check-state="done" role="menuitem"><i class="fas fa-check"></i><b>تم</b></button>
+  <button type="button" data-check-state="cancelled" role="menuitem"><i class="fas fa-xmark"></i><b>لم يتم</b></button>
+  <button type="button" data-check-state="pending" role="menuitem"><i class="far fa-square"></i><b>فارغ</b></button>
+</div>
+
+<div id="notesToast" class="notes-toast" role="status" aria-live="polite"></div>
+<script src="{{ url_for('static', filename='js/notebook.js', v='20260725-5') }}"></script>
+{% endblock %}

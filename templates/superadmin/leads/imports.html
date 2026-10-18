@@ -1,0 +1,51 @@
+{% extends 'superadmin/leads/_base.html' %}
+{% from 'superadmin/leads/_macros.html' import import_status_badge, empty_state %}
+{% set page_title = 'استيراد Excel' %}
+{% set page_subtitle = 'رفع ملف Excel/CSV ودمج العملاء مع كشف التكرار' %}
+{% block leads_content %}
+<section class="lc-card">
+    <header class="lc-card-header"><div><h2><i class="fas fa-cloud-arrow-up lc-card-icon"></i> رفع ملف جديد</h2><p>يدعم .xlsx و .csv</p></div></header>
+    <div class="lc-card-body">
+        <form method="post" enctype="multipart/form-data" class="lc-form">
+            <div class="lc-upload-zone">
+                <i class="fas fa-file-excel"></i>
+                <p><strong>اختر ملف Excel أو CSV</strong></p>
+                <p>سيتم معاينة الأعمدة قبل الاستيراد</p>
+                <input type="file" name="file" accept=".xlsx,.xls,.csv" required style="margin-top:1rem;">
+            </div>
+            <div class="lc-form-grid" style="margin-top:1.25rem;">
+                <label>النشاط الافتراضي
+                    <select name="activity_id">{% for a in activities %}<option value="{{ a.id }}">{{ a.name_ar }}</option>{% endfor %}</select>
+                </label>
+                <label>المصدر<input name="source_label" placeholder="استيراد Excel" value="استيراد Excel"></label>
+            </div>
+            <div class="lc-form-actions" style="border:none;padding-top:0.5rem;">
+                <button type="submit" class="sa-btn sa-btn-primary"><i class="fas fa-upload"></i> رفع ومعاينة</button>
+            </div>
+        </form>
+    </div>
+</section>
+
+<section class="lc-card">
+    <header class="lc-card-header"><div><h2><i class="fas fa-history lc-card-icon"></i> عمليات سابقة</h2></div></header>
+    <div class="lc-card-body" style="padding:0;">
+        <div class="lc-table-wrap" style="border:none;box-shadow:none;border-radius:0;">
+            <table class="lc-table">
+                <thead><tr><th>الملف</th><th>الحالة</th><th>التاريخ</th><th></th></tr></thead>
+                <tbody>
+                    {% for b in batches %}
+                    <tr>
+                        <td><strong>{{ b.filename }}</strong></td>
+                        <td>{{ import_status_badge(b.status) }}</td>
+                        <td>{{ b.created_at.strftime('%Y-%m-%d %H:%M') if b.created_at else '' }}</td>
+                        <td><a href="{{ url_for('superadmin_leads.import_wizard', batch_id=b.id) }}" class="lc-link-btn"><i class="fas fa-play"></i> متابعة</a></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4">{{ empty_state('لا توجد عمليات استيراد', 'fa-file-import', url_for('superadmin_leads.imports_page'), 'رفع ملف') }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+{% endblock %}

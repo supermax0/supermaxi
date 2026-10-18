@@ -5,11 +5,14 @@ import json
 import re
 import secrets
 import subprocess
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
+import requests
 from flask import Blueprint, Response, current_app, g, jsonify, redirect, render_template, request, send_file, session, url_for
 from sqlalchemy import case, func, or_
+from sqlalchemy.exc import IntegrityError
 
 from extensions import db
 from models.employee import Employee
@@ -23,6 +26,8 @@ from utils.permission_checks import check_permission
 from .channels import (
     MetaMessagingClient,
     MetaMessagingClientError,
+    TikTokClient,
+    TikTokClientError,
     WhatsAppClient,
     WhatsAppClientError,
     channel_client,
@@ -32,6 +37,8 @@ from .channels import (
     outbound_message_id,
     parse_meta_comment_payload,
     parse_meta_messaging_payload,
+    parse_meta_receipt_events,
+    parse_tiktok_messaging_payload,
     parse_whatsapp_payload,
 )
 from .engine import (
@@ -56,6 +63,7 @@ from .models import (
     AISalesReplyExample,
     AISalesSocialComment,
     AISalesSocialPost,
+    AISalesUsageLog,
     ProductMediaAsset,
 )
 from .comments import (
@@ -67,7 +75,20 @@ from .comments import (
 from .knowledge import build_learning_template, import_learning_workbook, save_problem_entry
 from .learning import capture_employee_reply_example, capture_new_employee_reply_examples
 from .schema import ensure_ai_sales_schema
-from .security import decrypt_secret, encrypt_secret, verify_meta_signature
+from .security import (
+    decrypt_secret, encrypt_secret, meta_app_secret_problem,
+    verify_meta_signature,
+    verify_meta_signature_strict,
+    verify_tiktok_signature,
+)
+from .attachments import dispatch_storage_async as dispatch_attachment_storage_async
+from .meta_policy import (
+    is_house_tenant,
+    mark_secret_unusable,
+    record_signature_failure,
+    record_signature_success,
+    signature_required,
+)
 from .training import approve_training_feedback, generate_training_reply
 from .openai_service import (
     AIServiceError,
@@ -110,6 +131,7 @@ CHAT_MEDIA_RULES = {
 
 
 META_AUTH_ERROR_CODES = {102, 190}
+META_LATE_TOLERANCE = timedelta(seconds=5)
 META_AUTH_RETRY_DELAY = timedelta(hours=12)
 META_TRANSIENT_RETRY_DELAY = timedelta(minutes=1)
 META_PENDING_AI_WINDOW = timedelta(hours=12)
@@ -145,6 +167,34 @@ def _clear_meta_sync_failure(channel: AISalesChannelAccount, *, connected: bool 
     channel.last_error = None
     if connected or channel.connection_status in {"auth_expired", "error"}:
         channel.connection_status = "connected" if connected else "ready"
+
+
+def _refresh_connected_meta_token_from_publisher(channel: AISalesChannelAccount) -> bool:
+    """Recover a connected page from a stale AI-channel token.
+
+    Publisher pages are the canonical store for page tokens.  Older channel
+    rows can retain a token from a deleted Meta app even after the publisher
+    connection was repaired.  Only refresh connected/ready rows with a saved
+    sync error so truly expired rows keep their normal cooldown.
+    """
+    if channel.connection_status not in {"connected", "ready"} or not channel.last_error:
+        return False
+    page_id = str(channel.page_id or channel.external_account_id or "").strip()
+    if not page_id:
+        return False
+    try:
+        from modules.publisher.models.publisher_page import PublisherPage
+        from modules.publisher.services.token_utils import decrypt_token
+
+        page = PublisherPage.query.filter_by(page_id=page_id).first()
+        token = decrypt_token(page.page_token) if page and page.page_token else ""
+        if not token:
+            return False
+        channel.access_token_encrypted = encrypt_secret(token)
+        _clear_meta_sync_failure(channel, connected=True)
+        return True
+    except Exception:
+        return False
 
 
 def _mark_missing_meta_channels_unavailable(
@@ -205,6 +255,9 @@ def _employee_channel_ids(employee_id: int | None = None) -> list[int]:
 
 
 def _scope_conversations(query):
+    query = query.join(
+        AISalesChannelAccount, AISalesConversation.channel_account_id == AISalesChannelAccount.id
+    ).filter(AISalesChannelAccount.connection_status != "simulator")
     if _can_manage():
         return query
     channel_ids = _employee_channel_ids()
@@ -214,6 +267,10 @@ def _scope_conversations(query):
 
 
 def _can_view() -> bool:
+    from utils.plan_limits import has_feature
+
+    if not has_feature(session.get("plan_key") or "basic", "ai_sales"):
+        return False
     return bool(
         session.get("role") == "admin"
         or check_permission("use_ai_sales")
@@ -223,6 +280,10 @@ def _can_view() -> bool:
 
 
 def _can_manage() -> bool:
+    from utils.plan_limits import has_feature
+
+    if not has_feature(session.get("plan_key") or "basic", "ai_sales"):
+        return False
     return session.get("role") == "admin" or check_permission("manage_ai_sales")
 
 
@@ -403,7 +464,12 @@ def _transcode_voice(source: Path) -> tuple[Path, str]:
 
 def _channel_webhook_url(channel: AISalesChannelAccount, tenant_slug: str, base: str | None = None) -> str:
     base = base or _public_base_url()
-    webhook_type = "meta" if channel.channel_type == "meta" else "whatsapp"
+    if channel.channel_type == "meta":
+        webhook_type = "meta"
+    elif channel.channel_type == "tiktok":
+        webhook_type = "tiktok"
+    else:
+        webhook_type = "whatsapp"
     if channel.channel_type in {"messenger", "instagram"} and channel.parent_channel_id:
         parent = AISalesChannelAccount.query.get(channel.parent_channel_id)
         if parent:
@@ -975,8 +1041,8 @@ def api_manual_send_media(conversation_id):
     if not rule:
         return jsonify({"success": False, "error": "صيغة الملف غير مدعومة"}), 400
     media_type, extension, max_bytes = rule
-    if conversation.channel.channel_type == "instagram" and media_type != "image":
-        return jsonify({"success": False, "error": "إنستغرام يدعم إرسال الصور فقط حالياً"}), 400
+    if conversation.channel.channel_type == "instagram" and media_type not in {"image", "video"}:
+        return jsonify({"success": False, "error": "إنستغرام يدعم إرسال الصور والفيديو فقط حالياً — لا يوجد دعم لإرسال صوت من Meta لمحادثات إنستغرام"}), 400
 
     content = upload.read(max_bytes + 1)
     if len(content) > max_bytes:
@@ -1363,7 +1429,7 @@ def api_channels():
     data = request.get_json(silent=True) or {}
     channel_id = int(data.get("id") or 0)
     channel_type = str(data.get("channel_type") or "whatsapp").strip().lower()
-    if channel_type not in {"whatsapp", "meta", "messenger", "instagram"}:
+    if channel_type not in {"whatsapp", "meta", "messenger", "instagram", "tiktok"}:
         return jsonify({"success": False, "error": "نوع القناة غير مدعوم"}), 400
     channel = AISalesChannelAccount.query.get(channel_id) if channel_id else AISalesChannelAccount(name="WhatsApp", channel_type=channel_type)
     is_new = channel.id is None
@@ -1377,6 +1443,13 @@ def api_channels():
     channel.api_version = (data.get("api_version") or channel.api_version or "v23.0").strip()[:20]
     if channel.channel_type == "meta" and "external_account_id" in data:
         channel.external_account_id = str(data.get("external_account_id") or "").strip()[:128] or None
+    if channel.channel_type == "tiktok":
+        if "business_id" in data:
+            channel.external_account_id = str(data.get("business_id") or "").strip()[:128] or None
+        if "tiktok_app_id" in data:
+            channel.tiktok_app_id = str(data.get("tiktok_app_id") or "").strip()[:100] or None
+        if data.get("tiktok_refresh_token"):
+            channel.tiktok_refresh_token_encrypted = encrypt_secret(data["tiktok_refresh_token"])
     if "reply_mode" in data:
         reply_mode = str(data.get("reply_mode") or "inbox").strip().lower()
         if reply_mode not in {"ai", "inbox", "employee"}:
@@ -1413,6 +1486,11 @@ def api_channels():
     if data.get("access_token") and channel.channel_type != "meta":
         channel.access_token_encrypted = encrypt_secret(data["access_token"])
         _clear_meta_sync_failure(channel)
+        if channel.channel_type == "tiktok":
+            # A manually-pasted token's exact issue time is unknown; assume it
+            # was just minted (TikTok access tokens live 24h) so the lazy
+            # refresh in channel_client() doesn't immediately re-refresh it.
+            channel.tiktok_token_expires_at = datetime.utcnow() + timedelta(hours=23)
     if data.get("app_secret"):
         channel.app_secret_encrypted = encrypt_secret(data["app_secret"])
     if data.get("verify_token"):
@@ -1421,17 +1499,44 @@ def api_channels():
     elif not channel.verify_token_encrypted:
         verify_token_once = secrets.token_urlsafe(24)
         channel.verify_token_encrypted = encrypt_secret(verify_token_once)
-    credentials_ready = bool(
-        channel.access_token_encrypted and channel.phone_number_id
-        if channel.channel_type == "whatsapp"
-        else channel.app_secret_encrypted and channel.verify_token_encrypted
-    )
+    if channel.channel_type == "whatsapp":
+        credentials_ready = bool(channel.access_token_encrypted and channel.phone_number_id)
+    elif channel.channel_type == "tiktok":
+        credentials_ready = bool(channel.access_token_encrypted and channel.external_account_id and channel.tiktok_app_id)
+    else:
+        credentials_ready = bool(channel.app_secret_encrypted and channel.verify_token_encrypted)
     if not credentials_ready:
         channel.connection_status = "draft"
     elif channel.connection_status not in {"verified", "connected"}:
         channel.connection_status = "ready"
-    db.session.commit()
     tenant_slug = getattr(g, "tenant", "") or ""
+    if (
+        channel.channel_type == "tiktok"
+        and channel.tiktok_app_id
+        and channel.app_secret_encrypted
+        and (data.get("tiktok_app_id") or data.get("app_secret"))
+    ):
+        # Best-effort webhook registration — TikTok has no GET-challenge step;
+        # subscribing is a plain API call. A failure here must not block saving
+        # the credentials, since the admin can retry once DNS/app review is ready.
+        try:
+            webhook_response = requests.post(
+                "https://business-api.tiktok.com/open_api/v1.3/business/webhook/update/",
+                headers={"Content-Type": "application/json"},
+                json={
+                    "app_id": channel.tiktok_app_id,
+                    "secret": decrypt_secret(channel.app_secret_encrypted),
+                    "event_type": "DIRECT_MESSAGE",
+                    "callback_url": _channel_webhook_url(channel, tenant_slug),
+                },
+                timeout=20,
+            )
+            webhook_body = webhook_response.json() if webhook_response.content else {}
+            if webhook_response.status_code >= 400 or webhook_body.get("code") not in (None, 0):
+                channel.last_error = f"تعذر تسجيل Webhook تيك توك: {webhook_body.get('message') or webhook_response.status_code}"
+        except Exception as exc:
+            channel.last_error = f"تعذر تسجيل Webhook تيك توك: {exc}"
+    db.session.commit()
     payload = channel.to_dict()
     payload["webhook_url"] = _channel_webhook_url(channel, tenant_slug)
     if channel.channel_type in {"messenger", "instagram"}:
@@ -1727,12 +1832,26 @@ def api_meta_sync_pages(connector_id):
         return jsonify({"success": False, "error": "القناة المحددة ليست اتصال Meta"}), 400
     data = request.get_json(silent=True) or {}
     temporary_token = str(data.get("user_access_token") or "").strip()
+    result, status = sync_meta_connector_pages(connector, temporary_token, getattr(g, "tenant", "") or "")
+    return jsonify(result), status
+
+
+def sync_meta_connector_pages(
+    connector: AISalesChannelAccount,
+    temporary_token: str,
+    tenant_slug: str,
+    *,
+    default_reply_mode: str = "inbox",
+) -> tuple[dict, int]:
+    """Register app webhooks, import every page / Instagram account the token can see as child channels, subscribe
+    them, and store page tokens encrypted. Shared by the inbox UI route and the FINORA house CLI."""
+    connector_id = connector.id
     try:
         client = MetaMessagingClient(connector, access_token=temporary_token or None)
         if not connector.external_account_id:
             connector.external_account_id = str(client.token_info().get("app_id") or "") or None
             db.session.flush()
-        callback_url = _channel_webhook_url(connector, getattr(g, "tenant", "") or "")
+        callback_url = _channel_webhook_url(connector, tenant_slug)
         verify_token = decrypt_secret(connector.verify_token_encrypted)
         client.configure_app_webhook(
             "page",
@@ -1750,11 +1869,11 @@ def api_meta_sync_pages(connector_id):
         connector = AISalesChannelAccount.query.get(connector_id)
         auth_expired = _record_meta_sync_failure(connector, exc)
         db.session.commit()
-        return jsonify({
+        return {
             "success": False,
             "error": str(exc),
             "requires_reconnect": auth_expired,
-        }), 400
+        }, 400
 
     imported = []
     warnings = []
@@ -1775,7 +1894,7 @@ def api_meta_sync_pages(connector_id):
                 channel_type="messenger",
                 external_account_id=page_id,
                 page_id=page_id,
-                reply_mode="inbox",
+                reply_mode=default_reply_mode,
                 is_active=True,
             )
             db.session.add(messenger)
@@ -1821,7 +1940,7 @@ def api_meta_sync_pages(connector_id):
                     channel_type="instagram",
                     external_account_id=instagram_id,
                     page_id=page_id,
-                    reply_mode="inbox",
+                    reply_mode=default_reply_mode,
                     is_active=True,
                 )
                 db.session.add(instagram)
@@ -1859,13 +1978,13 @@ def api_meta_sync_pages(connector_id):
             context.pop("meta_profile_checked_at", None)
             conversation.set_context(context)
     db.session.commit()
-    return jsonify({
+    return {
         "success": True,
         "pages_found": len(pages),
         "channels": [row.to_dict() for row in imported],
         "unavailable_channel_ids": unavailable_channel_ids,
         "warnings": warnings,
-    })
+    }, 200
 
 
 def _parse_graph_datetime(value: str | None) -> datetime:
@@ -1994,7 +2113,12 @@ def _message_origin_metadata(
     return metadata
 
 
-def _import_meta_channel(channel: AISalesChannelAccount, *, limit: int = 100) -> dict:
+def _import_meta_channel(
+    channel: AISalesChannelAccount,
+    *,
+    limit: int = 100,
+    enrich_profiles: bool = True,
+) -> dict:
     client = MetaMessagingClient(channel)
     remote_conversations = client.list_conversations(limit=limit)
     conversations_created = 0
@@ -2009,22 +2133,39 @@ def _import_meta_channel(channel: AISalesChannelAccount, *, limit: int = 100) ->
             continue
         contact_id = str(contact.get("id") or "")
         existing = AISalesConversation.query.filter_by(channel_account_id=channel.id, external_contact_id=contact_id).first()
-        contact_name, picture_url, profile_checked = _meta_contact_identity(
-            client,
-            existing,
-            contact_id,
-            str(contact.get("name") or contact.get("username") or ""),
-            contact.get("picture"),
-        )
+        if enrich_profiles:
+            contact_name, picture_url, profile_checked = _meta_contact_identity(
+                client,
+                existing,
+                contact_id,
+                str(contact.get("name") or contact.get("username") or ""),
+                contact.get("picture"),
+            )
+        else:
+            # Automatic sync must keep its SQLite write window short.  Contact
+            # profile lookups are network calls and can otherwise hold a write
+            # transaction long enough to block employee presence updates.
+            contact_name = str(
+                contact.get("name")
+                or contact.get("username")
+                or (existing.contact_name if existing else "")
+                or contact_id
+            )
+            picture_url = (existing.contact_profile_picture_url if existing else "") or ""
+            profile_checked = False
         conversation = get_or_create_conversation(
             channel,
             external_contact_id=contact_id,
             phone="",
             contact_name=contact_name,
             contact_profile_picture_url=picture_url,
+            # Decide whether this is a live customer turn only after inspecting
+            # the remote messages.  Routing here would assign old imports.
+            route_facebook=False,
         )
         _mark_meta_profile_checked(conversation, profile_checked)
         conversations_created += int(existing is None)
+        has_recent_actionable_inbound = False
         for remote_message in reversed(((remote.get("messages") or {}).get("data") or [])):
             external_id = str(remote_message.get("id") or "")
             if not external_id:
@@ -2042,6 +2183,10 @@ def _import_meta_channel(channel: AISalesChannelAccount, *, limit: int = 100) ->
             elif message_type not in {"image", "video", "audio", "file"}:
                 message_type = "text"
             message_time = _parse_graph_datetime(remote_message.get("created_time"))
+            actionable_text = message_type == "text" and bool(text_content.strip())
+            actionable_media = message_type in {"image", "audio", "video"}
+            if inbound and message_time >= recent_cutoff and (actionable_text or actionable_media):
+                has_recent_actionable_inbound = True
             if inbound:
                 if not conversation.last_customer_message_at or message_time > conversation.last_customer_message_at:
                     mark_customer_activity(conversation, message_time)
@@ -2094,11 +2239,20 @@ def _import_meta_channel(channel: AISalesChannelAccount, *, limit: int = 100) ->
             db.session.add(message)
             db.session.flush()
             messages_created += 1
-            actionable_text = message_type == "text" and bool(text_content.strip())
-            actionable_media = message_type in {"image", "audio", "video"}
             if inbound and message.created_at >= recent_cutoff and (actionable_text or actionable_media):
                 recent_inbound_by_conversation[conversation.id] = message.id
         conversation.updated_at = _parse_graph_datetime(remote.get("updated_time"))
+        if has_recent_actionable_inbound and not conversation.assigned_employee_id:
+            try:
+                from modules.facebook_routing.engine import apply_inbound_routing
+
+                apply_inbound_routing(conversation, channel)
+            except Exception:
+                current_app.logger.exception(
+                    "Meta import routing failed channel=%s conversation=%s",
+                    channel.id,
+                    conversation.id,
+                )
     db.session.commit()
     return {
         "conversations_created": conversations_created,
@@ -2251,6 +2405,7 @@ def _sync_meta_channels(*, ai_only: bool = False, asynchronous: bool = True) -> 
     }
     recent_inbound_ids = []
     for channel in channels:
+        _refresh_connected_meta_token_from_publisher(channel)
         if _meta_sync_is_blocked(channel, now):
             retry_seconds = max(1, int((channel.sync_blocked_until - now).total_seconds()))
             blocked = {
@@ -2265,7 +2420,23 @@ def _sync_meta_channels(*, ai_only: bool = False, asynchronous: bool = True) -> 
             continue
         totals["eligible_channels"] += 1
         try:
-            result = _import_meta_channel(channel, limit=10 if ai_only else 25)
+            result = _import_meta_channel(
+                channel,
+                limit=10 if ai_only else 25,
+                enrich_profiles=False,
+            )
+            try:
+                from modules.facebook_routing.engine import drain_unassigned_queue
+
+                drain_unassigned_queue(
+                    str(channel.page_id or channel.external_account_id or "") or None,
+                    limit=50,
+                )
+            except Exception:
+                current_app.logger.exception(
+                    "Meta auto-sync queue drain failed channel=%s",
+                    channel.id,
+                )
             channel.last_sync_at = datetime.utcnow()
             _clear_meta_sync_failure(channel, connected=True)
             db.session.commit()
@@ -2316,16 +2487,11 @@ def api_meta_auto_sync():
     denied = _api_guard()
     if denied:
         return denied
-    # Live messages arrive through Meta webhooks. Older inbox builds called
-    # this route every five seconds and made every open browser tab rescan all
-    # pages, which caused SQLite contention and delayed the webhook itself.
-    return jsonify({
-        "success": True,
-        "skipped": True,
-        "reason": "webhook_realtime",
-        "messages_created": 0,
-        "ai_jobs": 0,
-    })
+    result = _sync_meta_channels(
+        ai_only=str(request.args.get("ai_only") or "").strip() in {"1", "true"},
+        asynchronous=True,
+    )
+    return jsonify({"success": True, **result})
 
 
 @ai_sales_bp.route("/api/profile", methods=["GET", "PUT"])
@@ -2381,6 +2547,7 @@ def api_profile():
     for field in (
         "max_reply_length", "handoff_threshold", "max_products", "max_context_messages",
         "max_audio_size_mb", "human_takeover_minutes", "ai_response_delay_ms", "learning_min_quality",
+        "max_video_seconds",
     ):
         if field in data:
             setattr(profile, field, int(data[field]))
@@ -2389,6 +2556,7 @@ def api_profile():
     profile.max_products = min(max(int(profile.max_products or 3), 1), 3)
     profile.max_context_messages = min(max(int(profile.max_context_messages or 18), 6), 30)
     profile.max_audio_size_mb = min(max(int(profile.max_audio_size_mb or 25), 1), 25)
+    profile.max_video_seconds = min(max(int(profile.max_video_seconds or 60), 10), 180)
     profile.human_takeover_minutes = min(max(int(profile.human_takeover_minutes or 30), 1), 1440)
     profile.ai_response_delay_ms = min(max(int(profile.ai_response_delay_ms or 0), 0), 3000)
     profile.learning_min_quality = min(max(int(profile.learning_min_quality or 76), 60), 95)
@@ -2656,15 +2824,27 @@ def api_simulate():
         return denied
     data = request.get_json(silent=True) or {}
     text = (data.get("text") or "").strip()
-    phone = re.sub(r"\D", "", str(data.get("phone") or "9647700000000"))
+    reset_conversation = bool(data.get("reset_conversation") or data.get("new_thread"))
+    requested_phone = str(data.get("phone") or "").strip()
+    if reset_conversation and not requested_phone:
+        phone = "999" + secrets.token_hex(6)
+    else:
+        phone = re.sub(r"\D", "", requested_phone or "9647700000000")
     if not text:
         return jsonify({"success": False, "error": "نص التجربة مطلوب"}), 400
     channel = AISalesChannelAccount.query.filter_by(name="قناة الاختبار المحلية").first()
     if not channel:
-        channel = AISalesChannelAccount(name="قناة الاختبار المحلية", connection_status="simulator", is_active=False)
+        channel = AISalesChannelAccount(
+            name="قناة الاختبار المحلية", connection_status="simulator", is_active=False
+        )
         db.session.add(channel)
         db.session.flush()
     conversation = get_or_create_conversation(channel, external_contact_id=phone, phone=phone, contact_name="زبون تجريبي")
+    if reset_conversation:
+        conversation.human_takeover = False
+        conversation.ai_enabled = True
+        conversation.status = "open"
+        conversation.handoff_reason = None
     now = datetime.utcnow()
     inbound = AISalesMessage(
         conversation_id=conversation.id,
@@ -2681,15 +2861,48 @@ def api_simulate():
     db.session.flush()
     mark_customer_activity(conversation, now)
     db.session.commit()
+    started_at = time.monotonic()
     outbound = process_inbound_message(inbound.id, send_external=False)
+    elapsed_ms = int((time.monotonic() - started_at) * 1000)
+    db.session.refresh(conversation)
+    db.session.refresh(inbound)
+    usage_row = None
+    if outbound:
+        usage_row = (
+            AISalesUsageLog.query.filter_by(message_id=outbound.id)
+            .order_by(AISalesUsageLog.id.desc())
+            .first()
+        )
+    reply_text = outbound.text_content if outbound else None
+    diagnostics = {
+        "elapsed_ms": elapsed_ms,
+        "model": usage_row.model if usage_row else None,
+        "input_tokens": usage_row.input_tokens if usage_row else None,
+        "output_tokens": usage_row.output_tokens if usage_row else None,
+        "human_takeover": bool(conversation.human_takeover),
+        "handoff_reason": conversation.handoff_reason,
+        "needs_human_review": inbound.status == "needs_human_review",
+        "reply_length": len(reply_text) if reply_text else 0,
+        "reply_length_capped": bool(reply_text and len(reply_text) >= 420),
+    }
     return jsonify(
         {
             "success": True,
             "conversation": conversation.to_dict(),
             "inbound": inbound.to_dict(),
             "reply": outbound.to_dict() if outbound else None,
+            "diagnostics": diagnostics,
         }
     )
+
+
+@ai_sales_bp.route("/api/simulate/reset", methods=["POST"])
+def api_simulate_reset():
+    denied = _api_guard(manage=True)
+    if denied:
+        return denied
+    phone = "999" + secrets.token_hex(6)
+    return jsonify({"success": True, "phone": phone})
 
 
 def _webhook_channel(tenant_slug: str, webhook_key: str):
@@ -2697,6 +2910,8 @@ def _webhook_channel(tenant_slug: str, webhook_key: str):
         return None
     g.tenant = tenant_slug
     ensure_ai_sales_schema()
+    from utils.branch_context import init_public_default_branch
+    init_public_default_branch()
     return AISalesChannelAccount.query.filter_by(webhook_key=webhook_key).first()
 
 
@@ -2895,6 +3110,25 @@ def whatsapp_webhook(tenant_slug, webhook_key):
                 external_message_id=message.external_message_id,
                 status=state,
             )
+        try:
+            from models.tenant import Tenant
+            tenant_row = Tenant.query.first()
+            clinic_message = None
+            if tenant_row and tenant_row.business_type == "clinics":
+                from modules.clinics.schema import ensure_clinics_schema
+                ensure_clinics_schema()
+                from modules.clinics.models import ClinicConversationMessage
+                clinic_message = ClinicConversationMessage.query.filter_by(tenant_id=tenant_row.id, external_message_id=status["external_message_id"]).first()
+            if clinic_message:
+                clinic_message.status = state or clinic_message.status
+                if state == "delivered": clinic_message.delivered_at = when
+                elif state == "read": clinic_message.read_at = when
+                elif state == "failed":
+                    clinic_message.failed_at = when
+                    errors = status.get("errors") or []
+                    clinic_message.failed_reason = str((errors[0] if errors else {}).get("title") or "WhatsApp delivery failed")
+        except Exception:
+            current_app.logger.exception("Clinic WhatsApp delivery status sync failed")
 
     queued_ids = []
     for event in parsed["messages"]:
@@ -2930,6 +3164,24 @@ def whatsapp_webhook(tenant_slug, webhook_key):
         message.set_raw_payload(event["raw"])
         db.session.add(message)
         db.session.flush()
+        # Clinic tenants consume the same verified WhatsApp webhook in their
+        # patient inbox. The clinic service owns phone matching and external-id
+        # idempotency, so the integration does not duplicate either rule here.
+        try:
+            from models.tenant import Tenant
+            tenant_row = Tenant.query.first()
+            if tenant_row and tenant_row.business_type == "clinics":
+                from modules.clinics.schema import ensure_clinics_schema
+                from modules.clinics.service_engagement import receive_inbound
+                ensure_clinics_schema()
+                receive_inbound(
+                    int(tenant_row.id), phone=phone,
+                    content=event["text"] or event["caption"] or f"[مرفق {event['message_type']}]",
+                    channel="whatsapp", external_thread_id=f"wa:{channel.id}:{event['from']}",
+                    external_message_id=external_id, contact_name=event["contact_name"],
+                )
+        except Exception:
+            current_app.logger.exception("Clinic patient inbox sync failed")
         _webhook_log(
             "message_inserted",
             tenant=tenant_slug,
@@ -2959,6 +3211,92 @@ def whatsapp_webhook(tenant_slug, webhook_key):
     return jsonify({"status": "accepted", "queued": len(queued_ids)}), 200
 
 
+@ai_sales_webhook_bp.route("/webhooks/tiktok/<tenant_slug>/<webhook_key>", methods=["GET", "POST"])
+def tiktok_webhook(tenant_slug, webhook_key):
+    """TikTok Business Messaging webhook.
+
+    Unlike Meta/WhatsApp, TikTok has no GET-challenge verification — you
+    subscribe via a POST to /business/webhook/update/ with this route's URL
+    as callback_url (done from the settings UI when saving the TikTok
+    channel). GET is accepted here only as a harmless health check.
+    """
+    channel = _webhook_channel(tenant_slug, webhook_key)
+    if not channel or channel.channel_type != "tiktok":
+        return Response("", status=404, mimetype="text/plain")
+    if request.method == "GET":
+        return Response("ok", status=200, mimetype="text/plain")
+    if not channel.is_active:
+        _webhook_log("tiktok_channel_inactive", tenant=tenant_slug, webhook_key=webhook_key, channel_id=channel.id)
+        return jsonify({"error": "channel_inactive"}), 403
+
+    raw = request.get_data(cache=True)
+    app_secret = decrypt_secret(channel.app_secret_encrypted)
+    if app_secret and not verify_tiktok_signature(raw, request.headers.get("Tiktok-Signature"), app_secret):
+        _webhook_log("tiktok_signature_failed", tenant=tenant_slug, webhook_key=webhook_key, channel_id=channel.id)
+        return jsonify({"error": "invalid_signature"}), 403
+
+    payload = request.get_json(silent=True) or {}
+    events = parse_tiktok_messaging_payload(payload)
+    _webhook_log(
+        "tiktok_payload_parsed",
+        tenant=tenant_slug,
+        webhook_key=webhook_key,
+        channel_id=channel.id,
+        event=payload.get("event"),
+        event_count=len(events),
+    )
+    channel.last_webhook_at = datetime.utcnow()
+    channel.connection_status = "connected"
+
+    queued_ids = []
+    for event in events:
+        if not event.get("has_message"):
+            continue
+        external_id = event["external_message_id"]
+        if not external_id or AISalesMessage.query.filter_by(channel_account_id=channel.id, external_message_id=external_id).first():
+            continue
+        conversation = get_or_create_conversation(
+            channel,
+            external_contact_id=event["conversation_id"],
+            phone="",
+            contact_name=event.get("contact_name") or "",
+        )
+        is_echo = bool(event.get("is_echo"))
+        when = external_timestamp(event["timestamp"]) or datetime.utcnow()
+        message = AISalesMessage(
+            conversation_id=conversation.id,
+            channel_account_id=channel.id,
+            external_message_id=external_id,
+            reply_to_external_id=event.get("reply_to_external_id") or None,
+            direction="outbound" if is_echo else "inbound",
+            sender_type="employee" if is_echo else "customer",
+            message_type=event["message_type"],
+            text_content=event.get("text") or None,
+            external_media_id=event.get("attachment_media_id") or None,
+            status="sent" if is_echo else "received",
+            sent_at=when if is_echo else None,
+            created_at=when,
+        )
+        message.set_raw_payload(event["raw"])
+        db.session.add(message)
+        db.session.flush()
+        if is_echo:
+            if not conversation.last_business_message_at or when > conversation.last_business_message_at:
+                conversation.last_business_message_at = when
+            conversation.updated_at = when
+        else:
+            mark_customer_activity(conversation, when)
+            if event["message_type"] in {"text", "image"}:
+                queued_ids.append(message.id)
+    db.session.commit()
+
+    app = current_app._get_current_object()
+    for message_id in queued_ids:
+        dispatch_inbound_async(app, tenant_slug, message_id, send_external=True)
+    _webhook_log("tiktok_dispatch_complete", tenant=tenant_slug, webhook_key=webhook_key, queued_count=len(queued_ids))
+    return jsonify({"status": "accepted", "queued": len(queued_ids)}), 200
+
+
 @ai_sales_webhook_bp.route("/webhooks/meta/<tenant_slug>/<webhook_key>", methods=["GET", "POST"])
 def meta_messaging_webhook(tenant_slug, webhook_key):
     connector = _webhook_channel(tenant_slug, webhook_key)
@@ -2980,11 +3318,27 @@ def meta_messaging_webhook(tenant_slug, webhook_key):
 
     raw = request.get_data(cache=True)
     app_secret = decrypt_secret(connector.app_secret_encrypted)
-    if app_secret and not verify_meta_signature(raw, request.headers.get("X-Hub-Signature-256"), app_secret):
+    if signature_required(tenant_slug):
+        # Fail closed: without a usable app secret no event is trusted (never "skip verification").
+        problem = meta_app_secret_problem(app_secret)
+        if problem:
+            mark_secret_unusable(connector, problem)
+            db.session.commit()
+            _webhook_log("meta_secret_unusable", tenant=tenant_slug, connector_id=connector.id, problem=problem)
+            return jsonify({"error": "webhook_not_configured"}), 503
+        if not verify_meta_signature_strict(raw, request.headers.get("X-Hub-Signature-256"), app_secret):
+            record_signature_failure(connector)
+            db.session.commit()
+            _webhook_log("meta_signature_failed", tenant=tenant_slug, connector_id=connector.id, strict=True)
+            return jsonify({"error": "invalid_signature"}), 403
+        record_signature_success(connector)
+    elif app_secret and not verify_meta_signature(raw, request.headers.get("X-Hub-Signature-256"), app_secret):
         _webhook_log("meta_signature_failed", tenant=tenant_slug, webhook_key=webhook_key, connector_id=connector.id)
         return jsonify({"error": "invalid_signature"}), 403
     payload = request.get_json(silent=True) or {}
+    house = is_house_tenant(tenant_slug)
     events = parse_meta_messaging_payload(payload)
+    receipts = parse_meta_receipt_events(payload)
     comment_events = parse_meta_comment_payload(payload)
     _webhook_log(
         "meta_payload_parsed",
@@ -2999,6 +3353,7 @@ def meta_messaging_webhook(tenant_slug, webhook_key):
     queued_ids = []
     employee_reply_ids = []
     queued_comment_ids = []
+    attachment_message_ids = []
     for event in comment_events:
         channel = AISalesChannelAccount.query.filter_by(
             parent_channel_id=connector.id,
@@ -3086,6 +3441,10 @@ def meta_messaging_webhook(tenant_slug, webhook_key):
             and not event_text.strip()
             and event["message_type"] not in {"image", "video", "audio", "file", "sticker"}
         )
+        event_attachments = event.get("attachments") or []
+        message_type = "referral" if is_ad_opener else event["message_type"]
+        if event.get("is_unsupported") and not event_text.strip() and not event_attachments:
+            message_type = "unsupported"
         message = AISalesMessage(
             conversation_id=conversation.id,
             channel_account_id=channel.id,
@@ -3093,7 +3452,7 @@ def meta_messaging_webhook(tenant_slug, webhook_key):
             reply_to_external_id=event["reply_to_external_id"] or None,
             direction="outbound" if is_echo else "inbound",
             sender_type="employee" if is_echo else "customer",
-            message_type="referral" if is_ad_opener else event["message_type"],
+            message_type=message_type,
             text_content=event_text or None,
             external_media_id=event_attachment_url or None,
             mime_type=event.get("attachment_mime_type") or None,
@@ -3121,16 +3480,28 @@ def meta_messaging_webhook(tenant_slug, webhook_key):
                 "sticker_id": event.get("sticker_id"),
                 "is_like": bool(event.get("is_like")),
             }
-        if event_attachment_url or origin_metadata or event_metadata:
+        if event_attachment_url or origin_metadata or event_metadata or event_attachments:
             media_metadata = {**origin_metadata, **event_metadata}
+            if event_attachments:
+                media_metadata["attachments"] = event_attachments
             if event_attachment_url:
                 media_metadata.update({
                     "external_url": event_attachment_url,
                     "preview_url": event.get("attachment_preview_url") or "",
                 })
             message.set_media_metadata(media_metadata)
-        db.session.add(message)
-        db.session.flush()
+        try:
+            # Savepoint: a concurrent Meta retry that wins the race hits the unique index and is skipped alone.
+            with db.session.begin_nested():
+                db.session.add(message)
+                db.session.flush()
+        except IntegrityError as exc:
+            if not _is_duplicate_message_error(exc):
+                raise  # any other constraint problem is a real bug, never silently treated as a duplicate
+            _webhook_log("meta_duplicate_message", tenant=tenant_slug, channel_id=channel.id)
+            continue
+        if event_attachments and house:
+            attachment_message_ids.append(message.id)
         if is_echo:
             if not conversation.last_business_message_at or when > conversation.last_business_message_at:
                 conversation.last_business_message_at = when
@@ -3147,8 +3518,18 @@ def meta_messaging_webhook(tenant_slug, webhook_key):
         is_meta_system = bool(origin_metadata.get("meta_context", {}).get("is_meta_system"))
         actionable_text = event["message_type"] in {"text", "button", "interactive"} and bool(event_text.strip())
         actionable_media = event["message_type"] in {"image", "audio", "video"}
-        if not is_echo and not is_meta_system and (actionable_text or actionable_media):
+        # Meta timestamps are truncated to whole seconds by external_timestamp(); a customer answering within the
+        # same second as our reply is NOT late. Only clearly older events (beyond the tolerance) are stale.
+        late = bool(
+            conversation.last_business_message_at
+            and when + META_LATE_TOLERANCE < conversation.last_business_message_at
+        )
+        if late and not is_echo:
+            # Delivered after we already replied later in the thread: stored in order, never auto-answered.
+            _webhook_log("meta_late_arrival", tenant=tenant_slug, conversation_id=conversation.id, message_id=message.id)
+        if not is_echo and not is_meta_system and not late and (actionable_text or actionable_media):
             queued_ids.append(message.id)
+    receipt_updates = _apply_meta_receipts(connector, receipts)
     db.session.commit()
     for message_id in employee_reply_ids:
         _capture_employee_learning_safely(message_id)
@@ -3157,8 +3538,62 @@ def meta_messaging_webhook(tenant_slug, webhook_key):
         dispatch_inbound_async(app, tenant_slug, message_id, send_external=True)
     for comment_id in queued_comment_ids:
         dispatch_social_comment_async(app, tenant_slug, comment_id)
+    if attachment_message_ids:
+        dispatch_attachment_storage_async(app, tenant_slug, attachment_message_ids)
     return jsonify({
         "status": "accepted",
         "queued": len(queued_ids),
         "comments_queued": len(queued_comment_ids),
+        "receipts": receipt_updates,
     }), 200
+
+
+def _is_duplicate_message_error(exc: IntegrityError) -> bool:
+    text = str(getattr(exc, "orig", exc)).lower()
+    return "uq_ai_sales_message_channel_external" in text or (
+        "unique" in text and "external_message_id" in text
+    )
+
+
+def _apply_meta_receipts(connector: AISalesChannelAccount, receipts: list[dict]) -> int:
+    """Delivery/read receipts -> outbound message state. Only ever moves forward (sent -> delivered -> read)."""
+    updated = 0
+    for receipt in receipts:
+        channel = AISalesChannelAccount.query.filter_by(
+            parent_channel_id=connector.id,
+            channel_type=receipt["platform"],
+            external_account_id=receipt["account_id"],
+        ).first()
+        if not channel:
+            continue
+        stamp = receipt["watermark"] or datetime.utcnow()
+        rows: list[AISalesMessage] = []
+        if receipt["mids"]:
+            rows = AISalesMessage.query.filter(
+                AISalesMessage.channel_account_id == channel.id,
+                AISalesMessage.direction == "outbound",
+                AISalesMessage.external_message_id.in_(receipt["mids"]),
+            ).all()
+        elif receipt["watermark"] and receipt["contact_id"]:
+            conversation = AISalesConversation.query.filter_by(
+                channel_account_id=channel.id, external_contact_id=receipt["contact_id"]
+            ).first()
+            if conversation:
+                rows = AISalesMessage.query.filter(
+                    AISalesMessage.conversation_id == conversation.id,
+                    AISalesMessage.direction == "outbound",
+                    AISalesMessage.status.in_(("sent", "delivered")),
+                    AISalesMessage.sent_at <= receipt["watermark"],
+                ).all()
+        for row in rows:
+            if row.status not in {"sent", "delivered", "read"}:
+                continue  # a receipt never resurrects a failed / queued message
+            if receipt["kind"] == "read":
+                row.read_at = row.read_at or stamp
+                row.delivered_at = row.delivered_at or stamp
+                row.status = "read"
+            elif row.status == "sent":
+                row.delivered_at = row.delivered_at or stamp
+                row.status = "delivered"
+            updated += 1
+    return updated

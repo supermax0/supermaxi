@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>سلة الأقساط | {{ settings.store_name }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installments.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installment_store.css', v='20260812-full-width-2') }}">
+</head>
+<body class="store-body">
+  {% include 'installments/store/_header.html' %}
+  <main class="store-shell store-cart-page">
+    <nav class="store-breadcrumb"><a href="{{ url_for('installments_store.store_index', tenant_slug=tenant_slug) }}">الرئيسية</a><span>‹</span><strong>سلة الأقساط</strong></nav>
+    <header class="store-checkout-heading"><div><span>خطوتك التالية</span><h1>سلة الأقساط</h1><p>راجع المنتجات وخطط الدفع، ثم أدخل بياناتك لإرسال الطلب.</p></div>{% if rows %}<form method="post" action="{{ url_for('installments_store.cart_clear', tenant_slug=tenant_slug) }}"><button class="store-clear-cart">تفريغ السلة</button></form>{% endif %}</header>
+    <div id="cartMessage" role="status"></div>
+
+    {% if rows %}
+      <section class="store-cart-layout">
+        <div class="store-cart-items">
+          {% for row in rows %}
+            {% set main = row.item.media|selectattr('is_main')|selectattr('media_type','equalto','image')|first %}
+            {% if not main %}{% set main = row.item.media|selectattr('media_type','equalto','image')|first %}{% endif %}
+            <article class="store-cart-item">
+              <a class="store-cart-item__image" href="{{ store_product_url(tenant_slug, row.item.slug) }}">
+                {% if main %}<img src="{{ url_for('static', filename=main.file_path, v=main.size_bytes) }}" alt="{{ row.item.title }}">{% elif row.item.product.image_url %}<img src="{{ row.item.product.image_url }}" alt="{{ row.item.title }}">{% else %}<span>لا توجد صورة</span>{% endif %}
+              </a>
+              <div class="store-cart-item__content">
+                <div><small>{{ row.item.category or 'منتجات الأقساط' }}</small><h2><a href="{{ store_product_url(tenant_slug, row.item.slug) }}">{{ row.item.title }}</a></h2><p>{{ row.item.short_description or row.item.product.sku or '' }}</p></div>
+                <form id="cart-{{ loop.index }}" class="cart-update store-cart-item__controls" data-product="{{ row.item.id }}" data-old-plan="{{ row.plan.id }}">
+                  <label>مدة التقسيط<select name="plan_id">{% for plan in row.item.plans if plan.active %}<option value="{{ plan.id }}" {% if plan.id==row.plan.id %}selected{% endif %}>{{ plan.months }} شهر</option>{% endfor %}</select></label>
+                  <label>الكمية<input name="quantity" type="number" min="1" max="99" value="{{ row.quantity }}"></label>
+                  <span class="store-cart-auto-save" aria-live="polite">يُحفظ تلقائياً</span>
+                </form>
+              </div>
+              <div class="store-cart-item__price"><small>إجمالي الخطة</small><strong>{{ row.calculation.installment_total|toLocaleString }} <i>{{ settings.currency }}</i></strong><span>{{ row.calculation.monthly_payment|toLocaleString }} {{ settings.currency }} / شهرياً</span><form method="post" action="{{ url_for('installments_store.cart_remove', tenant_slug=tenant_slug, product_id=row.item.id, plan_id=row.plan.id) }}"><button type="submit">حذف المنتج</button></form></div>
+            </article>
+          {% endfor %}
+        </div>
+        <aside class="store-order-summary">
+          <div class="store-order-summary__title"><span>✓</span><div><h2>ملخص الطلب</h2><small>{{ cart_count }} منتج في السلة</small></div></div>
+          <dl><div><dt>عدد المنتجات</dt><dd>{{ cart_count }}</dd></div><div><dt>الدفعة الأولى</dt><dd>{{ totals.down_payment|toLocaleString }} {{ settings.currency }}</dd></div><div><dt>المبلغ المتبقي</dt><dd>{{ totals.financed_amount|toLocaleString }} {{ settings.currency }}</dd></div><div class="is-total"><dt>إجمالي التقسيط</dt><dd>{{ totals.installment_total|toLocaleString }} {{ settings.currency }}</dd></div></dl>
+          <a href="#checkout">إكمال بيانات الطلب</a>
+          <p><span>▣</span> ستتم إعادة مراجعة الأسعار والمخزون قبل تثبيت الطلب.</p>
+        </aside>
+      </section>
+
+      <section class="store-checkout" id="checkout">
+        <div class="store-checkout__intro"><span>01</span><div><h2>بيانات مقدم الطلب</h2><p>أدخل بيانات صحيحة حتى يتمكن فريق المتجر من مراجعة الطلب والتواصل معك.</p></div></div>
+        <form id="checkoutForm" class="store-checkout-form">
+          <input type="hidden" name="idempotency_key" value="{{ idempotency_key }}">
+          {% if store_customer %}<div class="store-account-notice"><span>✓</span><div><strong>الطلب مرتبط بحسابك</strong><small>سنحدّث المحافظة والعنوان في بياناتك بعد إرسال الطلب.</small></div><a href="{{ url_for('installments_store.account_page', tenant_slug=tenant_slug) }}">عرض الحساب</a></div>{% else %}<div class="store-account-notice is-guest"><span>i</span><div><strong>عندك حساب؟</strong><small>سجّل الدخول لتظهر كل طلباتك وتُحفظ بياناتك تلقائياً.</small></div><a href="{{ url_for('installments_store.account_page', tenant_slug=tenant_slug) }}">تسجيل الدخول</a></div>{% endif %}
+          <div class="store-checkout-form__section"><h3>المعلومات الشخصية</h3><div class="store-checkout-form__grid"><label>الاسم الرباعي <b>*</b><input name="customer_name" value="{{ store_customer.name if store_customer else '' }}" required minlength="7" autocomplete="name" placeholder="الاسم الكامل" {% if store_customer %}readonly{% endif %}></label><label>الهاتف الأساسي <b>*</b><input name="phone" value="{{ store_customer_account.phone if store_customer_account else '' }}" dir="ltr" required inputmode="tel" autocomplete="tel" placeholder="07xxxxxxxxx" {% if store_customer_account %}readonly{% endif %}></label><label>الهاتف الثاني {% if settings.second_phone_required %}<b>*</b>{% else %}<small>اختياري</small>{% endif %}<input name="phone2" value="{{ store_customer.phone2 if store_customer and store_customer.phone2 else '' }}" dir="ltr" inputmode="tel" {% if settings.second_phone_required %}required{% endif %}></label><label>الدخل الشهري <small>اختياري</small><input name="monthly_income" type="number" min="0" placeholder="0"></label></div></div>
+          <div class="store-checkout-form__section"><h3>العنوان والعمل</h3><div class="store-checkout-form__grid"><label>المحافظة <b>*</b><select name="city" required><option value="">اختر المحافظة</option>{% for governorate in governorates %}<option {% if store_customer and store_customer.city == governorate %}selected{% endif %}>{{ governorate }}</option>{% endfor %}</select></label><label>المنطقة / القضاء<input name="area"></label><label class="is-wide">العنوان الكامل <b>*</b><input name="address" value="{{ store_customer.address if store_customer and store_customer.address else '' }}" required minlength="5" autocomplete="street-address"></label><label>أقرب نقطة دالة<input name="nearest_landmark"></label><label>جهة العمل {% if settings.employment_required %}<b>*</b>{% else %}<small>اختياري</small>{% endif %}<input name="employer" {% if settings.employment_required %}required{% endif %}></label><label class="is-wide">ملاحظات <small>اختياري</small><textarea name="notes" rows="3"></textarea></label></div></div>
+          <label class="store-checkout-consent"><input type="checkbox" required><span>أقر بصحة البيانات المدخلة وأوافق على شروط طلب التقسيط وسياسة المتجر.</span></label>
+          <div id="message" role="status"></div>
+          <button class="store-checkout-submit" type="submit"><span>إرسال طلب التقسيط</span><small>{% if store_customer_account %}سيظهر الطلب مباشرة داخل حسابك{% else %}سيتم تزويدك برمز خاص لمتابعة الطلب{% endif %}</small></button>
+        </form>
+      </section>
+    {% else %}
+      <section class="store-cart-empty"><span class="store-cart-empty__icon">🛒</span><h1>سلة الأقساط فارغة</h1><p>أضف المنتجات التي تناسبك واختر خطة التقسيط قبل تقديم الطلب.</p><a href="{{ url_for('installments_store.store_index', tenant_slug=tenant_slug) }}">تصفّح المنتجات</a></section>
+    {% endif %}
+  </main>
+  {% include 'installments/store/_footer.html' %}
+  <script>
+    const cartMessage = document.getElementById('cartMessage');
+    document.querySelectorAll('.cart-update').forEach(form => {
+      const updateCart = async () => {
+        if (form.dataset.updating === '1') return;
+        if (!form.checkValidity()) return;
+        form.dataset.updating = '1';
+        const status = form.querySelector('.store-cart-auto-save');
+        const controls = [...form.querySelectorAll('select, input')];
+        const data = Object.fromEntries(new FormData(form));
+        data.product_id = form.dataset.product;
+        data.old_plan_id = form.dataset.oldPlan;
+        controls.forEach(control => control.disabled = true);
+        status.textContent = 'جارٍ الحفظ…';
+        try {
+          const response = await fetch({{ url_for('installments_store.cart_update', tenant_slug=tenant_slug)|tojson }}, {method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json'}, body:JSON.stringify(data)});
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || 'تعذر تحديث السلة');
+          status.textContent = 'تم الحفظ';
+          location.reload();
+        } catch (error) {
+          cartMessage.className='ins-message error';
+          cartMessage.textContent=error.message;
+          status.textContent = 'تعذر الحفظ';
+          controls.forEach(control => control.disabled = false);
+          form.dataset.updating = '0';
+        }
+      };
+      form.querySelector('select')?.addEventListener('change', updateCart);
+      const quantityInput = form.querySelector('input[name="quantity"]');
+      let quantityTimer;
+      quantityInput?.addEventListener('input', () => {
+        clearTimeout(quantityTimer);
+        quantityTimer = setTimeout(updateCart, 450);
+      });
+      quantityInput?.addEventListener('change', () => {
+        clearTimeout(quantityTimer);
+        updateCart();
+      });
+      form.addEventListener('submit', event => {
+        event.preventDefault();
+        updateCart();
+      });
+    });
+    document.getElementById('checkoutForm')?.addEventListener('submit', async event => {
+      event.preventDefault();
+      const button = event.currentTarget.querySelector('button[type="submit"]');
+      const box = document.getElementById('message');
+      const data = Object.fromEntries(new FormData(event.currentTarget));
+      button.disabled = true;
+      try {
+        const response = await fetch({{ url_for('installments_store.cart_checkout', tenant_slug=tenant_slug)|tojson }}, {method:'POST', headers:{'Content-Type':'application/json','Accept':'application/json','Idempotency-Key':data.idempotency_key}, body:JSON.stringify(data)});
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error || 'تعذر إرسال الطلب');
+        box.className = 'store-application-success';
+        box.innerHTML = {% if store_customer_account %}`<strong>تم إرسال طلبك بنجاح</strong><span>رقم الطلب: ${result.application_number}</span><a href="{{ url_for('installments_store.account_page', tenant_slug=tenant_slug) }}">عرض الطلب داخل حسابي</a>`{% else %}`<strong>تم إرسال طلبك بنجاح</strong><span>رقم الطلب: ${result.application_number}</span><code dir="ltr">${result.tracking_token}</code><a href="{{ url_for('installments_store.account_page', tenant_slug=tenant_slug, mode='register') }}">أنشئ حساباً لمشاهدة طلباتك</a>`{% endif %};
+        button.hidden = true;
+      } catch (error) { box.className='ins-message error'; box.textContent=error.message; button.disabled=false; }
+    });
+  </script>
+</body>
+</html>

@@ -245,6 +245,34 @@
   border-bottom: none;
 }
 
+.rs-prior-preview {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--primary) 8%, var(--card));
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.rs-prior-preview.is-error {
+  background: color-mix(in srgb, var(--danger, #dc2626) 10%, var(--card));
+  color: var(--danger, #dc2626);
+}
+
+.rs-row-reversed {
+  opacity: .68;
+  background: color-mix(in srgb, var(--danger, #dc2626) 4%, transparent);
+}
+
+.rs-reversed-note {
+  display: block;
+  margin-top: 2px;
+  color: var(--danger, #dc2626);
+  font-size: 10px;
+  font-weight: 700;
+}
+
 /* بطاقات الجوال بدل الجدول */
 .rs-cards {
   display: none;

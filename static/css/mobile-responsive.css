@@ -569,6 +569,16 @@
     margin-bottom: 8px;
   }
 
+  /* Clinics workspace keeps compact controls; global full-width buttons bury the visit form. */
+  body.clinics-app-mode {
+    padding: 0 !important;
+  }
+  body.clinics-app-mode .cx-btn,
+  body.clinics-app-mode button {
+    width: auto;
+    margin-bottom: 0;
+  }
+
   input,
   select,
   textarea {

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <title>{% block title %}{{ store_design.store_name }}{% endblock %}</title>
+  <meta name="description" content="{% block description %}{{ store_design.store_name }} — أجهزة كهربائية وإلكترونيات بأسعار واضحة وتوصيل لكل المحافظات.{% endblock %}">
+  {% block meta %}{% endblock %}
+  <meta property="og:site_name" content="{{ store_design.store_name }}">
+  <meta property="og:locale" content="ar_IQ">
+  <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+  <meta property="og:title" content="{{ self.title()|trim }}">
+  <meta property="og:description" content="{{ self.description()|trim }}">
+  <meta property="og:url" content="{{ request.base_url }}">
+  {% block og_image %}{% if store_design.logo_url %}<meta property="og:image" content="{{ store_design.logo_url if store_design.logo_url.startswith('http') else request.host_url.rstrip('/') ~ store_design.logo_url }}">{% endif %}{% endblock %}
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/store-v2.css') }}?v=20261017-s13">
+  {% block legacy_assets %}
+  {# Pages not redesigned yet (cart, checkout, product page, account…) keep their own styles inside the new shell. #}
+  <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/store.css') }}?v=20261017-opts">
+  <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/store-luxury.css') }}?v=20260720-hero-polish">
+  <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/store-cash-shared.css') }}?v=20261001-precision-retail">
+  <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/product-detail.css') }}?v=20261010-options-motion">
+  <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/store-v2-legacy.css') }}?v=20261016-v2">
+  {% endblock %}
+  <style>:root { --sm-accent: {{ store_design.v2_accent_color or '#7a1631' }}; --brand: var(--sm-accent); --store-green: var(--sm-accent); --store-green-dark: #5c1025; --lux-gold: var(--sm-accent); --lux-gold-light: #b5677c; --shipping: #11734b; }</style>
+  {% block head_extra %}{% endblock %}
+</head>
+<body class="sm-body{% block body_class %} sm-legacy{% endblock %}">
+  <a class="sm-skip" href="#smMain">تخطَّ إلى المحتوى</a>
+  {% include "storefront_v2/partials/header.html" %}
+
+  <main id="smMain" class="sm-main lux-page">
+    {% block content %}{% endblock %}
+  </main>
+
+  {% include "storefront_v2/partials/footer.html" %}
+
+  <div class="sf-toast-wrap" id="sfToastWrap" role="status" aria-live="polite"></div>
+
+  {% if store_design.ai_assistant_enabled %}
+  <div id="smAiRoot" hidden>{% include "storefront/partials/ai_chat_widget.html" %}</div>
+  {% endif %}
+
+  <script>
+    window.STOREFRONT_CONFIG = {
+      tenantSlug: {{ shop_tenant_slug|tojson }},
+      dev: {{ (request.args.get('dev') == '1')|tojson }},
+      useAjaxCoupon: true,
+      v2: true,
+      deliveryArea: {{ (delivery_area or '')|tojson }},
+      personalize: {{ (personalize_enabled if personalize_enabled is defined else true)|tojson }},
+      vitalsSample: {{ (store_vitals_sample if store_vitals_sample is defined else 0.5)|tojson }},
+      aiChatEnabled: {{ store_design.ai_assistant_enabled|tojson }},
+      aiChatUrl: {{ url_for('storefront.api_ai_chat', tenant_slug=shop_tenant_slug)|tojson }},
+      aiTrackUrl: {{ url_for('storefront.api_ai_chat_track', tenant_slug=shop_tenant_slug)|tojson }},
+      assistantName: {{ store_design.ai_assistant_name|tojson }},
+      aiGreeting: {{ store_design.ai_assistant_greeting|tojson }},
+      aiSuggestions: {{ store_design.ai_assistant_suggestions|tojson }},
+      aiAssets: {{ [url_for('static', filename='storefront/css/ai-chat.css') ~ '?v=20260817-chat-cards-v2', url_for('static', filename='storefront/js/ai-chat.js') ~ '?v=20260817-chat-cards-v2']|tojson }}
+    };
+  </script>
+  <script type="application/json" id="sfSaleProductsData">{{ (store_sale_products or [])|tojson }}</script>
+  <script src="{{ url_for('static', filename='storefront/js/store.js') }}?v=20261017-opts2" defer></script>
+  {% block legacy_scripts %}
+  <script src="{{ url_for('static', filename='storefront/js/store-luxury.js') }}?v=20260924-usd" defer></script>
+  {% endblock %}
+  <script src="{{ url_for('static', filename='storefront/js/store-v2.js') }}?v=20261017-s13" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

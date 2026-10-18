@@ -4,6 +4,7 @@
 class WorkspaceWorkflowClient {
   constructor(options = {}) {
     this.apiBase = options.apiBase || "/workspace/api";
+    this.getSessionId = options.getSessionId || (() => null);
     this.onSessionUpdate = options.onSessionUpdate || (() => {});
     this.onWaiting = options.onWaiting || (() => {});
     this.onError = options.onError || (() => {});
@@ -23,9 +24,15 @@ class WorkspaceWorkflowClient {
     if (!res.ok) {
       const code = data.error || `HTTP ${res.status}`;
       if (code === "not_found") {
-        throw new Error("الجلسة غير موجودة — اضغط «جلسة جديدة»");
+        const error = new Error("SESSION_NOT_FOUND");
+        error.code = "SESSION_NOT_FOUND";
+        throw error;
       }
-      throw new Error(data.message || code);
+      const rawMessage = data.message || code;
+      const friendlyMessage = /internal server error/i.test(String(rawMessage))
+        ? "حدث خطأ داخلي أثناء تحليل المستند. أعد المحاولة، وإذا تكرر الخطأ ارفع المستند بصورة أوضح."
+        : rawMessage;
+      throw new Error(friendlyMessage);
     }
     return data;
   }
@@ -94,6 +101,17 @@ class WorkspaceWorkflowClient {
     const data = await this._json(`/sessions/${id}/workflow/approval`, {
       method: "POST",
       body: JSON.stringify({ approved, comment }),
+    });
+    if (data.session) this.onSessionUpdate(data.session);
+    return data;
+  }
+
+  async cancelWorkflow() {
+    const id = this._sessionId();
+    if (!id) throw new Error("لا توجد جلسة");
+    const data = await this._json(`/sessions/${id}/workflow/cancel`, {
+      method: "POST",
+      body: JSON.stringify({}),
     });
     if (data.session) this.onSessionUpdate(data.session);
     return data;

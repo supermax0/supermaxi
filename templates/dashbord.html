@@ -3,21 +3,99 @@
 {% block page_title %}{{ _('dashboard') }}{% endblock %}
 
 {% block topbar_actions %}
-{% if show_data is not defined or show_data != False %}
-<button type="button" class="dq-btn dash-notif-btn" id="dashNotifBtn" title="الإشعارات" aria-label="الإشعارات" aria-expanded="false">
-  <i class="fas fa-bell"></i>
-  <span class="dash-notif-badge" id="dashNotifBadge" hidden>0</span>
-</button>
-<button type="button" class="dq-btn dash-alerts-top-btn" id="dashAlertsBtn" title="التنبيهات" aria-label="التنبيهات">
-  <i class="fas fa-triangle-exclamation"></i>
-  <span class="dash-notif-badge dash-alerts-badge" id="dashAlertsBadge" hidden>0</span>
-  <span class="dq-label">التنبيهات</span>
-</button>
+{% if session.get("user_id") %}
+<div class="dashboard-top-quick-actions">
+  {% if show_data is not defined or show_data != False %}
+  <button type="button" class="dq-btn dq-btn--period dashboard-period-btn" id="periodBtn" onclick="openPeriodModal()" title="الفترة" aria-label="الفترة">
+    <i class="fas fa-calendar-alt"></i>
+    <span class="dq-label" id="periodLabel">{{ _('dashboard_today') }}</span>
+    <span class="dashboard-period-caret" aria-hidden="true">▼</span>
+  </button>
+  <button type="button" class="dq-btn dq-btn--notif dash-notif-btn" id="dashNotifBtn" title="الإشعارات" aria-label="الإشعارات" aria-expanded="false">
+    <i class="fas fa-bell"></i>
+    <span class="dash-notif-badge" id="dashNotifBadge" hidden>0</span>
+  </button>
+  <button type="button" class="dq-btn dq-btn--alerts dash-alerts-top-btn" id="dashAlertsBtn" title="التنبيهات" aria-label="التنبيهات">
+    <i class="fas fa-triangle-exclamation"></i>
+    <span class="dash-notif-badge dash-alerts-badge" id="dashAlertsBadge" hidden>0</span>
+    <span class="dq-label">التنبيهات</span>
+  </button>
+  {% endif %}
+  <button type="button" class="dq-btn dq-btn--search" onclick="FinoraTopbar.run('search')" title="{{ _('dashboard_search') }}">
+    <i class="fas fa-search"></i>
+    <span class="dq-label">{{ _('dashboard_search') }}</span>
+  </button>
+  <button type="button" class="dq-btn dq-btn--profit" onclick="FinoraTopbar.run('profit')" title="{{ _('dashboard_profit_today') }}">
+    <i class="fas fa-chart-line"></i>
+    <span class="dq-label">{{ _('dashboard_profit_today') }}</span>
+  </button>
+  <button type="button" class="dq-btn dq-btn--expense" onclick="FinoraTopbar.run('expense')" title="{{ _('dashboard_add_expense') }}">
+    <i class="fas fa-plus"></i>
+    <span class="dq-label">{{ _('dashboard_add_expense') }}</span>
+  </button>
+  {% if show_data is not defined or show_data != False %}
+  <button type="button" class="dq-btn dq-btn--privacy dashboard-user-privacy-btn" id="dashboardPrivacyBtn" title="إظهار الأرقام لمدة 30 ثانية" aria-label="إظهار الأرقام لمدة 30 ثانية" aria-pressed="false">
+    <i class="fas fa-eye" aria-hidden="true"></i>
+    <span class="dq-label">إظهار الأرقام</span>
+  </button>
+  {% if show_pos and business_allows('pos') %}
+  <a href="/pos" class="dq-btn dq-btn--pos" title="{{ _('dashboard_pos') }}" aria-label="{{ _('dashboard_pos') }}">
+    <i class="fas fa-cash-register" aria-hidden="true"></i>
+    <span class="dq-label">{{ _('dashboard_pos') }}</span>
+  </a>
+  {% endif %}
+  {% endif %}
+</div>
 {% endif %}
-{{ super() }}
+{% endblock %}
+
+{% block user_box_actions %}
 {% endblock %}
 
 {% block content %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard-intro.css') }}?v=20260823d">
+<div
+  class="finora-dashboard-intro"
+  id="finoraDashboardIntro"
+  data-wait-dashboard-data="{{ 'false' if show_data is defined and show_data == False else 'true' }}"
+  role="status"
+  aria-label="جارٍ تحميل لوحة التحكم"
+>
+  <div class="finora-dashboard-intro__stage">
+    <video
+      class="finora-dashboard-intro__video"
+      id="finoraDashboardIntroVideo"
+      src="{{ url_for('static', filename='branding/finora-dashboard-intro.mp4') }}?v=4k-20260823"
+      autoplay
+      muted
+      playsinline
+      preload="auto"
+      controlslist="nodownload noremoteplayback"
+      disablepictureinpicture
+      disableremoteplayback
+      aria-hidden="true"
+    ></video>
+    <button class="finora-dashboard-intro__sound" id="finoraDashboardIntroSound" type="button" hidden>
+      <span class="finora-dashboard-intro__sound-icon" aria-hidden="true">🔊</span>
+      <span>تشغيل الصوت</span>
+    </button>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/dashboard-intro.js') }}?v=20260823c"></script>
+
+{% if session.get("user_id") and independent_branches_enabled %}
+<div class="dashboard-branch-banner" aria-label="نطاق بيانات لوحة التحكم">
+  <span class="dashboard-branch-banner__icon" aria-hidden="true">
+    <i class="fas fa-code-branch"></i>
+  </span>
+  <span class="dashboard-branch-banner__content">
+    <span class="dashboard-branch-banner__label">نطاق بيانات اللوحة</span>
+    <strong>{{ branch_scope_label }}</strong>
+  </span>
+  {% if view_all_branches %}<small>عرض مجمّع للشركة</small>{% endif %}
+</div>
+{% endif %}
+
 {% if show_data is defined and show_data == False %}
 <div class="dashboard-welcome">
   <h1 class="dashboard-welcome-title">{{ _('dashboard_welcome_title') }}</h1>
@@ -27,6 +105,12 @@
       <i class="fas fa-cash-register"></i>
       {{ _('dashboard_welcome_pos') }}
     </a>
+    {% if session.get("role") == "admin" or can_use_notes %}
+    <a href="/notes/" class="dashboard-welcome-pos-btn">
+      <i class="fas fa-book-open"></i>
+      دفتر ملاحظاتي
+    </a>
+    {% endif %}
   </div>
 </div>
 {% else %}
@@ -36,10 +120,10 @@
 {% set show_dash_total_sales = _dash_flags.get('show_dash_total_sales', True) %}
 {% set show_dash_cash_sales = _dash_flags.get('show_dash_cash_sales', True) %}
 {% set show_dash_credit_sales = _dash_flags.get('show_dash_credit_sales', True) %}
-{% set show_dash_inventory = _dash_flags.get('show_dash_inventory', True) %}
+{% set show_dash_inventory = _dash_flags.get('show_dash_inventory', False) %}
 {% set show_dash_liabilities = _dash_flags.get('show_dash_liabilities', True) %}
 {% set show_dash_agent_dues = _dash_flags.get('show_dash_agent_dues', True) %}
-{% set show_dash_agent_pending = _dash_flags.get('show_dash_agent_pending', True) %}
+{% set show_dash_agent_pending = _dash_flags.get('show_dash_agent_pending', False) %}
 {% set show_dash_expenses = _dash_flags.get('show_dash_expenses', True) %}
 {% set show_any_sales_cards = (
   show_dash_cash_balance or
@@ -56,7 +140,7 @@
 
 <!-- Chart.js Library -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<link rel="stylesheet" href="{{ url_for('static', filename='css/order-search-modal.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/order-search-modal.css') }}?v=20260807b">
 
 <style>
   /* =======================
@@ -74,6 +158,61 @@
     --dashboard-border: var(--border-light);
     --dashboard-text: var(--text);
     --dashboard-muted: var(--text-muted);
+  }
+
+  .dashboard-branch-banner {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    margin: 0 0 14px;
+    padding: 12px 14px;
+    border: 1px solid var(--dashboard-border);
+    border-radius: 16px;
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--dashboard-primary) 7%, var(--dashboard-card)), var(--dashboard-card));
+    color: var(--dashboard-text);
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.05);
+  }
+
+  .dashboard-branch-banner__icon {
+    width: 38px;
+    height: 38px;
+    flex: 0 0 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    color: var(--dashboard-primary);
+    background: color-mix(in srgb, var(--dashboard-primary) 12%, transparent);
+  }
+
+  .dashboard-branch-banner__content {
+    min-width: 0;
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+  }
+
+  .dashboard-branch-banner__label,
+  .dashboard-branch-banner small {
+    color: var(--dashboard-muted);
+    font-size: 12px;
+  }
+
+  .dashboard-branch-banner strong {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .dashboard-branch-banner small {
+    margin-inline-start: auto;
+    white-space: nowrap;
+  }
+
+  .dq-btn--privacy {
+    color: var(--dashboard-text);
+    background: color-mix(in srgb, var(--dashboard-primary) 7%, var(--dashboard-card));
+    border-color: color-mix(in srgb, var(--dashboard-primary) 20%, var(--dashboard-border));
   }
 
   /* =======================
@@ -288,6 +427,24 @@
 
   .dashboard-period-btn:hover {
     background: rgba(148, 163, 184, 0.20);
+  }
+
+  .dashboard-user-privacy-btn {
+    color: var(--dashboard-text);
+    background: var(--card);
+    box-shadow: var(--shadow-sm);
+  }
+
+  .dashboard-user-privacy-btn:hover,
+  .dashboard-user-privacy-btn[aria-pressed="true"] {
+    color: var(--dashboard-primary);
+    border-color: color-mix(in srgb, var(--dashboard-primary) 38%, transparent);
+    background: color-mix(in srgb, var(--dashboard-primary) 10%, var(--card));
+    transform: translateY(-1px);
+  }
+
+  .dashboard-private-value {
+    font-variant-numeric: tabular-nums;
   }
 
   /* Better contrast in Light theme for tinted buttons */
@@ -741,19 +898,21 @@
 
   .dash-notif-badge {
     position: absolute;
-    top: -4px;
-    inset-inline-start: -4px;
-    min-width: 18px;
-    height: 18px;
-    padding: 0 5px;
+    top: -3px;
+    inset-inline-end: -3px;
+    inset-inline-start: auto;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
     border-radius: 999px;
     background: #ef4444;
     color: #fff;
-    font-size: 10px;
+    font-size: 9px;
     font-weight: 700;
-    line-height: 18px;
+    line-height: 16px;
     text-align: center;
     box-shadow: 0 2px 6px rgba(239, 68, 68, 0.35);
+    pointer-events: none;
   }
 
   .dash-alerts-badge {
@@ -1220,6 +1379,40 @@
   /* Search modal styles → static/css/order-search-modal.css */
 
   /* Period modal — see block near #periodModal */
+  .dashboard-notebook-shortcut {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 16px;
+    padding: 9px 12px;
+    border: 1px solid color-mix(in srgb, var(--primary) 34%, var(--border));
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--primary) 10%, var(--card));
+    color: var(--text);
+    text-decoration: none;
+    transition: transform .2s ease, border-color .2s ease;
+  }
+  .dashboard-notebook-shortcut:hover {
+    transform: translateY(-2px);
+    border-color: var(--primary);
+  }
+  .dashboard-notebook-shortcut span:not(.dashboard-notebook-icon) {
+    display: grid;
+    text-align: start;
+  }
+  .dashboard-notebook-shortcut small {
+    color: var(--text-muted);
+    font-size: 11px;
+  }
+  .dashboard-notebook-icon {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    color: #fff;
+    background: linear-gradient(135deg, #7c3aed, #2563eb);
+  }
 </style>
 <style>
   .dashboard-shell {
@@ -1838,6 +2031,53 @@
     color: var(--dashboard-primary);
   }
 
+  .dashboard-overdue-barcode {
+    display: inline-block;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    direction: ltr;
+    text-align: left;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--dashboard-text);
+    background: rgba(148, 163, 184, 0.14);
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    border-radius: 8px;
+    padding: 4px 8px;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+  }
+
+  :root[data-theme="light"] .dashboard-overdue-barcode {
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+    color: #0f172a;
+  }
+
+  .dashboard-overdue-amount {
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: #4ade80;
+    white-space: nowrap;
+  }
+
+  :root[data-theme="light"] .dashboard-overdue-amount {
+    color: #16a34a;
+  }
+
+  .dashboard-overdue-remaining {
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: #f87171;
+    white-space: nowrap;
+  }
+
+  :root[data-theme="light"] .dashboard-overdue-remaining {
+    color: #dc2626;
+  }
+
   .dashboard-overdue-days {
     display: inline-flex;
     align-items: center;
@@ -2018,6 +2258,160 @@
   }
 
   @media (max-width: 640px) {
+    body.page-dashboard .topbar {
+      grid-template-columns: 42px minmax(0, 1fr) 40px;
+      grid-template-areas:
+        "menu spacer account"
+        "branches branches branches"
+        "quick quick quick";
+      gap: 8px;
+      padding: 9px 12px 10px;
+      padding-top: max(9px, env(safe-area-inset-top, 0px));
+    }
+
+    body.page-dashboard .topbar-left {
+      grid-area: menu;
+      grid-column: auto;
+    }
+
+    body.page-dashboard .topbar-left .toggle {
+      width: 40px;
+      height: 40px;
+      min-width: 40px;
+      min-height: 40px;
+      border-radius: 12px;
+      font-size: 18px;
+    }
+
+    body.page-dashboard .topbar-actions {
+      display: contents;
+    }
+
+    body.page-dashboard .branch-picker-wrap {
+      grid-area: branches;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 7px;
+      width: 100%;
+      margin: 0 !important;
+    }
+
+    body.page-dashboard .global-branch-control {
+      min-width: 0;
+      display: grid;
+      grid-template-columns: 32px minmax(0, 1fr);
+      align-items: center;
+      border: 1px solid var(--dashboard-border);
+      border-radius: 12px;
+      background: var(--dashboard-card);
+      overflow: hidden;
+    }
+
+    body.page-dashboard .global-branch-control > i {
+      color: var(--dashboard-primary);
+      text-align: center;
+      font-size: 13px;
+    }
+
+    body.page-dashboard .branch-picker-wrap select {
+      width: 100%;
+      min-width: 0 !important;
+      height: 40px;
+      padding: 6px 8px !important;
+      border: 0 !important;
+      border-inline-start: 1px solid var(--dashboard-border) !important;
+      border-radius: 0 !important;
+      background: transparent !important;
+      color: var(--dashboard-text) !important;
+      box-shadow: none !important;
+    }
+
+    body.page-dashboard .branch-picker-wrap > select {
+      border: 1px solid var(--dashboard-border) !important;
+      border-radius: 12px !important;
+      background: var(--dashboard-card) !important;
+    }
+
+    body.page-dashboard .dashboard-top-quick-actions {
+      grid-area: quick;
+      display: flex;
+      width: 100%;
+      max-width: none;
+      gap: 5px;
+      padding: 0;
+      justify-content: center;
+      overflow: visible;
+    }
+
+    body.page-dashboard .dashboard-top-quick-actions .dq-btn {
+      width: auto;
+      height: 38px;
+      min-width: 34px;
+      min-height: 38px;
+      max-width: 44px;
+      flex: 1 1 0;
+      border-radius: 11px;
+    }
+
+    body.page-dashboard .user-box {
+      grid-area: account;
+      justify-self: end;
+      margin: 0;
+    }
+
+    body.page-dashboard .user-info {
+      width: 40px;
+      height: 40px;
+      padding: 0 !important;
+      justify-content: center;
+      border-radius: 12px;
+    }
+
+    body.page-dashboard .user-info #headerUserName {
+      display: none;
+    }
+
+    body.page-dashboard .user-info .avatar {
+      width: 30px;
+      height: 30px;
+    }
+
+    body.page-dashboard .page-main {
+      padding: 12px;
+    }
+
+    body.page-dashboard .dashboard-branch-banner {
+      gap: 9px;
+      margin-bottom: 10px;
+      padding: 9px 11px;
+      border-radius: 14px;
+      box-shadow: none;
+    }
+
+    body.page-dashboard .dashboard-branch-banner__icon {
+      width: 34px;
+      height: 34px;
+      flex-basis: 34px;
+      border-radius: 10px;
+    }
+
+    body.page-dashboard .dashboard-branch-banner__content {
+      display: grid;
+      gap: 1px;
+    }
+
+    body.page-dashboard .dashboard-branch-banner__label {
+      font-size: 10px;
+    }
+
+    body.page-dashboard .dashboard-branch-banner strong {
+      font-size: 12px;
+    }
+
+    body.page-dashboard .dashboard-branch-banner small {
+      font-size: 10px;
+    }
+
     body.page-dashboard .dashboard-hero {
       padding: 12px;
       border-radius: 14px;
@@ -2027,10 +2421,68 @@
       font-size: 17px;
     }
 
-    body.page-dashboard .finora-stat-card,
-    body.page-dashboard .dashboard-order-grid .order-stat-link.finora-stat-card {
-      min-height: 88px;
-      padding: 10px;
+    body.page-dashboard .finora-summary-grid {
+      grid-template-columns: 1fr !important;
+      gap: 7px;
+    }
+
+    body.page-dashboard .finora-summary-grid .finora-stat-card {
+      min-height: 70px;
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr) minmax(72px, auto);
+      grid-template-areas:
+        "icon label value"
+        "icon note value";
+      align-items: center;
+      column-gap: 10px;
+      row-gap: 2px;
+      padding: 10px 12px;
+      border-radius: 14px;
+      box-shadow: 0 5px 16px rgba(15, 23, 42, 0.05);
+    }
+
+    body.page-dashboard .finora-summary-grid .finora-stat-top,
+    body.page-dashboard .finora-summary-grid .finora-stat-top > div {
+      display: contents;
+    }
+
+    body.page-dashboard .finora-summary-grid .finora-stat-icon {
+      grid-area: icon;
+      width: 36px;
+      height: 36px;
+      border-radius: 11px;
+    }
+
+    body.page-dashboard .finora-summary-grid .finora-stat-label {
+      grid-area: label;
+      min-width: 0;
+      font-size: 12px;
+      line-height: 1.35;
+      color: var(--dashboard-text);
+    }
+
+    body.page-dashboard .finora-summary-grid .finora-stat-value {
+      grid-area: value;
+      max-width: 110px;
+      margin: 0;
+      overflow: hidden;
+      color: var(--dashboard-text);
+      font-size: clamp(15px, 4.2vw, 18px);
+      text-align: left;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      direction: ltr;
+    }
+
+    body.page-dashboard .finora-summary-grid .finora-stat-note {
+      grid-area: note;
+      min-width: 0;
+      margin: 0;
+      overflow: hidden;
+      font-size: 10px;
+      line-height: 1.35;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   }
 
@@ -2082,8 +2534,9 @@
       grid-template-columns: 1fr;
     }
 
-    .dashboard-order-grid {
-      grid-template-columns: 1fr;
+    body.page-dashboard .dashboard-order-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
     }
 
     .metric-card,
@@ -2101,74 +2554,25 @@
       justify-content: flex-start;
     }
   }
+
+  @media (max-width: 360px) {
+    body.page-dashboard .dashboard-order-grid {
+      grid-template-columns: 1fr;
+    }
+
+    body.page-dashboard .dashboard-branch-banner small {
+      display: none;
+    }
+  }
 </style>
 
 <div class="dashboard-shell">
-  <section class="dashboard-hero">
-    <div class="dashboard-hero-main">
-      <div class="dashboard-user-chip">
-        <div class="dashboard-user-avatar">
-          {% if current_employee and current_employee.profile_pic %}
-          <img src="/{{ current_employee.profile_pic }}" alt="{{ employee_name }}">
-          {% else %}
-          {{ employee_name[0] if employee_name else "?" }}
-          {% endif %}
-        </div>
-        <div class="dashboard-user-meta">
-          <span class="dashboard-user-label">{{ _('dashboard') }}</span>
-          <span class="dashboard-user-name">{{ employee_name }}</span>
-        </div>
-      </div>
-
-      <div>
-        <h1 class="dashboard-hero-title">{{ _('dashboard_welcome_title') }}</h1>
-        <p class="dashboard-hero-subtitle">
-          {{ _('dashboard_welcome_subtitle') }}
-        </p>
-      </div>
-
-      <div class="dashboard-hero-toolbar">
-        <button type="button" class="btn dashboard-period-btn dashboard-period-btn--compact" id="periodBtn" onclick="openPeriodModal()">
-          <span class="btn-icon"><i class="fas fa-calendar-alt"></i></span>
-          <span class="btn-label" id="periodLabel">{{ _('dashboard_today') }}</span>
-          <span class="dashboard-period-caret">▼</span>
-        </button>
-      </div>
-    </div>
-
-    {% if show_dash_cash_balance or show_dash_total_sales or show_dash_period_profit %}
-    <aside class="dashboard-hero-side">
-      <div class="dashboard-side-panel">
-        {% if show_dash_cash_balance %}
-        <span class="dashboard-side-kicker">{{ _('dashboard_cash_balance_title') }}</span>
-        <div id="cashBalance" class="dashboard-side-value">0 د.ع</div>
-        <p class="dashboard-side-note">{{ _('dashboard_cash_balance_note') }}</p>
-        {% endif %}
-        <div class="dashboard-side-meta">
-          {% if show_dash_total_sales %}
-          <div class="dashboard-mini-stat">
-            <span class="dashboard-mini-stat-label">{% if is_beauty_center %}إيراد الجلسات (الفترة){% else %}{{ _('dashboard_total_sales_title') }}{% endif %}<span data-help="dashboard.sales_today"></span></span>
-            <span id="sales" class="dashboard-mini-stat-value">0 د.ع</span>
-          </div>
-          {% endif %}
-          {% if show_dash_period_profit %}
-          <div class="dashboard-mini-stat">
-            <span class="dashboard-mini-stat-label">{% if is_beauty_center %}صافي الربح بعد المصاريف{% else %}{{ _('dashboard_profit_title') }}{% endif %}</span>
-            <span id="periodProfit" class="dashboard-mini-stat-value">0 د.ع</span>
-          </div>
-          {% endif %}
-        </div>
-      </div>
-    </aside>
-    {% endif %}
-  </section>
-
   <section class="finora-summary-grid" aria-label="ملخص مالي رئيسي">
     <div class="finora-stat-card">
       <div class="finora-stat-top">
         <div>
           <div class="finora-stat-label">المشتريات</div>
-          <div id="finoraPurchasesValue" class="finora-stat-value">0 د.ع</div>
+          <div id="finoraPurchasesValue" class="finora-stat-value dashboard-private-value" data-dashboard-private="true">****</div>
         </div>
         <span class="finora-stat-icon purple"><i class="fas fa-cart-shopping"></i></span>
       </div>
@@ -2178,7 +2582,7 @@
       <div class="finora-stat-top">
         <div>
           <div class="finora-stat-label">المبيعات</div>
-          <div id="finoraSalesValue" class="finora-stat-value">0 د.ع</div>
+          <div id="finoraSalesValue" class="finora-stat-value dashboard-private-value" data-dashboard-private="true">****</div>
         </div>
         <span class="finora-stat-icon success"><i class="fas fa-chart-line"></i></span>
       </div>
@@ -2188,7 +2592,7 @@
       <div class="finora-stat-top">
         <div>
           <div class="finora-stat-label">المشتريات غير المدفوعة</div>
-          <div id="finoraUnpaidPurchasesValue" class="finora-stat-value">0 د.ع</div>
+          <div id="finoraUnpaidPurchasesValue" class="finora-stat-value dashboard-private-value" data-dashboard-private="true">****</div>
         </div>
         <span class="finora-stat-icon warning"><i class="fas fa-file-circle-exclamation"></i></span>
       </div>
@@ -2198,7 +2602,7 @@
       <div class="finora-stat-top">
         <div>
           <div class="finora-stat-label">الفواتير غير المدفوعة</div>
-          <div id="finoraUnpaidInvoicesValue" class="finora-stat-value">0 د.ع</div>
+          <div id="finoraUnpaidInvoicesValue" class="finora-stat-value dashboard-private-value" data-dashboard-private="true">****</div>
         </div>
         <span class="finora-stat-icon danger"><i class="fas fa-receipt"></i></span>
       </div>
@@ -2208,7 +2612,7 @@
       <div class="finora-stat-top">
         <div>
           <div class="finora-stat-label">قيمة المخزون</div>
-          <div id="finoraInventoryValue" class="finora-stat-value">0 د.ع</div>
+          <div id="finoraInventoryValue" class="finora-stat-value dashboard-private-value" data-dashboard-private="true">****</div>
         </div>
         <span class="finora-stat-icon info"><i class="fas fa-boxes-stacked"></i></span>
       </div>
@@ -2221,7 +2625,7 @@
       <div class="finora-stat-top">
         <div>
           <div class="finora-stat-label">المصروفات</div>
-          <div id="finoraExpensesValue" class="finora-stat-value">0 د.ع</div>
+          <div id="finoraExpensesValue" class="finora-stat-value dashboard-private-value" data-dashboard-private="true">****</div>
         </div>
         <span class="finora-stat-icon info"><i class="fas fa-money-bill-trend-up"></i></span>
       </div>
@@ -2234,7 +2638,7 @@
       <div class="finora-stat-top">
         <div>
           <div class="finora-stat-label">إجمالي الفواتير المرتجعة</div>
-          <div id="finoraReturnedValue" class="finora-stat-value">0</div>
+          <div id="finoraReturnedValue" class="finora-stat-value dashboard-private-value" data-dashboard-private="true">****</div>
         </div>
         <span class="finora-stat-icon danger"><i class="fas fa-rotate-left"></i></span>
       </div>
@@ -2350,6 +2754,78 @@
     </div>
     {% endif %}
   </section>
+
+  <section class="dashboard-section" id="orderInstallmentDashboardSection" style="display:none;">
+    <div class="dashboard-section-head">
+      <div>
+        <h2 class="dashboard-section-title">دورة طلب الأقساط</h2>
+        <p class="dashboard-section-subtitle">الطلبات النشطة ضمن وضع الأقساط</p>
+      </div>
+    </div>
+    <div class="dashboard-order-grid">
+      <a href="/orders/?installment_type=installment&installment_status=ACTIVE" class="order-stat-link finora-stat-card">
+        <div class="finora-stat-top">
+          <div>
+            <div class="finora-stat-label">الأقساط النشطة</div>
+            <div id="oil_active" class="finora-stat-value">0</div>
+          </div>
+          <span class="finora-stat-icon warning"><i class="fas fa-hourglass-half"></i></span>
+        </div>
+      </a>
+      <a href="/orders/?installment_type=installment" class="order-stat-link finora-stat-card">
+        <div class="finora-stat-top">
+          <div>
+            <div class="finora-stat-label">تستحق اليوم</div>
+            <div id="oil_due_today" class="finora-stat-value">0</div>
+          </div>
+          <span class="finora-stat-icon danger"><i class="fas fa-bell"></i></span>
+        </div>
+      </a>
+      <a href="/orders/?installment_type=installment&installment_status=ACTIVE" class="order-stat-link finora-stat-card">
+        <div class="finora-stat-top">
+          <div>
+            <div class="finora-stat-label">القيمة الحالية</div>
+            <div id="oil_outstanding" class="finora-stat-value">0</div>
+          </div>
+          <span class="finora-stat-icon info"><i class="fas fa-coins"></i></span>
+        </div>
+      </a>
+      <a href="/orders/?installment_type=installment&installment_status=RETURNED" class="order-stat-link finora-stat-card">
+        <div class="finora-stat-top">
+          <div>
+            <div class="finora-stat-label">مرتجعات</div>
+            <div id="oil_returned" class="finora-stat-value">0</div>
+          </div>
+          <span class="finora-stat-icon purple"><i class="fas fa-undo"></i></span>
+        </div>
+      </a>
+    </div>
+  </section>
+  <script>
+  (function () {
+    fetch("/api/order-installment/dashboard-summary")
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!data || !data.success || !data.summary) return;
+        var s = data.summary;
+        var section = document.getElementById("orderInstallmentDashboardSection");
+        if (section) section.style.display = "";
+        var fmt = function (n) {
+          try { return Number(n || 0).toLocaleString() + " د.ع"; }
+          catch (e) { return (n || 0) + " د.ع"; }
+        };
+        var set = function (id, val) {
+          var el = document.getElementById(id);
+          if (el) el.textContent = val;
+        };
+        set("oil_active", s.active || 0);
+        set("oil_due_today", s.due_today || 0);
+        set("oil_outstanding", fmt(s.outstanding_value));
+        set("oil_returned", fmt(s.returned_value));
+      })
+      .catch(function () {});
+  })();
+  </script>
 
   {% if show_any_sales_cards %}
   <section class="dashboard-section">
@@ -2537,7 +3013,7 @@
         <div class="order-search-input-wrap">
           <span class="order-search-input__icon" aria-hidden="true">🔍</span>
           <input id="q" class="order-search-input" type="text" inputmode="numeric" autocomplete="off"
-            placeholder="رقم الوصل أو رقم الهاتف"
+            placeholder="رقم الوصل أو رقم الهاتف أو الباركود"
             onkeydown="if(event.key==='Enter'){event.preventDefault();search();}">
         </div>
         <button type="button" onclick="search()" class="order-search-submit-btn" aria-label="{{ _('dashboard_search_button') }}">
@@ -3185,7 +3661,10 @@
               <th scope="col">{{ _('dashboard_overdue_th_order') }}</th>
               <th scope="col">{{ _('dashboard_th_customer') }}</th>
               <th scope="col">{{ _('dashboard_th_phone') }}</th>
+              <th scope="col">{{ _('dashboard_overdue_print_th_barcode') }}</th>
               <th scope="col">{{ _('dashboard_overdue_th_status') }}</th>
+              <th scope="col">{{ _('dashboard_th_amount') }}</th>
+              <th scope="col">{{ _('dashboard_th_remaining') }}</th>
               <th scope="col">{{ _('dashboard_overdue_th_ref_date') }}</th>
               <th scope="col">{{ _('dashboard_overdue_th_days') }}</th>
               <th scope="col">{{ _('dashboard_overdue_th_action') }}</th>
@@ -3197,7 +3676,22 @@
               <td><span class="dashboard-overdue-id">#{{ row.id }}</span></td>
               <td>{{ row.customer_name }}</td>
               <td dir="ltr" style="text-align:right;">{{ row.phone or '—' }}</td>
+              <td>
+                {% if row.shipping_barcode %}
+                <span class="dashboard-overdue-barcode" title="{{ row.shipping_barcode }}">{{ row.shipping_barcode }}</span>
+                {% else %}
+                —
+                {% endif %}
+              </td>
               <td>{{ row.status }}</td>
+              <td><span class="dashboard-overdue-amount">{{ "{:,}".format(row.total or 0) }} {{ _('dashboard_overdue_print_currency') }}</span></td>
+              <td>
+                {% if row.remaining %}
+                <span class="dashboard-overdue-remaining">{{ "{:,}".format(row.remaining) }} {{ _('dashboard_overdue_print_currency') }}</span>
+                {% else %}
+                —
+                {% endif %}
+              </td>
               <td dir="ltr" style="text-align:right;">{{ row.ref_date }}</td>
               <td>
                 <span class="dashboard-overdue-days{% if row.severity == 'critical' %} dashboard-overdue-days--crit{% else %} dashboard-overdue-days--warn{% endif %}">
@@ -3205,7 +3699,7 @@
                 </span>
               </td>
               <td>
-                <a class="dashboard-overdue-link" href="{{ url_for('orders.invoice_page', order_id=row.id) }}">
+                <a class="dashboard-overdue-link" href="{{ url_for('orders.orders', open_details=row.id) }}">
                   <i class="fas fa-external-link-alt" aria-hidden="true"></i>
                   {{ _('dashboard_overdue_open') }}
                 </a>
@@ -3366,17 +3860,90 @@
   // Period Management
   // ========================
   let currentPeriod = { type: "last_30_days", date_from: null, date_to: null };
+  const DASHBOARD_PRIVACY_MASK = "****";
+  const DASHBOARD_REVEAL_DURATION_MS = 30000;
+  let dashboardValuesRevealed = false;
+  let dashboardRevealExpiresAt = 0;
+  let dashboardPrivacyTimer = null;
+
+  function isDashboardPrivateValueVisible(el) {
+    if (dashboardValuesRevealed) return true;
+    const card = el.closest(".finora-stat-card, .finora-wide-card");
+    return Boolean(card && card.dataset.dashboardHoverReveal === "true");
+  }
+
+  function renderDashboardPrivateValues() {
+    document.querySelectorAll("[data-dashboard-private='true']").forEach(el => {
+      el.innerText = isDashboardPrivateValueVisible(el)
+        ? (el.dataset.dashboardPrivateValue || "—")
+        : DASHBOARD_PRIVACY_MASK;
+    });
+  }
+
+  function setDashboardCardHoverState(card, revealed) {
+    if (!card) return;
+    card.dataset.dashboardHoverReveal = revealed ? "true" : "false";
+    renderDashboardPrivateValues();
+  }
+
+  function updateDashboardPrivacyButton() {
+    const btn = document.getElementById("dashboardPrivacyBtn");
+    if (!btn) return;
+
+    const label = dashboardValuesRevealed
+      ? "إخفاء الأرقام"
+      : "إظهار الأرقام لمدة 30 ثانية";
+    btn.title = label;
+    btn.setAttribute("aria-label", label);
+    btn.setAttribute("aria-pressed", dashboardValuesRevealed ? "true" : "false");
+
+    const icon = btn.querySelector("i");
+    if (icon) {
+      icon.classList.toggle("fa-eye", !dashboardValuesRevealed);
+      icon.classList.toggle("fa-eye-slash", dashboardValuesRevealed);
+    }
+  }
+
+  function hideDashboardPrivateValues() {
+    dashboardValuesRevealed = false;
+    dashboardRevealExpiresAt = 0;
+    if (dashboardPrivacyTimer) {
+      window.clearTimeout(dashboardPrivacyTimer);
+      dashboardPrivacyTimer = null;
+    }
+    renderDashboardPrivateValues();
+    updateDashboardPrivacyButton();
+  }
+
+  function toggleDashboardPrivateValues() {
+    if (dashboardValuesRevealed) {
+      hideDashboardPrivateValues();
+      return;
+    }
+
+    dashboardValuesRevealed = true;
+    dashboardRevealExpiresAt = Date.now() + DASHBOARD_REVEAL_DURATION_MS;
+    renderDashboardPrivateValues();
+    updateDashboardPrivacyButton();
+    dashboardPrivacyTimer = window.setTimeout(
+      hideDashboardPrivateValues,
+      DASHBOARD_REVEAL_DURATION_MS
+    );
+  }
 
   function setText(id, value) {
     const el = document.getElementById(id);
-    if (el) el.innerText = value;
+    if (!el) return;
+    if (el.dataset.dashboardPrivate === "true") {
+      el.dataset.dashboardPrivateValue = value;
+      el.innerText = isDashboardPrivateValueVisible(el) ? value : DASHBOARD_PRIVACY_MASK;
+      return;
+    }
+    el.innerText = value;
   }
 
   function setTextForIds(ids, value) {
-    ids.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.innerText = value;
-    });
+    ids.forEach(id => setText(id, value));
   }
 
   function fetchJson(url) {
@@ -3401,7 +3968,7 @@
     if (dateTo) url += "&date_to=" + dateTo;
 
     // جلب البيانات باستخدام AJAX (بدون إعادة تحميل الصفحة)
-    fetchJson(url)
+    const reportsRequest = fetchJson(url)
       .then(d => {
         setText("periodLabel", d.period_label || "اليوم");
         setText("salesPeriodLabel", "للفترة: " + (d.period_label || "اليوم"));
@@ -3437,7 +4004,7 @@
         // في حالة الخطأ، نعرض رسالة للمستخدم (اختياري)
       });
 
-    fetch("/purchases/api/list")
+    const purchasesRequest = fetch("/purchases/api/list")
       .then(r => r.ok ? r.json() : [])
       .then(list => {
         if (!Array.isArray(list)) return;
@@ -3450,7 +4017,7 @@
         setTextForIds(["finoraPurchasesValue", "finoraUnpaidPurchasesValue"], "—");
       });
 
-    fetchJson("/api/index/orders-count").then(d => {
+    const ordersCountRequest = fetchJson("/api/index/orders-count").then(d => {
       setText("c_all", d.all);
       setText("c_ordered", d.ordered);
       setText("c_shipping", d.shipping);
@@ -3459,13 +4026,23 @@
       setTextForIds(["finoraReturnedValue"], formatNumber(d.returned || 0));
     }).catch(err => console.error("orders-count:", err));
 
-    fetchJson("/api/index/agent-reports-pending").then(d => {
+    const agentReportsRequest = fetchJson("/api/index/agent-reports-pending").then(d => {
       setText("agentPendingReports", String(d.ready_count || 0));
     }).catch(err => console.error("agent-reports-pending:", err));
 
-    fetchJson("/api/index/alerts").then(list => {
+    const alertsRequest = fetchJson("/api/index/alerts").then(list => {
       renderDashboardAlerts(list);
     }).catch(err => console.error("alerts:", err));
+
+    return Promise.allSettled([
+      reportsRequest,
+      purchasesRequest,
+      ordersCountRequest,
+      agentReportsRequest,
+      alertsRequest
+    ]).then(function () {
+      window.dispatchEvent(new CustomEvent("finora:dashboard-ready"));
+    });
   }
 
   function renderDashboardAlerts(list) {
@@ -3763,10 +4340,16 @@
           </td>
           <td class="order-td-phone">${escapeSearchHtml(o.phone || "—")}</td>
           <td class="order-td-shipping-barcode">
-            <span class="order-shipping-barcode" title="${escapeSearchHtml(shippingBarcode || "")}">${escapeSearchHtml(shippingBarcode || "—")}</span>
+            <span class="order-shipping-barcode-display" title="${escapeSearchHtml(shippingBarcode || "")}">${escapeSearchHtml(shippingBarcode || "—")}</span>
+            <input type="text" class="order-shipping-barcode-input" data-order-id="${o.id}"
+              value="${escapeSearchHtml(shippingBarcode)}"
+              placeholder="باركود المرتجع"
+              autocomplete="off" direction="ltr" hidden
+              oninput="onSearchBarcodeInput(${o.id}, this.value)"
+              title="أدخل أو امسح باركود المرتجع">
           </td>
           <td class="order-td-status">
-            <select name="s${o.id}" class="order-status-badge search-status-select status-ordered" onchange="setRowColor(${o.id}, this.value)">
+            <select name="s${o.id}" class="order-status-badge search-status-select status-ordered" onchange="setRowColor(${o.id}, this.value, true)">
               <option value="ordered" selected>{{ _('dashboard_th_ordered') }}</option>
               <option value="delivered">{{ _('dashboard_th_delivered') }}</option>
               <option value="returned">{{ _('dashboard_th_returned') }}</option>
@@ -3784,11 +4367,17 @@
             </div>
           </td>
           <td class="order-td-check"><input type="checkbox" class="row-checkbox" data-id="${o.id}"></td>
-          <td class="order-td-action"><button type="button" class="order-execute-btn" onclick="exec(${o.id})" title="تنفيذ">🚀<span class="order-execute-btn__label"> تنفيذ</span></button></td>
+          <td class="order-td-action">
+            <div class="order-action-cell">
+              <button type="button" class="order-remove-btn" onclick="removeSearchOrderRow(${o.id})" title="إزالة من القائمة" aria-label="إزالة من القائمة">✕</button>
+              <button type="button" class="order-execute-btn" onclick="exec(${o.id})" title="تنفيذ">🚀<span class="order-execute-btn__label"> تنفيذ</span></button>
+            </div>
+          </td>
         `;
     rowsContainer.appendChild(tr);
     syncStatusBadgeClass(tr.querySelector(".order-status-badge"));
     syncDeliveryFeeInputState(o.id);
+    syncReturnBarcodeInputState(o.id);
     fillSuggestedDeliveryFee(o.id);
     syncSearchEmptyState();
     return true;
@@ -3830,10 +4419,89 @@
     }
   }
 
+  function syncReturnBarcodeInputState(orderId, opts) {
+    const row = document.getElementById("r" + orderId);
+    if (!row) return;
+    const isReturned = getOrderStatus(orderId) === "returned";
+    const display = row.querySelector(".order-shipping-barcode-display");
+    const input = row.querySelector(".order-shipping-barcode-input");
+    if (!input) return;
+
+    input.hidden = !isReturned;
+    input.classList.toggle("is-return-active", isReturned);
+    if (display) display.hidden = isReturned;
+
+    if (isReturned) {
+      const barcode = (scannedBarcodeByOrder[orderId] || row.dataset.barcode || input.value || "").trim();
+      if (barcode && !input.value) input.value = barcode;
+      if (opts && opts.focus) {
+        setTimeout(function () {
+          input.focus();
+          if (typeof input.select === "function") input.select();
+        }, 30);
+      }
+    } else if (display) {
+      const shown = (input.value || row.dataset.barcode || "").trim();
+      display.textContent = shown || "—";
+      display.setAttribute("title", shown || "");
+    }
+  }
+
   function getRowDeliveryFee(orderId) {
     if (getOrderStatus(orderId) !== "delivered") return 0;
     const input = document.querySelector(`.order-delivery-fee-input[data-order-id="${orderId}"]`);
     return Math.max(0, parseInt(String(input?.value || "0").replace(/[^\d]/g, ""), 10) || 0);
+  }
+
+  function onSearchBarcodeInput(orderId, value) {
+    const barcode = String(value || "").trim();
+    const row = document.getElementById("r" + orderId);
+    if (row) {
+      row.dataset.barcode = barcode;
+      const display = row.querySelector(".order-shipping-barcode-display");
+      if (display && getOrderStatus(orderId) !== "returned") {
+        display.textContent = barcode || "—";
+        display.setAttribute("title", barcode || "");
+      }
+      const input = row.querySelector(".order-shipping-barcode-input");
+      if (input) input.classList.toggle("is-invalid", !barcode && getOrderStatus(orderId) === "returned");
+    }
+    if (barcode) {
+      scannedBarcodeByOrder[orderId] = barcode;
+      if (scannedBarcodesSession.indexOf(barcode) === -1) {
+        scannedBarcodesSession.push(barcode);
+      }
+    } else {
+      delete scannedBarcodeByOrder[orderId];
+    }
+    updateSearchResultsCount();
+  }
+
+  function getRowShippingBarcode(orderId) {
+    const row = document.getElementById("r" + orderId);
+    const input = row ? row.querySelector(".order-shipping-barcode-input") : null;
+    return (
+      String((input && input.value) || scannedBarcodeByOrder[orderId] || (row && row.dataset.barcode) || "").trim()
+    );
+  }
+
+  function focusMissingReturnBarcodes(orderIds) {
+    const ids = (orderIds || []).filter(Boolean);
+    let firstInput = null;
+    ids.forEach(function (id) {
+      syncReturnBarcodeInputState(id);
+      const input = document.querySelector('.order-shipping-barcode-input[data-order-id="' + id + '"]');
+      if (!input) return;
+      input.classList.add("is-invalid");
+      if (!firstInput) firstInput = input;
+    });
+    if (firstInput) {
+      setTimeout(function () {
+        firstInput.focus();
+        if (typeof firstInput.select === "function") firstInput.select();
+      }, 30);
+    }
+    showToast("⚠️ أدخل باركود المرتجع لكل طلب راجع", "warning");
   }
 
   function addOrderFromBarcodeScan(invoice, barcode) {
@@ -3854,10 +4522,15 @@
       const row = document.getElementById("r" + invoice.id);
       if (row) {
         row.dataset.barcode = displayBarcode;
-        const barcodeEl = row.querySelector(".order-shipping-barcode");
+        const barcodeEl = row.querySelector(".order-shipping-barcode-input");
         if (barcodeEl) {
-          barcodeEl.textContent = displayBarcode;
+          barcodeEl.value = displayBarcode;
           barcodeEl.setAttribute("title", displayBarcode);
+        }
+        const display = row.querySelector(".order-shipping-barcode-display");
+        if (display) {
+          display.textContent = displayBarcode;
+          display.setAttribute("title", displayBarcode);
         }
       }
     }
@@ -3928,6 +4601,8 @@
     if (!rowsContainer || !emptyRow) return;
     const hasData = getSearchDataRowCount() > 0;
     emptyRow.style.display = hasData ? "none" : "";
+    const searchModal = document.getElementById("searchModal");
+    if (searchModal) searchModal.classList.toggle("has-search-results", hasData);
     updateSearchResultsCount();
     updateSelectionCount();
   }
@@ -3960,10 +4635,26 @@
       return;
     }
 
+    const trimmed = String(query || "").trim();
+    // جرّب البحث بالباركود أولاً (للمسح اليدوي داخل حقل البحث)
     showLoading();
-    fetch("/api/index/search?q=" + encodeURIComponent(query))
-      .then(r => r.json())
-      .then(list => {
+    fetch("/orders/search-by-barcode?barcode=" + encodeURIComponent(trimmed))
+      .then(function (r) {
+        return r.json().then(function (data) {
+          return { ok: r.ok, data: data };
+        });
+      })
+      .then(function (ref) {
+        if (ref.ok && ref.data.success && ref.data.invoice) {
+          hideLoading();
+          addOrderFromBarcodeScan(ref.data.invoice, trimmed);
+          clearSearchQueryInput();
+          return null;
+        }
+        return fetch("/api/index/search?q=" + encodeURIComponent(trimmed)).then(function (r) { return r.json(); });
+      })
+      .then(function (list) {
+        if (list == null) return;
         hideLoading();
         // لا نمسح النتائج السابقة - نضيف النتائج الجديدة فقط
 
@@ -4000,7 +4691,7 @@
   /* =======================
      Row Coloring
   ======================= */
-  function setRowColor(id, type) {
+  function setRowColor(id, type, focusReturnBarcode) {
     const row = document.getElementById("r" + id);
     if (!row) return;
     row.className =
@@ -4009,6 +4700,7 @@
           "row-returned";
     syncStatusBadgeClass(document.querySelector(`select[name=s${id}]`));
     syncDeliveryFeeInputState(id);
+    syncReturnBarcodeInputState(id, { focus: !!(focusReturnBarcode && type === "returned") });
   }
 
   function getOrderStatus(id) {
@@ -4021,10 +4713,9 @@
   ======================= */
   function exec(id) {
     const action = getOrderStatus(id);
-    const row = document.getElementById("r" + id);
-    const barcode = (scannedBarcodeByOrder[id] || (row && row.dataset ? row.dataset.barcode : "") || "").trim();
+    const barcode = getRowShippingBarcode(id);
     if (action === "returned" && !barcode) {
-      showToast("⚠️ يجب إضافة الطلب بالباركود قبل ترجيعه", "warning");
+      focusMissingReturnBarcodes([id]);
       return;
     }
 
@@ -4105,6 +4796,7 @@
       showToast("⚠️ لا توجد طلبات في النتائج", "warning");
       return;
     }
+    let firstReturnedId = null;
     dataRows.forEach(function (row) {
       const id = parseInt(String(row.id || "").replace(/^r/, ""), 10);
       if (!id) return;
@@ -4115,8 +4807,30 @@
       if (status === "delivered") {
         fillSuggestedDeliveryFee(id);
       }
+      if (status === "returned" && !firstReturnedId) firstReturnedId = id;
     });
+    if (status === "returned" && firstReturnedId) {
+      syncReturnBarcodeInputState(firstReturnedId, { focus: true });
+    }
     showToast(`✅ تم تغيير حالة ${dataRows.length} طلب — لم يتم التنفيذ بعد`, "success");
+  }
+
+  function removeSearchOrderRow(id) {
+    const row = document.getElementById("r" + id);
+    if (!row) return;
+
+    const barcode = (scannedBarcodeByOrder[id] || row.dataset.barcode || "").trim();
+    row.remove();
+    delete scannedBarcodeByOrder[id];
+    if (barcode) {
+      const idx = scannedBarcodesSession.indexOf(barcode);
+      if (idx !== -1) scannedBarcodesSession.splice(idx, 1);
+    }
+
+    const selectAll = document.getElementById("selectAllCheckbox");
+    if (selectAll) selectAll.checked = false;
+    syncSearchEmptyState();
+    showToast(`تم إزالة الطلب #${id} من القائمة`, "info");
   }
 
   /* =======================
@@ -4156,13 +4870,11 @@
     // الحصول على الإجراء المحدد لكل طلب
     const missingReturnBarcode = selected.filter(id => {
       if (getOrderStatus(id) !== "returned") return false;
-      const row = document.getElementById("r" + id);
-      const barcode = (scannedBarcodeByOrder[id] || (row && row.dataset ? row.dataset.barcode : "") || "").trim();
-      return !barcode;
+      return !getRowShippingBarcode(id);
     });
     if (missingReturnBarcode.length) {
       hideLoading();
-      showToast("⚠️ يجب إضافة الطلبات الراجعة بالباركود قبل التنفيذ", "warning");
+      focusMissingReturnBarcodes(missingReturnBarcode);
       return;
     }
 
@@ -4185,11 +4897,10 @@
     showLoading();
 
     const orders = selected.map(id => {
-      const row = document.getElementById("r" + id);
       return {
         id,
         action: getOrderStatus(id),
-        barcode: (scannedBarcodeByOrder[id] || (row && row.dataset ? row.dataset.barcode : "") || "").trim(),
+        barcode: getRowShippingBarcode(id),
         delivery_fee: getRowDeliveryFee(id),
         return_branch_id: getOrderStatus(id) === "returned" ? (Number(returnBranchId) || null) : null,
       };
@@ -4652,6 +5363,19 @@
   // ========================
   // استدعاء load عند تحميل الصفحة مع الفترة الافتراضية (آخر 30 يوم من السنة الحالية)
   window.addEventListener("DOMContentLoaded", function () {
+    const privacyBtn = document.getElementById("dashboardPrivacyBtn");
+    if (privacyBtn) privacyBtn.addEventListener("click", toggleDashboardPrivateValues);
+    document.querySelectorAll(".finora-stat-card, .finora-wide-card").forEach(card => {
+      if (!card.querySelector("[data-dashboard-private='true']")) return;
+      card.addEventListener("mouseenter", function () {
+        setDashboardCardHoverState(card, true);
+      });
+      card.addEventListener("mouseleave", function () {
+        setDashboardCardHoverState(card, false);
+      });
+    });
+    hideDashboardPrivateValues();
+
     load("last_30_days");
     const rowsEl = document.getElementById("rows");
     if (rowsEl) {
@@ -4670,6 +5394,18 @@
       const u = new URL(window.location.href);
       u.searchParams.delete("quick");
       window.history.replaceState({}, "", u.pathname + u.search + u.hash);
+    }
+  });
+
+  window.addEventListener("focus", function () {
+    if (dashboardValuesRevealed && Date.now() >= dashboardRevealExpiresAt) {
+      hideDashboardPrivateValues();
+    }
+  });
+
+  document.addEventListener("visibilitychange", function () {
+    if (!document.hidden && dashboardValuesRevealed && Date.now() >= dashboardRevealExpiresAt) {
+      hideDashboardPrivateValues();
     }
   });
 
@@ -4850,13 +5586,13 @@
   if (window.FinoraBarcode) {
     FinoraBarcode.createBarcodeScanner({
       ignoreWhen: function () {
-        const searchModal = document.getElementById('searchModal');
-        if (searchModal && searchModal.style.display === 'flex') return true;
         const active = document.activeElement;
         if (!active) return false;
         const tag = active.tagName;
-        if (tag !== 'INPUT' && tag !== 'TEXTAREA') return false;
-        if (active.id === 'q') return true;
+        if (tag !== "INPUT" && tag !== "TEXTAREA") return false;
+        if (active.id === "q") return true;
+        if (active.classList && active.classList.contains("order-shipping-barcode-input")) return true;
+        if (active.closest && active.closest("[data-return-stock-modal='1']")) return true;
         return true;
       },
       onScan: handleDashboardBarcodeScan

@@ -1,5 +1,5 @@
 {% from "storefront/partials/luxury/cards/_macros.html" import lux_badges, lux_meta, lux_prices, lux_media, lux_cart_btn %}
-<article class="lux-product-card lux-card-tpl-classic{% if card_size %} lux-card-size-{{ card_size }}{% endif %}{% if not product.is_available %} is-unavailable{% endif %}" data-product-id="{{ product.id }}" data-lux-category="{{ product.category or product.badge or '' }}" data-lux-price="{{ product.price or 0 }}">
+<article class="lux-product-card lux-card-tpl-classic{% if card_size %} lux-card-size-{{ card_size }}{% endif %}{% if not product.is_available and not product.is_reservation %} is-unavailable{% endif %}" data-product-id="{{ product.id }}" data-lux-category="{{ product.category or product.badge or '' }}" data-lux-price="{{ product.price or 0 }}">
   <button type="button" class="lux-wish-btn" title="المفضلة — قريباً" disabled>&#9825;</button>
   <a class="lux-product-media" href="{{ product.url }}{% if request.args.get('dev') %}?dev=1{% endif %}">
     {{ lux_media(product) }}

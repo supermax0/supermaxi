@@ -19,10 +19,13 @@ DEFAULT_POSITIONS = {
     "courier_rows": {"x": 40, "y": 730, "width": 720, "height": 300, "placement": "bottom"},
     "courier_issues": {"x": 900, "y": 430, "width": 360, "height": 260, "placement": "right"},
     "financial_preview": {"x": 900, "y": 120, "width": 380, "height": 300, "placement": "center"},
+    "purchase_invoice_analysis": {"x": 28, "y": 70, "width": 540, "height": 650, "placement": "left"},
+    "inventory_forensics": {"x": 36, "y": 46, "width": 1240, "height": 760, "placement": "center"},
 }
 
 DOC_PREVIEW_KEYS = frozenset({
     "documentId", "fileName", "mimeType", "previewUrl", "fileSize", "status",
+    "documents", "documentCount",
 })
 
 # Windows that stay open across workflow changes.
@@ -40,6 +43,8 @@ TRANSIENT_WINDOW_TYPES = frozenset({
     "courier_issues",
     "financial_preview",
     "assistant_notes",
+    "purchase_invoice_analysis",
+    "inventory_forensics",
 })
 
 
@@ -105,6 +110,7 @@ class WindowOrchestrator:
           )
           if spec.get("status"):
               existing["status"] = spec["status"]
+          session.set_windows(windows)
           return existing
 
       window = {
@@ -121,6 +127,7 @@ class WindowOrchestrator:
           "interactive": spec.get("interactive", wtype in ("approval_panel", "workflow_selector")),
       }
       windows.append(window)
+      session.set_windows(windows)
       return window
 
   @staticmethod
@@ -258,15 +265,39 @@ class WindowOrchestrator:
       """
       De-duplicate windows by identity (type + document/analysis id) and drop
       a stale approval_panel unless the current workflow is actively waiting
-      for the mock demo approval.
+      for an approval that can still be completed.
       Used on session restore so a refresh yields a clean layout.
       """
       wf = workflow_type or session.workflow_type
       keep_mock_approval = wf == "mock_workspace" and session.status == "waiting_approval"
+      metadata = session.get_metadata() or {}
+      active_analysis_id = (
+          (metadata.get("last_courier_analysis") or {}).get("analysis_id")
+      )
+      courier_types = {
+          "courier_settlement_analysis",
+          "courier_rows",
+          "courier_issues",
+          "financial_preview",
+          "assistant_notes",
+      }
       seen: Dict[str, Dict[str, Any]] = {}
       order: List[str] = []
       for w in session.get_windows():
-          if w.get("type") == "approval_panel" and not keep_mock_approval:
+          if w.get("type") == "approval_panel":
+              approval_action = str((w.get("props") or {}).get("action") or "")
+              keep_operational_approval = approval_action in {
+                  "courier_posting",
+                  "return_posting",
+                  "purchase_posting",
+              }
+              if not keep_mock_approval and not keep_operational_approval:
+                  continue
+          if (
+              active_analysis_id
+              and w.get("type") in courier_types
+              and (w.get("props") or {}).get("analysisId") != active_analysis_id
+          ):
               continue
           ident = _window_identity(w)
           if ident not in seen:
@@ -335,6 +366,14 @@ class WindowOrchestrator:
           "financial_preview": "معاينة مالية",
           "assistant_notes": "ملاحظات وتحليل LEON",
       }
+      if props.get("analysisMode") == "return":
+          titles.update({
+              "courier_settlement_analysis": "تقرير تحليل كشف الراجع",
+              "courier_rows": "صفوف كشف الراجع",
+              "courier_issues": "مشاكل كشف الراجع",
+              "financial_preview": "معاينة مبالغ الراجع",
+              "assistant_notes": "ملاحظات تنفيذ الراجع",
+          })
       placements = {
           "courier_settlement_analysis": "left",
           "courier_rows": "bottom",

@@ -115,7 +115,7 @@
 
 .agent-reports-page .report-add-row {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(130px, 180px) auto;
+  grid-template-columns: minmax(220px, 1fr) minmax(180px, 1fr) auto;
   gap: 10px;
   align-items: end;
   margin: 16px 0 20px;
@@ -123,6 +123,44 @@
   border: 1px solid rgba(59, 130, 246, 0.14);
   border-radius: 12px;
   background: rgba(15, 23, 42, 0.35);
+}
+
+.agent-reports-page .report-merge-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: 12px;
+  background: rgba(16, 185, 129, 0.06);
+}
+
+.agent-reports-page .report-merge-bar .hint {
+  color: var(--reports-muted);
+  font-size: 13px;
+  flex: 1;
+  min-width: 180px;
+}
+
+.agent-reports-page .btn-merge {
+  background: linear-gradient(135deg, #0d9488, #059669);
+  color: #fff;
+}
+
+.agent-reports-page .btn-merge:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.agent-reports-page .merge-check {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #10b981;
 }
 
 .agent-reports-page .report-add-field label {
@@ -515,23 +553,38 @@
   </p>
   {% endif %}
 
+  {% set ns = namespace(open_report='') %}
+  {% for report in reports %}
+    {% if not ns.open_report and not report.is_executed %}
+      {% set ns.open_report = report.report_number %}
+    {% endif %}
+  {% endfor %}
   <div class="report-add-row">
     <div class="report-add-field">
-      <label for="manualReportNumber">رقم الكشف</label>
-      <input id="manualReportNumber" type="text" placeholder="AGT-1-20260705-0001" value="{{ reports[0].report_number if reports else '' }}">
+      <label for="manualReportNumber">رقم الكشف المفتوح</label>
+      <input id="manualReportNumber" type="text" placeholder="AGT-1-20260705-0001" value="{{ ns.open_report }}">
     </div>
     <div class="report-add-field">
-      <label for="manualOrderId">رقم الطلب</label>
-      <input id="manualOrderId" type="number" min="1" placeholder="مثلاً 49">
+      <label for="manualOrderIds">أرقام الطلبات (مفصولة بمسافة أو فاصلة)</label>
+      <input id="manualOrderIds" type="text" placeholder="مثلاً: 49, 50, 51">
     </div>
     <button type="button" class="btn btn-primary" onclick="addOrderToReport()">➕ إضافة للكشف</button>
   </div>
   <div id="manualAddMessage" class="report-add-message"></div>
+
+  <div class="report-merge-bar">
+    <span class="hint">حدد كشوف مفتوحة لنفس المندوب ثم اضغط دمج — أول محدد يبقى كشف الهدف.</span>
+    <button type="button" class="btn btn-merge" id="mergeReportsBtn" onclick="mergeSelectedReports()" disabled>🔗 دمج المحدد</button>
+  </div>
+  <div id="mergeMessage" class="report-add-message"></div>
   
   <div class="reports-table-wrap">
     <table>
       <thead>
         <tr>
+          <th>
+            <input type="checkbox" class="merge-check" id="selectAllOpenReports" title="تحديد الكل المفتوح" onclick="toggleAllOpenReports(this)">
+          </th>
           <th>#</th>
           <th>رقم الكشف</th>
           <th>عدد الطلبات</th>
@@ -547,6 +600,13 @@
           {% for report in reports %}
           {% set rd = reports_data[loop.index0] if reports_data else none %}
           <tr>
+            <td>
+              {% if not report.is_executed %}
+              <input type="checkbox" class="merge-check report-merge-cb" value="{{ report.id }}" data-number="{{ report.report_number }}" onchange="syncMergeButton()">
+              {% else %}
+              —
+              {% endif %}
+            </td>
             <td>{{ loop.index }}</td>
             <td><strong>{{ report.report_number }}</strong></td>
             <td>{{ report.orders_count }}</td>
@@ -573,7 +633,7 @@
           {% endfor %}
         {% else %}
           <tr>
-            <td colspan="8" style="padding:40px;text-align:center;color:var(--reports-muted)">
+            <td colspan="9" style="padding:40px;text-align:center;color:var(--reports-muted)">
               لا توجد كشوفات لهذا المندوب
             </td>
           </tr>
@@ -639,37 +699,110 @@
 </div>
 
 <script>
+function selectedMergeReportIds() {
+  return Array.from(document.querySelectorAll(".report-merge-cb:checked")).map(function(el) {
+    return Number(el.value);
+  });
+}
+
+function syncMergeButton() {
+  var btn = document.getElementById("mergeReportsBtn");
+  if (btn) btn.disabled = selectedMergeReportIds().length < 2;
+}
+
+function toggleAllOpenReports(master) {
+  document.querySelectorAll(".report-merge-cb").forEach(function(cb) {
+    cb.checked = !!master.checked;
+  });
+  syncMergeButton();
+}
+
+async function mergeSelectedReports() {
+  var msg = document.getElementById("mergeMessage");
+  var ids = selectedMergeReportIds();
+  msg.className = "report-add-message";
+  msg.textContent = "";
+  if (ids.length < 2) {
+    msg.classList.add("err");
+    msg.textContent = "حدد كشفين مفتوحين على الأقل.";
+    return;
+  }
+  if (!confirm("دمج " + (ids.length - 1) + " كشف في الكشف الأول المحدد؟ سيتم حذف الكشوف المدموجة.")) return;
+  try {
+    var res = await fetch("/agents/reports/merge", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ report_ids: ids })
+    });
+    var data = await res.json();
+    if (!res.ok || data.error) {
+      msg.classList.add("err");
+      msg.textContent = data.error || "تعذر الدمج.";
+      return;
+    }
+    msg.classList.add("ok");
+    msg.textContent = data.message || "تم الدمج.";
+    setTimeout(function() { window.location.reload(); }, 700);
+  } catch (err) {
+    msg.classList.add("err");
+    msg.textContent = "حدث خطأ بالاتصال.";
+  }
+}
+
 async function addOrderToReport() {
   const msg = document.getElementById("manualAddMessage");
   const reportNumber = document.getElementById("manualReportNumber").value.trim();
-  const orderId = document.getElementById("manualOrderId").value.trim();
+  const orderIdsRaw = document.getElementById("manualOrderIds").value.trim();
   msg.className = "report-add-message";
   msg.textContent = "";
-  if (!reportNumber || !orderId) {
+  if (!reportNumber || !orderIdsRaw) {
     msg.classList.add("err");
-    msg.textContent = "اكتب رقم الكشف ورقم الطلب.";
+    msg.textContent = "اكتب رقم الكشف وأرقام الطلبات.";
+    return;
+  }
+  const orderIds = orderIdsRaw
+    .split(/[\s,;]+/)
+    .map(function(x) { return Number(x); })
+    .filter(function(n) { return Number.isFinite(n) && n > 0; });
+  if (!orderIds.length) {
+    msg.classList.add("err");
+    msg.textContent = "أرقام الطلبات غير صحيحة.";
     return;
   }
   try {
     const res = await fetch("/agents/reports/add-order", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ report_number: reportNumber, order_id: Number(orderId) })
+      body: JSON.stringify({ report_number: reportNumber, order_ids: orderIds })
     });
     const data = await res.json();
     if (!res.ok || data.error) {
       msg.classList.add("err");
-      msg.textContent = data.error || "تعذر إضافة الطلب.";
+      let detail = data.error || "تعذر إضافة الطلبات.";
+      if (data.errors && data.errors.length) {
+        detail += " — " + data.errors.map(function(e) {
+          return "#" + e.order_id + ": " + e.error;
+        }).join(" | ");
+      }
+      msg.textContent = detail;
+      if (data.added && data.added.length) {
+        setTimeout(function() { window.location.reload(); }, 1200);
+      }
       return;
     }
     msg.classList.add("ok");
     msg.textContent = data.message || "تمت الإضافة.";
-    setTimeout(() => window.location.reload(), 700);
+    if (data.errors && data.errors.length) {
+      msg.textContent += " (بعض الطلبات فشلت)";
+    }
+    setTimeout(function() { window.location.reload(); }, 700);
   } catch (err) {
     msg.classList.add("err");
     msg.textContent = "حدث خطأ بالاتصال.";
   }
 }
+
+syncMergeButton();
 </script>
 
 {% endblock %}

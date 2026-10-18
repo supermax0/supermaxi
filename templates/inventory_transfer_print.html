@@ -151,6 +151,7 @@
         <tr>
           <th>#</th>
           <th>المنتج</th>
+          <th>اللون</th>
           <th>SKU</th>
           <th>باركود</th>
           <th>سعر الشراء</th>
@@ -166,6 +167,7 @@
         <tr>
           <td>{{ loop.index }}</td>
           <td>{{ line.product_name }}</td>
+          <td>{{ line.variant_color or '—' }}</td>
           <td>{{ line.sku or '—' }}</td>
           <td>{{ line.barcode or '—' }}</td>
           <td class="num">{{ "{:,}".format(line.buy_price) }}</td>
@@ -179,7 +181,7 @@
       </tbody>
       <tfoot>
         <tr>
-          <td colspan="7">الإجماليات ({{ totals.items_count }} صنف)</td>
+          <td colspan="8">الإجماليات ({{ totals.items_count }} صنف)</td>
           <td class="num">{{ totals.total_qty }}</td>
           <td class="num">{{ "{:,}".format(totals.total_cost) }} د.ع</td>
           <td></td>

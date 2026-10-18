@@ -1,0 +1,48 @@
+.cx-im{display:flex;flex-direction:column;gap:12px}
+.cx-im__summary{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;
+  padding:12px;border:1px solid var(--cx-line);border-radius:14px;background:var(--cx-soft);
+}
+.cx-im__summary span{display:block;font-size:11px;color:var(--cx-muted);font-weight:700}
+.cx-im__summary strong{font-size:14px}
+.cx-im__note{margin:0;font-size:12px;color:var(--cx-muted)}
+.cx-im__alert{
+  margin:0;padding:10px 12px;border-radius:12px;background:var(--cx-tint-orange);color:var(--cx-tone-orange);
+  border:1px solid var(--cx-border-orange);font-weight:700;font-size:13px
+}
+.cx-im__block{
+  border:1px solid var(--cx-line);border-radius:14px;padding:10px 12px;background:var(--cx-surface)
+}
+.cx-im__block > summary{
+  cursor:pointer;font-weight:800;list-style:none;display:flex;align-items:center;justify-content:space-between
+}
+.cx-im__block > summary::-webkit-details-marker{display:none}
+.cx-im__block > summary::after{content:"▾";opacity:.5;font-size:12px}
+.cx-im__block:not([open]) > summary::after{content:"▸"}
+.cx-im__grid{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:12px 0
+}
+.cx-im__grid span{display:block;font-size:11px;color:var(--cx-muted)}
+.cx-im__grid strong{font-size:13px}
+.cx-im__spark{
+  display:flex;flex-wrap:wrap;gap:6px;margin:8px 0;direction:ltr;justify-content:flex-start
+}
+.cx-im__spark span{
+  font-size:11px;padding:4px 8px;border-radius:8px;background:var(--cx-soft);
+  border:1px solid var(--cx-line);white-space:nowrap
+}
+.cx-im__compare{
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:10px
+}
+.cx-im__compare article{
+  border:1px solid var(--cx-line);border-radius:12px;padding:10px;background:var(--cx-soft)
+}
+.cx-im__compare h4{margin:0 0 8px;font-size:13px}
+@media (max-width:480px){
+  .cx-im__summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .cx-im__compare{grid-template-columns:1fr}
+}
+@media (min-width:600px) and (max-width:1024px){
+  .cx-im__summary{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .cx-im__compare{grid-template-columns:1fr 1fr}
+}

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, jsonify, request, session, redirect, g, current_app
+from flask import Blueprint, render_template, jsonify, request, session, redirect, g, current_app, url_for
 from sqlalchemy.sql import func
 from sqlalchemy import inspect, or_
 from datetime import date, timedelta, datetime
@@ -58,12 +58,17 @@ from utils.executive_dashboard_data import (
     _invoices_for_range,
     _cash_credit_split,
 )
+from utils.tenant_registration import normalize_discovery_source
 
 index_bp = Blueprint("index", __name__)
 
 
 @index_bp.before_request
 def _index_api_permission_guard():
+    if session.get("user_id") and session.get("tenant_slug"):
+        from utils.branch_context import init_branch_context
+
+        init_branch_context()
     path = request.path or ""
     if not path.startswith("/api/index"):
         return None
@@ -73,7 +78,28 @@ def _index_api_permission_guard():
     if path.endswith("/add-expense"):
         return guard_permission("view_expenses", json=True)
     if "/execute" in path:
-        return guard_permission("manage_orders", json=True)
+        payload = request.get_json(silent=True) or {}
+        if path.endswith("/execute-bulk"):
+            actions = {
+                str(item.get("action") or "")
+                for item in (payload.get("orders") or [])
+                if isinstance(item, dict)
+            }
+        else:
+            actions = {str(payload.get("action") or "")}
+        required = set()
+        for action in actions:
+            if action in {"paid", "delivered"}:
+                required.add("pay_orders")
+            elif action == "returned":
+                required.add("return_orders")
+            else:
+                required.add("manage_orders")
+        for permission in required:
+            denied = guard_permission(permission, json=True)
+            if denied:
+                return denied
+        return None
     if path.endswith("/search"):
         return guard_permission("view_orders", json=True)
     if path.endswith("/reports") or path.endswith("/charts"):
@@ -84,6 +110,29 @@ def _index_api_permission_guard():
 def _is_beauty_center_session() -> bool:
     """شركة مركز تجميل — لوحة التحكم والمدير التنفيذي يعتمدان الجلسات والصرفيات."""
     return (session.get("business_type") or "").strip() == "beauty_center"
+
+
+def _is_hr_management_session() -> bool:
+    """شركات HR تبدأ مباشرة من لوحة الموارد البشرية المخصصة."""
+    business_type = (session.get("business_type") or "").strip()
+    if business_type:
+        return business_type == "hr_management"
+    tenant_slug = (session.get("tenant_slug") or "").strip()
+    if not tenant_slug:
+        return False
+    previous_tenant = getattr(g, "tenant", None)
+    try:
+        g.tenant = None
+        from models.core.tenant import Tenant as CoreTenant
+
+        core_tenant = CoreTenant.query.filter_by(slug=tenant_slug).first()
+        business_type = (getattr(core_tenant, "business_type", None) or "general").strip()
+        session["business_type"] = business_type
+        return business_type == "hr_management"
+    except Exception:
+        return False
+    finally:
+        g.tenant = previous_tenant
 
 
 # #region agent log
@@ -105,11 +154,23 @@ def _debug_log(session_id: str, hypothesis_id: str, location: str, message: str,
 
 # خطط الاشتراك من قاعدة البيانات (للصفحة الرئيسية والتسجيل) — fallback إذا كانت الجداول فارغة
 FALLBACK_PLANS = {
-    "free": {"key": "free", "name": "الخطة المجانية", "price_monthly": 0, "price_yearly": 0, "original_price_monthly": 25000, "original_price_yearly": 250000},
+    "free": {"key": "free", "name": "الخطة المجانية", "price_monthly": 0, "price_yearly": 0, "original_price_monthly": 25000, "original_price_yearly": 250000, "max_users": 3, "max_orders_monthly": 500, "features": {}},
     "basic": {"key": "basic", "name": "الخطة الأساسية", "price_monthly": 25000, "price_yearly": 250000},
     "pro": {"key": "pro", "name": "الخطة المتقدمة", "price_monthly": 45000, "price_yearly": 450000},
     "enterprise": {"key": "enterprise", "name": "خطة الشركات", "price_monthly": 90000, "price_yearly": 900000},
 }
+
+WELCOME_OFFER_KEY = "welcome-2-months"
+
+
+def _subscription_duration_days(plan_key, billing, welcome_offer, free_trial_days):
+    """حساب مدة الاشتراك للحساب الجديد بالأيام."""
+    if plan_key == "free":
+        try:
+            return max(1, min(365, int(free_trial_days)))
+        except (TypeError, ValueError):
+            return 14
+    return 360 if billing == "yearly" else 30
 
 
 def get_public_plans():
@@ -119,7 +180,9 @@ def get_public_plans():
     old_tenant = getattr(g, "tenant", None)
     g.tenant = None
     try:
+        from models.core.global_setting import GlobalSetting
         rows = SubscriptionPlan.query.all()
+        free_enabled = str(GlobalSetting.get_setting("FREE_PLAN_ENABLED", "1")).strip().lower() in {"1", "true", "yes", "on"}
         by_key = {}
         for p in rows:
             pm = getattr(p, "price_monthly", 0) or 0
@@ -139,11 +202,16 @@ def get_public_plans():
                 "price_yearly": py,
                 "original_price_monthly": int(om) if om is not None else None,
                 "original_price_yearly": int(oy) if oy is not None else None,
+                "max_users": getattr(p, "max_users", None),
+                "max_orders_monthly": getattr(p, "max_orders_monthly", None),
+                "features": p.get_features() if hasattr(p, "get_features") else {},
             }
-        # ضمان وجود خطة free حتى لو لم تُزرع بعد في DB
-        if by_key and "free" not in by_key:
+        # ظهور الخطة المجانية يتبع إعداد مركز التحكم.
+        if free_enabled and by_key and "free" not in by_key:
             by_key["free"] = dict(FALLBACK_PLANS["free"])
-        return by_key if by_key else None
+        if not free_enabled:
+            by_key.pop("free", None)
+        return by_key if by_key else {"basic": dict(FALLBACK_PLANS["basic"])}
     except Exception:
         return None
     finally:
@@ -188,6 +256,7 @@ def _dashboard_overdue_invoices(*, min_days: int = 7, limit: int = 40):
             Invoice.created_at,
             Invoice.scheduled_date,
             Invoice.total,
+            Invoice.paid_amount,
             Invoice.shipping_barcode,
             Invoice.shipping_barcodes_json,
             Customer.phone.label("phone"),
@@ -221,6 +290,8 @@ def _dashboard_overdue_invoices(*, min_days: int = 7, limit: int = 40):
                 "address": str(getattr(inv, "address", None) or "").strip(),
                 "shipping_barcode": (shipping_barcodes_display(inv) or "").strip(),
                 "total": int(inv.total or 0),
+                "paid_amount": int(inv.paid_amount or 0),
+                "remaining": max(0, int(inv.total or 0) - int(inv.paid_amount or 0)),
                 "status": (inv.status or "").strip(),
                 "days": int(days),
                 "severity": sev,
@@ -255,6 +326,13 @@ def index():
         if landing_payload:
             return render_template("landing_dynamic.html", landing=landing_payload, landing_plans=landing_plans)
         return render_template("index.html", landing_plans=landing_plans)
+
+    if _is_hr_management_session():
+        return redirect(url_for("hr.dashboard"))
+    if (session.get("business_type") or "").strip() == "food_wholesale_retail":
+        return redirect("/food/")
+    if (session.get("business_type") or "").strip() == "clinics":
+        return redirect("/clinics/")
 
     from utils.permission_checks import check_permission
     if not check_permission("view_dashboard"):
@@ -347,11 +425,13 @@ def dashboard_overdue_statement():
         g.tenant = prev_tenant
 
     total_amount = sum(int(r.get("total") or 0) for r in overdue_rows)
+    total_remaining = sum(int(r.get("remaining") or 0) for r in overdue_rows)
     return render_template(
         "dashboard_overdue_print.html",
         orders=overdue_rows,
         orders_count=len(overdue_rows),
         total_amount=total_amount,
+        total_remaining=total_remaining,
         company_name=company_name,
         printed_at=datetime.now(),
         employee_name=session.get("name", ""),
@@ -537,8 +617,6 @@ def upgrade():
 # =================================================
 @index_bp.route("/login", methods=["GET", "POST"])
 def login():
-    from werkzeug.security import check_password_hash
-    
     if request.method == "GET":
         # #region agent log
         _debug_log("180817", "H3", "index.login:GET", "login GET", {"user_id_in_session": "user_id" in session, "session_keys": list(session.keys())})
@@ -550,34 +628,49 @@ def login():
             _debug_log("180817", "H3", "index.login:GET_redirect", "redirecting logged-in user", {"target": to})
             # #endregion
             return redirect(to)
-        return render_template("login.html")
+        return render_template(
+            "login.html",
+            active_tenant_slug=None,
+            multi_tenant_tip=True,
+        )
 
     # POST: التحقق من البيانات
     tenant_slug = request.form.get("tenant_slug", "").strip().lower()
     username = request.form.get("username", "").strip()
     password = request.form.get("password", "").strip()
+    confirm_switch = (request.form.get("confirm_switch") or "").strip() in ("1", "true", "on", "yes")
 
     if not tenant_slug or not username or not password:
-        return render_template("login.html", error="الرجاء إدخال معرف الشركة، اسم المستخدم، وكلمة المرور")
+        return render_template(
+            "login.html",
+            error="الرجاء إدخال معرف الشركة، اسم المستخدم، وكلمة المرور",
+            multi_tenant_tip=True,
+        )
 
     # 1. Verify tenant in Core DB (PostgreSQL). Must unset g.tenant first —
     # before_request may have bound a stale session tenant, which would route
     # CoreTenant.query to the per-tenant SQLite DB (empty tenants table).
-    from models.core.tenant import Tenant as CoreTenant
     from flask import g
-    prev_tenant = getattr(g, "tenant", None)
-    g.tenant = None
-    try:
-        core_tenant = CoreTenant.query.filter_by(slug=tenant_slug).first()
-    finally:
-        if not getattr(g, "tenant", None):
-            g.tenant = prev_tenant
+    from services.staff_auth import establish_staff_session, find_core_tenant, verify_staff_credentials
+
+    core_tenant = find_core_tenant(tenant_slug)
 
     if not core_tenant:
-        return render_template("login.html", error="الشركة غير موجودة. تأكد من معرف الشركة.")
+        return render_template("login.html", error="الشركة غير موجودة. تأكد من معرف الشركة.", multi_tenant_tip=True)
     
     if not core_tenant.is_active:
-        return render_template("login.html", error="اشتراك هذه الشركة غير مفعل أو تم إيقافه.")
+        try:
+            from utils.tenant_registration import get_tenant_registration
+
+            registration = get_tenant_registration(
+                core_tenant.slug, core_tenant=core_tenant, sync_if_missing=False
+            )
+        except Exception:
+            registration = {}
+        if registration.get("activation_status") == "pending_whatsapp" and not session.get("user_id"):
+            session["pending_signup_slug"] = core_tenant.slug
+            return redirect(url_for("index.signup_whatsapp_pending"))
+        return render_template("login.html", error="اشتراك هذه الشركة غير مفعل أو تم إيقافه.", multi_tenant_tip=True)
 
     # 2. Switch to Tenant DB and verify user (اسم المستخدم بدون اعتبار لحالة الأحرف)
     g.tenant = core_tenant.slug
@@ -590,15 +683,7 @@ def login():
         # لا نمنع تسجيل الدخول إذا فشل سكريبت الهجرة؛ سيتم تسجيل الخطأ فقط في اللوج
         print(f"[login] employee profile schema ensure failed: {e}")
 
-    matching_employees = Employee.query.filter(db.func.lower(Employee.username) == username.lower()).all()
-    emp = None
-    for candidate in matching_employees:
-        try:
-            if check_password_hash(candidate.password, password):
-                emp = candidate
-                break
-        except Exception:
-            continue
+    emp = verify_staff_credentials(username, password)
 
     if not emp:
         try:
@@ -606,7 +691,7 @@ def login():
             log_auth("login_failed", success=False, extra={"username": username, "tenant_slug": tenant_slug})
         except Exception:
             pass
-        return render_template("login.html", error="بيانات الدخول غير صحيحة")
+        return render_template("login.html", error="بيانات الدخول غير صحيحة", multi_tenant_tip=True)
 
     if not emp.is_active:
         try:
@@ -614,23 +699,27 @@ def login():
             log_auth("login_failed", employee=emp, success=False, extra={"reason": "inactive"})
         except Exception:
             pass
-        return render_template("login.html", error="هذا الحساب معطل، يرجى التواصل مع الإدارة")
+        return render_template("login.html", error="هذا الحساب معطل، يرجى التواصل مع الإدارة", multi_tenant_tip=True)
+
+    # منع استبدال جلسة شركة أخرى بصمت (التبويبات تشارك نفس الكوكي)
+    current_slug = (session.get("tenant_slug") or "").strip().lower()
+    if (
+        session.get("user_id")
+        and current_slug
+        and current_slug != core_tenant.slug
+        and not confirm_switch
+    ):
+        return render_template(
+            "login.html",
+            switch_warning=True,
+            active_tenant_slug=current_slug,
+            pending_tenant_slug=core_tenant.slug,
+            pending_username=username,
+            multi_tenant_tip=True,
+        )
 
     # تسجيل الجلسة (استخدام slug من قاعدة البيانات لضمان التطابق)
-    session.clear()
-    session.permanent = True  # استخدام PERMANENT_SESSION_LIFETIME (مثلاً 7 أيام)
-    session["tenant_slug"] = core_tenant.slug
-    session["user_id"] = emp.id
-    session["name"] = emp.name
-    session["role"] = emp.role
-    session["tenant_id"] = emp.tenant_id
-    
-    # جلب معلومات الخطة
-    if emp.tenant_id:
-        from models.tenant import Tenant as _Tenant
-        t = _Tenant.query.get(emp.tenant_id)
-        if t:
-            session["plan_key"] = t.plan_key
+    establish_staff_session(core_tenant, emp)
 
     try:
         from utils.activity_logger import log_auth
@@ -638,12 +727,87 @@ def login():
     except Exception:
         pass
 
+    # كلمة مرور مؤقتة (إنشاء/إعادة تعيين من الإدارة) → يجب تغييرها قبل أي شيء آخر
+    if _employee_must_change_password(emp):
+        session["must_change_password"] = True
+        return redirect(url_for("index.change_password"))
+
     # التوجيه حسب الدور
     if emp.role == "admin":
         return redirect("/")
     else:
         return redirect("/pos")
 
+
+def _employee_must_change_password(emp) -> bool:
+    from services.staff_auth import employee_must_change_password
+
+    return employee_must_change_password(emp)
+
+
+# Endpoints reachable while a one-time password is still active.
+_PASSWORD_CHANGE_ALLOWED = frozenset({"index.change_password", "index.logout", "static"})
+
+
+@index_bp.before_app_request
+def _enforce_password_change():
+    if not session.get("must_change_password") or not session.get("user_id"):
+        return None
+    if request.endpoint in _PASSWORD_CHANGE_ALLOWED or (request.endpoint or "").endswith(".static"):
+        return None
+    if request.path.startswith("/api/") or request.is_json:
+        return jsonify({"ok": False, "error": "password_change_required"}), 403
+    return redirect(url_for("index.change_password"))
+
+
+@index_bp.route("/account/change-password", methods=["GET", "POST"])
+def change_password():
+    """Mandatory replacement of a one-time password (and voluntary change). Only hashes are stored."""
+    from werkzeug.security import check_password_hash as _check, generate_password_hash as _hash
+
+    if not session.get("user_id"):
+        return redirect("/login")
+    forced = bool(session.get("must_change_password"))
+    error = None
+    if request.method == "POST":
+        current = request.form.get("current_password") or ""
+        new = request.form.get("new_password") or ""
+        confirm = request.form.get("confirm_password") or ""
+        emp = db.session.get(Employee, session["user_id"])
+        if emp is None:
+            session.clear()
+            return redirect("/login")
+        if not _check(emp.password, current):
+            error = "كلمة المرور الحالية غير صحيحة"
+        elif len(new) < 10:
+            error = "كلمة المرور الجديدة يجب أن تكون 10 أحرف على الأقل"
+        elif new != confirm:
+            error = "تأكيد كلمة المرور غير مطابق"
+        elif _check(emp.password, new):
+            error = "اختر كلمة مرور مختلفة عن الحالية"
+        else:
+            try:
+                from extensions_tenant import get_tenant_engine
+                from services.tenant_provisioning import ensure_password_policy_column
+
+                if getattr(g, "tenant", None):
+                    ensure_password_policy_column(get_tenant_engine(g.tenant))
+            except Exception:
+                current_app.logger.exception("password policy column ensure failed")
+            emp.password = _hash(new)
+            emp.must_change_password = False
+            db.session.commit()
+            session.pop("must_change_password", None)
+            try:
+                from utils.activity_logger import log_auth
+
+                log_auth("password_changed", employee=emp, success=True, extra={"forced": forced})
+            except Exception:
+                pass
+            return redirect("/" if session.get("role") == "admin" else "/pos")
+    response = current_app.make_response(render_template("change_password.html", forced=forced, error=error))
+    response.headers["Cache-Control"] = "no-store"
+    return response
 
 @index_bp.route("/login/<tenant_slug>", methods=["GET", "POST"])
 def login_tenant(tenant_slug):
@@ -654,11 +818,22 @@ def login_tenant(tenant_slug):
     """
     tenant_slug = (tenant_slug or "").strip().lower()
     if request.method == "GET":
-        # إذا مسجل دخول بالفعل، توجيه مباشر
+        # إذا مسجل دخول بالفعل لنفس الشركة، توجيه مباشر
         if "user_id" in session and session.get("tenant_slug") == tenant_slug:
             return redirect("/" if session.get("role") == "admin" else "/pos")
         # إعادة استخدام نفس صفحة login لكن مع تمرير tenant في الـ query (للـ placeholder وللقيمة)
-        return render_template("login.html", fixed_tenant_slug=tenant_slug)
+        return render_template(
+            "login.html",
+            fixed_tenant_slug=tenant_slug,
+            multi_tenant_tip=True,
+            active_tenant_slug=(session.get("tenant_slug") if session.get("user_id") else None),
+            switch_warning=bool(
+                session.get("user_id")
+                and (session.get("tenant_slug") or "").strip().lower()
+                and (session.get("tenant_slug") or "").strip().lower() != tenant_slug
+            ),
+            pending_tenant_slug=tenant_slug if session.get("user_id") else None,
+        )
 
     # POST: نستخدم نفس منطق login الأساسي لكن مع tenant_slug من الـ path إذا لم يرسل في الـ form
     if not request.form.get("tenant_slug"):
@@ -786,7 +961,7 @@ def pricing():
 @index_bp.route("/payment")
 def payment():
     plan_key = request.args.get("plan", "basic")
-    billing = request.args.get("billing", "monthly")
+    billing = "yearly" if request.args.get("billing") == "yearly" else "monthly"
     
     # تحضير بيانات الخطة للعرض
     PLANS = {
@@ -811,8 +986,14 @@ def payment_success():
     return render_template("payment_success.html", datetime=datetime)
 
 
+@index_bp.route("/payment_failed")
+@index_bp.route("/payment/failed")
+def payment_failed():
+    return render_template("payment_failed.html")
+
+
 # =================================================
-# SaaS Signup — تحقق البريد قبل التسجيل
+# SaaS Signup — مسارات تحقق البريد القديمة (للتوافق فقط؛ التسجيل يعتمد واتساب)
 # =================================================
 @index_bp.route("/signup/send-verification-code", methods=["POST"])
 def signup_send_verification_code():
@@ -865,16 +1046,33 @@ def signup():
     import re
 
     PLANS = get_public_plans() or FALLBACK_PLANS
+    default_plan_key = "free" if "free" in PLANS else ("basic" if "basic" in PLANS else next(iter(PLANS)))
+
+    try:
+        from models.core.global_setting import GlobalSetting
+        free_trial_days = max(1, min(365, int(GlobalSetting.get_setting("TRIAL_DAYS", "14"))))
+    except (TypeError, ValueError):
+        free_trial_days = 14
 
     if request.method == "GET":
-        plan_key    = request.args.get("plan", "free")
-        billing     = request.args.get("billing", "monthly")  # monthly | yearly
-        plan        = PLANS.get(plan_key, PLANS.get("free", PLANS.get("basic", FALLBACK_PLANS["basic"])))
+        plan_key    = request.args.get("plan", default_plan_key)
+        billing     = "yearly" if request.args.get("billing") == "yearly" else "monthly"
+        plan        = PLANS.get(plan_key) or PLANS.get(default_plan_key) or FALLBACK_PLANS["basic"]
+        plan_key    = plan.get("key") or default_plan_key
+        offer_key   = (request.args.get("offer") or "").strip()
+        if offer_key != WELCOME_OFFER_KEY:
+            offer_key = ""
+        welcome_offer_available = bool(offer_key and (plan.get("key") or plan_key) == "free")
+        welcome_offer = welcome_offer_available
         return render_template("signup.html",
             selected_plan=plan,
             plans=list(PLANS.values()),
             plans_dict=PLANS,
-            billing=billing)
+            billing=billing,
+            free_trial_days=free_trial_days,
+            offer_key=offer_key,
+            welcome_offer_available=welcome_offer_available,
+            welcome_offer=welcome_offer)
 
     # ── POST: إنشاء Tenant + Admin ──────────────────────────
     company_name = request.form.get("company_name", "").strip()
@@ -884,22 +1082,62 @@ def signup():
     username     = request.form.get("username", "").strip()
     password     = request.form.get("password", "").strip()
     password2    = request.form.get("password2", "").strip()
-    plan_key     = request.form.get("plan_key", "free")
-    billing      = request.form.get("billing", "monthly")
+    plan_key     = request.form.get("plan_key", default_plan_key)
+    billing      = "yearly" if request.form.get("billing") == "yearly" else "monthly"
+    offer_key    = (request.form.get("offer_key") or "").strip()
+    if offer_key != WELCOME_OFFER_KEY:
+        offer_key = ""
     marketing_opt_in = request.form.get("marketing_opt_in") in ("1", "on", "true", "yes")
+    discovery_source, discovery_source_other = normalize_discovery_source(
+        request.form.get("discovery_source"),
+        request.form.get("discovery_source_other"),
+    )
 
-    plan = PLANS.get(plan_key, PLANS.get("free", PLANS.get("basic", FALLBACK_PLANS["basic"])))
+    plan = PLANS.get(plan_key) or PLANS.get(default_plan_key) or FALLBACK_PLANS["basic"]
+    plan_key = plan.get("key") or default_plan_key
+    welcome_offer_available = bool(offer_key and plan_key == "free")
+    welcome_offer = welcome_offer_available
+    if plan_key == "free":
+        effective_plan_name = f"{plan.get('name') or 'الخطة المجانية'} — {free_trial_days} يوماً"
+    else:
+        effective_plan_name = plan.get("name") or "الخطة الأساسية"
+
+    from utils.signup_email_verify import is_valid_email, normalize_email
 
     def render_err(msg):
         return render_template("signup.html",
             selected_plan=plan, plans=list(PLANS.values()), plans_dict=PLANS,
-            billing=billing, error=msg, form=request.form)
+            billing=billing, error=msg, form=request.form,
+            free_trial_days=free_trial_days,
+            offer_key=offer_key,
+            welcome_offer_available=welcome_offer_available,
+            welcome_offer=welcome_offer)
 
     # Validation
     if not company_name:
         return render_err("الرجاء إدخال اسم الشركة أو المشروع")
     if not contact_name:
         return render_err("الرجاء إدخال اسمك (صاحب الحساب)")
+    if not phone:
+        return render_err("رقم واتساب مطلوب لإتمام التسجيل")
+    if request.form.get("whatsapp_confirmed") not in ("1", "on", "true", "yes"):
+        return render_err("يجب تأكيد أن الرقم المدخل مرتبط بحساب واتساب")
+    if not discovery_source:
+        return render_err("يرجى اختيار كيف عرفت نظام Finora")
+    if discovery_source == "other" and not discovery_source_other:
+        return render_err("يرجى كتابة المصدر الآخر الذي عرفت منه نظام Finora")
+
+    phone_digits = re.sub(r"\D", "", phone)
+    if phone_digits.startswith("00964"):
+        phone_digits = "0" + phone_digits[5:]
+    elif phone_digits.startswith("964"):
+        phone_digits = "0" + phone_digits[3:]
+    elif len(phone_digits) == 10 and phone_digits.startswith("7"):
+        phone_digits = "0" + phone_digits
+    if not re.fullmatch(r"07\d{9}", phone_digits):
+        return render_err("يرجى إدخال رقم واتساب عراقي صحيح مثل 07712345678")
+    phone = phone_digits
+
     if not username:
         return render_err("الرجاء إدخال اسم المستخدم")
     if len(username) < 3:
@@ -911,15 +1149,9 @@ def signup():
     if password != password2:
         return render_err("كلمة المرور وتأكيدها غير متطابقتين")
 
-    from utils.signup_email_verify import is_valid_email, is_email_verified_for_signup, normalize_email
-
-    if not email:
-        return render_err("البريد الإلكتروني مطلوب لإتمام التسجيل")
-    if not is_valid_email(email):
+    if email and not is_valid_email(email):
         return render_err("يرجى إدخال بريد إلكتروني صحيح")
-    if not is_email_verified_for_signup(email):
-        return render_err("يجب التحقق من بريدك الإلكتروني قبل إنشاء الحساب (أرسل الرمز وأدخله)")
-    email = normalize_email(email)
+    email = normalize_email(email) if email else ""
 
     def _slugify(s: str) -> str:
         s = (s or "").strip().lower()
@@ -934,7 +1166,8 @@ def signup():
         from models.core.tenant import Tenant as CoreTenant
         from extensions_tenant import init_tenant_db
 
-        months = 12 if billing == "yearly" else 1
+        # مدة الخطة المجانية تأتي دائماً من إعداد مركز التحكم، بصرف النظر عن رابط الحملة.
+        subscription_days = _subscription_duration_days(plan_key, billing, welcome_offer, free_trial_days)
         monthly_price = int(plan.get("price_monthly", 0) or 0)
         yearly_price = int(plan.get("price_yearly", 0) or 0)
 
@@ -951,10 +1184,9 @@ def signup():
             name=company_name,
             slug=slug,
             db_path=core_db_path,
-            is_active=True,
+            is_active=False,
         )
-        # تقريب: سنة = 12 شهر، شهر = 1
-        core_tenant.subscription_end_date = datetime.utcnow() + timedelta(days=30 * months)
+        core_tenant.subscription_end_date = datetime.utcnow() + timedelta(days=subscription_days)
         db.session.add(core_tenant)
         db.session.commit()
 
@@ -975,11 +1207,12 @@ def signup():
                 contact_email=email or None,
                 contact_phone=phone or None,
                 plan_key=plan.get("key") or plan_key,
-                plan_name=plan.get("name") or "الخطة الأساسية",
+                plan_name=effective_plan_name,
                 monthly_price=(yearly_price if billing == "yearly" else monthly_price),
-                is_active=True,
+                is_active=False,
             )
-            tenant_row.extend_subscription_months(months)
+            tenant_row.subscription_start = datetime.utcnow()
+            tenant_row.subscription_end = datetime.utcnow() + timedelta(days=subscription_days)
             db.session.add(tenant_row)
             db.session.flush()
 
@@ -1013,37 +1246,20 @@ def signup():
                 username=username,
                 password=password,
                 plan_key=plan.get("key") or plan_key,
-                plan_name=plan.get("name") or "الخطة الأساسية",
+                plan_name=effective_plan_name,
                 billing=billing,
                 business_type=core_business_type,
                 marketing_opt_in=marketing_opt_in,
+                discovery_source=discovery_source,
+                discovery_source_other=discovery_source_other,
             )
             if not marketing_opt_in:
                 reg_payload["marketing_opt_in"] = False
+            if welcome_offer:
+                reg_payload["offer_key"] = offer_key
+            if plan_key == "free":
+                reg_payload["trial_days"] = free_trial_days
             save_tenant_registration(slug, reg_payload)
-
-            if email:
-                try:
-                    from utils.email_helper import build_unsubscribe_url, send_welcome_account_email
-
-                    unsub_url = None
-                    if marketing_opt_in and reg_payload.get("unsubscribe_token"):
-                        unsub_url = build_unsubscribe_url(reg_payload["unsubscribe_token"])
-                    send_welcome_account_email(
-                        to_email=email,
-                        contact_name=contact_name,
-                        company_name=company_name,
-                        slug=slug,
-                        username=username,
-                        password=password,
-                        plan_name=plan.get("name") or "الخطة الأساسية",
-                        unsubscribe_url=unsub_url,
-                    )
-                except Exception:
-                    try:
-                        current_app.logger.exception("welcome account email failed for %s", slug)
-                    except Exception:
-                        pass
         finally:
             g.tenant = old_tenant
 
@@ -1055,28 +1271,45 @@ def signup():
             pass
         return render_err("حدث خطأ أثناء إنشاء الحساب، يرجى المحاولة مجدداً.")
 
-    # تسجيل الجلسة (Auto-login) + توجيه
+    # لا دخول قبل موافقة الإدارة على طلب واتساب.
     session.clear()
     session.permanent = True
-    session["tenant_slug"] = slug
-    session["user_id"] = admin_id
-    session["name"] = admin_name
-    session["role"] = admin_role
-    session["tenant_id"] = admin_tenant_id
-    session["plan_key"] = plan.get("key") or plan_key
+    session["pending_signup_slug"] = slug
 
     from utils.signup_email_verify import clear_signup_email_verification
     clear_signup_email_verification()
+    return redirect(url_for("index.signup_whatsapp_pending"))
 
-    # خطة بسعر 0 للفترة المختارة: دخول مباشر بدون بوابة دفع
-    pm = int(plan.get("price_monthly", 0) or 0)
-    py = int(plan.get("price_yearly", 0) or 0)
-    price_for_period = py if billing == "yearly" else pm
-    if price_for_period == 0:
-        return redirect("/")
 
-    # غير ذلك: توجيه لصفحة الدفع لإتمام الاشتراك
-    return redirect(f"/payment?plan={plan_key}&billing={billing}")
+@index_bp.route("/signup/whatsapp-pending", methods=["GET"])
+def signup_whatsapp_pending():
+    """صفحة إرسال طلب تفعيل الحساب الجديد عبر واتساب."""
+    slug = (session.get("pending_signup_slug") or "").strip().lower()
+    if not slug:
+        return redirect(url_for("index.signup"))
+
+    from models.core.tenant import Tenant as CoreTenant
+    from utils.tenant_registration import (
+        build_whatsapp_activation_url,
+        get_tenant_registration,
+    )
+
+    core_tenant = CoreTenant.query.filter_by(slug=slug).first()
+    if not core_tenant:
+        session.pop("pending_signup_slug", None)
+        return redirect(url_for("index.signup"))
+
+    registration = get_tenant_registration(slug, core_tenant=core_tenant, sync_if_missing=False)
+    whatsapp_url = build_whatsapp_activation_url(
+        current_app.config.get("SIGNUP_WHATSAPP_NUMBER", ""), registration
+    )
+    return render_template(
+        "signup_whatsapp_pending.html",
+        tenant=core_tenant,
+        registration=registration,
+        whatsapp_url=whatsapp_url,
+        is_activated=bool(core_tenant.is_active),
+    )
 
 # =================================================
 # لوحة المدير التنفيذي — صفحة + API
@@ -1118,7 +1351,8 @@ def _executive_dashboard_beauty_response(today, yesterday, month_start, percent_
     for movement in cash_movements:
         movement_date = movement.get("date") or today
         direction = 1 if movement.get("type") == "cash_in" else -1
-        amount = int(movement.get("amount") or 0)
+        from utils.cash_movement_values import movement_amount
+        amount = movement_amount(movement)
         cash_by_date.setdefault(movement_date, {"in": 0, "out": 0, "net": 0})
         if direction > 0:
             cash_by_date[movement_date]["in"] += amount
@@ -1354,7 +1588,8 @@ def api_executive_dashboard_data():
     for movement in cash_movements:
         movement_date = movement.get("date") or today
         direction = 1 if movement.get("type") == "cash_in" else -1
-        amount = int(movement.get("amount") or 0)
+        from utils.cash_movement_values import movement_amount
+        amount = movement_amount(movement)
         cash_by_date.setdefault(movement_date, {"in": 0, "out": 0, "net": 0})
         if direction > 0:
             cash_by_date[movement_date]["in"] += amount
@@ -1405,7 +1640,7 @@ def api_executive_dashboard_data():
     shipping_receivables = calculate_shipping_due()
     shipping_opening_balance = calculate_shipping_opening_balance()
     customer_ar = int(calculate_accounts_receivable() or 0)
-    receivables_total = customer_ar + int(shipping_opening_balance)
+    receivables_total = customer_ar + int(shipping_receivables)
     liabilities = supplier_debts
     inventory_value = calculate_inventory_value()
     receivables_breakdown = {
@@ -2552,9 +2787,13 @@ def check_new_orders():
         Invoice.id,
         Invoice.customer_name,
         Invoice.employee_name,
+        Customer.city.label("customer_city"),
         Invoice.total,
         Invoice.status,
         Invoice.created_at,
+    ).outerjoin(
+        Customer,
+        Customer.id == Invoice.customer_id,
     ).filter(
         Invoice.created_at >= five_minutes_ago
     ).order_by(Invoice.created_at.desc()).limit(10).all()
@@ -2565,6 +2804,7 @@ def check_new_orders():
                 "id": o.id,
                 "customer": o.customer_name,
                 "employee": (o.employee_name or "").strip() or None,
+                "governorate": (o.customer_city or "").strip() or None,
                 "total": o.total,
                 "status": o.status,
                 "time": o.created_at.strftime("%H:%M")
@@ -2713,76 +2953,13 @@ def delivered_paid_details():
 @index_bp.route("/api/index/add-expense", methods=["POST"])
 def add_expense():
     data = request.get_json() or {}
-    
-    title = data.get("title", "").strip()
-    category = data.get("category", "").strip()
-    amount = data.get("amount")
-    note = data.get("note", "").strip()
-    expense_date = data.get("expense_date")
-    
-    if not title:
-        return jsonify({"success": False, "error": "الرجاء إدخال عنوان المصروف"}), 400
-    
-    if not category:
-        return jsonify({"success": False, "error": "الرجاء اختيار فئة المصروف"}), 400
-    
-    try:
-        amount = int(float(amount))
-        if amount <= 0:
-            return jsonify({"success": False, "error": "المبلغ يجب أن يكون أكبر من صفر"}), 400
-    except (ValueError, TypeError):
-        return jsonify({"success": False, "error": "المبلغ غير صحيح"}), 400
+    from utils.expense_quick_add import ExpenseQuickAddError, create_quick_expense
 
-    from utils.treasury_helpers import resolve_treasury_account_id
-    from utils.treasury_calculations import assert_sufficient_balance, InsufficientTreasuryBalance
-    from utils.treasury_schema_guard import ensure_treasury_schema
-    from utils.expense_posting import build_expense_withdraw_note
-
-    ensure_treasury_schema()
-    treasury_account_id = resolve_treasury_account_id(data.get("treasury_account_id"))
     try:
-        assert_sufficient_balance(treasury_account_id, amount)
-    except InsufficientTreasuryBalance as exc:
-        return jsonify({"success": False, "error": str(exc)}), 400
-    
-    try:
-        if expense_date:
-            expense_date_obj = datetime.strptime(expense_date, "%Y-%m-%d").date()
-        else:
-            expense_date_obj = date.today()
-    except ValueError:
-        expense_date_obj = date.today()
-    
-    try:
-        # إنشاء المصروف
-        expense = Expense(
-            title=title,
-            category=category,
-            amount=amount,
-            note=note,
-            expense_date=expense_date_obj,
-            treasury_account_id=treasury_account_id,
-            cash_posted=False,
-        )
-        db.session.add(expense)
-        db.session.flush()
-        
-        # خصم المبلغ من رأس المال تلقائياً
-        withdraw_tx = AccountTransaction(
-            type="withdraw",
-            amount=amount,
-            note=build_expense_withdraw_note(expense),
-            treasury_account_id=treasury_account_id,
-        )
-        db.session.add(withdraw_tx)
-        expense.cash_posted = True
-        
-        db.session.commit()
-        
-        return jsonify({
-            "success": True,
-            "message": "تم إضافة المصروف بنجاح"
-        })
+        result = create_quick_expense(data, commit=True)
+        return jsonify({"success": True, "message": result.get("message") or "تم إضافة المصروف بنجاح"})
+    except ExpenseQuickAddError as exc:
+        return jsonify({"success": False, "error": exc.message}), 400
     except Exception as e:
         db.session.rollback()
         return jsonify({"success": False, "error": f"حدث خطأ: {str(e)}"}), 500

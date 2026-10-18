@@ -1,0 +1,16 @@
+{% extends "storefront_v2/base.html" %}
+{% block legacy_assets %}{% endblock %}
+{% block legacy_scripts %}{% endblock %}
+{% block body_class %} sm-native{% endblock %}
+{% block title %}{{ page_title }} — {{ store_design.store_name }}{% endblock %}
+{% block content %}
+<section class="sm-shell sm-section">
+  <p class="sm-eyebrow">{{ page_eyebrow }}</p>
+  <h1 class="sm-h1">{{ page_title }}</h1>
+  {% if products %}
+  <div class="sm-grid">{% for product in products %}{% include "storefront_v2/partials/product_card.html" %}{% endfor %}</div>
+  {% else %}
+  <div class="sm-empty"><h3>{{ empty_title }}</h3><a class="sm-btn sm-btn--primary" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">تصفّح المنتجات</a></div>
+  {% endif %}
+</section>
+{% endblock %}

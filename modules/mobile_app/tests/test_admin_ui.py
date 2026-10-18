@@ -103,9 +103,17 @@ def test_mobile_admin_dashboard_and_providers():
     r = client.get("/mobile-app/analytics")
     assert r.status_code == 200
 
-    for path in ("/mobile-app/users", "/mobile-app/comments", "/mobile-app/rewards"):
+    for path in (
+        "/mobile-app/users",
+        "/mobile-app/comments",
+        "/mobile-app/rewards",
+        "/mobile-app/video-products",
+    ):
         r = client.get(path)
         assert r.status_code == 200, path
+
+    r = client.get("/mobile-app/video-products")
+    assert "ربط المنتجات".encode("utf-8") in r.data
 
     with app.app_context():
         g.tenant = None

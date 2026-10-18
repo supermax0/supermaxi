@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Any, Dict, List, Optional
 
 from modules.workspace.services.document_intelligence.document_normalization_service import (
@@ -233,8 +234,17 @@ class DocumentTextExtractionService:
 
     @staticmethod
     def _extract_image(abs_path: str) -> Dict[str, Any]:
+        from modules.workspace.services.document_intelligence.document_image_preprocessing_service import (
+            DocumentImagePreprocessingService,
+        )
+
+        prepared = DocumentImagePreprocessingService.prepare_for_analysis(
+            abs_path,
+            "image/png",
+            os.path.basename(abs_path),
+        )
         try:
-            with open(abs_path, "rb") as f:
+            with open(prepared["abs_path"], "rb") as f:
                 image_bytes = f.read()
             from ai.ocr import extract_text
 
@@ -244,12 +254,24 @@ class DocumentTextExtractionService:
                 return DocumentTextExtractionService._result(
                     "completed",
                     text,
-                    [{"page": 1, "text": text, "confidence": None, "method": "ocr"}],
+                    [{
+                        "page": 1,
+                        "text": text,
+                        "confidence": None,
+                        "method": "ocr",
+                        "preprocessed": bool(prepared.get("applied")),
+                    }],
                 )
             return DocumentTextExtractionService._result(
                 "partial",
                 "",
-                [{"page": 1, "text": "", "confidence": None, "method": "ocr"}],
+                [{
+                    "page": 1,
+                    "text": "",
+                    "confidence": None,
+                    "method": "ocr",
+                    "preprocessed": bool(prepared.get("applied")),
+                }],
                 warnings=["لم يُستخرج نص من الصورة"],
             )
         except ImportError:
@@ -263,3 +285,5 @@ class DocumentTextExtractionService:
                 warnings=[str(exc)],
                 pages=[{"page": 1, "text": "", "confidence": None, "method": "ocr"}],
             )
+        finally:
+            DocumentImagePreprocessingService.cleanup(prepared)

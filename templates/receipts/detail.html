@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}سند قبض {{ receipt.receipt_number }}{% endblock %}
+{% block page_title %}<i class="fa fa-receipt"></i> تفاصيل سند القبض{% endblock %}
+
+{% block content %}
+<style>
+  .rd { --blue:#2563eb; max-width:1080px; margin:0 auto; padding:0 0 50px; }
+  .rd * { box-sizing:border-box; }
+  .rd-actions { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px; }
+  .rd-btn { min-height:40px; padding:0 15px; border:1px solid var(--border); border-radius:11px; background:var(--card); color:inherit; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; gap:7px; font-size:12px; font-weight:800; cursor:pointer; }
+  .rd-btn.primary { color:#fff; border:0; background:linear-gradient(135deg,#2563eb,#4338ca); box-shadow:0 8px 20px rgba(37,99,235,.2); }
+  .rd-btn.danger { color:#b91c1c; }
+  .rd-hero { position:relative; overflow:hidden; display:grid; grid-template-columns:1fr auto; gap:20px; align-items:center; padding:24px; border-radius:22px; color:#fff; background:linear-gradient(125deg,#0f2f75,#1d4ed8 58%,#4f46e5); box-shadow:0 18px 42px rgba(37,99,235,.16); }
+  .rd-hero::after { content:""; position:absolute; width:220px; height:220px; left:-90px; bottom:-150px; border-radius:50%; background:rgba(255,255,255,.1); }
+  .rd-kicker { color:rgba(255,255,255,.7); font-size:11px; font-weight:800; }
+  .rd-number { margin:5px 0 7px; font-size:25px; font-weight:900; direction:ltr; text-align:right; }
+  .rd-party { font-size:13px; font-weight:700; color:rgba(255,255,255,.84); }
+  .rd-amount { min-width:250px; padding:16px 20px; border:1px solid rgba(255,255,255,.22); border-radius:17px; background:rgba(255,255,255,.12); backdrop-filter:blur(8px); text-align:center; }
+  .rd-amount span { display:block; color:rgba(255,255,255,.72); font-size:10px; font-weight:800; }
+  .rd-amount strong { display:block; margin-top:4px; font-size:28px; font-weight:900; direction:ltr; }
+  .rd-badge { display:inline-flex; align-items:center; gap:6px; margin-top:10px; padding:5px 10px; border-radius:999px; font-size:11px; font-weight:900; }
+  .rd-badge.ok { color:#dcfce7; background:rgba(22,163,74,.3); } .rd-badge.bad { color:#fee2e2; background:rgba(185,28,28,.38); }
+  .rd-layout { display:grid; grid-template-columns:1.35fr .65fr; gap:12px; margin-top:12px; }
+  .rd-card { background:var(--card); border:1px solid var(--border); border-radius:18px; padding:18px; box-shadow:0 9px 28px rgba(15,23,42,.04); }
+  .rd-title { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px; }
+  .rd-title h3 { margin:0; font-size:14px; font-weight:900; } .rd-title i { color:var(--blue); }
+  .rd-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+  .rd-field { padding:11px 12px; border-radius:12px; background:var(--card-alt,#f8fafc); border:1px solid rgba(148,163,184,.16); }
+  .rd-field .lbl { color:var(--text-muted); font-size:10px; font-weight:800; }
+  .rd-field .val { margin-top:4px; font-size:13px; font-weight:850; overflow-wrap:anywhere; }
+  .rd-balance { display:grid; gap:9px; }
+  .rd-balance-row { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:11px 0; border-bottom:1px dashed var(--border); font-size:12px; }
+  .rd-balance-row:last-child { border:0; } .rd-balance-row strong { direction:ltr; font-size:14px; } .rd-balance-row.final { color:#047857; }
+  .rd-table-wrap { overflow:auto; } .rd-table { width:100%; border-collapse:collapse; font-size:12px; }
+  .rd-table th,.rd-table td { padding:11px 9px; border-bottom:1px solid var(--border); text-align:right; }
+  .rd-table th { color:var(--text-muted); font-size:10px; font-weight:900; background:var(--card-alt,#f8fafc); }
+  .rd-note { margin-top:12px; padding:12px 14px; border-right:3px solid #60a5fa; border-radius:10px; background:rgba(37,99,235,.055); font-size:12px; line-height:1.8; }
+  .rd-cancelled { margin-top:12px; padding:12px 14px; border:1px solid #fecaca; border-radius:12px; background:#fef2f2; color:#991b1b; font-size:12px; line-height:1.8; }
+  .rd-modal-backdrop { position:fixed; inset:0; z-index:11000; display:none; place-items:center; padding:14px; background:rgba(15,23,42,.58); }
+  .rd-modal-backdrop.open { display:grid; } .rd-modal { width:min(460px,100%); padding:20px; border-radius:18px; background:var(--card); border:1px solid var(--border); box-shadow:0 24px 70px rgba(15,23,42,.28); }
+  .rd-modal h3 { margin:0 0 5px; font-size:16px; } .rd-modal p { margin:0 0 12px; color:var(--text-muted); font-size:11px; }
+  .rd-modal textarea { width:100%; min-height:95px; padding:11px; resize:vertical; border:1px solid var(--border); border-radius:11px; background:var(--bg,#fff); color:inherit; font:inherit; }
+  .rd-modal-actions { display:flex; justify-content:flex-end; gap:8px; margin-top:12px; }
+  @media(max-width:760px){ .rd-hero{grid-template-columns:1fr;padding:19px}.rd-amount{min-width:0}.rd-layout{grid-template-columns:1fr}.rd-grid{grid-template-columns:1fr 1fr} }
+  @media(max-width:480px){ .rd-grid{grid-template-columns:1fr}.rd-actions .rd-btn{flex:1 1 auto}.rd-number{font-size:20px}.rd-amount strong{font-size:23px} }
+</style>
+
+{% set type_labels = {'customer':'عميل','courier':'مندوب توصيل','shipping_company':'شركة نقل'} %}
+{% set pay_labels = {'cash':'نقدي','bank':'تحويل مصرفي','card':'بطاقة','zaincash':'زين كاش','fastpay':'FastPay','qi':'Qi','other':'أخرى'} %}
+<div class="rd">
+  <div class="rd-actions">
+    <a class="rd-btn" href="/receipts"><i class="fa fa-arrow-right"></i> رجوع للسجل</a>
+    {% if is_admin or can_print_receipts %}<a class="rd-btn primary" href="/receipts/{{ receipt.id }}/print" target="_blank"><i class="fa fa-print"></i> طباعة السند</a>{% endif %}
+    {% if (is_admin or can_cancel_receipts) and receipt.status != 'ملغى' %}<button class="rd-btn danger" type="button" id="rdCancelBtn"><i class="fa fa-ban"></i> إلغاء السند</button>{% endif %}
+  </div>
+
+  <section class="rd-hero">
+    <div><div class="rd-kicker">سند قبض رسمي</div><div class="rd-number">{{ receipt.receipt_number }}</div><div class="rd-party">{{ type_labels.get(receipt.source_type,receipt.source_type) }} · {{ receipt.source_name or '—' }}</div>{% if receipt.status == 'ملغى' %}<span class="rd-badge bad"><i class="fa fa-times-circle"></i> ملغى</span>{% else %}<span class="rd-badge ok"><i class="fa fa-check-circle"></i> معتمد</span>{% endif %}</div>
+    <div class="rd-amount"><span>إجمالي المبلغ المقبوض</span><strong>{{ '{:,}'.format(data.amount or 0) }} د.ع</strong></div>
+  </section>
+
+  <div class="rd-layout">
+    <section class="rd-card">
+      <div class="rd-title"><h3><i class="fa fa-circle-info"></i> بيانات السند</h3><span style="color:var(--text-muted);font-size:10px">{{ data.receipt_date or '—' }}</span></div>
+      <div class="rd-grid">
+        <div class="rd-field"><div class="lbl">الجهة</div><div class="val">{{ receipt.source_name or '—' }}</div></div><div class="rd-field"><div class="lbl">نوع الجهة</div><div class="val">{{ type_labels.get(receipt.source_type,receipt.source_type) }}</div></div>
+        <div class="rd-field"><div class="lbl">طريقة الدفع</div><div class="val">{{ pay_labels.get(receipt.payment_method,receipt.payment_method or '—') }}</div></div><div class="rd-field"><div class="lbl">الحساب المالي</div><div class="val">{{ data.treasury_account_name or '—' }}</div></div>
+        <div class="rd-field"><div class="lbl">رقم المرجع</div><div class="val">{{ receipt.reference_number or '—' }}</div></div><div class="rd-field"><div class="lbl">الموظف المسؤول</div><div class="val">{{ data.creator_name or '—' }}</div></div>
+      </div>
+      {% if receipt.notes %}<div class="rd-note"><strong>ملاحظات:</strong> {{ receipt.notes }}</div>{% endif %}
+      {% if receipt.status == 'ملغى' %}<div class="rd-cancelled"><strong>السند ملغى.</strong>{% if data.cancelled_at %} تاريخ الإلغاء: {{ data.cancelled_at }}.{% endif %}{% if receipt.cancel_reason %}<br>السبب: {{ receipt.cancel_reason }}{% endif %}</div>{% endif %}
+    </section>
+    <aside class="rd-card">
+      <div class="rd-title"><h3><i class="fa fa-scale-balanced"></i> ملخص الذمة</h3></div>
+      <div class="rd-balance"><div class="rd-balance-row"><span>الرصيد السابق</span><strong>{{ '{:,}'.format(data.balance_before or 0) }}</strong></div><div class="rd-balance-row"><span>المبلغ المقبوض</span><strong>{{ '{:,}'.format(data.amount or 0) }}</strong></div><div class="rd-balance-row final"><span>الرصيد المتبقي</span><strong>{{ '{:,}'.format(data.balance_after or 0) }} د.ع</strong></div></div>
+      {% if data.journal_entry_id %}<div class="rd-note" style="margin-top:16px"><strong>القيد المحاسبي:</strong> #{{ data.journal_entry_id }}</div>{% endif %}
+    </aside>
+  </div>
+
+  <section class="rd-card" style="margin-top:12px"><div class="rd-title"><h3><i class="fa fa-file-invoice-dollar"></i> الفواتير المسددة</h3><span style="color:var(--text-muted);font-size:10px">{{ data.allocations|length }} فاتورة</span></div><div class="rd-table-wrap"><table class="rd-table"><thead><tr><th>#</th><th>مرجع الفاتورة</th><th>المبلغ المخصص</th></tr></thead><tbody>{% for a in data.allocations %}<tr><td>{{ loop.index }}</td><td><strong>{{ a.reference }}</strong></td><td>{{ '{:,}'.format(a.amount or 0) }} د.ع</td></tr>{% else %}<tr><td colspan="3" style="text-align:center;color:var(--text-muted)">لا توجد توزيعات مرتبطة بهذا السند</td></tr>{% endfor %}</tbody></table></div></section>
+</div>
+
+{% if (is_admin or can_cancel_receipts) and receipt.status != 'ملغى' %}
+<div class="rd-modal-backdrop" id="rdCancelModal" role="dialog" aria-modal="true" aria-labelledby="rdCancelTitle"><div class="rd-modal"><h3 id="rdCancelTitle">إلغاء {{ receipt.receipt_number }}</h3><p>سيتم عكس أثر السند على الفواتير والخزينة. اكتب سبباً واضحاً للمراجعة.</p><textarea id="rdCancelReason" placeholder="سبب الإلغاء..."></textarea><div class="rd-modal-actions"><button class="rd-btn" id="rdCancelClose" type="button">رجوع</button><button class="rd-btn danger" id="rdCancelConfirm" type="button">تأكيد الإلغاء</button></div></div></div>
+<script>
+(function(){const modal=document.getElementById('rdCancelModal'),reason=document.getElementById('rdCancelReason'),confirmBtn=document.getElementById('rdCancelConfirm');document.getElementById('rdCancelBtn').addEventListener('click',()=>{modal.classList.add('open');reason.focus();});document.getElementById('rdCancelClose').addEventListener('click',()=>modal.classList.remove('open'));modal.addEventListener('click',e=>{if(e.target===modal)modal.classList.remove('open');});confirmBtn.addEventListener('click',async()=>{if(!reason.value.trim()){reason.focus();return;}confirmBtn.disabled=true;try{const res=await fetch('/api/receipts/{{ receipt.id }}/cancel',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({reason:reason.value.trim()})});const data=await res.json().catch(()=>({}));if(!res.ok||data.success===false)throw new Error(data.error||'فشل الإلغاء');location.reload();}catch(error){alert(error.message);confirmBtn.disabled=false;}});})();
+</script>
+{% endif %}
+{% endblock %}

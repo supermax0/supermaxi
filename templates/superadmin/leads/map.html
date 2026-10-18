@@ -1,0 +1,442 @@
+{% extends 'superadmin/leads/_base.html' %}
+{% set page_title = 'خريطة العملاء الذكية' %}
+{% set page_subtitle = 'اكتشاف يومي للعملاء المحتملين من الخرائط العامة حسب النشاط والموقع' %}
+{% block extra_style %}
+{{ super() }}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+{% endblock %}
+{% block header_actions %}
+<button type="button" class="sa-btn sa-btn-primary" id="lcRunDiscovery">
+    <i class="fas fa-wand-magic-sparkles"></i> جمع 100 عميل
+</button>
+<a href="{{ url_for('superadmin_leads.all_leads') }}" class="sa-btn sa-btn-secondary">
+    <i class="fas fa-table-list"></i> الجداول
+</a>
+{% endblock %}
+{% block leads_content %}
+<section class="lc-map-hero">
+    <form class="lc-map-controls" method="get">
+        <label>
+            <span>بحث ذكي</span>
+            <div class="lc-control-input">
+                <i class="fas fa-magnifying-glass"></i>
+                <input type="search" name="q" value="{{ filters.get('q', '') }}" placeholder="اسم محل، منطقة، شركة...">
+            </div>
+        </label>
+        <label>
+            <span>النشاط</span>
+            <select name="activity_id">
+                <option value="">كل النشاطات</option>
+                {% for activity in activities %}
+                <option value="{{ activity.id }}" {% if filters.get('activity_id')|string == activity.id|string %}selected{% endif %}>
+                    {{ activity.name_ar }}
+                </option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>المحافظة</span>
+            <select name="governorate" id="lcMapGovernorate">
+                <option value="">كل العراق</option>
+                {% for gov in governorates %}
+                <option value="{{ gov }}" {% if filters.get('governorate') == gov %}selected{% endif %}>{{ gov }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>المصدر</span>
+            <select name="source">
+                <option value="">كل المصادر</option>
+                {% for source in map_stats.sources %}
+                <option value="{{ source }}" {% if filters.get('source') == source %}selected{% endif %}>{{ source }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label class="lc-phone-filter">
+            <input type="hidden" name="has_phone" value="0">
+            <input type="checkbox" name="has_phone" value="1" {% if filters.get('has_phone', '1') != '0' %}checked{% endif %}>
+            <span><i class="fas fa-phone"></i> مع رقم هاتف فقط</span>
+        </label>
+        <button type="submit" class="lc-icon-btn" title="تطبيق الفلاتر" aria-label="تطبيق الفلاتر">
+            <i class="fas fa-filter"></i>
+        </button>
+    </form>
+
+    <div class="lc-map-stat-grid">
+        <div class="lc-map-stat">
+            <span>على الخريطة</span>
+            <strong id="lcMapTotal">{{ map_stats.total }}</strong>
+        </div>
+        <div class="lc-map-stat">
+            <span>مع هاتف</span>
+            <strong id="lcMapPhones">{{ map_stats.with_phone }}</strong>
+        </div>
+        <div class="lc-map-stat">
+            <span>مصادر</span>
+            <strong>{{ map_stats.sources|length }}</strong>
+        </div>
+        <div class="lc-map-stat">
+            <span>آخر جمع</span>
+            <strong>{% if discovery_runs %}{{ discovery_runs[0].created_count }}{% else %}0{% endif %}</strong>
+        </div>
+    </div>
+</section>
+
+<section class="lc-map-workspace">
+    <div class="lc-map-main">
+        <div id="lcMapCanvas" class="lc-map-canvas" data-empty="لا توجد إحداثيات مطابقة"></div>
+        <div class="lc-map-toolbar">
+            <button type="button" class="lc-map-text-btn" id="lcSearchArea">
+                <i class="fas fa-location-crosshairs"></i> بحث بهذه المنطقة
+            </button>
+            <button type="button" class="lc-icon-btn" id="lcFitMap" title="ملاءمة الخريطة" aria-label="ملاءمة الخريطة">
+                <i class="fas fa-expand"></i>
+            </button>
+            <button type="button" class="lc-icon-btn" id="lcReloadMap" title="تحديث البيانات" aria-label="تحديث البيانات">
+                <i class="fas fa-rotate"></i>
+            </button>
+        </div>
+    </div>
+
+    <aside class="lc-map-side">
+        <div class="lc-map-panel">
+            <header>
+                <h3><i class="fas fa-sparkles"></i> الاكتشاف اليومي</h3>
+                <span class="lc-ai-badge {% if ai_enrichment_available %}is-on{% else %}is-off{% endif %}">
+                    {% if ai_enrichment_available %}AI متصل{% else %}AI محلي{% endif %}
+                </span>
+            </header>
+            <p id="lcDiscoveryStatus">
+                {% if ai_enrichment_available %}
+                جاهز لجمع وتصنيف العملاء بالذكاء الاصطناعي.
+                {% else %}
+                جاهز بجمع ذكي محلي، ويترقى تلقائياً عند ضبط مفتاح OpenAI.
+                {% endif %}
+            </p>
+            <div class="lc-discovery-progress" id="lcDiscoveryProgress" hidden>
+                <div class="lc-progress-head">
+                    <strong id="lcProgressPercent">0%</strong>
+                    <span id="lcProgressLabel">تهيئة البحث</span>
+                </div>
+                <div class="lc-progress-track" aria-hidden="true">
+                    <span id="lcProgressBar" style="width: 0%"></span>
+                </div>
+                <div class="lc-progress-metrics">
+                    <span><b id="lcProcessedCount">0</b> معالجة</span>
+                    <span><b id="lcCreatedCount">0</b> محفوظة</span>
+                    <span><b id="lcDuplicateCount">0</b> تكرار</span>
+                </div>
+            </div>
+            <label class="lc-confidence-control">
+                <span>دقة النتائج</span>
+                <input type="range" id="lcMinConfidence" min="50" max="90" step="5" value="70">
+                <strong id="lcMinConfidenceValue">70%</strong>
+            </label>
+            <label class="lc-save-phone-only">
+                <input type="checkbox" id="lcRequirePhone" checked>
+                <span><i class="fas fa-phone-volume"></i> حفظ أصحاب الأرقام فقط</span>
+            </label>
+            <div class="lc-discovery-options">
+                {% for activity in activities if activity.slug in discovery_activity_slugs %}
+                <label style="--lc-accent: {{ activity.color }}">
+                    <input type="checkbox" value="{{ activity.slug }}" checked>
+                    <span><i class="fas {{ activity.icon }}"></i> {{ activity.name_ar }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="lc-map-panel">
+            <header>
+                <h3><i class="fas fa-location-crosshairs"></i> أحدث المواقع</h3>
+            </header>
+            <div class="lc-map-list" id="lcMapList"></div>
+        </div>
+
+        <div class="lc-map-panel">
+            <header>
+                <h3><i class="fas fa-clock-rotate-left"></i> سجل الجمع</h3>
+            </header>
+            <div class="lc-run-list" id="lcRunList">
+                {% for run in discovery_runs %}
+                <div class="lc-run-row">
+                    <span class="lc-run-status is-{{ run.status }}">{{ run.status }}</span>
+                    <strong>{{ run.created_count }} جديد</strong>
+                    <small>{{ run.started_at[:16].replace('T', ' ') if run.started_at else '' }}</small>
+                </div>
+                {% else %}
+                <p class="lc-empty-note">لا توجد عمليات جمع بعد.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </aside>
+</section>
+{% endblock %}
+{% block leads_scripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script>
+(function () {
+  var leads = {{ map_leads|tojson }};
+  var activities = {};
+  {% for activity in activities %}
+  activities[{{ activity.id|tojson }}] = {
+    name: {{ activity.name_ar|tojson }},
+    color: {{ activity.color|tojson }},
+    icon: {{ activity.icon|tojson }}
+  };
+  {% endfor %}
+
+  var map = L.map('lcMapCanvas', { zoomControl: false }).setView([33.3152, 44.3661], 6);
+  L.control.zoom({ position: 'topleft' }).addTo(map);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 18,
+    attribution: '&copy; OpenStreetMap'
+  }).addTo(map);
+
+  var markerLayer = (L.markerClusterGroup ? L.markerClusterGroup({
+    showCoverageOnHover: false,
+    maxClusterRadius: 42,
+    spiderfyOnMaxZoom: true
+  }) : L.layerGroup()).addTo(map);
+  var lastBounds = [];
+  var runBtn = document.getElementById('lcRunDiscovery');
+  var statusEl = document.getElementById('lcDiscoveryStatus');
+  var listEl = document.getElementById('lcMapList');
+  var runListEl = document.getElementById('lcRunList');
+  var confidenceInput = document.getElementById('lcMinConfidence');
+  var confidenceValue = document.getElementById('lcMinConfidenceValue');
+  var progressBox = document.getElementById('lcDiscoveryProgress');
+  var progressPercent = document.getElementById('lcProgressPercent');
+  var progressLabel = document.getElementById('lcProgressLabel');
+  var progressBar = document.getElementById('lcProgressBar');
+  var processedCount = document.getElementById('lcProcessedCount');
+  var createdCount = document.getElementById('lcCreatedCount');
+  var duplicateCount = document.getElementById('lcDuplicateCount');
+  var activePollTimer = null;
+
+  function escapeHtml(value) {
+    return String(value || '').replace(/[&<>"']/g, function (ch) {
+      return {'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;'}[ch];
+    });
+  }
+
+  function markerIcon(lead) {
+    var activity = activities[lead.activity_id] || {};
+    var color = activity.color || '#4f46e5';
+    return L.divIcon({
+      className: 'lc-leaflet-dot-wrap',
+      html: '<span class="lc-leaflet-dot" style="--dot-color:' + escapeHtml(color) + '"></span>',
+      iconSize: [18, 18],
+      iconAnchor: [9, 9],
+      popupAnchor: [0, -10]
+    });
+  }
+
+  function renderMap(rows, options) {
+    options = options || {};
+    markerLayer.clearLayers();
+    lastBounds = [];
+    rows.forEach(function (lead) {
+      if (!lead.latitude || !lead.longitude) return;
+      var lat = parseFloat(lead.latitude);
+      var lng = parseFloat(lead.longitude);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+      var activity = activities[lead.activity_id] || {};
+      var popup = ''
+        + '<div class="lc-map-popup">'
+        + '<strong>' + escapeHtml(lead.business_name) + '</strong>'
+        + '<span>' + escapeHtml(activity.name || lead.activity_name || '') + '</span>'
+        + '<small>' + escapeHtml(lead.full_address || lead.city || lead.governorate || '') + '</small>'
+        + (lead.primary_phone ? '<a href="tel:' + escapeHtml(lead.primary_phone) + '">' + escapeHtml(lead.primary_phone) + '</a>' : '')
+        + '<a href="/superadmin/leads/' + lead.id + '">فتح العميل</a>'
+        + '</div>';
+      L.marker([lat, lng], { icon: markerIcon(lead) }).addTo(markerLayer).bindPopup(popup);
+      lastBounds.push([lat, lng]);
+    });
+    if (lastBounds.length && options.fit !== false) {
+      map.fitBounds(lastBounds, { padding: [35, 35] });
+    }
+    renderList(rows);
+  }
+
+  function renderList(rows) {
+    if (!listEl) return;
+    var items = rows.slice(0, 12).map(function (lead) {
+      var activity = activities[lead.activity_id] || {};
+      return '<a class="lc-map-list-row" href="/superadmin/leads/' + lead.id + '" style="--lc-accent:' + escapeHtml(activity.color || '#4f46e5') + '">'
+        + '<strong>' + escapeHtml(lead.business_name) + '</strong>'
+        + '<span>' + escapeHtml(activity.name || lead.activity_name || 'نشاط') + ' · ' + escapeHtml(lead.city || lead.governorate || 'بدون مدينة') + '</span>'
+        + '</a>';
+    }).join('');
+    listEl.innerHTML = items || '<p class="lc-empty-note">لا توجد نتائج مطابقة.</p>';
+  }
+
+  function postJson(url, body) {
+    return fetch(url, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body || {})
+    }).then(function (response) {
+      return response.text().then(function (text) {
+        var data = text ? JSON.parse(text) : {};
+        if (!response.ok || data.error) throw new Error(data.error || data.message || 'فشل الطلب');
+        return data;
+      });
+    });
+  }
+
+  function refreshRuns() {
+    fetch('/superadmin/leads/api/discovery-runs?limit=5', { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        if (!runListEl) return;
+        runListEl.innerHTML = (data.runs || []).map(function (run) {
+          var date = run.started_at ? run.started_at.slice(0, 16).replace('T', ' ') : '';
+          return '<div class="lc-run-row">'
+            + '<span class="lc-run-status is-' + escapeHtml(run.status) + '">' + escapeHtml(run.status) + '</span>'
+            + '<strong>' + (run.created_count || 0) + ' جديد' + (run.ai_enabled ? ' · AI' : '') + '</strong>'
+            + '<small>' + escapeHtml(date) + '</small>'
+            + '</div>';
+        }).join('') || '<p class="lc-empty-note">لا توجد عمليات جمع بعد.</p>';
+      }).catch(function () {});
+  }
+
+  function reloadMap(options) {
+    var query = new URLSearchParams(window.location.search);
+    fetch('/superadmin/leads/api/map?' + query.toString(), { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        leads = data.leads || [];
+        document.getElementById('lcMapTotal').textContent = data.total || 0;
+        document.getElementById('lcMapPhones').textContent = data.with_phone || 0;
+        renderMap(leads, options);
+      });
+  }
+
+  function reloadMapForBounds() {
+    var b = map.getBounds();
+    var query = new URLSearchParams(window.location.search);
+    query.set('north', b.getNorth().toFixed(6));
+    query.set('south', b.getSouth().toFixed(6));
+    query.set('east', b.getEast().toFixed(6));
+    query.set('west', b.getWest().toFixed(6));
+    fetch('/superadmin/leads/api/map?' + query.toString(), { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        leads = data.leads || [];
+        document.getElementById('lcMapTotal').textContent = data.total || 0;
+        document.getElementById('lcMapPhones').textContent = data.with_phone || 0;
+        renderMap(leads);
+      });
+  }
+
+  function mapRadiusMeters() {
+    var b = map.getBounds();
+    var c = map.getCenter();
+    var corner = L.latLng(b.getNorth(), b.getEast());
+    return Math.max(1500, Math.min(Math.round(c.distanceTo(corner)), 30000));
+  }
+
+  function terminalStatus(status) {
+    return ['completed', 'partial', 'failed', 'skipped'].indexOf(status) >= 0;
+  }
+
+  function updateProgress(run) {
+    if (!run || !progressBox) return;
+    var percent = Math.max(0, Math.min(parseInt(run.progress_percent || 0, 10), 100));
+    progressBox.hidden = false;
+    progressPercent.textContent = percent + '%';
+    progressBar.style.width = percent + '%';
+    processedCount.textContent = run.processed_count || 0;
+    createdCount.textContent = run.created_count || 0;
+    duplicateCount.textContent = run.duplicate_count || 0;
+    if (run.status === 'running') {
+      progressLabel.textContent = run.ai_enabled ? 'جاري البحث والتصنيف بالذكاء الاصطناعي' : 'جاري البحث والتصفية';
+    } else if (run.status === 'completed') {
+      progressLabel.textContent = 'اكتملت العملية بنجاح';
+    } else if (run.status === 'partial') {
+      progressLabel.textContent = 'اكتملت جزئياً مع بعض مصادر لم تستجب';
+    } else if (run.status === 'skipped') {
+      progressLabel.textContent = 'توجد عملية أخرى تعمل حالياً';
+    } else {
+      progressLabel.textContent = 'تعذر إكمال العملية';
+    }
+  }
+
+  function pollDiscovery(runId) {
+    window.clearTimeout(activePollTimer);
+    fetch('/superadmin/leads/api/discovery-runs/' + runId, { credentials: 'same-origin' })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var run = data.run || {};
+        updateProgress(run);
+        refreshRuns();
+        reloadMap({ fit: false });
+        if (!terminalStatus(run.status)) {
+          activePollTimer = window.setTimeout(function () { pollDiscovery(runId); }, 1800);
+          return;
+        }
+        runBtn.disabled = false;
+        var aiText = run.ai_enabled ? ' بعد تصنيف AI.' : '.';
+        statusEl.textContent = 'تم حفظ ' + (run.created_count || 0) + ' عميل جديد، ومعالجة ' + (run.processed_count || 0) + ' نتيجة' + aiText;
+      }).catch(function () {
+        activePollTimer = window.setTimeout(function () { pollDiscovery(runId); }, 2500);
+      });
+  }
+
+  if (confidenceInput && confidenceValue) {
+    confidenceInput.addEventListener('input', function () {
+      confidenceValue.textContent = confidenceInput.value + '%';
+    });
+  }
+
+  if (runBtn) {
+    runBtn.addEventListener('click', function () {
+      var selected = Array.prototype.slice.call(document.querySelectorAll('.lc-discovery-options input:checked'))
+        .map(function (input) { return input.value; });
+      var governorate = document.getElementById('lcMapGovernorate')?.value || '';
+      runBtn.disabled = true;
+      statusEl.textContent = 'بدأ الجمع... ستظهر النتائج تدريجياً على الخريطة.';
+      var center = map.getCenter();
+      updateProgress({
+        status: 'running',
+        progress_percent: 3,
+        processed_count: 0,
+        created_count: 0,
+        duplicate_count: 0,
+        ai_enabled: String(document.querySelector('.lc-ai-badge')?.textContent || '').indexOf('متصل') >= 0
+      });
+      postJson('/superadmin/leads/api/discover/start', {
+        limit: 100,
+        activity_slugs: selected,
+        governorate: governorate,
+        min_confidence: parseInt(confidenceInput?.value || '70', 10),
+        scope: 'map',
+        center: { lat: center.lat, lng: center.lng },
+        radius: mapRadiusMeters(),
+        require_phone: document.getElementById('lcRequirePhone')?.checked !== false
+      }).then(function (data) {
+        var run = data.run || {};
+        updateProgress(run);
+        pollDiscovery(run.id);
+      }).catch(function (err) {
+        statusEl.textContent = err.message || 'تعذر الجمع الآن.';
+        runBtn.disabled = false;
+      });
+    });
+  }
+
+  document.getElementById('lcFitMap')?.addEventListener('click', function () {
+    if (lastBounds.length) map.fitBounds(lastBounds, { padding: [35, 35] });
+  });
+  document.getElementById('lcReloadMap')?.addEventListener('click', reloadMap);
+  document.getElementById('lcSearchArea')?.addEventListener('click', reloadMapForBounds);
+
+  renderMap(leads);
+})();
+</script>
+{% endblock %}

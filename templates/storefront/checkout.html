@@ -1,4 +1,4 @@
-{% extends "storefront/base.html" %}
+{% extends storefront_base|default("storefront/base.html") %}
 {% block title %}إتمام الطلب - {{ store_design.store_name }}{% endblock %}
 {% block content %}
 <div class="sf-page-head">
@@ -12,17 +12,18 @@
 <section class="sf-checkout-layout">
   <div class="sf-card sf-panel">
     {% if checkout_error %}<div class="sf-alert err">{{ checkout_error }}</div>{% endif %}
+    {% if store_account %}<div class="store-account-notice"><span>✓</span><div><strong>الطلب سيُحفظ في حسابك</strong><small>تم تعبئة الاسم ورقم الهاتف من ملف {{ store_account.customer.name }}.</small></div><a href="{{ url_for('storefront.account_page', tenant_slug=shop_tenant_slug) }}">حسابي</a></div>{% endif %}
     {% if cart_items %}
     <form method="post" class="sf-form">
       {% if request.args.get('dev') %}<input type="hidden" name="dev" value="1">{% endif %}
       <div class="sf-form-grid">
         <div class="sf-field">
           <label for="sfCustomerName">الاسم الكامل</label>
-          <input id="sfCustomerName" type="text" name="customer_name" required value="{{ checkout_form.customer_name }}" autocomplete="name">
+          <input id="sfCustomerName" type="text" name="customer_name" required value="{{ checkout_form.customer_name }}" autocomplete="name" {{ 'readonly' if store_account }}>
         </div>
         <div class="sf-field">
           <label for="sfPhone">رقم الهاتف</label>
-          <input id="sfPhone" type="tel" name="phone" required minlength="8" value="{{ checkout_form.phone }}" autocomplete="tel">
+          <input id="sfPhone" type="tel" name="phone" required minlength="8" value="{{ checkout_form.phone }}" autocomplete="tel" {{ 'readonly' if store_account }}>
         </div>
         <div class="sf-field">
           <label for="sfCheckoutCity">المحافظة</label>
@@ -64,12 +65,13 @@
     <div class="sf-mini-items">
       {% for item in cart_items %}
       <div class="sf-mini-item">
-        <span>{{ item.name }} × {{ item.quantity }}</span>
+        <span>{{ item.name }} × {{ item.quantity }}{% if item.color %}<small class="sf-muted" style="display:block">الخيار: {{ item.color }}</small>{% endif %}</span>
         <strong>{{ "{:,.0f}".format(item.line_total) }} د.ع</strong>
       </div>
       {% endfor %}
     </div>
     <div class="sf-sum-row"><span>المجموع</span><strong>{{ "{:,.0f}".format(subtotal) }} د.ع</strong></div>
+    <div class="sf-sum-row is-shipping"><span>الشحن</span><strong>{{ "{:,.0f}".format(shipping_fee) }} د.ع</strong></div>
     <div class="sf-sum-row"><span>الخصم</span><strong>-{{ "{:,.0f}".format(discount_amount) }} د.ع</strong></div>
     <div class="sf-sum-row final"><span>الإجمالي</span><strong id="sfGrandTotalText">{{ "{:,.0f}".format(grand_total) }} د.ع</strong></div>
     {% else %}

@@ -1,0 +1,33 @@
+{% set en = current_lang == 'en' %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/orders-workspace.css') }}?v=20261018c">
+<section id="ordersWorkspace" class="orders-workspace no-print"
+  data-storage-key="{{ session.get('tenant_slug', '') }}:{{ session.get('user_id', '') }}:{{ page_type or 'all' }}"
+  data-msg-saved="{{ 'Filter saved on this browser.' if en else 'تم حفظ التصفية بهذا المتصفح.' }}"
+  data-msg-applied="{{ 'Filter applied.' if en else 'تم تطبيق التصفية.' }}"
+  data-msg-deleted="{{ 'Saved filter removed.' if en else 'تم حذف التصفية المحفوظة.' }}"
+  data-msg-name="{{ 'Enter a filter name.' if en else 'اكتب اسم التصفية أولاً.' }}"
+  data-msg-limit="{{ 'You can save up to 10 filters for this page.' if en else 'تستطيع حفظ 10 تصفيات لهذه الصفحة؛ احذف واحدة لإضافة غيرها.' }}"
+  data-msg-select="{{ 'Select a saved filter first.' if en else 'اختر تصفية محفوظة أولاً.' }}"
+  data-msg-stale="{{ 'Some options have changed. Save a new filter.' if en else 'بعض الخيارات تغيرت؛ احفظ تصفية جديدة قبل تطبيقها.' }}"
+  data-msg-storage="{{ 'Browser storage is unavailable. Changes were not saved.' if en else 'التخزين بالمتصفح غير متاح؛ لم تُحفظ التغييرات.' }}">
+  <nav class="orders-status-tabs" aria-label="{{ 'Order statuses' if en else 'حالات الطلبات' }}">
+    {% for tab in orders_status_links or [] %}
+    {% if business_allows('orders') and business_allows(tab.feature) %}
+    <a href="{{ tab.href }}" data-orders-status="{{ tab.key }}"{% if (page_type or 'all') == tab.key %} aria-current="page"{% endif %}>{% if tab.key == 'returned' %}{{ 'Returned & cancelled' if en else 'الراجع والملغي' }}{% elif tab.key == 'cancelled' %}{{ 'Cancelled only' if en else 'الملغاة فقط' }}{% else %}{{ _(tab.label) }}{% endif %}</a>
+    {% endif %}
+    {% endfor %}
+  </nav>
+  <details class="orders-saved-filters-panel">
+    <summary>{{ 'Saved filters' if en else 'التصفيات المحفوظة' }}</summary>
+  <div class="orders-saved-filters">
+    <label for="ordersSavedFilter">{{ 'Saved filters' if en else 'التصفيات المحفوظة' }}</label>
+    <select id="ordersSavedFilter" data-view-select><option value="">{{ 'Choose a filter' if en else 'اختر تصفية' }}</option></select>
+    <button type="button" class="btn btn-secondary" data-view-apply>{{ 'Apply' if en else 'تطبيق' }}</button>
+    <button type="button" class="btn btn-secondary" data-view-delete>{{ 'Remove' if en else 'حذف' }}</button>
+    <input type="text" maxlength="60" data-view-name aria-label="{{ 'New filter name' if en else 'اسم التصفية الجديدة' }}" placeholder="{{ 'New filter name' if en else 'اسم التصفية الجديدة' }}">
+    <button type="button" class="btn btn-primary" data-view-save>{{ 'Save current filters' if en else 'حفظ التصفية الحالية' }}</button>
+  </div>
+  </details>
+  <p class="orders-views-status" data-view-status role="status" aria-live="polite">{{ 'Filters, column filters and sorting are saved for you on this browser. Apply them when needed.' if en else 'تُحفظ الفلاتر وفلاتر الأعمدة والترتيب إلك بهذا المتصفح؛ تطبّقها عند الحاجة.' }}</p>
+</section>
+<script src="{{ url_for('static', filename='js/orders-views.js') }}?v=20261018b"></script>

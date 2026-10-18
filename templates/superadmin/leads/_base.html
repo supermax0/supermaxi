@@ -1,0 +1,85 @@
+{% extends 'superadmin_base.html' %}
+{% from 'superadmin/leads/_macros.html' import status_badge, kpi_card, empty_state %}
+{% block title %}العملاء المحتملون — {{ page_title|default('نظرة عامة') }}{% endblock %}
+{% block extra_style %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin_leads.css', v='20260830-drawer2') }}">
+{% endblock %}
+{% block content %}
+<div class="lc-shell">
+    <header class="lc-page-header">
+        <div>
+            <h1>{{ page_title|default('العملاء المحتملون') }}</h1>
+            {% if page_subtitle %}<p class="lc-subtitle">{{ page_subtitle }}</p>{% endif %}
+        </div>
+        <div class="lc-header-actions">
+            {% block header_actions %}{% endblock %}
+        </div>
+    </header>
+
+    <nav class="lc-subnav" aria-label="تنقل العملاء المحتملين">
+        <a href="{{ url_for('superadmin_leads.overview') }}" class="lc-subnav-link {% if request.path == '/superadmin/leads/' %}is-active{% endif %}">
+            <i class="fas fa-gauge-high"></i> لوحة التحكم
+        </a>
+        <a href="{{ url_for('superadmin_leads.all_leads') }}" class="lc-subnav-link {% if '/superadmin/leads/all' in request.path or '/superadmin/leads/new' in request.path %}is-active{% endif %}">
+            <i class="fas fa-address-book"></i> جميع العملاء
+        </a>
+        <a href="{{ url_for('superadmin_leads.pipeline_page') }}" class="lc-subnav-link {% if '/superadmin/leads/pipeline' in request.path %}is-active{% endif %}">
+            <i class="fas fa-columns"></i> مسار المبيعات
+        </a>
+        <a href="{{ url_for('superadmin_leads.followups_page') }}" class="lc-subnav-link {% if '/superadmin/leads/follow-ups' in request.path %}is-active{% endif %}">
+            <i class="fas fa-clock"></i> المتابعات
+        </a>
+        <a href="{{ url_for('superadmin_leads.imports_page') }}" class="lc-subnav-link {% if '/superadmin/leads/import' in request.path %}is-active{% endif %}">
+            <i class="fas fa-file-import"></i> الاستيراد
+        </a>
+        <a href="{{ url_for('superadmin_leads.duplicates_page') }}" class="lc-subnav-link {% if '/superadmin/leads/duplicates' in request.path %}is-active{% endif %}">
+            <i class="fas fa-clone"></i> التكرارات
+            {% if leads_dup_count and leads_dup_count > 0 %}<span class="lc-subnav-badge">{{ leads_dup_count }}</span>{% endif %}
+        </a>
+        <a href="{{ url_for('superadmin_leads.reports_page') }}" class="lc-subnav-link {% if '/superadmin/leads/reports' in request.path or '/superadmin/leads/performance' in request.path or '/superadmin/leads/sources' in request.path %}is-active{% endif %}">
+            <i class="fas fa-chart-pie"></i> التقارير
+        </a>
+        <a href="{{ url_for('superadmin_leads.map_page') }}" class="lc-subnav-link {% if '/superadmin/leads/map' in request.path %}is-active{% endif %}">
+            <i class="fas fa-map-marked-alt"></i> الخريطة
+        </a>
+        <a href="{{ url_for('superadmin_leads.settings_page') }}" class="lc-subnav-link {% if '/superadmin/leads/settings' in request.path or '/superadmin/leads/activities' in request.path %}is-active{% endif %}">
+            <i class="fas fa-sliders-h"></i> الإعدادات
+        </a>
+    </nav>
+
+    {% block leads_content %}{% endblock %}
+</div>
+
+<div class="lc-drawer-root" id="lcDrawerRoot" hidden>
+    <div class="lc-drawer-backdrop" data-lc-drawer-close></div>
+    <aside class="lc-drawer" id="lcDrawer" role="dialog" aria-modal="true" aria-labelledby="lcDrawerTitle">
+        <header class="lc-drawer-head">
+            <div class="lc-drawer-head-main">
+                <div class="lc-drawer-badges" id="lcDrawerBadges"></div>
+                <h2 id="lcDrawerTitle">تفاصيل العميل</h2>
+                <p class="lc-drawer-location" id="lcDrawerLocation"></p>
+            </div>
+            <div class="lc-drawer-head-side">
+                <div class="lc-score" id="lcDrawerScore" hidden><small>التقييم</small><span>0</span></div>
+                <button type="button" class="lc-drawer-close" data-lc-drawer-close aria-label="إغلاق">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </header>
+        <div class="lc-drawer-body" id="lcDrawerBody">
+            <div class="lc-drawer-loading">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>جاري تحميل التفاصيل...</span>
+            </div>
+        </div>
+        <footer class="lc-drawer-foot" id="lcDrawerFoot" hidden>
+            <a href="#" class="sa-btn sa-btn-secondary" id="lcDrawerFullPage"><i class="fas fa-expand"></i> الصفحة الكاملة</a>
+            <a href="#" class="sa-btn sa-btn-primary" id="lcDrawerEdit"><i class="fas fa-pen"></i> تعديل</a>
+        </footer>
+    </aside>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/superadmin_leads.js', v='20260830-drawer2') }}"></script>
+{% block leads_scripts %}{% endblock %}
+{% endblock %}

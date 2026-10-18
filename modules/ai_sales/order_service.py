@@ -19,6 +19,9 @@ from utils.order_stock_lock import (
     mark_order_stock_locked,
 )
 from utils.order_stock_policy import deferred_stock_enabled
+from utils.product_color_service import product_has_colors, validate_color_sale
+from utils.trade_in_service import TradeInError, resolve_sale_selection, sync_trade_in_receipts
+from utils.tenant_feature_flags import tenant_feature_enabled
 
 
 _DIGIT_TRANSLATION = str.maketrans(
@@ -149,6 +152,8 @@ def build_pending_order(
         "prepared_from_message_id": int(message_id),
         "selection_message_id": int(selection_message_id),
         "selection_product_id": int(product.get("product_id") or 0),
+        "variant_color": str(product.get("variant_color") or "").strip(),
+        "sale_mode": product.get("sale_mode"),
         "prepared_at": datetime.utcnow().isoformat(),
     }
 
@@ -249,7 +254,22 @@ def create_confirmed_order(conversation, customer, pending: dict[str, Any]) -> A
     if not product or not product.active:
         return AIOrderResult(status="unavailable", message="المنتج لم يعد متاحاً للحجز. راح أراجعلك بديل مناسب.")
 
-    current_price = int(product.sale_price or 0)
+    variant_color = str(pending.get("variant_color") or "").strip()
+    if product_has_colors(product) and not variant_color:
+        return AIOrderResult(status="missing_selection", message="يجب اختيار لون المنتج قبل تثبيت الطلب.")
+    color_ok, color_error = validate_color_sale(product.id, variant_color, quantity)
+    if not color_ok:
+        return AIOrderResult(status="missing_selection", message=color_error)
+    if (
+        tenant_feature_enabled("trade_in_sales", default=False)
+        and int(getattr(product, "exchange_sale_price", 0) or 0) > 0
+        and not pending.get("sale_mode")
+    ):
+        return AIOrderResult(status="missing_selection", message="يجب تحديد العملية: بيع أو استبدال.")
+    try:
+        sale_mode, current_price, source_product = resolve_sale_selection(product, pending)
+    except TradeInError as exc:
+        return AIOrderResult(status="missing_selection", message=str(exc))
     if current_price <= 0:
         return AIOrderResult(status="unavailable", message="سعر المنتج يحتاج مراجعة من الموظف قبل تثبيت الطلب.")
     if current_price != int(pending.get("unit_price") or 0):
@@ -271,7 +291,12 @@ def create_confirmed_order(conversation, customer, pending: dict[str, Any]) -> A
 
     default_branch = get_default_branch()
     preferred_branch_id = default_branch.id if default_branch else None
-    stock_rows = [{"product": product, "product_id": product.id, "quantity": quantity}]
+    stock_rows = [{
+        "product": product,
+        "product_id": product.id,
+        "quantity": quantity,
+        "variant_color": variant_color,
+    }]
     defer_stock = deferred_stock_enabled()
     stock_check = None if defer_stock else check_stock_rows(stock_rows, preferred_branch_id=preferred_branch_id)
     page = _order_page(conversation.channel)
@@ -322,9 +347,14 @@ def create_confirmed_order(conversation, customer, pending: dict[str, Any]) -> A
             cost=int(product.buy_price or 0),
             total=current_price * quantity,
             fulfillment_branch_id=fulfillment_branch_id,
+            variant_color=variant_color or None,
+            sale_mode=sale_mode,
+            trade_in_source_product_id=None,
+            trade_in_source_product_name=None,
         )
     )
     db.session.flush()
+    sync_trade_in_receipts(invoice)
 
     if defer_stock:
         clear_order_stock_lock(invoice)

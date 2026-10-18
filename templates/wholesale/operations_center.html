@@ -1,0 +1,198 @@
+{% extends "wholesale/base.html" %}
+{% block title %}مركز عمليات الجملة — Finora{% endblock %}
+{% block page_title %}مركز عمليات الجملة{% endblock %}
+
+{% block ws_content %}
+<div class="ws-ops" id="wsOps" data-initial-op="{{ initial_op|default('sale') }}">
+  <header class="ws-page-head">
+    <div class="ws-page-head__identity">
+      <span class="ws-page-head__icon"><i class="fa fa-layer-group"></i></span>
+      <div>
+        <span class="ws-page-kicker">تجارة الجملة</span>
+        <h1>مركز العمليات</h1>
+        <p>بيع · قبض · شراء · تسديد — نفس الواجهة بدون تنقل بين الصفحات</p>
+      </div>
+    </div>
+    <div class="ws-page-head__actions">
+      <div class="ws-ops-tabs" id="wsDraftTabs"></div>
+    </div>
+  </header>
+
+  <nav class="ws-op-switch" role="tablist">
+    <button type="button" class="ws-op-btn" data-op="sale"><i class="fa fa-file-invoice-dollar"></i> بيع</button>
+    <button type="button" class="ws-op-btn" data-op="receipt"><i class="fa fa-hand-holding-usd"></i> قبض</button>
+    <button type="button" class="ws-op-btn" data-op="purchase"><i class="fa fa-cart-plus"></i> شراء</button>
+    <button type="button" class="ws-op-btn" data-op="payment"><i class="fa fa-money-bill-wave"></i> تسديد</button>
+    <button type="button" class="ws-op-btn ws-op-new" id="wsNewTab" title="Ctrl+N"><i class="fa fa-plus"></i> تبويب</button>
+  </nav>
+
+  <section class="ws-panel" data-panel="sale" hidden>
+    <div class="ws-grid-top">
+      <label>رقم الفاتورة<input id="saleInvoiceNo" readonly></label>
+      <label>التاريخ<input type="date" id="saleDate"></label>
+      <label>العميل
+        <div class="ws-combo">
+          <input id="saleCustomerQ" placeholder="بحث بالاسم أو الهاتف" autocomplete="off">
+          <button type="button" class="ws-mini" id="saleCustomerAdd">+</button>
+          <div class="ws-suggest" id="saleCustomerSuggest"></div>
+        </div>
+        <input type="hidden" id="saleCustomerId">
+      </label>
+      <label>المخزن<select id="saleWarehouse"></select></label>
+      <label>العملة<select id="saleCurrency"><option>IQD</option><option>USD</option></select></label>
+      <label>سعر الصرف<input type="number" id="saleRate" step="0.01" value="1"></label>
+      <label>نوع البيع
+        <select id="saleType">
+          <option value="cash">نقدي</option>
+          <option value="credit">آجل</option>
+          <option value="partial">جزئي</option>
+        </select>
+      </label>
+    </div>
+    <div class="ws-product-search">
+      <input id="saleProductQ" placeholder="بحث منتج: اسم / كود / باركود — F2" autocomplete="off">
+      <div class="ws-suggest" id="saleProductSuggest"></div>
+    </div>
+    <div class="ws-table-wrap">
+      <table class="ws-table" id="saleLinesTable">
+        <thead>
+          <tr><th>المنتج</th><th>المتاح</th><th>الكمية</th><th>السعر</th><th>خصم</th><th>الإجمالي</th><th></th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="ws-totals">
+      <label>خصم إضافي<input type="number" id="saleDiscount" value="0"></label>
+      <label>نقل / شحن<input type="number" id="saleShipping" value="0"></label>
+      <label>المدفوع<input type="number" id="salePaid" value="0"></label>
+      <div class="ws-totals-box">
+        <div>المجموع: <strong id="saleSub">0</strong></div>
+        <div>الإجمالي: <strong id="saleGrand">0</strong></div>
+        <div>المتبقي: <strong id="saleRemain">0</strong></div>
+      </div>
+    </div>
+    <div class="ws-actions">
+      <button type="button" class="ws-btn primary" data-sale-action="save"><i class="fa fa-check"></i> حفظ (Ctrl+S)</button>
+      <button type="button" class="ws-btn secondary" data-sale-action="print"><i class="fa fa-print"></i> حفظ وطباعة</button>
+      <button type="button" class="ws-btn ghost" data-sale-action="draft"><i class="fa fa-floppy-disk"></i> مسودة</button>
+    </div>
+  </section>
+
+  <section class="ws-panel" data-panel="receipt" hidden>
+    <div class="ws-grid-top">
+      <label>العميل
+        <div class="ws-combo">
+          <input id="rcpCustomerQ" placeholder="بحث عميل" autocomplete="off">
+          <div class="ws-suggest" id="rcpCustomerSuggest"></div>
+        </div>
+        <input type="hidden" id="rcpCustomerId">
+      </label>
+      <label>الرصيد السابق<input id="rcpBalanceBefore" readonly></label>
+      <label>المبلغ<input type="number" id="rcpAmount" value="0"></label>
+      <label>العملة<select id="rcpCurrency"><option>IQD</option><option>USD</option></select></label>
+      <label>سعر الصرف<input type="number" id="rcpRate" step="0.01" value="1"></label>
+      <label>الصندوق / الحساب<select id="rcpTreasury"></select></label>
+      <label>طريقة القبض
+        <select id="rcpMethod"><option value="cash">نقداً</option><option value="transfer">تحويل</option><option value="cheque">شيك</option></select>
+      </label>
+      <label>التاريخ<input type="date" id="rcpDate"></label>
+      <label class="ws-span-2">ملاحظات<input id="rcpNote"></label>
+    </div>
+    <label class="ws-check"><input type="checkbox" id="rcpFifo" checked> توزيع على أقدم الفواتير</label>
+    <div class="ws-table-wrap">
+      <table class="ws-table" id="rcpInvoicesTable">
+        <thead><tr><th>فاتورة</th><th>الإجمالي</th><th>المتبقي</th><th>تخصيص</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="ws-totals-box">الرصيد بعد العملية: <strong id="rcpBalanceAfter">0</strong></div>
+    <div class="ws-actions" style="margin-top:12px">
+      <button type="button" class="ws-btn primary" id="rcpSave"><i class="fa fa-hand-holding-usd"></i> حفظ القبض</button>
+    </div>
+  </section>
+
+  <section class="ws-panel" data-panel="purchase" hidden>
+    <div class="ws-grid-top">
+      <label>المورد
+        <div class="ws-combo">
+          <input id="purSupplierQ" placeholder="بحث مورد" autocomplete="off">
+          <button type="button" class="ws-mini" id="purSupplierAdd">+</button>
+          <div class="ws-suggest" id="purSupplierSuggest"></div>
+        </div>
+        <input type="hidden" id="purSupplierId">
+      </label>
+      <label>فاتورة المورد<input id="purSupplierInv"></label>
+      <label>التاريخ<input type="date" id="purDate"></label>
+      <label>المخزن المستلم<select id="purWarehouse"></select></label>
+      <label>العملة<select id="purCurrency"><option>IQD</option><option>USD</option></select></label>
+      <label>سعر الصرف<input type="number" id="purRate" step="0.01" value="1"></label>
+      <label>نوع الشراء
+        <select id="purMode"><option value="cash">نقدي</option><option value="credit">آجل</option><option value="mixed">جزئي</option></select>
+      </label>
+    </div>
+    <div class="ws-product-search">
+      <input id="purProductQ" placeholder="بحث منتج للشراء" autocomplete="off">
+      <div class="ws-suggest" id="purProductSuggest"></div>
+    </div>
+    <div class="ws-table-wrap">
+      <table class="ws-table" id="purLinesTable">
+        <thead><tr><th>المنتج</th><th>الكمية</th><th>سعر الشراء</th><th>خصم</th><th>الإجمالي</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="ws-totals">
+      <label>شحن<input type="number" id="purShipping" value="0"></label>
+      <label>جمارك<input type="number" id="purCustoms" value="0"></label>
+      <label>مصاريف إضافية<input type="number" id="purOther" value="0"></label>
+      <label>المدفوع<input type="number" id="purPaid" value="0"></label>
+      <div class="ws-totals-box">
+        <div>الإجمالي: <strong id="purGrand">0</strong></div>
+        <div>المتبقي: <strong id="purRemain">0</strong></div>
+      </div>
+    </div>
+    <div class="ws-actions">
+      <button type="button" class="ws-btn primary" data-pur-action="save"><i class="fa fa-check"></i> حفظ واعتماد</button>
+      <button type="button" class="ws-btn ghost" data-pur-action="draft"><i class="fa fa-floppy-disk"></i> مسودة</button>
+    </div>
+  </section>
+
+  <section class="ws-panel" data-panel="payment" hidden>
+    <div class="ws-grid-top">
+      <label>المورد
+        <div class="ws-combo">
+          <input id="paySupplierQ" placeholder="بحث مورد" autocomplete="off">
+          <div class="ws-suggest" id="paySupplierSuggest"></div>
+        </div>
+        <input type="hidden" id="paySupplierId">
+      </label>
+      <label>رصيد المورد<input id="payBalanceBefore" readonly></label>
+      <label>مبلغ التسديد<input type="number" id="payAmount" value="0"></label>
+      <label>العملة<select id="payCurrency"><option>IQD</option><option>USD</option></select></label>
+      <label>سعر الصرف<input type="number" id="payRate" step="0.01" value="1"></label>
+      <label>الحساب / الصندوق<select id="payTreasury"></select></label>
+      <label>طريقة التسديد
+        <select id="payMethod"><option value="cash">نقداً</option><option value="transfer">تحويل</option></select>
+      </label>
+      <label>التاريخ<input type="date" id="payDate"></label>
+      <label class="ws-span-2">ملاحظات<input id="payNote"></label>
+    </div>
+    <label class="ws-check"><input type="checkbox" id="payFifo" checked> ربط بأقدم فواتير الشراء</label>
+    <div class="ws-table-wrap">
+      <table class="ws-table" id="payPurchasesTable">
+        <thead><tr><th>فاتورة</th><th>الإجمالي</th><th>المتبقي</th><th>تخصيص</th></tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="ws-totals-box">الرصيد بعد التسديد: <strong id="payBalanceAfter">0</strong></div>
+    <div class="ws-actions" style="margin-top:12px">
+      <button type="button" class="ws-btn primary" id="paySave"><i class="fa fa-money-bill-wave"></i> حفظ التسديد</button>
+    </div>
+  </section>
+
+  <div class="ws-toast" id="wsToast" hidden></div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='wholesale/operations_center.js') }}"></script>
+{% endblock %}

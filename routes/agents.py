@@ -1,6 +1,7 @@
 # routes/agents.py
 from flask import Blueprint, render_template, request, jsonify, redirect, url_for
 from extensions import db
+from utils.branch_scope import resolve_write_branch_id
 from models.delivery_agent import DeliveryAgent
 from models.shipping_report import ShippingReport
 from models.invoice import Invoice
@@ -15,17 +16,21 @@ from utils.agent_report_helpers import (
     get_pending_agent_reports_summary,
     is_agent_report,
     list_pending_agent_reports,
+    merge_open_agent_reports,
     order_payment_snapshot,
     row_collectible_amount,
     serialize_pending_report,
 )
 from utils.decorators import permission_required
 from utils.order_shipping import is_shipping_item, order_item_display_name
+from utils.order_stock_policy import OrderStockError, prepare_order_for_dispatch
 from utils.permission_checks import employee_can, get_current_employee
 from utils.team_schema import ensure_delivery_agent_schema
 from utils.agent_employee_link import ensure_agent_employee
+from utils.agent_tracking import ensure_agent_location_schema, live_agents_payload
 from utils.payroll_service import apply_payroll_config
 from utils.agent_passwords import hash_agent_password
+from utils.activity_logger import INVOICE_SNAPSHOT_FIELDS, log_mutation, snapshot_attrs
 
 agents_bp = Blueprint("agents", __name__, url_prefix="/agents")
 
@@ -37,6 +42,20 @@ def _agents_manage_allowed() -> bool:
 @agents_bp.before_request
 def ensure_agents_schema():
     ensure_delivery_agent_schema()
+    ensure_agent_location_schema()
+
+
+@agents_bp.route("/live")
+@permission_required("view_agents")
+def agents_live():
+    """خريطة مراقبة مواقع المندوبين الحية."""
+    return render_template("agents_live.html")
+
+
+@agents_bp.route("/live-positions")
+@permission_required("view_agents")
+def agents_live_positions():
+    return jsonify({"success": True, "agents": live_agents_payload()})
 
 
 @agents_bp.route("/pending-execution")
@@ -106,6 +125,7 @@ def add_agent():
         if DeliveryAgent.query.filter_by(username=username).first():
             return jsonify({"error": "اسم المستخدم مستخدم من قبل"}), 400
     agent = DeliveryAgent(
+        branch_id=resolve_write_branch_id(data),
         name=name,
         phone=phone or None,
         notes=notes or None,
@@ -259,20 +279,42 @@ def _agent_report_order_payload(order: Invoice) -> dict:
     }
 
 
+def _parse_order_ids_payload(data) -> list[int]:
+    """اقبل order_id أو order_ids (قائمة / نص مفصول)."""
+    raw_ids = data.get("order_ids")
+    if raw_ids is None and data.get("order_id") is not None:
+        raw_ids = [data.get("order_id")]
+    if raw_ids is None:
+        return []
+    if isinstance(raw_ids, str):
+        cleaned = raw_ids.replace(",", " ").replace("\n", " ").replace("\r", " ")
+        raw_ids = [p for p in cleaned.split() if p.strip()]
+    if not isinstance(raw_ids, (list, tuple, set)):
+        raw_ids = [raw_ids]
+
+    order_ids: list[int] = []
+    seen = set()
+    for raw in raw_ids:
+        try:
+            oid = int(raw)
+        except (TypeError, ValueError):
+            continue
+        if oid <= 0 or oid in seen:
+            continue
+        seen.add(oid)
+        order_ids.append(oid)
+    return order_ids
+
+
 @agents_bp.route("/reports/add-order", methods=["POST"])
 @permission_required("view_agents")
 def add_order_to_agent_report():
     data = request.get_json(silent=True) or request.form or {}
     report_number = (data.get("report_number") or "").strip()
-    order_id = data.get("order_id")
+    order_ids = _parse_order_ids_payload(data)
 
-    if not report_number or not order_id:
-        return jsonify({"error": "رقم الكشف ورقم الطلب مطلوبان"}), 400
-
-    try:
-        order_id = int(order_id)
-    except (TypeError, ValueError):
-        return jsonify({"error": "رقم الطلب غير صحيح"}), 400
+    if not report_number or not order_ids:
+        return jsonify({"error": "رقم الكشف ورقم الطلب (أو قائمة الطلبات) مطلوبان"}), 400
 
     report = ShippingReport.query.filter_by(report_number=report_number).first()
     if not report or not is_agent_report(report):
@@ -282,28 +324,6 @@ def add_order_to_agent_report():
         return jsonify({"error": "لا يمكن إضافة طلب إلى كشف منفذ"}), 400
 
     agent_id = int(report.report_number.split("-")[1])
-    order = Invoice.query.get(order_id)
-    if not order:
-        return jsonify({"error": "الطلب غير موجود"}), 404
-
-    if order.delivery_agent_id and int(order.delivery_agent_id) != agent_id:
-        return jsonify({"error": "الطلب مرتبط بمندوب آخر"}), 400
-
-    current_ids = get_report_order_ids(report)
-    if order_id in current_ids:
-        return jsonify({"success": True, "message": "الطلب موجود بهذا الكشف أصلاً"}), 200
-
-    open_reports = find_open_agent_reports_for_order(order_id, agent_id)
-    if open_reports:
-        return jsonify({
-            "error": "الطلب موجود بكشف مفتوح آخر: " + ", ".join(r.report_number for r in open_reports)
-        }), 400
-
-    executed_reports = find_blocking_executed_agent_reports_for_order(order_id, agent_id)
-    if executed_reports:
-        return jsonify({
-            "error": "الطلب منفذ سابقاً بكشف: " + ", ".join(r.report_number for r in executed_reports)
-        }), 400
 
     try:
         orders_data = json.loads(report.orders_data or "[]")
@@ -312,18 +332,179 @@ def add_order_to_agent_report():
     except Exception:
         orders_data = []
 
-    order.delivery_agent_id = agent_id
-    orders_data.append(_agent_report_order_payload(order))
-    report.orders_data = json.dumps(orders_data, ensure_ascii=False)
-    report.orders_count = len(orders_data)
-    report.total_amount = sum(row_collectible_amount(row) for row in orders_data)
-    db.session.commit()
+    current_ids = set(get_report_order_ids(report))
+    added: list[int] = []
+    skipped: list[dict] = []
+    errors: list[dict] = []
+    mutation_logs: list[tuple] = []
+
+    for order_id in order_ids:
+        if order_id in current_ids:
+            skipped.append({"order_id": order_id, "reason": "موجود بهذا الكشف أصلاً"})
+            continue
+
+        order = Invoice.query.get(order_id)
+        if not order:
+            errors.append({"order_id": order_id, "error": "الطلب غير موجود"})
+            continue
+
+        if order.delivery_agent_id and int(order.delivery_agent_id) != agent_id:
+            errors.append({"order_id": order_id, "error": "الطلب مرتبط بمندوب آخر"})
+            continue
+
+        open_reports = find_open_agent_reports_for_order(order_id, agent_id)
+        if open_reports:
+            errors.append({
+                "order_id": order_id,
+                "error": "موجود بكشف مفتوح: " + ", ".join(r.report_number for r in open_reports),
+            })
+            continue
+
+        executed_reports = find_blocking_executed_agent_reports_for_order(order_id, agent_id)
+        if executed_reports:
+            errors.append({
+                "order_id": order_id,
+                "error": "منفذ سابقاً بكشف: " + ", ".join(r.report_number for r in executed_reports),
+            })
+            continue
+
+        before = snapshot_attrs(order, *INVOICE_SNAPSHOT_FIELDS)
+        try:
+            with db.session.begin_nested():
+                order.delivery_agent_id = agent_id
+                prepare_order_for_dispatch(order)
+                orders_data.append(_agent_report_order_payload(order))
+                current_ids.add(order_id)
+                added.append(order_id)
+                mutation_logs.append((
+                    order.id,
+                    before,
+                    snapshot_attrs(order, *INVOICE_SNAPSHOT_FIELDS),
+                ))
+        except OrderStockError as exc:
+            errors.append({
+                "order_id": order_id,
+                "error": exc.message,
+                "code": "INSUFFICIENT_STOCK",
+                "shortages": exc.shortages,
+            })
+
+    if not added and not skipped and errors:
+        first = errors[0]
+        payload = {"error": f"الطلب #{first['order_id']}: {first['error']}", "errors": errors}
+        if first.get("code"):
+            payload["code"] = first["code"]
+            payload["shortages"] = first.get("shortages")
+            payload["order_id"] = first["order_id"]
+        return jsonify(payload), 400
+
+    if added:
+        report.orders_data = json.dumps(orders_data, ensure_ascii=False)
+        report.orders_count = len(orders_data)
+        report.total_amount = sum(row_collectible_amount(row) for row in orders_data)
+        db.session.commit()
+        for order_id, before, after in mutation_logs:
+            log_mutation(
+                "update",
+                "orders",
+                "invoice",
+                order_id,
+                before,
+                after,
+                f"إضافة الطلب #{order_id} إلى كشف المندوب {report.report_number}",
+            )
+    elif skipped and not errors:
+        return jsonify({
+            "success": True,
+            "message": "كل الطلبات موجودة بهذا الكشف أصلاً",
+            "added": [],
+            "skipped": skipped,
+            "errors": [],
+            "orders_count": report.orders_count,
+            "total_amount": int(report.total_amount or 0),
+        }), 200
+
+    parts = []
+    if added:
+        parts.append("أُضيفت: " + ", ".join(f"#{i}" for i in added))
+    if skipped:
+        parts.append(f"تخطّي {len(skipped)}")
+    if errors:
+        parts.append(f"فشل {len(errors)}")
+    message = " | ".join(parts) if parts else "لا تغيير"
+    if added:
+        message = f"تمت الإضافة إلى {report.report_number} — {message}"
+
+    return jsonify({
+        "success": bool(added or skipped),
+        "message": message,
+        "added": added,
+        "skipped": skipped,
+        "errors": errors,
+        "orders_count": report.orders_count,
+        "total_amount": int(report.total_amount or 0),
+    }), 200
+
+
+@agents_bp.route("/reports/merge", methods=["POST"])
+@permission_required("view_agents")
+def merge_agent_reports_route():
+    data = request.get_json(silent=True) or request.form or {}
+    target_id = data.get("target_report_id") or data.get("target_id")
+    source_ids = data.get("source_report_ids") or data.get("source_ids") or []
+    report_ids = data.get("report_ids")
+
+    # اختصار: قائمة كشوف — أول عنصر هدف والباقي مصادر
+    if report_ids and isinstance(report_ids, (list, tuple)) and len(report_ids) >= 2:
+        target_id = report_ids[0]
+        source_ids = list(report_ids[1:])
+
+    if not target_id:
+        return jsonify({"error": "حدد كشف الهدف"}), 400
+    if isinstance(source_ids, str):
+        source_ids = [p for p in source_ids.replace(",", " ").split() if p.strip()]
+    if not isinstance(source_ids, (list, tuple)) or not source_ids:
+        return jsonify({"error": "حدد كشفاً واحداً على الأقل للدمج"}), 400
+
+    try:
+        target_id = int(target_id)
+        source_ids = [int(x) for x in source_ids]
+    except (TypeError, ValueError):
+        return jsonify({"error": "معرّفات الكشوف غير صحيحة"}), 400
+
+    target = ShippingReport.query.get(target_id)
+    if not target or not is_agent_report(target):
+        return jsonify({"error": "كشف الهدف غير موجود"}), 404
+
+    sources = []
+    for sid in source_ids:
+        if sid == target_id:
+            continue
+        src = ShippingReport.query.get(sid)
+        if not src:
+            return jsonify({"error": f"الكشف #{sid} غير موجود"}), 404
+        sources.append(src)
+
+    if not sources:
+        return jsonify({"error": "حدد كشفاً مختلفاً عن الهدف للدمج"}), 400
+
+    try:
+        result = merge_open_agent_reports(target, sources)
+        db.session.commit()
+    except ValueError as exc:
+        db.session.rollback()
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        db.session.rollback()
+        return jsonify({"error": f"فشل الدمج: {exc}"}), 500
 
     return jsonify({
         "success": True,
-        "message": f"تمت إضافة الطلب #{order_id} إلى الكشف {report.report_number}",
-        "orders_count": report.orders_count,
-        "total_amount": int(report.total_amount or 0),
+        "message": (
+            f"تم دمج {len(result['merged_from'])} كشف في {result['target_report_number']} "
+            f"({result['moved_orders']} طلب منقول)"
+        ),
+        **result,
     })
 
 

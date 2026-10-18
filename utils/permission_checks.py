@@ -36,6 +36,12 @@ LEGACY_TO_RBAC: dict[str, str] = {
     "can_see_agents": "view_agents",
     "can_see_pages": "view_pages",
     "can_see_messages": "view_messages",
+    "facebook_employee_inbox.view": "view_messages",
+    "facebook_employee_inbox.reply": "view_messages",
+    "facebook_employee_inbox.view_all": "view_reports",
+    "facebook_conversations.transfer": "manage_employees",
+    "facebook_monitor.view": "view_reports",
+    "facebook_routing.manage": "manage_settings",
     "can_manage_employees": "manage_employees",
     "can_manage_agents": "manage_agents",
     "can_manage_pages": "manage_pages",
@@ -77,20 +83,59 @@ def get_current_employee() -> Employee | None:
 
 def ensure_cashier_role_has_messages() -> None:
     """Ensure the default cashier RBAC role includes messaging (POS chat button)."""
+    ensure_cashier_role_has_permissions(("view_messages", "print_pos_invoice"))
+
+
+def ensure_cashier_role_has_permissions(permission_names: tuple[str, ...] | list[str]) -> None:
+    """Attach missing default POS permissions to the cashier role."""
     from extensions import db
     from models.role import Permission, Role
 
+    names = [n for n in permission_names if n]
+    if not names:
+        return
     try:
-        perm = Permission.query.filter_by(name="view_messages").first()
-        if not perm:
-            return
         role = Role.query.filter_by(name="cashier").first()
-        if not role or perm in (role.permissions or []):
+        if not role:
             return
-        role.permissions.append(perm)
-        db.session.commit()
+        existing = {p.name for p in (role.permissions or [])}
+        changed = False
+        for name in names:
+            if name in existing:
+                continue
+            perm = Permission.query.filter_by(name=name).first()
+            if not perm:
+                continue
+            role.permissions.append(perm)
+            existing.add(name)
+            changed = True
+        if changed:
+            db.session.commit()
     except Exception:
         db.session.rollback()
+
+
+def _primary_role_has_permission(employee: Employee, permission_name: str) -> bool:
+    """Bridge legacy ``employee.role`` values to the RBAC role with that name.
+
+    Older employees were created with ``role='cashier'`` but without a row in
+    ``employee_roles``.  Permissions edited on the cashier role therefore never
+    reached them.  Explicitly assigned RBAC roles remain authoritative; this
+    fallback only applies when an employee has no role assignments at all.
+    """
+    assigned_roles = list(employee.roles or [])
+    if assigned_roles or not str(employee.role or "").strip():
+        return False
+    try:
+        from models.role import Role
+
+        primary_role = Role.query.filter_by(name=str(employee.role).strip()).first()
+        return bool(
+            primary_role
+            and any(permission.name == permission_name for permission in (primary_role.permissions or []))
+        )
+    except Exception:
+        return False
 
 
 def employee_can(employee: Employee | None, permission_name: str) -> bool:
@@ -99,10 +144,18 @@ def employee_can(employee: Employee | None, permission_name: str) -> bool:
     if employee.role == "admin":
         return True
     rbac_name = LEGACY_TO_RBAC.get(permission_name, permission_name)
+    from utils.permission_overrides import override_decision
+
+    decided = override_decision(employee, rbac_name)  # a per-employee exception beats every role and built-in default
+    if decided is not None:
+        return decided
+    # Cashiers can always print POS invoices (core POS duty).
+    if employee.role == "cashier" and rbac_name == "print_pos_invoice":
+        return True
     if employee.role == "cashier" and not list(employee.roles or []):
         if rbac_name in ("view_pos", "view_my_orders", "view_messages"):
             return True
-    return employee.has_permission(rbac_name)
+    return employee.has_permission(rbac_name) or _primary_role_has_permission(employee, rbac_name)
 
 
 def check_permission(permission_name: str) -> bool:
@@ -131,6 +184,16 @@ def guard_permission(permission_name: str, *, json: bool | None = None):
         return None
     if _wants_json_response(json):
         return jsonify({"success": False, "error": "غير مصرح"}), 403
+    # Print iframe embeds must NEVER receive a login page (users were printing /pos/login).
+    if (request.args.get("finora_embed") or "").strip() == "1":
+        return (
+            "<!doctype html><html lang='ar' dir='rtl'><head><meta charset='utf-8'>"
+            "<title>غير مصرح</title></head><body>"
+            "<p data-finora-print-blocked='permission'>غير مصرح بطباعة هذه الفاتورة.</p>"
+            "</body></html>",
+            403,
+            {"Content-Type": "text/html; charset=utf-8"},
+        )
     if request.path.rstrip("/") == "/pos":
         return redirect("/pos/login")
     return redirect("/pos/login")
@@ -153,11 +216,21 @@ def allowed_order_statuses_for(employee: Employee | None) -> list[str]:
     return allowed
 
 
-def employee_can_access_order(employee: Employee | None, order) -> bool:
+def employee_can_access_order(employee: Employee | None, order, *, for_print: bool = False) -> bool:
+    if not employee:
+        return False
+    if employee.role == "admin":
+        return True
+    # POS cashiers with print permission may open invoices for printing
+    # without needing the full orders-list permission.
+    if for_print and employee_can(employee, "print_pos_invoice") and (
+        employee_can(employee, "view_pos")
+        or employee_can(employee, "view_orders")
+        or employee_can(employee, "view_my_orders")
+    ):
+        return True
     if not employee_can(employee, "view_orders"):
         return False
-    if not employee or employee.role == "admin":
-        return bool(employee)
     status = (getattr(order, "status", None) or "").strip()
     perm = _STATUS_TO_PERMISSION.get(status)
     if perm:
@@ -168,9 +241,9 @@ def employee_can_access_order(employee: Employee | None, order) -> bool:
     return status in allowed
 
 
-def guard_order_access(order, *, json: bool | None = None):
+def guard_order_access(order, *, json: bool | None = None, for_print: bool = False):
     employee = get_current_employee()
-    if employee_can_access_order(employee, order):
+    if employee_can_access_order(employee, order, for_print=for_print):
         return None
     if _wants_json_response(json):
         return jsonify({"success": False, "error": "غير مصرح"}), 403

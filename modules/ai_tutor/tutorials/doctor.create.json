@@ -1,0 +1,152 @@
+{
+  "id": "doctor.create",
+  "version": 2,
+  "status": "verified",
+  "level": 2,
+  "onboarding_order": 1,
+  "title_ar": "إضافة طبيب",
+  "title_first_ar": "إضافة أول طبيب",
+  "title_first_when": {"name": "doctors_count", "op": "eq", "value": 0},
+  "description_ar": "إنشاء سجل طبيب مع حساب دخوله وصلاحياته.",
+  "chip_ar": "الأطباء",
+  "requires_permissions": ["clinics_admin"],
+  "dependencies": [
+    {
+      "fact": {"name": "specialties_count", "op": "gt", "value": 0},
+      "tutorial": "specialty.create",
+      "message_ar": "قبل إضافة الطبيب نحتاج نضيف اختصاص واحد على الأقل.",
+      "action_label_ar": "إضافة اختصاص الآن"
+    }
+  ],
+  "next_lessons": ["doctor.schedule"],
+  "curriculum": {"group": "setup", "order": 2},
+  "result": "doctor.created",
+  "completion_validator": "doctor.created_since_start",
+  "steps": [
+    {
+      "id": "open-staff-menu",
+      "type": "wait_click",
+      "target": {"action": "nav.doctors"},
+      "reveal": [{"action": "nav.menu.open"}, {"section": "nav.group.admin"}],
+      "reconcile": {"kind": "ui", "when": {"page": "staff"}},
+      "nav_message_ar": "جاري فتح الأطباء والموظفين",
+      "message_ar": "من هنا ندخل لإدارة أطباء العيادة. اضغط «الأطباء والموظفون»."
+    },
+    {
+      "id": "on-staff-page",
+      "type": "navigate",
+      "route": "/clinics/staff",
+      "page": "staff",
+      "reconcile": {"kind": "ui", "when": {"page": "staff"}},
+      "message_ar": "نفتح الآن صفحة الأطباء والموظفين."
+    },
+    {
+      "id": "click-add-doctor",
+      "type": "wait_click",
+      "page": "staff",
+      "target": {"action": "doctor.create"},
+      "reconcile": {"kind": "ui", "when": {"visible": {"section": "staff.form"}}},
+      "message_ar": "اضغط «إضافة طبيب وحساب» لفتح نموذج الإضافة."
+    },
+    {
+      "id": "form-open",
+      "type": "wait_modal",
+      "page": "staff",
+      "target": {"section": "staff.form"},
+      "reconcile": {"kind": "ui", "when": {"visible": {"section": "staff.form"}}},
+      "message_ar": "ننتظر ظهور نموذج إضافة الطبيب."
+    },
+    {
+      "id": "check-specialties",
+      "type": "branch",
+      "page": "staff",
+      "if": {"exists": {"field": "doctor.specialty"}},
+      "then": "name",
+      "else": "no-specialty"
+    },
+    {
+      "id": "name",
+      "type": "wait_input",
+      "page": "staff",
+      "target": {"field": "doctor.name"},
+      "condition": {"min_length": 3},
+      "message_ar": "اكتب الاسم الكامل للطبيب (3 أحرف على الأقل)."
+    },
+    {
+      "id": "phone",
+      "type": "highlight",
+      "page": "staff",
+      "target": {"field": "doctor.phone"},
+      "message_ar": "رقم الهاتف اختياري. أضفه إن أردت ثم اضغط «فهمت»."
+    },
+    {
+      "id": "username",
+      "type": "wait_input",
+      "page": "staff",
+      "target": {"field": "doctor.username"},
+      "condition": {"min_length": 3},
+      "message_ar": "اكتب اسم المستخدم الذي سيدخل به الطبيب."
+    },
+    {
+      "id": "password",
+      "type": "wait_input",
+      "page": "staff",
+      "target": {"field": "doctor.password"},
+      "condition": {"min_length": 6},
+      "message_ar": "اكتب كلمة مرور (6 أحرف على الأقل)."
+    },
+    {
+      "id": "specialty",
+      "type": "wait_select",
+      "page": "staff",
+      "target": {"section": "doctor.specialties"},
+      "watch": {"field": "doctor.specialty"},
+      "condition": {"min_checked": 1},
+      "message_ar": "حدّد اختصاص الطبيب (واحداً على الأقل)."
+    },
+    {
+      "id": "license",
+      "type": "highlight",
+      "page": "staff",
+      "target": {"field": "doctor.license"},
+      "message_ar": "رقم الإجازة الطبية اختياري. أضفه إن أردت ثم اضغط «فهمت»."
+    },
+    {
+      "id": "permissions",
+      "type": "highlight",
+      "page": "staff",
+      "target": {"section": "doctor.permissions"},
+      "message_ar": "الصلاحيات تُطبَّق تلقائياً حسب الدور الوظيفي ويمكنك تعديلها هنا قبل الحفظ."
+    },
+    {
+      "id": "save",
+      "type": "wait_api_success",
+      "page": "staff",
+      "allow_back": false,
+      "target": {"action": "doctor.save"},
+      "match": {"method": "POST", "url": "^/clinics/api/staff$"},
+      "reconcile": {"kind": "backend", "validator": "doctor.created_since_start"},
+      "success_ar": "تم حفظ الطبيب.",
+      "message_ar": "بعد التأكد من البيانات اضغط «حفظ»."
+    },
+    {
+      "id": "verify",
+      "type": "wait_state",
+      "allow_back": false,
+      "validator": "doctor.created_since_start",
+      "message_ar": "نتأكد الآن من إنشاء الطبيب في النظام…"
+    },
+    {
+      "id": "done",
+      "type": "complete",
+      "allow_back": false,
+      "message_ar": "تم إنشاء الطبيب وتأكدنا من ذلك داخل النظام."
+    },
+    {
+      "id": "no-specialty",
+      "type": "error",
+      "allow_back": false,
+      "message_ar": "لا توجد اختصاصات فعّالة في العيادة. أضف اختصاصاً من صفحة «الاختصاصات» ثم أعد الدرس."
+    }
+  ]
+}

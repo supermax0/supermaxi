@@ -9,6 +9,8 @@ TENANT = "test_supplier_debt_calculations"
 
 
 def _fresh_tenant_db(tenant=TENANT):
+    from extensions_tenant import clear_tenant_engine
+    clear_tenant_engine(tenant)
     db_file = ROOT / "tenants" / f"{tenant}.db"
     if db_file.exists():
         db_file.unlink()
@@ -21,19 +23,23 @@ def test_supplier_debts_ignore_negative_remaining_balances():
     from extensions import db
     from extensions_tenant import init_tenant_db
     from models.supplier import Supplier
+    from models.supplier_payment import SupplierPayment
     from routes.purchases import _get_purchase_stats
     from utils.accounting_calculations import calculate_supplier_debts
 
     with app.app_context():
         g.tenant = TENANT
         init_tenant_db(TENANT)
-        db.session.add_all(
-            [
-                Supplier(name="Supplier Debt", total_debt=1000, total_paid=200),
-                Supplier(name="Supplier Receivable", total_debt=300, total_paid=900),
-                Supplier(name="Supplier Settled", total_debt=500, total_paid=500),
-            ]
-        )
+        suppliers = [
+            Supplier(name="Supplier Debt", opening_balance=1000, total_debt=1000, total_paid=200),
+            Supplier(name="Supplier Receivable", opening_balance=300, total_debt=300, total_paid=900),
+            Supplier(name="Supplier Settled", opening_balance=500, total_debt=500, total_paid=500),
+        ]
+        db.session.add_all(suppliers)
+        db.session.flush()
+        # Reports reconcile actual opening debts and payment sources, rather than trusting cached totals.
+        db.session.add_all([SupplierPayment(supplier_id=supplier.id, amount=amount)
+                            for supplier, amount in zip(suppliers, [200, 900, 500])])
         db.session.commit()
 
         assert calculate_supplier_debts() == 800

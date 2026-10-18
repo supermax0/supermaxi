@@ -1,0 +1,93 @@
+/* Washing-machine card image loader adapted from Uiverse.io by Shoh2008. */
+.store-body .store-card-image-loader {
+  position: absolute;
+  z-index: 3;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: radial-gradient(circle at 50% 45%,#fff 0,#f7f9f9 62%,#eef2f2 100%);
+  opacity: 1;
+  visibility: visible;
+  transition: opacity .28s ease,visibility .28s ease;
+  pointer-events: none;
+}
+
+.store-body .store-product-card__media.is-image-loaded .store-card-image-loader {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.store-body .store-card-image-loader > i {
+  width: 84px;
+  height: 105px;
+  display: block;
+  position: relative;
+  border-radius: 6%;
+  background-color: #fff;
+  background-repeat: no-repeat;
+  background-image:
+    linear-gradient(#ddd 50%,#bbb 51%),
+    linear-gradient(#ddd,#ddd),
+    linear-gradient(#ddd,#ddd),
+    radial-gradient(ellipse at center,#aaa 25%,#eee 26%,#eee 50%,#0000 55%),
+    radial-gradient(ellipse at center,#aaa 25%,#eee 26%,#eee 50%,#0000 55%),
+    radial-gradient(ellipse at center,#aaa 25%,#eee 26%,#eee 50%,#0000 55%);
+  background-position: 0 14px,31px 0,6px 4px,38px 2px,52px 2px,66px 2px;
+  background-size: 100% 3px,1px 16px,21px 6px,11px 11px,11px 11px,11px 11px;
+  transform-origin: 42px 126px;
+  animation: store-card-loader-shake 3s ease-in-out infinite;
+  box-shadow: 0 8px 22px rgba(3,26,56,.08);
+}
+
+.store-body .store-card-image-loader > i::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 100%;
+  width: 5px;
+  height: 4px;
+  border-radius: 0 0 4px 4px;
+  background: #aaa;
+  box-shadow: 71px 0 #aaa;
+}
+
+.store-body .store-card-image-loader > i::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 14px;
+  left: 0;
+  width: 67px;
+  height: 67px;
+  margin: auto;
+  box-sizing: border-box;
+  border: 7px solid #ddd;
+  border-radius: 50%;
+  background-color: #bbdefb;
+  background-image:
+    linear-gradient(to right,#0004 0%,#0004 49%,#0000 50%,#0000 100%),
+    linear-gradient(135deg,#64b5f6 50%,#607d8b 51%);
+  background-repeat: repeat,no-repeat;
+  background-position: 0 0;
+  background-size: 21px 100%,63px 56px;
+  box-shadow: 0 0 0 3px #999 inset,0 0 4px 4px #0004 inset;
+  animation: store-card-loader-spin 3s ease-in-out infinite;
+}
+
+@keyframes store-card-loader-spin {
+  0% { transform: rotate(0deg); }
+  50% { transform: rotate(360deg); }
+  75% { transform: rotate(750deg); }
+  100% { transform: rotate(1800deg); }
+}
+
+@keyframes store-card-loader-shake {
+  65%,80%,88%,96% { transform: rotate(.5deg); }
+  50%,75%,84%,92% { transform: rotate(-.5deg); }
+  0%,50%,100% { transform: rotate(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .store-body .store-card-image-loader > i,
+  .store-body .store-card-image-loader > i::after { animation: none; }
+}

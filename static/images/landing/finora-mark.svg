@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" role="img" aria-label="Finora">
+  <defs><linearGradient id="finora-mark" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7e2044"/><stop offset="1" stop-color="#6735bd"/></linearGradient></defs>
+  <rect x="1" y="1" width="38" height="38" rx="11" fill="url(#finora-mark)"/>
+  <path d="M14 29V12.5h13.5" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M14 20.5h9.5" fill="none" stroke="#fff" stroke-width="4.2" stroke-linecap="round" opacity=".82"/>
+</svg>

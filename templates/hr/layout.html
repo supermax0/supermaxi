@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}{% block hr_title %}الموارد البشرية{% endblock %} | Finora{% endblock %}
+{% block page_title %}إدارة الموارد البشرية{% endblock %}
+{% block head %}
+{{ super() }}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/hr.css') }}?v=20260826-dark">
+{% endblock %}
+{% block scripts %}
+{{ super() }}
+<script>
+  (function () {
+    window.hrOpenDialog = function (dialogId) {
+      var dialog = document.getElementById(dialogId);
+      if (dialog && typeof dialog.showModal === 'function') dialog.showModal();
+    };
+    window.hrCloseDialog = function (dialogId) {
+      var dialog = document.getElementById(dialogId);
+      if (dialog) dialog.close();
+    };
+    document.addEventListener('click', function (event) {
+      var opener = event.target.closest('[data-hr-dialog-open]');
+      if (opener) {
+        event.preventDefault();
+        window.hrOpenDialog(opener.dataset.hrDialogOpen);
+        return;
+      }
+      var closer = event.target.closest('[data-hr-dialog-close]');
+      if (closer) {
+        event.preventDefault();
+        window.hrCloseDialog(closer.dataset.hrDialogClose);
+      }
+    });
+    document.addEventListener('DOMContentLoaded', function () {
+      document.querySelectorAll('.hr-modal').forEach(function (dialog) {
+        dialog.addEventListener('click', function (event) {
+          if (event.target === dialog) dialog.close();
+        });
+      });
+      if (new URLSearchParams(window.location.search).get('new') === '1') {
+        window.hrOpenDialog('employee-modal');
+      }
+    });
+  })();
+</script>
+{% endblock %}
+{% block content %}
+<main class="hr-shell" dir="rtl">
+  <header class="hr-topbar">
+    <div class="hr-brand-lockup">
+      <span class="hr-brand-icon"><i class="fa-solid fa-people-group"></i></span>
+      <div><strong>Finora HR</strong><small>منصة إدارة فريقك من مكان واحد</small></div>
+    </div>
+    <nav class="hr-tabs" aria-label="تنقل الموارد البشرية">
+      <a href="{{ url_for('hr.dashboard') }}" class="{% if request.endpoint == 'hr.dashboard' %}active{% endif %}"><i class="fa-solid fa-grid-2"></i><span>الرئيسية</span></a>
+      <a href="{{ url_for('hr.employees') }}" class="{% if request.endpoint in ['hr.employees','hr.employee_detail'] %}active{% endif %}"><i class="fa-solid fa-address-card"></i><span>الموظفون</span></a>
+      <a href="{{ url_for('hr.attendance') }}" class="{% if request.endpoint == 'hr.attendance' %}active{% endif %}"><i class="fa-solid fa-user-clock"></i><span>الحضور</span></a>
+      <a href="{{ url_for('hr.leaves') }}" class="{% if request.endpoint == 'hr.leaves' %}active{% endif %}"><i class="fa-solid fa-calendar-check"></i><span>الإجازات</span></a>
+      <a href="{{ url_for('hr.payroll') }}" class="{% if request.endpoint in ['hr.payroll','hr.salary_voucher'] %}active{% endif %}"><i class="fa-solid fa-money-check-dollar"></i><span>الرواتب</span></a>
+      <a href="{{ url_for('hr.cash') }}" class="{% if request.endpoint == 'hr.cash' %}active{% endif %}"><i class="fa-solid fa-vault"></i><span>الصندوق</span></a>
+      <a href="{{ url_for('hr.reports') }}" class="{% if request.endpoint == 'hr.reports' %}active{% endif %}"><i class="fa-solid fa-chart-column"></i><span>التقارير</span></a>
+      <a href="{{ url_for('hr.settings') }}" class="{% if request.endpoint == 'hr.settings' %}active{% endif %}"><i class="fa-solid fa-sliders"></i><span>الإعدادات</span></a>
+    </nav>
+  </header>
+  {% block hr_content %}{% endblock %}
+</main>
+{% endblock %}

@@ -4,8 +4,11 @@
   var STORAGE_KEY = "finora_notification_sound";
   var LEGACY_SOUNDS_KEY = "sounds_enabled";
   var MAP_KEY = "finora_sound_event_map";
+  var SPOKEN_ORDER_IDS_KEY = "finora_spoken_new_order_ids_v1";
+  var SPOKEN_ORDER_IDS_LIMIT = 100;
   var audioCtx = null;
   var unlocked = false;
+  var announcementVoice = null;
 
   var EVENTS = ["payment", "return", "cancel", "order"];
 
@@ -220,6 +223,99 @@
     playOrderActionSound(soundType, options);
   }
 
+  function cleanAnnouncementValue(value) {
+    return String(value || "")
+      .replace(/[\r\n]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function getSpokenOrderIds() {
+    try {
+      var ids = JSON.parse(localStorage.getItem(SPOKEN_ORDER_IDS_KEY) || "[]");
+      return Array.isArray(ids) ? ids.map(String) : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function rememberSpokenOrder(orderId) {
+    if (!orderId) return true;
+    var key = String(orderId);
+    var ids = getSpokenOrderIds();
+    if (ids.indexOf(key) >= 0) return false;
+    ids.unshift(key);
+    try {
+      localStorage.setItem(
+        SPOKEN_ORDER_IDS_KEY,
+        JSON.stringify(ids.slice(0, SPOKEN_ORDER_IDS_LIMIT))
+      );
+    } catch (_) {}
+    return true;
+  }
+
+  function scoreOrderAnnouncementVoice(voice) {
+    if (!voice) return -1;
+    var lang = String(voice.lang || "").toLowerCase();
+    var name = String(voice.name || "").toLowerCase();
+    if (lang.indexOf("en") !== 0 && !/english/.test(name)) return -1;
+    var score = 10;
+    if (lang === "en-us") score += 45;
+    else if (lang === "en-gb") score += 35;
+    else if (lang.indexOf("en-") === 0) score += 25;
+    if (/aria|jenny|zira|samantha|victoria|karen|moira|susan|hazel|female/.test(name)) {
+      score += 30;
+    }
+    if (/natural|online/.test(name)) score += 8;
+    if (voice.localService) score += 2;
+    return score;
+  }
+
+  function selectOrderAnnouncementVoice() {
+    if (announcementVoice) return announcementVoice;
+    if (!window.speechSynthesis || typeof window.speechSynthesis.getVoices !== "function") {
+      return null;
+    }
+    var best = null;
+    var bestScore = -1;
+    window.speechSynthesis.getVoices().forEach(function (voice) {
+      var score = scoreOrderAnnouncementVoice(voice);
+      if (score > bestScore) {
+        best = voice;
+        bestScore = score;
+      }
+    });
+    announcementVoice = best;
+    return best;
+  }
+
+  function speakNewOrderAnnouncement(order, options) {
+    options = options || {};
+    if (!order || !window.speechSynthesis || typeof window.SpeechSynthesisUtterance !== "function") {
+      return false;
+    }
+    if (!options.force && !isEnabled()) return false;
+    if (!options.force && !rememberSpokenOrder(order.id)) return false;
+
+    var employee = cleanAnnouncementValue(order.employee || order.employee_name);
+    var governorate = cleanAnnouncementValue(
+      order.governorate || order.customer_city || order.city || order.province
+    );
+    var parts = ["New order"];
+    if (employee) parts.push("Employee " + employee);
+    if (governorate) parts.push("Governorate " + governorate);
+
+    var utterance = new window.SpeechSynthesisUtterance(parts.join(". "));
+    var voice = selectOrderAnnouncementVoice();
+    if (voice) utterance.voice = voice;
+    utterance.lang = (voice && voice.lang) || "en-US";
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    window.speechSynthesis.speak(utterance);
+    return true;
+  }
+
   function getSoundPresets() {
     return Object.keys(PRESETS).sort().map(function (id) {
       return { id: id, name: PRESETS[id].name };
@@ -236,7 +332,16 @@
     document.addEventListener(evt, unlockAudio, { once: true, passive: true });
   });
 
+  if (window.speechSynthesis) {
+    selectOrderAnnouncementVoice();
+    window.speechSynthesis.addEventListener("voiceschanged", function () {
+      announcementVoice = null;
+      selectOrderAnnouncementVoice();
+    });
+  }
+
   window.playNotificationSound = playNotificationSound;
+  window.finoraSpeakNewOrder = speakNewOrderAnnouncement;
   window.playOrderActionSound = playOrderActionSound;
   window.finoraInferNotificationSound = inferActionSoundFromMessage;
   window.finoraNotificationSoundEnabled = isEnabled;

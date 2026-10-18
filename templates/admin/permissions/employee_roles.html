@@ -36,6 +36,18 @@
 
   <div class="settings-section-card">
     <form action="{{ url_for('permissions.employee_roles', id=employee.id) }}" method="POST">
+      {% if employee.role != 'admin' %}
+      <div class="team-modal-field" style="max-width:420px;margin-bottom:20px;">
+        <label for="employeeBranch"><i class="fas fa-code-branch"></i> فرع الموظف</label>
+        <select name="branch_id" id="employeeBranch" required>
+          <option value="">اختر الفرع</option>
+          {% for branch in branches %}
+          <option value="{{ branch.id }}" {% if employee.branch_id == branch.id %}selected{% endif %}>{{ branch.name }}</option>
+          {% endfor %}
+        </select>
+        <small>نقل الموظف لا يغيّر الطلبات والحركات القديمة.</small>
+      </div>
+      {% endif %}
       <p class="employee-roles-intro">{{ _('roles_employee_pick') }}</p>
       <div class="employee-roles-grid">
         {% for role in roles %}

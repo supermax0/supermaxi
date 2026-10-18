@@ -1,9 +1,9 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-  بناء تطبيق بوابة المندوب (release) ونسخه إلى static/downloads/finora-delivery-agent.apk
+  Build Delivery Agent APK and copy it to static/downloads/finora-delivery-agent.apk
 
-  الاستخدام:
+  Usage:
     .\build_apk.ps1
     .\build_apk.ps1 -Variant debug
 #>
@@ -27,7 +27,7 @@ $buildRoot = $projectRoot
 
 if (-not (Test-AsciiOnlyPath $projectRoot)) {
     $buildRoot = Join-Path $env:TEMP "finora_delivery_agent_build"
-    Write-Host "Non-ASCII path — copying project to: $buildRoot"
+    Write-Host "Non-ASCII path - copying project to: $buildRoot"
     if (Test-Path $buildRoot) {
         Remove-Item $buildRoot -Recurse -Force
     }
@@ -40,6 +40,8 @@ if (-not (Test-AsciiOnlyPath $projectRoot)) {
 
 if (-not $env:JAVA_HOME) {
     $candidates = @(
+        "$env:USERPROFILE\Desktop\APK Lab\runtime\jdk-17",
+        "$env:USERPROFILE\Desktop\APK Lab\APK_Lab_IDE\runtime\jdk-17",
         "$env:ProgramFiles\Android\Android Studio\jbr",
         "$env:LOCALAPPDATA\Programs\Android\Android Studio\jbr"
     )
@@ -73,9 +75,13 @@ finally {
     Pop-Location
 }
 
-$apkName = if ($Variant -eq "release") { "app-release-unsigned.apk" } else { "app-debug.apk" }
+$apkName = if ($Variant -eq "release") { "app-release.apk" } else { "app-debug.apk" }
 $apk = Join-Path $buildRoot "app\build\outputs\apk\$Variant\$apkName"
 if (-not (Test-Path $apk)) {
+    $legacy = Join-Path $buildRoot "app\build\outputs\apk\$Variant\app-release-unsigned.apk"
+    if (($Variant -eq "release") -and (Test-Path $legacy)) {
+        throw "Found unsigned APK only ($legacy). Rebuild after enabling release signingConfig."
+    }
     throw "APK not found: $apk"
 }
 
@@ -83,4 +89,5 @@ $downloadsDir = Join-Path $repoRoot "static\downloads"
 New-Item -ItemType Directory -Force -Path $downloadsDir | Out-Null
 $dest = Join-Path $downloadsDir "finora-delivery-agent.apk"
 Copy-Item -Force $apk $dest
-Write-Host "`nAPK copied to: $dest"
+Write-Host ""
+Write-Host "APK copied to: $dest"

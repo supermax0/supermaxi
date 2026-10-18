@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 from typing import Any
 
 from extensions import db
@@ -15,6 +16,7 @@ STATUS_TO_EN = {"واصل": "Delivered", "ملغي": "Canceled", "مؤجل": "De
 STATUS_TO_AR = {v: k for k, v in STATUS_TO_EN.items()}
 DELIVERED_STATUSES = frozenset({"واصل", "Delivered"})
 POSTPONED_STATUSES = frozenset({"مؤجل", "Delayed"})
+CANCELED_STATUSES = frozenset({"ملغي", "Canceled", "راجع", "مرتجع", "Returned"})
 FINALIZED_AGENT_STATUSES = frozenset({"واصل", "Delivered", "ملغي", "Canceled"})
 
 
@@ -83,38 +85,52 @@ def row_collectible_amount(row: dict) -> int:
         return 0
 
 
-def enrich_orders_data_payment_fields(orders_data: list) -> list:
-    """أملأ paid_amount/remaining للكشوف القديمة من الفاتورة الحية."""
+def enrich_orders_data_payment_fields(orders_data: list, *, refresh_live: bool = False) -> list:
+    """أملأ/حدّث الحقول المالية من الفاتورة.
+
+    - refresh_live=False: للكشوف القديمة فقط املأ paid_amount/remaining إن كانت مفقودة.
+    - refresh_live=True: اسحب الإجمالي والمدفوع والباقي الحي من الفاتورة (قبل التنفيذ).
+    """
     if not orders_data:
         return orders_data
 
     from models.invoice import Invoice
 
-    missing_ids: list[int] = []
+    target_ids: list[int] = []
     for row in orders_data:
         if not isinstance(row, dict):
             continue
-        if "remaining" in row and row.get("remaining") is not None and "paid_amount" in row:
+        if (
+            not refresh_live
+            and "remaining" in row
+            and row.get("remaining") is not None
+            and "paid_amount" in row
+        ):
             continue
         oid = row.get("id") or row.get("order_id")
         if oid is None:
             continue
         try:
-            missing_ids.append(int(oid))
+            target_ids.append(int(oid))
         except (TypeError, ValueError):
             pass
 
-    if not missing_ids:
+    if not target_ids:
         return orders_data
 
     invoices = {
         inv.id: inv
-        for inv in Invoice.query.filter(Invoice.id.in_(missing_ids)).all()
+        for inv in Invoice.query.filter(Invoice.id.in_(target_ids)).all()
     }
     for row in orders_data:
         if not isinstance(row, dict):
             continue
-        if "remaining" in row and row.get("remaining") is not None and "paid_amount" in row:
+        if (
+            not refresh_live
+            and "remaining" in row
+            and row.get("remaining") is not None
+            and "paid_amount" in row
+        ):
             continue
         oid = row.get("id") or row.get("order_id")
         try:
@@ -128,15 +144,27 @@ def enrich_orders_data_payment_fields(orders_data: list) -> list:
             row.setdefault("remaining", total)
             continue
         snap = order_payment_snapshot(invoice)
-        row["total"] = int(row.get("total") or snap["total"])
-        row["paid_amount"] = snap["paid_amount"]
-        row["remaining"] = snap["remaining"]
+        if refresh_live:
+            row["total"] = snap["total"]
+            row["paid_amount"] = snap["paid_amount"]
+            row["remaining"] = snap["remaining"]
+        else:
+            row["total"] = int(row.get("total") or snap["total"])
+            row["paid_amount"] = snap["paid_amount"]
+            row["remaining"] = snap["remaining"]
     return orders_data
 
 
-def enrich_orders_data_display_fields(orders_data: list, *, refresh_live: bool = True) -> list:
+def enrich_orders_data_display_fields(
+    orders_data: list,
+    *,
+    refresh_live: bool = True,
+    refresh_live_amounts: bool = False,
+) -> list:
     """أملأ العنوان والحالة الحالية من الفاتورة الحية لعرض الكشف."""
-    orders_data = enrich_orders_data_payment_fields(orders_data)
+    orders_data = enrich_orders_data_payment_fields(
+        orders_data, refresh_live=refresh_live_amounts
+    )
     if not orders_data or not refresh_live:
         # حتى بدون تحديث حي: وحّد مفتاح العنوان للعرض
         for row in orders_data or []:
@@ -190,6 +218,9 @@ def enrich_orders_data_display_fields(orders_data: list, *, refresh_live: bool =
             row["status"] = invoice.status
         if invoice.payment_status:
             row["payment_status"] = invoice.payment_status
+        agent_note = (getattr(invoice, "agent_note", None) or "").strip()
+        if agent_note:
+            row["agent_note"] = agent_note
 
         customer = invoice.customer
         if customer:
@@ -212,21 +243,189 @@ def enrich_orders_data_display_fields(orders_data: list, *, refresh_live: bool =
     return orders_data
 
 
+def _safe_item_int(value, default: int = 0) -> int:
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def normalize_report_item(raw: Any) -> dict | None:
+    """وحّد صف منتج من لقطة الكشف أو من صيغة الطباعة القديمة."""
+    if isinstance(raw, str):
+        name = raw.strip()
+        if not name:
+            return None
+        return {"product_name": name, "name": name, "quantity": 1, "price": 0, "total": 0}
+    if not isinstance(raw, dict):
+        return None
+    name = str(
+        raw.get("product_name") or raw.get("name") or raw.get("product") or ""
+    ).strip()
+    if not name:
+        return None
+    qty_raw = raw.get("quantity") if raw.get("quantity") is not None else raw.get("qty")
+    qty = _safe_item_int(qty_raw, 1)
+    if qty <= 0:
+        qty = 1
+    price = _safe_item_int(raw.get("price"), 0)
+    total = _safe_item_int(raw.get("total"), price * qty)
+    return {
+        "product_name": name,
+        "name": name,
+        "quantity": qty,
+        "price": price,
+        "total": total,
+    }
+
+
+def _items_from_report_row(row: dict) -> list[dict]:
+    raw_list = row.get("items")
+    if not isinstance(raw_list, list) or not raw_list:
+        raw_list = row.get("products")
+    if not isinstance(raw_list, list):
+        return []
+    items = []
+    for raw in raw_list:
+        item = normalize_report_item(raw)
+        if item:
+            items.append(item)
+    return items
+
+
+def _live_items_for_invoice(invoice) -> list[dict]:
+    from models.order_item import OrderItem
+    from utils.order_shipping import is_shipping_item, order_item_display_name
+
+    items = []
+    for order_item in OrderItem.query.filter_by(invoice_id=invoice.id).all():
+        if is_shipping_item(order_item):
+            continue
+        name = order_item_display_name(order_item)
+        qty = _safe_item_int(getattr(order_item, "quantity", 1), 1)
+        price = _safe_item_int(getattr(order_item, "price", 0), 0)
+        total = _safe_item_int(getattr(order_item, "total", price * qty), price * qty)
+        items.append({
+            "product_name": name,
+            "name": name,
+            "quantity": max(qty, 1),
+            "price": price,
+            "total": total,
+        })
+    return items
+
+
+def enrich_orders_data_items(orders_data: list, *, refresh_live: bool = True) -> list:
+    """أضف قائمة منتجات موحّدة لكل طلب، مع تعبئة حيّة إذا كانت اللقطة فارغة."""
+    if not orders_data:
+        return orders_data or []
+
+    missing_ids: list[int] = []
+    for row in orders_data:
+        if not isinstance(row, dict):
+            continue
+        items = _items_from_report_row(row)
+        row["items"] = items
+        row["products"] = items
+        if items or not refresh_live:
+            continue
+        oid = row.get("id") or row.get("order_id")
+        try:
+            missing_ids.append(int(oid))
+        except (TypeError, ValueError):
+            pass
+
+    if not refresh_live or not missing_ids:
+        return orders_data
+
+    from models.invoice import Invoice
+
+    invoices = {
+        inv.id: inv
+        for inv in Invoice.query.filter(Invoice.id.in_(missing_ids)).all()
+    }
+    for row in orders_data:
+        if not isinstance(row, dict) or row.get("items"):
+            continue
+        oid = row.get("id") or row.get("order_id")
+        try:
+            invoice = invoices.get(int(oid))
+        except (TypeError, ValueError):
+            continue
+        if not invoice:
+            continue
+        items = _live_items_for_invoice(invoice)
+        row["items"] = items
+        row["products"] = items
+    return orders_data
+
+
+def compute_report_items_totals(orders_data: list) -> dict[str, int]:
+    lines = 0
+    qty = 0
+    for row in orders_data or []:
+        if not isinstance(row, dict):
+            continue
+        for item in row.get("items") or []:
+            lines += 1
+            qty += _safe_item_int(item.get("quantity"), 0)
+    return {"lines": lines, "qty": qty}
+
+
 def compute_report_delivered_amount(report) -> int:
     """مجموع الباقي (أو الإجمالي للكشوف القديمة) للطلبات المحددة «واصل» فقط."""
-    total = 0
+    return compute_report_status_breakdown(report)["delivered"]["amount"]
+
+
+def compute_report_status_breakdown(report) -> dict[str, dict[str, int]]:
+    """تفصيل الكشف: عدد ومبلغ كل حالة (واصل / راجع / مؤجل / بانتظار)."""
     selections = _parse_selections(report)
     rows = _parse_orders_data(report)
-    # للكشوف المفتوحة فقط: املأ remaining من الفاتورة الحية
     if report and not getattr(report, "is_executed", False):
-        rows = enrich_orders_data_payment_fields(rows)
+        rows = enrich_orders_data_payment_fields(rows, refresh_live=True)
+
+    breakdown = {
+        "delivered": {"count": 0, "amount": 0},
+        "canceled": {"count": 0, "amount": 0},
+        "postponed": {"count": 0, "amount": 0},
+        "pending": {"count": 0, "amount": 0},
+    }
     for row in rows:
         order_id = row.get("id") or row.get("order_id")
         if order_id is None:
             continue
-        if selections.get(str(order_id)) not in DELIVERED_STATUSES:
-            continue
-        total += row_collectible_amount(row)
+        amount = row_collectible_amount(row)
+        status = selections.get(str(order_id))
+        if status in DELIVERED_STATUSES:
+            bucket = "delivered"
+        elif status in CANCELED_STATUSES:
+            bucket = "canceled"
+        elif status in POSTPONED_STATUSES:
+            bucket = "postponed"
+        else:
+            bucket = "pending"
+        breakdown[bucket]["count"] += 1
+        breakdown[bucket]["amount"] += amount
+    return breakdown
+
+
+def compute_report_orders_amount(report) -> int:
+    """مجموع المبالغ القابلة للتحصيل لكل طلبات الكشف (حي قبل التنفيذ)."""
+    rows = _parse_orders_data(report)
+    if report and not getattr(report, "is_executed", False):
+        rows = enrich_orders_data_payment_fields(rows, refresh_live=True)
+    return sum(row_collectible_amount(row) for row in rows)
+
+
+def sync_open_report_payment_amounts(report) -> int:
+    """حدّث لقطة المبالغ في الكشف المفتوح من الفواتير الحية واحفظها."""
+    if not report or getattr(report, "is_executed", False):
+        return int(getattr(report, "total_amount", 0) or 0)
+
+    rows = enrich_orders_data_payment_fields(_parse_orders_data(report), refresh_live=True)
+    report.orders_data = json.dumps(rows, ensure_ascii=False)
+    total = sum(row_collectible_amount(row) for row in rows)
+    report.total_amount = total
     return total
 
 
@@ -342,8 +541,16 @@ def get_order_applied_status(order_id: int) -> str | None:
 
 def save_selection_to_report(report, order_id: int, status: str) -> dict[str, Any]:
     selections = _parse_selections(report)
+    previous = selections.get(str(order_id))
+    previous = STATUS_TO_EN.get(previous, previous)
     selections[str(order_id)] = STATUS_TO_EN.get(status, status)
     report.order_status_selections = json.dumps(selections, ensure_ascii=False)
+    sync_open_report_payment_amounts(report)
+    rows = _parse_orders_data(report)
+    for row in rows:
+        if str(row.get("id") or row.get("order_id")) == str(order_id) and previous != selections[str(order_id)]:
+            row["agent_status_updated_at"] = datetime.now(timezone.utc).isoformat()
+    report.orders_data = json.dumps(rows, ensure_ascii=False)
     return get_report_progress(report)
 
 
@@ -378,7 +585,7 @@ def serialize_pending_report(report) -> dict[str, Any]:
     except Exception:
         selected_statuses = {}
     has_stock_return = any(
-        status in {"ملغي", "Canceled", "مؤجل", "Delayed"}
+        status in {"ملغي", "Canceled", "مؤجل", "Delayed", "راجع", "مرتجع"}
         for status in (selected_statuses.values() if isinstance(selected_statuses, dict) else [])
     )
     status_label = "بانتظار المندوب"
@@ -389,6 +596,14 @@ def serialize_pending_report(report) -> dict[str, Any]:
     elif progress["in_progress"]:
         status_label = "قيد التطبيق"
     employee_name = (getattr(report, "created_by", None) or "").strip() or None
+    breakdown = compute_report_status_breakdown(report)
+    delivered_amount = breakdown["delivered"]["amount"]
+    total_collectible = (
+        delivered_amount
+        + breakdown["canceled"]["amount"]
+        + breakdown["postponed"]["amount"]
+        + breakdown["pending"]["amount"]
+    )
     return {
         "id": report.id,
         "report_number": report.report_number,
@@ -403,7 +618,24 @@ def serialize_pending_report(report) -> dict[str, Any]:
         "ready_for_execution": progress["ready_for_execution"],
         "all_complete": progress["all_complete"],
         "created_at": report.created_at.strftime("%Y-%m-%d %H:%M") if report.created_at else "",
-        "total_amount": int(report.total_amount or 0),
+        "total_amount": (
+            delivered_amount
+            if breakdown["delivered"]["count"] > 0 or progress["applied"] > 0
+            else (
+                compute_report_orders_amount(report)
+                if not report.is_executed
+                else int(report.total_amount or 0)
+            )
+        ),
+        "delivered_count": breakdown["delivered"]["count"],
+        "canceled_count": breakdown["canceled"]["count"],
+        "postponed_count": breakdown["postponed"]["count"],
+        "pending_selection_count": breakdown["pending"]["count"],
+        "delivered_amount": breakdown["delivered"]["amount"],
+        "canceled_amount": breakdown["canceled"]["amount"],
+        "postponed_amount": breakdown["postponed"]["amount"],
+        "pending_amount": breakdown["pending"]["amount"],
+        "total_collectible": total_collectible,
         "has_stock_return": has_stock_return,
     }
 
@@ -443,4 +675,104 @@ def get_pending_agent_reports_summary() -> dict[str, Any]:
         "in_progress_count": len(in_progress),
         "pending_count": len(serialized),
         "reports": serialized,
+    }
+
+
+def dismiss_shipping_report_alerts(report_id: int) -> None:
+    SystemAlert.query.filter_by(
+        related_type="shipping_report",
+        related_id=int(report_id),
+        is_dismissed=False,
+    ).update({"is_dismissed": True}, synchronize_session=False)
+
+
+def merge_open_agent_reports(
+    target_report: ShippingReport,
+    source_reports: list[ShippingReport],
+) -> dict[str, Any]:
+    """ادمج كشوف مندوب مفتوحة في كشف هدف واحد (نفس المندوب فقط)."""
+    if not target_report or not is_agent_report(target_report):
+        raise ValueError("كشف الهدف غير صالح")
+    if target_report.is_executed:
+        raise ValueError("لا يمكن الدمج في كشف منفّذ")
+
+    target_agent_id = extract_agent_id_from_report(target_report.report_number)
+    if not target_agent_id:
+        raise ValueError("تعذر تحديد مندوب كشف الهدف")
+
+    sources: list[ShippingReport] = []
+    seen_ids = {int(target_report.id)}
+    for src in source_reports or []:
+        if not src or int(src.id) in seen_ids:
+            continue
+        if not is_agent_report(src):
+            raise ValueError(f"الكشف {src.report_number} ليس كشف مندوب")
+        if src.is_executed:
+            raise ValueError(f"لا يمكن دمج الكشف المنفّذ {src.report_number}")
+        src_agent_id = extract_agent_id_from_report(src.report_number)
+        if src_agent_id != target_agent_id:
+            raise ValueError("يمكن دمج كشوف نفس المندوب فقط")
+        sources.append(src)
+        seen_ids.add(int(src.id))
+
+    if not sources:
+        raise ValueError("اختر كشفاً واحداً على الأقل للدمج")
+
+    target_orders = _parse_orders_data(target_report)
+    target_selections = _parse_selections(target_report)
+    existing_ids = set(get_report_order_ids(target_report))
+    moved_orders = 0
+    merged_from: list[str] = []
+
+    for src in sources:
+        src_orders = _parse_orders_data(src)
+        src_selections = _parse_selections(src)
+        for row in src_orders:
+            if not isinstance(row, dict):
+                continue
+            oid = row.get("id") or row.get("order_id")
+            try:
+                oid_int = int(oid)
+            except (TypeError, ValueError):
+                continue
+            if oid_int in existing_ids:
+                # إن وُجدت حالة في المصدر فقط انقلها للهدف إن كان الهدف بلا حالة
+                src_status = src_selections.get(str(oid_int))
+                if src_status and str(oid_int) not in target_selections:
+                    target_selections[str(oid_int)] = src_status
+                continue
+            target_orders.append(row)
+            existing_ids.add(oid_int)
+            moved_orders += 1
+            src_status = src_selections.get(str(oid_int))
+            if src_status:
+                target_selections[str(oid_int)] = src_status
+        merged_from.append(src.report_number)
+
+    target_report.orders_data = json.dumps(target_orders, ensure_ascii=False)
+    target_report.order_status_selections = json.dumps(target_selections, ensure_ascii=False)
+    target_report.orders_count = len(target_orders)
+    sync_open_report_payment_amounts(target_report)
+
+    note_bits = [n for n in [(target_report.notes or "").strip()] if n]
+    note_bits.append("دُمج من: " + ", ".join(merged_from))
+    target_report.notes = " | ".join(note_bits)
+
+    for src in sources:
+        dismiss_shipping_report_alerts(src.id)
+        db.session.delete(src)
+
+    # أعد تقييم تنبيه الجاهزية على الهدف بعد الدمج
+    dismiss_shipping_report_alerts(target_report.id)
+    agent_name = get_agent_name_for_report(target_report)
+    notify_agent_report_ready(target_report, agent_name)
+
+    return {
+        "target_report_id": target_report.id,
+        "target_report_number": target_report.report_number,
+        "merged_from": merged_from,
+        "moved_orders": moved_orders,
+        "orders_count": int(target_report.orders_count or 0),
+        "total_amount": int(target_report.total_amount or 0),
+        "progress": get_report_progress(target_report),
     }

@@ -1,0 +1,26 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<title>{{ data.number }} · FINORA</title><style>
+@page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,sans-serif;color:#25223a;margin:0;line-height:1.7}
+header{border-bottom:2px solid #7042de;display:flex;justify-content:space-between;align-items:center;padding-bottom:14px}
+h1{font-size:23px;margin:0}p{margin:8px 0}.brand{font-weight:bold;letter-spacing:3px;color:#772143}
+.meta{display:flex;justify-content:space-between;gap:16px;background:#f7f5fc;padding:14px;margin:18px 0;border-radius:10px}
+table{width:100%;border-collapse:collapse;margin:18px 0}thead{display:table-header-group}th,td{padding:10px;border:1px solid #ddd8ec;text-align:right}
+th{background:#f7f5fc}tr{break-inside:avoid}.number{direction:ltr;unicode-bidi:isolate;white-space:nowrap}.note{white-space:pre-wrap;overflow-wrap:anywhere}
+footer{margin-top:24px;font-size:12px;color:#716b84;border-top:1px solid #ddd8ec;padding-top:10px}
+</style></head><body>
+<header><div><h1>{{ 'سند تحويل مخزون' if document_type=='transfers' else 'عكس سند تلف' if data.reversal_of_id else 'سند تلف مخزون' }}</h1>
+<p class="number">{{ data.number }}</p></div><span class="brand">FINORA</span></header>
+<div class="meta">
+{% if document_type=='transfers' %}<span>من: {{ data.from_name }}</span><span>إلى: {{ data.to_name }}</span>
+<span>الحالة: {{ {'draft':'مسودة','approved':'معتمد','sent':'قيد النقل','received':'مستلم','cancelled':'ملغي'}.get(data.status,data.status) }}</span>
+{% else %}<span>الموقع: {{ data.location_name }}</span><span>التاريخ: {{ data.business_date }}</span><span>الحالة: {{ {'posted':'مرحّل','reversed':'معكوس','reversal':'عكس موثق'}.get(data.status,data.status) }}</span>{% endif %}
+</div>
+{% if document_type=='transfers' %}<table><thead><tr><th>المنتج / الخيار</th><th>الكمية</th><th>المستلم</th><th>الكلفة الموثقة</th></tr></thead><tbody>
+{% for row in data.lines %}<tr><td>{{ row.name }}{% if row.variant_name %}<br>{{ row.variant_name }}{% endif %}</td><td class="number">{{ row.quantity }}</td><td class="number">{{ row.received }}</td>
+<td class="number">{{ '{:,}'.format(row.cost|int) ~ ' د.ع' if row.cost is not none else '—' }}</td></tr>{% endfor %}</tbody></table>
+<p class="note">السبب: {{ data.note }}</p><p>الإرسال يخصم من المصدر، والاستلام يضيف إلى الوجهة. قيد النقل يبقى ضمن قيمة مخزون الشركة.</p>
+{% else %}<table><thead><tr><th>المنتج / الخيار</th><th>الكمية</th><th>قبل</th><th>بعد</th><th>كلفة السند</th></tr></thead><tbody><tr><td>{{ data.product_name }}{% if data.variant_name %}<br>{{ data.variant_name }}{% endif %}</td>
+<td class="number">{{ data.quantity }}</td><td class="number">{{ data.before_quantity }}</td><td class="number">{{ data.after_quantity }}</td><td class="number">{{ '{:,}'.format(data.cost|int) ~ ' د.ع' if data.cost is not none else '—' }}</td></tr></tbody></table>
+<p class="note">السبب: {{ data.reason }}</p><p>تسوية مخزون غير نقدية؛ لا تسحب أموالاً من الصندوق ولا تنشئ عملية بيع.</p>
+{% if data.reversal_of_id %}<p>عكس سند التلف الأصلي #{{ data.reversal_of_id }}.</p>{% endif %}{% endif %}
+<footer>طُبع بواسطة {{ actor }} · المستند يعكس بيانات FINORA المحفوظة وصلاحية المستخدم.</footer></body></html>

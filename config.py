@@ -43,7 +43,9 @@ class Config:
     # النشر التلقائي لفيسبوك (Autoposter)
     FACEBOOK_APP_ID = os.environ.get("FACEBOOK_APP_ID", "")
     FACEBOOK_APP_SECRET = os.environ.get("FACEBOOK_APP_SECRET", "")
-    FACEBOOK_API_VERSION = os.environ.get("FACEBOOK_API_VERSION", "v21.0")
+    # Shared by publishing, Messenger monitor, replies, token checks and webhooks.
+    # v25 is supported through July 2028; older hard-coded v19 expired in May 2026.
+    FACEBOOK_API_VERSION = os.environ.get("FACEBOOK_API_VERSION", "v25.0")
 
     # الذكاء الاصطناعي (AI Agent / OpenAI / Gemini)
     OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "").strip()
@@ -63,6 +65,10 @@ class Config:
     # تكامل واتساب Cloud API (لرسائل الوكلاء)
     WHATSAPP_ACCESS_TOKEN = os.environ.get("WHATSAPP_ACCESS_TOKEN", "").strip()
     WHATSAPP_PHONE_NUMBER_ID = os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "").strip()
+    # رقم فريق Finora الذي يستقبل طلبات تفعيل الشركات (صيغة دولية).
+    SIGNUP_WHATSAPP_NUMBER = os.environ.get(
+        "SIGNUP_WHATSAPP_NUMBER", "+9647734049148"
+    ).strip()
 
     # بوت تيليجرام (AI bot)
     TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN") or os.environ.get("BOT_TOKEN") or ""

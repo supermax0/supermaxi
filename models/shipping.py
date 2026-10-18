@@ -6,6 +6,7 @@ import secrets
 class ShippingCompany(db.Model):
     __tablename__ = "shipping_company"
     id = db.Column(db.Integer, primary_key=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey("branch.id"), nullable=True, index=True)
     name = db.Column(db.String(150), nullable=False)
     phone = db.Column(db.String(50))
     price = db.Column(db.Integer, default=0)  # سعر التوصيل

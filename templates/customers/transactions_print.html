@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head><meta charset="utf-8"><title>حركات التحصيل — {{ customer.name }}</title>
+<style>
+@page { size:A4 landscape; margin:12mm; } * { box-sizing:border-box; }
+body { margin:0; color:#25213d; background:#f7f5fc; font:12px Tahoma,Arial,sans-serif; line-height:1.7; }
+main { margin:20px auto; max-width:270mm; padding:8mm; background:white; border:1px solid #e9e1f8; border-radius:14px; }
+header { display:flex; justify-content:space-between; border-bottom:2px solid #7544df; padding-bottom:16px; }
+h1 { font-size:22px; margin:0; } h2 { font-size:16px; margin:0; } p { margin:6px 0; } .muted { color:#72688b; }
+.brand { color:#7544df; font-weight:bold; font-size:22px; letter-spacing:2px; }
+.totals { display:flex; gap:12px; margin:18px 0; } .totals div { flex:1; border:1px solid #e9e1f8; border-radius:10px; padding:12px; }
+.totals strong { display:block; font-size:18px; } .number { direction:ltr; unicode-bidi:isolate; white-space:nowrap; }
+table { width:100%; border-collapse:collapse; table-layout:fixed; } thead { display:table-header-group; }
+th,td { text-align:right; border-bottom:1px solid #e9e1f8; padding:9px 5px; overflow-wrap:anywhere; vertical-align:top; }
+th { background:#f7f3ff; } th:nth-child(2) { width:20%; } tr { break-inside:avoid; }
+.warning { color:#995800; background:#fff8e8; padding:12px; border-radius:10px; }
+footer { border-top:1px solid #e9e1f8; padding-top:12px; margin-top:20px; color:#72688b; }
+.toolbar { max-width:270mm; margin:20px auto; } button { padding:10px 20px; background:#7544df; border:0; color:white; border-radius:10px; font:inherit; }
+@media print { body { background:white; font-size:11px; line-height:1.5; } main { max-width:100%; margin:0; padding:0; border:0; } .toolbar { display:none; } header { padding-bottom:10px; } .totals { margin:12px 0; } .totals div { padding:9px; } .totals strong { font-size:16px; } th,td { padding:6px 5px; } td p { margin:4px 0; } footer { font-size:10px; padding-top:8px; margin-top:12px; } }
+</style></head><body>
+<div class="toolbar"><button onclick="window.print()">طباعة / حفظ PDF</button></div>
+<main><header><div><h1>حركات التحصيل والتسويات</h1><h2>{{ customer.name }}</h2><p class="muted">كما في {{ as_of }} · {{ customer.phone }}</p></div>
+<div><div class="brand">FINORA</div><h2>{{ settings.company_name if settings else 'إدارة الشركة' }}</h2></div></header>
+<section class="totals"><div>الدين الحالي<strong class="number">{{ '{:,}'.format(summary.debt) }} د.ع</strong></div><div>الرصيد المقدم<strong class="number">{{ '{:,}'.format(summary.advance) }} د.ع</strong></div><div>صافي المستحق الحالي<strong class="number">{{ '{:,}'.format(summary.net_due) }} د.ع</strong></div></section>
+{% if summary.unexplained_documents %}<p class="warning">توجد تفاصيل تحصيل ناقصة أو غير متطابقة في {{ summary.unexplained_documents }} مستند؛ مجموع الفروقات {{ '{:,}'.format(summary.unexplained_amount) }} د.ع. تحتاج مراجعة، ولا تمثل حركة قبض جديدة.</p>{% endif %}
+<table aria-label="حركات تحصيل العميل"><thead><tr><th>التاريخ</th><th>الحركة / المستند</th><th>المبلغ</th><th>حركة النقد</th><th>تغير الدين</th><th>تغير المقدم</th><th>الحالة</th></tr></thead><tbody>
+{% for row in rows %}<tr><td><bdi>{{ business_date(row.date) }}</bdi></td><td>{{ row.description }}<p class="muted">{{ row.document }}</p></td>
+<td class="number">{{ '{:,}'.format(row.amount) }}</td><td class="number">{{ '{:,}'.format(row.cash) if row.cash is not none else 'غير محدد' }}</td>
+<td class="number">{{ '{:,}'.format(row.debt_change) }}</td><td class="number">{{ '{:,}'.format(row.advance_change) }}</td><td>{{ 'معكوس' if row.status == 'reversed' else 'مسجل' }}</td></tr>
+{% else %}<tr><td colspan="7">لا توجد حركات مسجلة.</td></tr>{% endfor %}</tbody></table>
+<footer>السند يظهر مرة واحدة؛ حصص الفاتورة والأقساط جزء منه. التسوية لا تقبض نقداً جديداً. «غير محدد» تعني أن المصدر لا يثبت قيمة النقد أو تاريخ القبض. الأرصدة أعلاه حالية، ولا يُستنتج رصيد تاريخي من سجل ناقص. صافي المستحق لا ينفذ تسوية تلقائية. جميع الحركات ضمن الشركة والفروع المسموحة.</footer>
+</main></body></html>

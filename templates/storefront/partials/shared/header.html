@@ -1,0 +1,74 @@
+<header class="store-header cash-store-header">
+  <div class="store-top-strip" aria-label="مزايا الشراء">
+    <div class="store-shell store-top-strip__row">
+      <span>ضمان رسمي</span>
+      <span>فحص قبل الدفع</span>
+      <span>توصيل لكل المحافظات</span>
+      {% if store_design.whatsapp %}<a dir="ltr" href="https://wa.me/{{ store_design.whatsapp|replace('+','')|replace(' ','') }}">{{ store_design.whatsapp }}</a>{% endif %}
+    </div>
+  </div>
+  <div class="store-shell store-header__top">
+    <button class="store-menu" type="button" aria-label="فتح القائمة" aria-expanded="false" data-menu-toggle>
+      <span></span><span></span><span></span>
+    </button>
+
+    <a class="store-brand{% if store_design.logo_url %} has-logo{% endif %}" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}" aria-label="{{ store_design.store_name }}">
+      {% if store_design.logo_url %}
+        <img src="{{ store_design.logo_url }}" alt="{{ store_design.store_name }}">
+      {% else %}
+        <span class="store-brand__mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <span><strong>{{ store_design.store_name }}</strong><small>متجر النقد</small></span>
+      {% endif %}
+    </a>
+
+    <form class="store-search" method="get" action="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}" role="search">
+      <input name="q" value="{{ filters.q|default('') if filters is defined else '' }}" placeholder="ابحث عن مكيف، غسالة، شاشة تلفزيون..." aria-label="البحث في المتجر">
+      <button type="submit" aria-label="بحث">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+      </button>
+    </form>
+
+    <div class="store-header__actions">
+      <a class="{{ 'active' if request.endpoint in ['storefront.account_page'] }}" href="{{ url_for('storefront.account_page', tenant_slug=shop_tenant_slug) }}">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"></path><circle cx="12" cy="7" r="4"></circle></svg>
+        <span>{{ store_account.customer.name.split()[0] if store_account and store_account.customer else 'حسابي' }}</span>
+      </a>
+      <a class="{{ 'active' if request.endpoint == 'storefront.favorites_page' }}" href="{{ url_for('storefront.favorites_page', tenant_slug=shop_tenant_slug) }}">
+        <span class="store-cart-link__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"></path></svg><b data-favorite-count {{ 'hidden' if not favorite_count }}>{{ favorite_count }}</b></span>
+        <span>المفضلة</span>
+      </a>
+      <a class="store-cart-link {{ 'active' if request.endpoint == 'storefront.cart_page' }}" href="{{ url_for('storefront.cart_page', tenant_slug=shop_tenant_slug) }}">
+        <span class="store-cart-link__icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="20" r="1"></circle><circle cx="18" cy="20" r="1"></circle><path d="M3 3h2l2.5 11h10.8l2-7H6"></path></svg><b data-sf-cart-count class="{{ 'is-empty' if not cart_count }}">{{ cart_count }}</b></span>
+        <span>السلة</span>
+      </a>
+    </div>
+  </div>
+
+  <div class="store-drawer" data-drawer>
+    <button class="store-drawer__overlay" type="button" aria-label="إغلاق القائمة" data-menu-close></button>
+    <nav class="store-nav" aria-label="القائمة الرئيسية" data-menu>
+      <div class="store-drawer__head">
+        <a class="store-brand{% if store_design.logo_url %} has-logo{% endif %}" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}" aria-label="{{ store_design.store_name }}">
+          {% if store_design.logo_url %}
+            <img src="{{ store_design.logo_url }}" alt="{{ store_design.store_name }}">
+          {% else %}
+            <span class="store-brand__mark" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span><strong>{{ store_design.store_name }}</strong><small>متجر النقد</small></span>
+          {% endif %}
+        </a>
+        <button class="store-drawer__close" type="button" aria-label="إغلاق" data-menu-close><span></span><span></span></button>
+      </div>
+      <div class="store-nav__row">
+        <a class="{{ 'active' if request.endpoint == 'storefront.store_index' }}" href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">الرئيسية</a>
+        <a class="{{ 'active' if request.endpoint == 'storefront.categories_page' }}" href="{{ url_for('storefront.categories_page', tenant_slug=shop_tenant_slug) }}">الأقسام</a>
+        <a class="{{ 'active' if request.endpoint == 'storefront.offers_page' }}" href="{{ url_for('storefront.offers_page', tenant_slug=shop_tenant_slug) }}">العروض</a>
+        <a class="{{ 'active' if request.endpoint == 'storefront.shopping_benefits_page' }}" href="{{ url_for('storefront.shopping_benefits_page', tenant_slug=shop_tenant_slug) }}">ضمانات الشراء</a>
+        <a class="{{ 'active' if request.endpoint == 'storefront.account_page' }}" href="{{ url_for('storefront.account_page', tenant_slug=shop_tenant_slug) }}">حسابي</a>
+        <a class="{{ 'active' if request.endpoint == 'storefront.contact_page' }}" href="{{ url_for('storefront.contact_page', tenant_slug=shop_tenant_slug) }}">الدعم</a>
+      </div>
+      <div class="store-drawer__foot">
+        {% if store_design.whatsapp %}<a class="store-drawer__cta" href="https://wa.me/{{ store_design.whatsapp|replace('+','')|replace(' ','') }}">تواصل واتساب</a>{% endif %}
+      </div>
+    </nav>
+  </div>
+</header>

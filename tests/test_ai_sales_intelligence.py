@@ -809,6 +809,7 @@ def test_product_knowledge_api_persists_grounded_sales_data():
             g.tenant = tenant
             session["user_id"] = 1
             session["role"] = "admin"
+            session["plan_key"] = "enterprise"
             response = api_product_knowledge(product_id).get_json()
         assert response["success"] is True
         assert response["knowledge"]["knowledge_score"] >= 90
@@ -821,6 +822,7 @@ def test_product_knowledge_api_persists_grounded_sales_data():
             g.tenant = tenant
             session["user_id"] = 1
             session["role"] = "admin"
+            session["plan_key"] = "enterprise"
             loaded = api_product_knowledge(product_id).get_json()["knowledge"]
         assert loaded["warranty"] == "ضمان سنة"
         assert loaded["missing"] == ["صورة المنتج"]

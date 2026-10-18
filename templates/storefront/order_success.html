@@ -1,4 +1,4 @@
-{% extends "storefront/base.html" %}
+{% extends storefront_base|default("storefront/base.html") %}
 {% block title %}تم الطلب - {{ store_design.store_name }}{% endblock %}
 {% block content %}
 <section class="sf-success">

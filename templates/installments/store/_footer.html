@@ -1,0 +1,163 @@
+<footer class="store-footer" id="about">
+  <div class="store-shell store-footer__grid">
+    <section>
+      <div class="store-footer__brand">
+        <span class="store-brand__mark"><i></i><i></i><i></i></span>
+        <strong>{{ settings.store_name if settings else 'Finora' }}</strong>
+      </div>
+      <h4>متجر الأقساط</h4>
+      <p>تسوّق الآن وادفع لاحقاً مع حلول تقسيط سهلة وآمنة تناسب احتياجاتك.</p>
+    </section>
+    <section>
+      <h3>عن فينورا</h3>
+      <a href="{{ url_for('installments_store.about_page', tenant_slug=tenant_slug) }}">من نحن</a>
+      <a href="{{ url_for('installments_store.how_it_works_page', tenant_slug=tenant_slug) }}">كيف يعمل التقسيط؟</a>
+      <a href="{{ url_for('installments_store.categories_page', tenant_slug=tenant_slug) }}">الأقسام</a>
+      <a href="{{ url_for('installments_store.contact_page', tenant_slug=tenant_slug) }}">اتصل بنا</a>
+    </section>
+    <section>
+      <h3>مساعدة العملاء</h3>
+      <a href="{{ url_for('installments_store.faq_page', tenant_slug=tenant_slug) }}">الأسئلة الشائعة</a>
+      <a href="{{ url_for('installments_store.account_page', tenant_slug=tenant_slug) }}">حسابي وطلباتي</a>
+      <a href="{{ url_for('installments_store.favorites_page', tenant_slug=tenant_slug) }}">المفضلة</a>
+      <a href="{{ url_for('installments_store.cart_page', tenant_slug=tenant_slug) }}">السلة</a>
+      <a href="{{ url_for('installments_store.terms_page', tenant_slug=tenant_slug) }}">الشروط والأحكام</a>
+    </section>
+    <section id="contact">
+      <h3>تواصل معنا</h3>
+      {% if settings and settings.contact_phone %}<a dir="ltr" href="tel:{{ settings.contact_phone }}">{{ settings.contact_phone }}</a>{% endif %}
+      {% if settings and settings.whatsapp %}<a dir="ltr" href="https://wa.me/{{ settings.whatsapp|replace('+','')|replace(' ','') }}">WhatsApp: {{ settings.whatsapp }}</a>{% endif %}
+      {% if settings and settings.address %}<p>{{ settings.address }}</p>{% endif %}
+      {% if settings and settings.map_url %}<a href="{{ settings.map_url }}" target="_blank" rel="noopener">الموقع على الخريطة</a>{% endif %}
+      <a href="{{ url_for('installments_store.contact_page', tenant_slug=tenant_slug) }}">صفحة التواصل</a>
+    </section>
+  </div>
+  <div class="store-shell store-footer__bottom">
+    <span>العراق (د.ع)</span>
+    <small>جميع الحقوق محفوظة © {{ current_year }} {{ settings.store_name if settings else 'Finora' }}</small>
+    <div class="store-payments"><b>VISA</b><b>mastercard</b><b>Apple Pay</b><b>mada</b></div>
+  </div>
+</footer>
+<script>
+  (function () {
+    const toggle = document.querySelector('[data-menu-toggle]');
+    const drawer = document.querySelector('[data-drawer]');
+    const menu = document.querySelector('[data-menu]');
+    if (!toggle || !menu) return;
+    const setOpen = (open) => {
+      toggle.classList.toggle('is-open', open);
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      menu.classList.toggle('is-open', open);
+      drawer?.classList.toggle('is-open', open);
+      document.body.classList.toggle('store-drawer-open', open);
+    };
+    toggle.addEventListener('click', () => setOpen(!menu.classList.contains('is-open')));
+    document.querySelectorAll('[data-menu-close]').forEach((button) => button.addEventListener('click', () => setOpen(false)));
+    menu.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => setOpen(false)));
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') setOpen(false);
+    });
+  })();
+
+  (function () {
+    const showToast = (message) => {
+      let toast = document.querySelector('[data-toast]');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.className = 'store-toast';
+        toast.setAttribute('role', 'status');
+        toast.setAttribute('aria-live', 'polite');
+        toast.setAttribute('data-toast', '');
+        document.body.appendChild(toast);
+      }
+      toast.textContent = message;
+      toast.classList.add('is-visible');
+      window.clearTimeout(toast._hideTimer);
+      toast._hideTimer = window.setTimeout(() => toast.classList.remove('is-visible'), 2200);
+    };
+
+    const setFavoriteState = (button, favorited) => {
+      const title = button.dataset.title || 'المنتج';
+      button.classList.toggle('is-active', favorited);
+      button.setAttribute('aria-pressed', favorited ? 'true' : 'false');
+      button.setAttribute('aria-label', favorited ? `إزالة ${title} من المفضلة` : `إضافة ${title} للمفضلة`);
+    };
+
+    document.querySelectorAll('[data-favorite]').forEach((button) => {
+      button.addEventListener('click', async (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (button.disabled) return;
+        button.disabled = true;
+        try {
+          const response = await fetch(button.dataset.favoriteUrl, {
+            method: 'POST',
+            headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+            body: '{}',
+          });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || 'تعذر تحديث المفضلة');
+          setFavoriteState(button, result.favorited);
+          document.querySelectorAll('[data-favorite-count]').forEach((node) => {
+            node.textContent = result.count;
+            node.classList.toggle('is-empty', !Number(result.count));
+          });
+          document.querySelectorAll(`[data-favorite="${button.dataset.favorite}"]`).forEach((other) => {
+            if (other !== button) setFavoriteState(other, result.favorited);
+          });
+          const card = button.closest('[data-favorite-card]');
+          if (!result.favorited && card && document.body.classList.contains('store-favorites-page')) {
+            card.remove();
+            if (!document.querySelector('[data-favorite-card]')) window.location.reload();
+          }
+          showToast(result.favorited ? 'تمت إضافة المنتج إلى المفضلة' : 'تم حذف المنتج من المفضلة');
+        } catch (error) {
+          alert(error.message);
+        } finally {
+          button.disabled = false;
+        }
+      });
+    });
+
+    document.querySelectorAll('[data-share]').forEach((button) => {
+      button.addEventListener('click', async () => {
+        const payload = {
+          title: button.dataset.shareTitle || document.title,
+          text: button.dataset.shareText || '',
+          url: window.location.href,
+        };
+        try {
+          if (navigator.share) {
+            await navigator.share(payload);
+            return;
+          }
+        } catch (error) {
+          if (error && error.name === 'AbortError') return;
+        }
+        try {
+          await navigator.clipboard.writeText(payload.url);
+          showToast('تم نسخ رابط المنتج');
+        } catch (_error) {
+          window.prompt('انسخ رابط المنتج', payload.url);
+        }
+      });
+    });
+  })();
+
+  (function () {
+    document.querySelectorAll('[data-store-card-image]').forEach((image) => {
+      const media = image.closest('.store-product-card__media');
+      if (!media) return;
+      const finish = (failed) => {
+        media.classList.add('is-image-loaded');
+        if (failed) media.classList.add('is-image-error');
+      };
+      if (image.complete) {
+        finish(!image.naturalWidth);
+      } else {
+        image.addEventListener('load', () => finish(false), {once: true});
+        image.addEventListener('error', () => finish(true), {once: true});
+      }
+    });
+  })();
+</script>

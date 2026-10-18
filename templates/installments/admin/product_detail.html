@@ -1,0 +1,578 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }} - منتج أقساط{% endblock %}
+{% block content %}
+<main class="ins-wrap ins-product-detail">
+  {% include "installments/admin/_nav.html" %}
+
+  <div class="ins-heading">
+    <div>
+      <a href="{{ url_for('installments_admin.products') }}">→ المنتجات</a>
+      <span class="ins-eyebrow">إدارة العرض</span>
+      <h1>{{ item.title }}</h1>
+      <p class="ins-muted">{{ item.product.name }}{% if item.product.sku %} — {{ item.product.sku }}{% endif %} — المخزون {{ item.product.quantity }}</p>
+    </div>
+    <div class="ins-product-detail__meta">
+      <span class="ins-stock {{ 'is-empty' if item.product.quantity <= 0 }}">{{ item.product.quantity }} قطعة</span>
+      <span class="ins-badge {{ item.status }}">{{ item.status }}</span>
+    </div>
+  </div>
+
+  <div id="productMessage" role="status"></div>
+
+  <section class="ins-card ins-settings-card">
+    <div class="ins-card-title">
+      <div>
+        <span class="ins-card-title__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="m12 3 9 5-9 5-9-5z"></path><path d="m3 12 9 5 9-5M3 16l9 5 9-5"></path></svg>
+        </span>
+        <div>
+          <h2>بيانات العرض</h2>
+          <p>العنوان والسعر والوصف الظاهر للعملاء في المتجر</p>
+        </div>
+      </div>
+    </div>
+
+    <form id="editProduct" class="ins-product-edit">
+      <div class="ins-fields-2">
+        <div class="ins-field">
+          <label>العنوان<input name="title" value="{{ item.title }}" required maxlength="180"></label>
+        </div>
+        <div class="ins-field">
+          <label>السعر النقدي
+            <span class="ins-input-suffix">
+              <input name="cash_price" type="number" min="0" value="{{ item.cash_price }}" required dir="ltr">
+              <span>د.ع</span>
+            </span>
+          </label>
+        </div>
+        <div class="ins-field">
+          <label>الفئة<input name="category" value="{{ item.category or '' }}" placeholder="مثال: غسالات"></label>
+        </div>
+        <div class="ins-field">
+          <label>الحالة
+            <select name="status">
+              <option value="draft" {% if item.status=='draft' %}selected{% endif %}>مسودة</option>
+              <option value="published" {% if item.status=='published' %}selected{% endif %}>منشور</option>
+              <option value="disabled" {% if item.status=='disabled' %}selected{% endif %}>معطل</option>
+            </select>
+          </label>
+        </div>
+      </div>
+
+      <div class="ins-field">
+        <label>الوصف المختصر<input name="short_description" value="{{ item.short_description or '' }}" maxlength="500" placeholder="سطر قصير يظهر تحت اسم المنتج"></label>
+      </div>
+
+      <div class="ins-field">
+        <label>الوصف الكامل<textarea name="full_description" rows="5" placeholder="تفاصيل المنتج والمواصفات الظاهرة في صفحة المنتج…">{{ item.full_description or '' }}</textarea></label>
+      </div>
+
+      <div class="ins-check-grid docs ins-product-flags">
+        <label class="ins-check-tile">
+          <input type="checkbox" name="featured" {% if item.featured %}checked{% endif %}>
+          <span>
+            <strong>منتج مميز</strong>
+            <small>يظهر في قسم المميزات بالمتجر</small>
+          </span>
+        </label>
+        <label class="ins-check-tile">
+          <input type="checkbox" name="show_cash_price" {% if item.show_cash_price %}checked{% endif %}>
+          <span>
+            <strong>إظهار السعر النقدي</strong>
+            <small>عرض سعر الكاش بجانب التقسيط</small>
+          </span>
+        </label>
+        <label class="ins-check-tile">
+          <input type="checkbox" name="show_stock" {% if item.show_stock %}checked{% endif %}>
+          <span>
+            <strong>إظهار المخزون</strong>
+            <small>إظهار الكمية المتوفرة للعميل</small>
+          </span>
+        </label>
+      </div>
+
+      <div class="ins-product-edit__footer">
+        <button class="ins-btn" type="submit">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><path d="M17 21v-8H7v8M7 3v5h8"></path></svg>
+          حفظ المنتج
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <section class="ins-card ins-settings-card ins-section-gap">
+    <div class="ins-card-title">
+      <div>
+        <span class="ins-card-title__icon tone-pay" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M3 10h18M8 15h3"></path></svg>
+        </span>
+        <div>
+          <h2>خطط التقسيط</h2>
+          <p>نسبة زيادة، إجمالي ثابت، أو قسط شهري ثابت مع معاينة فورية{% if allowed_durations %} — المدد المسموحة: {{ allowed_durations|join('، ') }} شهر{% endif %}</p>
+        </div>
+      </div>
+      <span class="ins-plan-count">{{ item.plans|length }} خطة</span>
+    </div>
+
+    <form id="planForm" class="ins-plan-builder">
+      <div class="ins-fields-2">
+        <div class="ins-field">
+          <label>المدة بالأشهر
+            {% if allowed_durations %}
+              <select name="months" required>
+                <option value="">اختر المدة</option>
+                {% for duration in allowed_durations %}<option value="{{ duration }}">{{ duration }} شهر</option>{% endfor %}
+              </select>
+            {% else %}
+              <span class="ins-input-suffix">
+                <input name="months" type="number" min="1" max="120" required>
+                <span>شهر</span>
+              </span>
+            {% endif %}
+          </label>
+        </div>
+        <div class="ins-field">
+          <label>طريقة التسعير
+            <select name="pricing_mode">
+              <option value="percentage">نسبة زيادة</option>
+              <option value="fixed_total">إجمالي ثابت</option>
+              <option value="fixed_monthly">قسط شهري ثابت</option>
+            </select>
+          </label>
+        </div>
+        <div class="ins-field">
+          <label>نسبة الزيادة %<input name="markup_percentage" type="number" min="0" step="0.01" value="25"></label>
+        </div>
+        <div class="ins-field">
+          <label>الإجمالي الثابت<input name="fixed_total_price" type="number" min="0" dir="ltr"></label>
+        </div>
+        <div class="ins-field">
+          <label>القسط الشهري الثابت<input name="fixed_monthly_amount" type="number" min="0" dir="ltr"></label>
+        </div>
+        <div class="ins-field">
+          <label>نوع الدفعة الأولى
+            <select name="down_payment_type">
+              <option value="none">بدون</option>
+              <option value="percentage">نسبة</option>
+              <option value="fixed">مبلغ ثابت</option>
+            </select>
+          </label>
+        </div>
+        <div class="ins-field">
+          <label>قيمة الدفعة الأولى<input name="down_payment_value" type="number" min="0" step="0.01" value="0"></label>
+        </div>
+        <div class="ins-field">
+          <label>رسوم المعاملة<input name="processing_fee" type="number" min="0" value="0" dir="ltr"></label>
+        </div>
+      </div>
+      <div class="ins-product-edit__footer">
+        <button class="ins-btn" type="submit">إضافة الخطة</button>
+      </div>
+    </form>
+
+    <div class="ins-table-wrap ins-section-gap">
+      <table class="ins-table">
+        <thead>
+          <tr>
+            <th>المدة</th>
+            <th>التسعير</th>
+            <th>القيمة</th>
+            <th>الدفعة الأولى</th>
+            <th>الرسوم</th>
+            <th>الحالة</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for plan in item.plans %}
+            {% set duration_not_allowed = allowed_durations and plan.months not in allowed_durations %}
+            <tr>
+              <td><strong>{{ plan.months }}</strong> شهر</td>
+              <td>
+                {% if plan.pricing_mode == 'percentage' %}نسبة زيادة
+                {% elif plan.pricing_mode == 'fixed_total' %}إجمالي ثابت
+                {% else %}قسط شهري ثابت{% endif %}
+              </td>
+              <td class="ins-money">
+                {% if plan.pricing_mode == 'percentage' %}{{ plan.markup_percentage }}%
+                {% elif plan.pricing_mode == 'fixed_total' %}{{ plan.fixed_total_price|toLocaleString }}
+                {% else %}{{ plan.fixed_monthly_amount|toLocaleString }} / شهر{% endif %}
+              </td>
+              <td>
+                {% if plan.down_payment_type == 'none' %}بدون
+                {% elif plan.down_payment_type == 'percentage' %}{{ plan.down_payment_value }}%
+                {% else %}<span class="ins-money">{{ plan.down_payment_value|toLocaleString }}</span>{% endif %}
+              </td>
+              <td class="ins-money">{{ plan.processing_fee|toLocaleString }}</td>
+              <td>
+                {% if duration_not_allowed %}
+                  <span class="ins-badge disabled">مدة غير مسموحة</span>
+                {% else %}
+                  <span class="ins-badge {{ 'active' if plan.active else 'disabled' }}">{{ 'نشطة' if plan.active else 'معطلة' }}</span>
+                {% endif %}
+              </td>
+              <td class="ins-table-actions">
+                {% if not duration_not_allowed %}
+                  <button class="ins-btn secondary" type="button" data-toggle-plan="{{ plan.id }}" data-active="{{ 0 if plan.active else 1 }}">{{ 'تعطيل' if plan.active else 'تفعيل' }}</button>
+                {% endif %}
+                <button class="ins-btn danger" type="button" data-delete-plan="{{ plan.id }}">حذف</button>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="7">
+                <div class="ins-empty">
+                  <span>□</span>
+                  <strong>لا توجد خطط بعد</strong>
+                  <small>أضف أول خطة تقسيط ليتمكن العملاء من الطلب</small>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="mediaSection" class="ins-card ins-settings-card ins-section-gap">
+    <div class="ins-card-title">
+      <div>
+        <span class="ins-card-title__icon tone-docs" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="2"></circle><path d="m21 16-4.5-4.5L12 16l-2.5-2.5L3 20"></path></svg>
+        </span>
+        <div>
+          <h2>معرض المنتج</h2>
+          <p>تُحسّن الصور تلقائياً: إزالة الخلفية البيضاء، حفظ الشفافية، قص الحواف، وتوحيد المقاس</p>
+        </div>
+      </div>
+    </div>
+
+    <form id="mediaForm" enctype="multipart/form-data" class="ins-media-uploader" aria-label="منطقة سحب وإفلات الصور والفيديو">
+      <span class="ins-media-uploader__icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M12 16V4m0 0L7 9m5-5 5 5"></path><path d="M5 14v5h14v-5"></path></svg>
+      </span>
+      <div class="ins-media-uploader__copy">
+        <strong data-drop-title>اسحب الصور أو الفيديو وأفلته هنا</strong>
+        <small>أو اضغط «اختيار ملفات» — JPEG / PNG / WebP حتى 8MB، وMP4 / WebM حتى 100MB</small>
+        <span id="mediaSelection" class="ins-media-uploader__selection" aria-live="polite"></span>
+      </div>
+      <label class="ins-file-btn">
+        <input type="file" name="file" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm" multiple required>
+        <span>اختيار ملفات</span>
+      </label>
+      <button class="ins-btn" type="submit" data-upload-button>رفع المحدد</button>
+    </form>
+
+    <div id="mediaGrid" class="ins-media-grid">
+      {% for media in item.media %}
+        <article class="ins-media" draggable="true" data-id="{{ media.id }}">
+          {% if media.media_type == 'image' %}
+            <img src="{{ url_for('static', filename=media.file_path, v=media.size_bytes) }}" alt="{{ media.original_name }}">
+          {% else %}
+            <video src="{{ url_for('static', filename=media.file_path) }}" controls></video>
+          {% endif %}
+          <div>
+            {% if media.is_main %}
+              <span class="ins-badge active">رئيسية</span>
+            {% elif media.media_type == 'image' %}
+              <button class="ins-btn secondary" type="button" data-main="{{ media.id }}">تعيين رئيسية</button>
+            {% endif %}
+            <button class="ins-btn danger" type="button" data-delete-media="{{ media.id }}">حذف</button>
+          </div>
+        </article>
+      {% else %}
+        <div class="ins-empty ins-media-empty">
+          <span>□</span>
+          <strong>لم ترفع وسائط بعد</strong>
+          <small>اسحب الصورة إلى هذه المساحة أو إلى مربع الرفع أعلاه</small>
+        </div>
+      {% endfor %}
+    </div>
+  </section>
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const message = document.getElementById('productMessage');
+async function api(url, method = 'POST', body = {}) {
+  const r = await fetch(url, {
+    method,
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.error || 'تعذر تنفيذ العملية');
+  return j;
+}
+function fail(err) {
+  message.className = 'ins-message error';
+  message.textContent = err.message;
+  message.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function ok(text) {
+  message.className = 'ins-message success';
+  message.textContent = text;
+}
+
+document.getElementById('editProduct').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const form = e.currentTarget;
+  const d = Object.fromEntries(new FormData(form));
+  d.cash_price = Number(d.cash_price);
+  ['featured', 'show_cash_price', 'show_stock'].forEach((k) => {
+    d[k] = form.elements[k].checked;
+  });
+  api('/installments/api/products/{{ item.id }}', 'PATCH', d)
+    .then(() => {
+      ok('تم حفظ المنتج');
+      location.reload();
+    })
+    .catch(fail);
+});
+
+document.getElementById('planForm').addEventListener('submit', (e) => {
+  e.preventDefault();
+  api('/installments/api/products/{{ item.id }}/plans', 'POST', Object.fromEntries(new FormData(e.currentTarget)))
+    .then(() => location.reload())
+    .catch(fail);
+});
+
+const planBuilder = document.getElementById('planForm');
+const preview = document.createElement('div');
+preview.className = 'ins-plan-preview';
+preview.innerHTML = '<strong>معاينة الخطة</strong><p>أدخل بيانات الخطة لمعاينة الحساب فوراً</p>';
+planBuilder.insertBefore(preview, planBuilder.lastElementChild);
+
+let previewTimer;
+planBuilder.addEventListener('input', () => {
+  clearTimeout(previewTimer);
+  previewTimer = setTimeout(async () => {
+    const d = Object.fromEntries(new FormData(planBuilder));
+    d.cash_price = {{ item.cash_price }};
+    try {
+      const j = await api('/installments/api/plans/calculate', 'POST', d);
+      const c = j.calculation;
+      preview.innerHTML = `
+        <strong>معاينة الخطة</strong>
+        <div class="ins-plan-preview__grid">
+          <span><small>الإجمالي</small><b>${Number(c.installment_total).toLocaleString('ar-IQ')}</b></span>
+          <span><small>الدفعة الأولى</small><b>${Number(c.down_payment).toLocaleString('ar-IQ')}</b></span>
+          <span><small>المتبقي</small><b>${Number(c.financed_amount).toLocaleString('ar-IQ')}</b></span>
+          <span><small>القسط الشهري</small><b>${Number(c.monthly_payment).toLocaleString('ar-IQ')} × ${c.number_of_payments}</b></span>
+        </div>`;
+    } catch (err) {
+      preview.innerHTML = `<strong>معاينة الخطة</strong><p class="is-error">${err.message}</p>`;
+    }
+  }, 250);
+});
+
+document.addEventListener('click', (e) => {
+  const toggle = e.target.closest('[data-toggle-plan]');
+  const del = e.target.closest('[data-delete-plan]');
+  const main = e.target.closest('[data-main]');
+  const media = e.target.closest('[data-delete-media]');
+  if (toggle) {
+    api(`/installments/api/plans/${toggle.dataset.togglePlan}`, 'PATCH', {
+      active: Boolean(Number(toggle.dataset.active)),
+    }).then(() => location.reload()).catch(fail);
+  }
+  if (del) {
+    if (!confirm('حذف هذه الخطة؟')) return;
+    api(`/installments/api/plans/${del.dataset.deletePlan}`, 'DELETE')
+      .then(() => location.reload())
+      .catch(fail);
+  }
+  if (main) {
+    api(`/installments/api/media/${main.dataset.main}/main`)
+      .then(() => location.reload())
+      .catch(fail);
+  }
+  if (media) {
+    if (!confirm('حذف هذه الوسائط؟')) return;
+    api(`/installments/api/media/${media.dataset.deleteMedia}`, 'DELETE')
+      .then(() => location.reload())
+      .catch(fail);
+  }
+});
+
+const mediaForm = document.getElementById('mediaForm');
+const mediaSection = document.getElementById('mediaSection');
+const mediaInput = mediaForm.querySelector('input[type="file"]');
+const uploadButton = mediaForm.querySelector('[data-upload-button]');
+const dropTitle = mediaForm.querySelector('[data-drop-title]');
+const mediaSelection = document.getElementById('mediaSelection');
+const acceptedMediaTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/webm']);
+let dragDepth = 0;
+
+function isFileDrag(event) {
+  return Array.from(event.dataTransfer?.types || []).includes('Files');
+}
+
+function mediaLimit(file) {
+  return file.type.startsWith('image/') ? 8 * 1024 * 1024 : 100 * 1024 * 1024;
+}
+
+function validatedMediaFiles(fileList) {
+  const files = [...(fileList || [])];
+  if (!files.length) throw new Error('اختر صورة أو فيديو أولاً');
+  if (files.length > 10) throw new Error('يمكن رفع 10 ملفات كحد أقصى في كل مرة');
+  for (const file of files) {
+    if (!acceptedMediaTypes.has(file.type)) throw new Error(`نوع الملف «${file.name}» غير مدعوم`);
+    if (file.size > mediaLimit(file)) {
+      const limit = file.type.startsWith('image/') ? '8MB' : '100MB';
+      throw new Error(`حجم الملف «${file.name}» أكبر من ${limit}`);
+    }
+  }
+  return files;
+}
+
+function showMediaSelection(fileList) {
+  const files = [...(fileList || [])];
+  mediaSelection.textContent = files.length
+    ? (files.length === 1 ? `تم اختيار: ${files[0].name}` : `تم اختيار ${files.length} ملفات`)
+    : '';
+}
+
+async function uploadMediaFiles(fileList) {
+  let files;
+  try {
+    files = validatedMediaFiles(fileList);
+  } catch (err) {
+    fail(err);
+    return;
+  }
+  uploadButton.disabled = true;
+  mediaInput.disabled = true;
+  mediaForm.classList.add('is-uploading');
+  try {
+    for (let index = 0; index < files.length; index += 1) {
+      const body = new FormData();
+      body.append('file', files[index]);
+      uploadButton.textContent = files.length > 1
+        ? `جاري رفع ${index + 1} من ${files.length}…`
+        : 'جارٍ الرفع والتحسين…';
+      mediaSelection.textContent = files[index].name;
+      const response = await fetch('/installments/api/products/{{ item.id }}/media', {
+        method: 'POST',
+        headers: { Accept: 'application/json' },
+        body,
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || `فشل رفع ${files[index].name}`);
+    }
+    location.reload();
+  } catch (err) {
+    uploadButton.disabled = false;
+    mediaInput.disabled = false;
+    uploadButton.textContent = 'رفع المحدد';
+    mediaForm.classList.remove('is-uploading');
+    fail(err);
+  }
+}
+
+mediaInput.addEventListener('change', () => {
+  try {
+    const files = validatedMediaFiles(mediaInput.files);
+    showMediaSelection(files);
+  } catch (err) {
+    mediaInput.value = '';
+    showMediaSelection([]);
+    fail(err);
+  }
+});
+
+mediaForm.addEventListener('submit', (event) => {
+  event.preventDefault();
+  uploadMediaFiles(mediaInput.files);
+});
+
+['dragenter', 'dragover'].forEach((eventName) => {
+  mediaForm.addEventListener(eventName, (event) => {
+    if (!isFileDrag(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (eventName === 'dragenter') dragDepth += 1;
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+    mediaForm.classList.add('is-dragover');
+    dropTitle.textContent = 'اترك الملفات هنا ليبدأ الرفع';
+  });
+});
+
+mediaForm.addEventListener('dragleave', (event) => {
+  if (!isFileDrag(event)) return;
+  event.preventDefault();
+  dragDepth = Math.max(0, dragDepth - 1);
+  if (!dragDepth) {
+    mediaForm.classList.remove('is-dragover');
+    dropTitle.textContent = 'اسحب الصور أو الفيديو وأفلته هنا';
+  }
+});
+
+mediaForm.addEventListener('drop', (event) => {
+  if (!event.dataTransfer?.files?.length) return;
+  event.preventDefault();
+  event.stopPropagation();
+  dragDepth = 0;
+  mediaForm.classList.remove('is-dragover');
+  dropTitle.textContent = 'تم استلام الملفات — جاري الرفع';
+  const files = event.dataTransfer?.files;
+  showMediaSelection(files);
+  uploadMediaFiles(files);
+});
+
+mediaSection.addEventListener('dragover', (event) => {
+  if (!isFileDrag(event) || mediaForm.contains(event.target)) return;
+  event.preventDefault();
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+  mediaForm.classList.add('is-dragover');
+  dropTitle.textContent = 'اترك الملفات هنا ليبدأ الرفع';
+});
+mediaSection.addEventListener('dragleave', (event) => {
+  if (event.relatedTarget && mediaSection.contains(event.relatedTarget)) return;
+  mediaForm.classList.remove('is-dragover');
+  dropTitle.textContent = 'اسحب الصور أو الفيديو وأفلته هنا';
+});
+mediaSection.addEventListener('drop', (event) => {
+  if (!event.dataTransfer?.files?.length || mediaForm.contains(event.target)) return;
+  event.preventDefault();
+  event.stopPropagation();
+  mediaForm.classList.remove('is-dragover');
+  dropTitle.textContent = 'تم استلام الملفات — جاري الرفع';
+  showMediaSelection(event.dataTransfer.files);
+  uploadMediaFiles(event.dataTransfer.files);
+});
+
+document.addEventListener('dragover', (event) => {
+  if (isFileDrag(event)) event.preventDefault();
+});
+document.addEventListener('drop', (event) => {
+  if (event.dataTransfer?.files?.length && !mediaForm.contains(event.target)) event.preventDefault();
+});
+
+let dragged = null;
+const grid = document.getElementById('mediaGrid');
+grid.querySelectorAll('.ins-media').forEach((el) => {
+  el.addEventListener('dragstart', () => { dragged = el; });
+  el.addEventListener('dragover', (e) => e.preventDefault());
+  el.addEventListener('drop', (e) => {
+    e.preventDefault();
+    if (dragged && dragged !== el) grid.insertBefore(dragged, el);
+    api('/installments/api/products/{{ item.id }}/media/reorder', 'POST', {
+      ids: [...grid.querySelectorAll('.ins-media')].map((x) => Number(x.dataset.id)),
+    }).catch(fail);
+  });
+});
+
+if (grid.querySelector('img')) {
+  api('/installments/api/products/{{ item.id }}/media/auto-enhance')
+    .then((result) => {
+      if (result.updated) {
+        ok(`تم تحسين ${result.updated} صورة تلقائياً`);
+        window.setTimeout(() => location.reload(), 450);
+      }
+    })
+    .catch(fail);
+}
+</script>
+{% endblock %}

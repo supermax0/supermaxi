@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ settings.store_name }} | متجر الأقساط</title>
+  <meta name="description" content="متجر {{ settings.store_name }} لشراء المنتجات بالتقسيط">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installments.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installment_store.css', v='20260812-full-width-2') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/store-card-image-loader.css', v='20260814-1') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='storefront/css/store-cash-shared.css', v='20260814-promo-mobile-3') }}">
+</head>
+<body class="store-body">
+  {% include 'installments/store/_header.html' %}
+
+  <main class="store-shell store-home">
+    <section class="cash-promo-hero installment-promo-hero" aria-labelledby="installmentPromoTitle">
+      <i class="cash-promo-hero__corner cash-promo-hero__corner--top" aria-hidden="true"></i>
+      <i class="cash-promo-hero__corner cash-promo-hero__corner--bottom" aria-hidden="true"></i>
+      <span class="cash-promo-confetti cash-promo-confetti--one" aria-hidden="true"></span>
+      <span class="cash-promo-confetti cash-promo-confetti--two" aria-hidden="true"></span>
+      <span class="cash-promo-confetti cash-promo-confetti--three" aria-hidden="true"></span>
+
+      <div class="cash-promo-hero__content">
+        <span class="cash-promo-hero__eyebrow">عروض التقسيط من {{ settings.store_name }} لهذا الأسبوع</span>
+        <h1 id="installmentPromoTitle">قسّط براحتك على<br><em>الأجهزة المنزلية والإلكترونيات</em></h1>
+
+        <nav class="cash-promo-categories" aria-label="أقسام التقسيط السريعة">
+          {% for row in category_cards[:4] %}
+          <a href="{{ url_for('installments_store.store_index', tenant_slug=tenant_slug, category=row.name) }}">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M8 22h8M12 19v3"></path></svg>
+            <span>{{ row.name }}</span>
+          </a>
+          {% else %}
+          <a href="#products"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"></rect><path d="M8 22h8M12 19v3"></path></svg><span>شاشات</span></a>
+          <a href="#products"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4zM4 10h16M8 7h.01"></path></svg><span>أجهزة منزلية</span></a>
+          {% endfor %}
+        </nav>
+
+        <div class="cash-promo-benefits">
+          <article>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="m8 12 2.5 2.5L16 9"></path></svg>
+            <div><strong>موافقة سريعة</strong><small>خطوات واضحة وسهلة</small></div>
+          </article>
+          <article>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="5" width="16" height="15" rx="2"></rect><path d="M8 3v4M16 3v4M4 10h16"></path></svg>
+            <div><strong>دفعات مريحة</strong><small>خطط تناسب احتياجك</small></div>
+          </article>
+          <article>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h11v10H3zM14 10h4l3 3v3h-7z"></path><circle cx="7" cy="18" r="2"></circle><circle cx="18" cy="18" r="2"></circle></svg>
+            <div><strong>توصيل سريع</strong><small>حسب توفر المنتج</small></div>
+          </article>
+        </div>
+
+        <div class="cash-promo-actions">
+          <a class="cash-promo-button cash-promo-button--primary" href="#products">ابدأ التقسيط الآن <span>‹</span></a>
+          <a class="cash-promo-button cash-promo-button--secondary" href="{{ url_for('installments_store.how_it_works_page', tenant_slug=tenant_slug) }}">كيف يعمل التقسيط؟</a>
+        </div>
+      </div>
+
+      <div class="cash-promo-hero__visual">
+        {% if max_months %}<div class="cash-promo-seal installment-promo-seal" aria-label="تقسيط حتى {{ max_months }} شهر"><span>تقسيط حتى</span><strong>{{ max_months }}</strong><small>شهر</small></div>{% endif %}
+        <div class="cash-promo-products">
+          {% for card in hero_cards[:3] %}
+          {% set row = card.item %}
+          {% if card.main_media or row.product.image_url %}
+          <a class="cash-promo-product cash-promo-product--{{ loop.index }}" href="{{ store_product_url(tenant_slug, row.slug) }}" aria-label="عرض {{ row.title }}">
+            {% if card.main_media %}<img src="{{ url_for('static', filename=card.main_media.file_path, v=card.main_media.size_bytes) }}" alt="{{ row.title }}" decoding="async">
+            {% else %}<img src="{{ row.product.image_url }}" alt="{{ row.title }}" decoding="async">{% endif %}
+          </a>
+          {% endif %}
+          {% endfor %}
+        </div>
+        <div class="cash-promo-stage" aria-hidden="true"><i></i></div>
+        <div class="cash-promo-dots" aria-hidden="true"><b></b><i></i><i></i><i></i></div>
+      </div>
+    </section>
+
+    <section class="store-categories" id="categories" aria-label="أقسام المتجر">
+      {% if category_cards %}
+        <div class="store-categories__track" style="--category-roll-duration: {{ 38 + (category_cards|length * 4) }}s">
+          {% for copy in range(2) %}
+            <div class="store-categories__group" {% if copy %}aria-hidden="true"{% endif %}>
+              {% for row in category_cards %}
+                <a class="store-category-card" href="{{ url_for('installments_store.store_index', tenant_slug=tenant_slug, category=row.name) }}" {% if copy %}tabindex="-1"{% endif %}>
+                  <div><strong>{{ row.name }}</strong><small>عرض المزيد <span>‹</span></small></div>
+                  {% if row.preview and row.preview.main_media %}<img src="{{ url_for('static', filename=row.preview.main_media.file_path, v=row.preview.main_media.size_bytes) }}" alt="{{ row.name }}" loading="lazy" decoding="async">
+                  {% elif row.preview and row.preview.item.product.image_url %}<img src="{{ row.preview.item.product.image_url }}" alt="{{ row.name }}" loading="lazy" decoding="async">
+                  {% else %}<span class="store-category-placeholder"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9" r="1.5"></circle><path d="m4 17 4.5-4.5 3 3 2-2 6.5 6.5"></path></svg></span>{% endif %}
+                </a>
+              {% endfor %}
+            </div>
+          {% endfor %}
+        </div>
+      {% else %}
+        <div class="store-categories__empty">ستظهر أقسام المنتجات هنا بعد نشرها.</div>
+      {% endif %}
+    </section>
+
+    {% include 'installments/store/_trust.html' %}
+
+    <section class="store-products-section" id="products">
+      <div class="store-section-title">
+        <div class="store-section-title__copy"><span>اختيارات تستحقها</span><h2>{{ 'نتائج البحث' if q or category else 'منتجات مميزة' }}</h2><p>منتجات مختارة مع تفاصيل تقسيط واضحة قبل تقديم الطلب.</p></div>
+        <div class="store-section-title__aside"><b>{{ cards|length }}</b><span>منتج متاح</span>{% if q or category %}<a href="{{ url_for('installments_store.store_index', tenant_slug=tenant_slug) }}">مسح التصفية</a>{% endif %}</div>
+      </div>
+      <div class="store-product-grid">
+        {% for card in cards %}
+          {% include 'installments/store/_product_card.html' %}
+        {% else %}
+          <div class="store-empty"><span>⌕</span><h3>لا توجد منتجات مطابقة</h3><p>جرّب البحث باسم مختلف أو تصفح كل المنتجات.</p><a href="{{ url_for('installments_store.store_index', tenant_slug=tenant_slug) }}">عرض الكل</a></div>
+        {% endfor %}
+      </div>
+    </section>
+
+    <section class="store-offers" id="offers">
+      <article><div class="store-offer-icon">12</div><div><strong>{% if max_months %}تقسيط حتى {{ max_months }} شهر{% else %}خطط تقسيط مرنة{% endif %}</strong><small>على المنتجات المتاحة</small><a href="#products">تسوّق الآن</a></div></article>
+      <article><div class="store-offer-icon">✓</div><div><strong>اختيار الخطة المناسبة</strong><small>اعرف الدفعة والقسط قبل التقديم</small><a href="#products">تسوّق الآن</a></div></article>
+      <article><div class="store-offer-icon">0%</div><div><strong>دفعة أولى حسب الخطة</strong><small>تفاصيل واضحة بلا مفاجآت</small><a href="#products">تسوّق الآن</a></div></article>
+      <article class="store-offers__featured"><div><strong>عروض التقسيط المميزة</strong><small>منتجات مختارة بخطط دفع متنوعة</small><a href="#products">استعرض جميع العروض</a></div><span>◆</span></article>
+    </section>
+  </main>
+
+  {% include 'installments/store/_footer.html' %}
+</body>
+</html>

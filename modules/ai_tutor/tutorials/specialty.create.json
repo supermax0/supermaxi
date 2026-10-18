@@ -1,0 +1,87 @@
+{
+  "id": "specialty.create",
+  "version": 1,
+  "status": "verified",
+  "level": 1,
+  "title_ar": "إضافة اختصاص",
+  "description_ar": "إضافة اختصاص طبي واحد على الأقل (يلزم قبل إضافة الأطباء).",
+  "chip_ar": "الاختصاصات",
+  "requires_permissions": ["clinics_admin"],
+  "curriculum": {"group": "setup", "order": 1},
+  "result": "specialty.created",
+  "completion_validator": "specialty.created_since_start",
+  "steps": [
+    {
+      "id": "open-specialties-menu",
+      "type": "wait_click",
+      "target": {"action": "nav.specialties"},
+      "reveal": [{"action": "nav.menu.open"}, {"section": "nav.group.admin"}],
+      "reconcile": {"kind": "ui", "when": {"page": "specialties"}},
+      "nav_message_ar": "جاري فتح الاختصاصات",
+      "message_ar": "اضغط «الاختصاصات» لندخل إلى إدارة اختصاصات العيادة."
+    },
+    {
+      "id": "on-specialties-page",
+      "type": "navigate",
+      "route": "/clinics/specialties",
+      "page": "specialties",
+      "reconcile": {"kind": "ui", "when": {"page": "specialties"}},
+      "message_ar": "نفتح الآن صفحة الاختصاصات."
+    },
+    {
+      "id": "click-add-specialty",
+      "type": "wait_click",
+      "page": "specialties",
+      "target": {"action": "specialty.create"},
+      "reconcile": {"kind": "ui", "when": {"visible": {"section": "specialty.form"}}},
+      "message_ar": "اضغط «إضافة اختصاص»."
+    },
+    {
+      "id": "form-open",
+      "type": "wait_modal",
+      "page": "specialties",
+      "target": {"section": "specialty.form"},
+      "reconcile": {"kind": "ui", "when": {"visible": {"section": "specialty.form"}}},
+      "message_ar": "ننتظر ظهور نموذج الاختصاص."
+    },
+    {
+      "id": "name",
+      "type": "wait_input",
+      "page": "specialties",
+      "target": {"field": "specialty.name"},
+      "condition": {"min_length": 2},
+      "message_ar": "اكتب اسم الاختصاص بالعربية، مثلاً «طب الأسنان»."
+    },
+    {
+      "id": "code",
+      "type": "highlight",
+      "page": "specialties",
+      "target": {"field": "specialty.code"},
+      "message_ar": "الرمز اختياري ويُولَّد تلقائياً إن تركته فارغاً. اضغط «فهمت»."
+    },
+    {
+      "id": "save",
+      "type": "wait_api_success",
+      "page": "specialties",
+      "allow_back": false,
+      "target": {"action": "specialty.save"},
+      "match": {"method": "POST", "url": "^/clinics/api/specialties$"},
+      "reconcile": {"kind": "backend", "validator": "specialty.created_since_start"},
+      "success_ar": "تم حفظ الاختصاص.",
+      "message_ar": "اضغط «حفظ» لإنشاء الاختصاص."
+    },
+    {
+      "id": "verify",
+      "type": "wait_state",
+      "allow_back": false,
+      "validator": "specialty.created_since_start",
+      "message_ar": "نتأكد الآن من إنشاء الاختصاص في النظام…"
+    },
+    {
+      "id": "done",
+      "type": "complete",
+      "allow_back": false,
+      "message_ar": "تمت إضافة الاختصاص وتأكدنا من ذلك داخل النظام."
+    }
+  ]
+}

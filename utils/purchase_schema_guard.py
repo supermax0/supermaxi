@@ -65,6 +65,7 @@ def ensure_purchase_schema() -> None:
             "stock_applied": f"ALTER TABLE purchase ADD COLUMN stock_applied {bool_default}",
             "purchase_date": f"ALTER TABLE purchase ADD COLUMN purchase_date {date_type}",
             "created_at": f"ALTER TABLE purchase ADD COLUMN created_at {datetime_type}",
+            "purchase_list_id": "ALTER TABLE purchase ADD COLUMN purchase_list_id INTEGER",
         }
         stmts = [stmt for column, stmt in additions.items() if column not in cols]
         if stmts:

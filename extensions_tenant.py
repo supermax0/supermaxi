@@ -66,6 +66,13 @@ def get_tenant_engine(tenant_slug):
                 cursor.close()
 
         _tenant_engines[tenant_slug] = engine
+        try:
+            from utils.inventory_audit_trail import ensure_inventory_audit_schema_on_engine
+            ensure_inventory_audit_schema_on_engine(engine)
+        except Exception:
+            # A brand-new tenant has no product/branch tables until
+            # init_tenant_db finishes; that path retries after create_all().
+            pass
         
     return _tenant_engines[tenant_slug]
 
@@ -84,6 +91,13 @@ def init_tenant_db(tenant_slug):
     """
     engine = get_tenant_engine(tenant_slug)
     db.Model.metadata.create_all(engine)
+    from utils.inventory_audit_trail import ensure_inventory_audit_schema_on_engine
+    ensure_inventory_audit_schema_on_engine(engine)
+    # create_all does not add columns to an existing tenant database. Apply
+    # the same additive compatibility guards used by normal requests so a
+    # reopened or test tenant is immediately writable with the current ORM.
+    from routes.employees import _ensure_employee_profile_schema
+    _ensure_employee_profile_schema()
     
     # Initialize default roles and permissions for this tenant
     from sqlalchemy.orm import sessionmaker
@@ -104,9 +118,32 @@ def init_tenant_db(tenant_slug):
             ('view_orders_shipped', 'رؤية المشحونة'),
             ('manage_orders', 'إدارة الطلبات'),
             ('edit_price', 'تعديل السعر'),
+            ('print_pos_invoice', 'طباعة فاتورة نقطة البيع'),
             ('view_reports', 'رؤية التقارير'),
+            ('daily_report.view', 'عرض التقرير اليومي'),
+            ('daily_report.create', 'بدء يومية جديدة'),
+            ('daily_report.edit', 'تعديل اليومية المفتوحة'),
+            ('daily_report.close', 'إغلاق اليومية'),
+            ('daily_report.reopen', 'إعادة فتح اليومية'),
+            ('daily_report.print', 'طباعة التقرير اليومي'),
+            ('daily_report.export', 'تنزيل التقرير اليومي'),
+            ('daily_report.inventory_count', 'تنفيذ الجرد اليومي'),
+            ('daily_report.override_variance', 'تجاوز فروقات الإغلاق'),
             ('manage_inventory', 'إدارة المخزون'),
+            ('product.merge_duplicates', 'دمج المنتجات المتكررة'),
+            ('purchase_list.view', 'عرض قوائم الشراء'),
+            ('purchase_list.create', 'إنشاء قوائم الشراء'),
+            ('purchase_list.edit', 'تعديل قوائم الشراء'),
+            ('purchase_list.delete', 'إلغاء قوائم الشراء'),
+            ('purchase_list.execute', 'تنفيذ قوائم الشراء'),
+            ('purchase_list.print', 'طباعة قوائم الشراء وتقاريرها'),
+            ('purchase_list.view_cost', 'عرض تكاليف قوائم الشراء'),
+            ('purchase_list.manage_payment', 'إدارة طرق وحسابات دفع قوائم الشراء'),
             ('view_expenses', 'رؤية المصاريف'),
+            ('view_receipts', 'رؤية القبض والتسديدات'),
+            ('create_receipts', 'إنشاء سند قبض'),
+            ('print_receipts', 'طباعة سندات القبض'),
+            ('cancel_receipts', 'إلغاء سندات القبض'),
             ('manage_suppliers', 'إدارة الموردين'),
             ('manage_customers', 'إدارة الزبائن'),
             ('view_accounts', 'رؤية الحسابات'),
@@ -139,8 +176,11 @@ def init_tenant_db(tenant_slug):
             ('manage_branches', 'إدارة الفروع'),
             ('manage_transfers', 'نقل المخزون بين الفروع'),
             ('view_all_branches', 'عرض كل الفروع'),
+            ('use_notes', 'استخدام دفتر الملاحظات الشخصي'),
         ]
 
+        from modules.hr.common import HR_PERMISSIONS
+        default_perms.extend(HR_PERMISSIONS.items())
         for name, desc in default_perms:
             if not session.query(Permission).filter_by(name=name).first():
                 session.add(Permission(name=name, description=desc, created_at=datetime.utcnow()))
@@ -154,7 +194,8 @@ def init_tenant_db(tenant_slug):
             perms = session.query(Permission).filter(Permission.name.in_([
                 'view_dashboard', 'view_orders', 'manage_orders', 'manage_customers',
                 'view_orders_placed', 'view_orders_delivered', 'view_orders_returned',
-                'view_orders_packed', 'view_orders_shipped', 'view_pos', 'view_my_orders', 'view_messages',
+                'view_orders_packed', 'view_orders_shipped', 'view_pos', 'view_my_orders',
+                'view_messages', 'print_pos_invoice',
             ])).all()
             cashier_role.permissions.extend(perms)
             session.add(cashier_role)

@@ -208,3 +208,31 @@ def sample_accounting_data():
             {"id": 1, "total_debt": 100000, "total_paid": 70000},
         ],
     }
+
+
+# AI Tutor analyzer snapshots must never leak between the developer's machine and the test run.
+import os as _os
+import tempfile as _tempfile
+
+_os.environ.setdefault("AI_TUTOR_SYSTEM_MAP_DIR", _tempfile.mkdtemp(prefix="ai-tutor-map-"))
+
+
+def pytest_sessionstart(session):
+    """Throw away test tenant databases left behind by earlier runs.
+
+    On Windows a test's own teardown often cannot delete its SQLite file (a pooled connection still holds it), so
+    they piled up (~33 GB, a full disk). Only ``tenants/test_*`` files untouched for 6 hours are removed — never a
+    real company, never a file a parallel test run may still be using."""
+    import time
+    from pathlib import Path
+
+    tenants = Path(__file__).resolve().parents[1] / "tenants"
+    if not tenants.is_dir():
+        return
+    cutoff = time.time() - 6 * 3600
+    for path in tenants.glob("test_*"):
+        try:
+            if path.is_file() and path.stat().st_mtime < cutoff:
+                path.unlink()
+        except OSError:
+            pass

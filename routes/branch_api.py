@@ -25,9 +25,20 @@ def list_branches():
     )
 
     schedule = get_shipping_branch_schedule_settings()
+    from flask import g
+
+    current = getattr(g, "branch", None)
+    switch_allowed = can_switch_branch()
     return jsonify({
         "ok": True,
-        "branches": branches_for_select(include_all=can_switch_branch()),
+        "independent_branches_enabled": bool(
+            getattr(g, "independent_branches_enabled", True)
+        ),
+        "branches": branches_for_select(include_all=switch_allowed),
+        "current_branch_id": current.id if current else None,
+        "current_branch": current.to_dict() if current else None,
+        "view_all": bool(getattr(g, "view_all_branches", False) and switch_allowed),
+        "can_switch": switch_allowed,
         "scheduled_branch_id": resolve_shipping_branch_for_now(),
         "branch_schedule_enabled": bool(schedule.get("enabled")),
         "day_start": schedule.get("day_start"),

@@ -131,6 +131,16 @@ def log_activity(
                     branch_id = branch.id
                 elif session.get("branch_id"):
                     branch_id = session.get("branch_id")
+                else:
+                    source = request.get_json(silent=True) if request.is_json else request.form
+                    raw_branch_id = (source or {}).get("branch_id") or merged.get("branch_id")
+                    try:
+                        requested_id = int(raw_branch_id)
+                    except (TypeError, ValueError):
+                        requested_id = 0
+                    allowed_ids = {int(item.id) for item in (getattr(g, "branches", []) or [])}
+                    if requested_id and (not allowed_ids or requested_id in allowed_ids):
+                        branch_id = requested_id
             except Exception:
                 pass
 
@@ -222,6 +232,7 @@ def capture_request_body() -> dict:
 
 
 _PATH_CATEGORY_RULES: list[tuple[re.Pattern, str]] = [
+    (re.compile(r"^/wholesale(?:/|$)"), "wholesale"),
     (re.compile(r"^/orders"), "orders"),
     (re.compile(r"^/pos"), "pos"),
     (re.compile(r"^/inventory"), "inventory"),
@@ -245,6 +256,7 @@ _PATH_CATEGORY_RULES: list[tuple[re.Pattern, str]] = [
     (re.compile(r"^/workspace"), "workspace"),
     (re.compile(r"^/social-ai"), "social"),
     (re.compile(r"^/activity"), "system"),
+    (re.compile(r"^/notes"), "notes"),
     (re.compile(r"^/login"), "auth"),
 ]
 
@@ -259,10 +271,11 @@ def infer_category_from_path(path: str) -> str:
 INVOICE_SNAPSHOT_FIELDS = (
     "id", "status", "payment_status", "paid_amount", "total", "discount_amount",
     "customer_id", "shipping_company_id", "delivery_agent_id",
+    "shipping_barcode", "shipping_barcodes_json",
     "stock_is_deducted", "stock_deducted_at", "stock_restored_at",
 )
 PRODUCT_SNAPSHOT_FIELDS = ("id", "name", "quantity", "price", "cost", "active", "barcode")
-EMPLOYEE_SNAPSHOT_FIELDS = ("id", "name", "username", "phone", "role", "is_active")
+EMPLOYEE_SNAPSHOT_FIELDS = ("id", "name", "username", "phone", "transfer_number", "role", "is_active")
 CUSTOMER_SNAPSHOT_FIELDS = ("id", "name", "phone", "address", "city")
 
 

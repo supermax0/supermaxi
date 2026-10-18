@@ -101,6 +101,25 @@
     document.querySelectorAll('.l-reveal').forEach(function (el) { el.classList.add('v'); });
   }
 
+  // Subtle pointer tilt for the welcome subscription card.
+  var offerCard = document.querySelector('[data-offer-card]');
+  var canTiltOffer = offerCard
+    && window.matchMedia('(hover: hover) and (pointer: fine)').matches
+    && !window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (canTiltOffer) {
+    offerCard.addEventListener('pointermove', function (event) {
+      var bounds = offerCard.getBoundingClientRect();
+      var x = (event.clientX - bounds.left) / bounds.width - 0.5;
+      var y = (event.clientY - bounds.top) / bounds.height - 0.5;
+      offerCard.style.setProperty('--offer-tilt-x', (-y * 4.5).toFixed(2) + 'deg');
+      offerCard.style.setProperty('--offer-tilt-y', (x * 5.5).toFixed(2) + 'deg');
+    });
+    offerCard.addEventListener('pointerleave', function () {
+      offerCard.style.setProperty('--offer-tilt-x', '0deg');
+      offerCard.style.setProperty('--offer-tilt-y', '0deg');
+    });
+  }
+
   // FAQ
   document.querySelectorAll('.l-faq-q').forEach(function (btn) {
     btn.addEventListener('click', function () {

@@ -1,0 +1,93 @@
+{% extends "wholesale/base.html" %}
+{% block title %}كشف الحساب — جملة{% endblock %}
+{% block page_title %}كشف الحساب{% endblock %}
+
+{% block ws_content %}
+<div class="ws-ops">
+  <header class="ws-page-head">
+    <div class="ws-page-head__identity">
+      <span class="ws-page-head__icon"><i class="fa fa-file-lines"></i></span>
+      <div>
+        <span class="ws-page-kicker">تجارة الجملة</span>
+        <h1>كشف الحساب</h1>
+        <p>عميل أو مورد — مدين / دائن / رصيد تراكمي مع تصدير وطباعة</p>
+      </div>
+    </div>
+  </header>
+
+  <div class="ws-panel">
+    <div class="ws-grid-top">
+      <label>النوع
+        <select id="stType"><option value="customer">عميل</option><option value="supplier">مورد</option></select>
+      </label>
+      <label>الطرف
+        <div class="ws-combo"><input id="stPartyQ" placeholder="بحث بالاسم..."><div class="ws-suggest" id="stSuggest"></div></div>
+        <input type="hidden" id="stPartyId">
+      </label>
+      <label>من تاريخ<input type="date" id="stFrom"></label>
+      <label>إلى تاريخ<input type="date" id="stTo"></label>
+      <label>العملة<select id="stCur"><option value="">الكل</option><option>IQD</option><option>USD</option></select></label>
+    </div>
+    <div class="ws-actions">
+      <button class="ws-btn primary" type="button" id="stLoad"><i class="fa fa-eye"></i> عرض</button>
+      <a class="ws-btn" id="stCsv" href="#"><i class="fa fa-file-excel"></i> Excel</a>
+      <button class="ws-btn ghost" type="button" onclick="window.print()"><i class="fa fa-print"></i> طباعة</button>
+    </div>
+    <div class="ws-metric-grid" style="margin-top:16px">
+      <div class="ws-metric"><span>قبل الفترة</span><strong id="stOpen">0</strong></div>
+      <div class="ws-metric"><span>مدين</span><strong id="stDebit">0</strong></div>
+      <div class="ws-metric"><span>دائن</span><strong id="stCredit">0</strong></div>
+      <div class="ws-metric"><span>الرصيد النهائي</span><strong id="stClose">0</strong></div>
+    </div>
+    <div class="ws-table-wrap">
+      <table class="ws-table">
+        <thead><tr><th>التاريخ</th><th>الرقم</th><th>النوع</th><th>البيان</th><th>مدين</th><th>دائن</th><th>الرصيد</th></tr></thead>
+        <tbody id="stBody"><tr><td colspan="7"><div class="ws-empty"><i class="fa fa-search"></i><b>اختر طرفاً ثم اعرض الكشف</b></div></td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+  const money = n => Number(n||0).toLocaleString('en-US');
+  const suggest = document.getElementById('stSuggest');
+  const q = document.getElementById('stPartyQ');
+  let timer;
+  q.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      const type = stType.value;
+      const path = type === 'customer' ? '/api/wholesale/customers/search?q=' : '/api/wholesale/suppliers/search?q=';
+      const r = await (await fetch(path + encodeURIComponent(q.value))).json();
+      suggest.innerHTML = (r.data||[]).map(x => `<button type="button" data-id="${x.id}">${x.name}</button>`).join('');
+      suggest.classList.add('open');
+      suggest.querySelectorAll('button').forEach(b => b.onclick = () => {
+        stPartyId.value = b.dataset.id; q.value = b.textContent; suggest.classList.remove('open');
+      });
+    }, 200);
+  });
+  stLoad.onclick = async () => {
+    if (!stPartyId.value) { alert('اختر عميلاً أو مورداً'); return; }
+    const params = new URLSearchParams({
+      party_type: stType.value, party_id: stPartyId.value,
+      from: stFrom.value||'', to: stTo.value||'', currency: stCur.value||''
+    });
+    const r = await (await fetch('/api/wholesale/statement?' + params)).json();
+    if (!r.ok) { alert(r.error||'خطأ'); return; }
+    const d = r.data;
+    stOpen.textContent = money(d.opening_balance);
+    stDebit.textContent = money(d.total_debit);
+    stCredit.textContent = money(d.total_credit);
+    stClose.textContent = money(d.closing_balance);
+    stBody.innerHTML = (d.rows||[]).map(x => `<tr>
+      <td>${x.entry_date||''}</td><td>${x.doc_no||''}</td><td>${x.entry_type||''}</td>
+      <td>${x.description||''}</td><td>${money(x.debit)}</td><td>${money(x.credit)}</td><td>${money(x.balance_after)}</td>
+    </tr>`).join('') || '<tr><td colspan="7"><div class="ws-empty"><i class="fa fa-inbox"></i><b>لا حركات في الفترة</b></div></td></tr>';
+    stCsv.href = '/api/wholesale/statement?' + params.toString() + '&format=xlsx';
+  };
+})();
+</script>
+{% endblock %}

@@ -29,7 +29,11 @@ def test_deferred_cancel_transition_and_manual_bulk_allocation():
     from utils.branch_stock_service import get_branch_stock, set_branch_stock
     from utils.invoice_schema_guard import ensure_invoice_schema
     from utils.order_lifecycle import process_order_cancel
-    from utils.order_stock_policy import POLICY_FLAG, POLICY_INITIALIZED_FLAG
+    from utils.order_stock_policy import (
+        PACKED_DEDUCTION_FLAG,
+        POLICY_FLAG,
+        POLICY_INITIALIZED_FLAG,
+    )
     from utils.order_stock_policy import set_deferred_stock_policy
 
     with app.app_context():
@@ -40,6 +44,7 @@ def test_deferred_cancel_transition_and_manual_bulk_allocation():
         flags = settings.get_ui_flags()
         flags[POLICY_FLAG] = False
         flags[POLICY_INITIALIZED_FLAG] = True
+        flags[PACKED_DEDUCTION_FLAG] = True
         settings.set_ui_flags(flags)
 
         customer = Customer(name="Deferred Customer", phone="07790000000")
@@ -161,3 +166,97 @@ def test_deferred_cancel_transition_and_manual_bulk_allocation():
         assert second.payment_status == "غير مسدد"
         assert int(second.paid_amount or 0) == 0
         assert second.stock_is_deducted is False
+
+
+def test_packed_deduction_can_be_skipped_but_shipping_still_deducts_and_return_restores():
+    from app import app
+    from flask import g
+    from extensions import db
+    from extensions_tenant import init_tenant_db
+    from models.customer import Customer
+    from models.invoice import Invoice
+    from models.order_item import OrderItem
+    from models.product import Product
+    from models.system_settings import SystemSettings
+    from utils.branch_migration import get_default_branch
+    from utils.branch_stock_service import get_branch_stock, set_branch_stock
+    from utils.invoice_schema_guard import ensure_invoice_schema
+    from utils.order_lifecycle import process_order_return
+    from utils.order_stock_policy import (
+        PACKED_DEDUCTION_FLAG,
+        POLICY_FLAG,
+        ensure_stock_for_transition,
+    )
+
+    tenant = f"test_disabled_order_stock_{os.getpid()}"
+    with app.app_context():
+        g.tenant = tenant
+        init_tenant_db(tenant)
+        ensure_invoice_schema()
+        settings = SystemSettings.get_settings()
+        flags = settings.get_ui_flags()
+        flags[POLICY_FLAG] = True
+        flags[PACKED_DEDUCTION_FLAG] = False
+        settings.set_ui_flags(flags)
+
+        customer = Customer(name="No Stock Customer", phone="07791111111")
+        product = Product(name="No Stock Item", buy_price=100, sale_price=200, quantity=0, active=True)
+        db.session.add_all([customer, product])
+        db.session.flush()
+        branch = get_default_branch()
+        set_branch_stock(branch.id, product.id, 5)
+
+        order = Invoice(
+            customer_id=customer.id,
+            customer_name=customer.name,
+            branch_id=branch.id,
+            total=400,
+            status="تم الطلب",
+            payment_status="غير مسدد",
+            stock_is_deducted=False,
+        )
+        db.session.add(order)
+        db.session.flush()
+        db.session.add(OrderItem(
+            invoice_id=order.id,
+            product_id=product.id,
+            product_name=product.name,
+            quantity=2,
+            price=200,
+            cost=100,
+            total=400,
+        ))
+        db.session.commit()
+
+        assert ensure_stock_for_transition(order, target_status="معبأة") is False
+        order.status = "معبأة"
+        db.session.commit()
+        assert order.stock_is_deducted is False
+        assert get_branch_stock(branch.id, product.id) == 5
+
+        assert ensure_stock_for_transition(order, target_status="جاري الشحن") is True
+        order.status = "جاري الشحن"
+        db.session.commit()
+        assert order.stock_is_deducted is True
+        assert get_branch_stock(branch.id, product.id) == 3
+
+        process_order_return(order, str(order.id))
+        db.session.commit()
+        assert get_branch_stock(branch.id, product.id) == 5
+        assert order.stock_is_deducted is False
+
+
+def test_shipping_and_partial_or_full_payment_always_require_stock():
+    from unittest.mock import patch
+
+    from utils.order_stock_policy import order_needs_stock
+
+    with patch("utils.order_stock_policy.packed_stock_deduction_enabled", return_value=False):
+        assert order_needs_stock(status="تم الطلب") is False
+        assert order_needs_stock(status="معبأة") is False
+        assert order_needs_stock(status="جاري الشحن") is True
+        assert order_needs_stock(payment_status="جزئي") is True
+        assert order_needs_stock(payment_status="مسدد جزئي") is True
+        assert order_needs_stock(payment_status="مسدد") is True
+        assert order_needs_stock(status="معبأة", payment_status="جزئي") is True
+        assert order_needs_stock(status="معبأة", payment_status="مسدد") is True

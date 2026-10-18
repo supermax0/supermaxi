@@ -7,6 +7,7 @@ class ShippingPayment(db.Model):
     __tablename__ = "shipping_payment"
 
     id = db.Column(db.Integer, primary_key=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey("branch.id"), nullable=True, index=True)
 
     # =====================
     # Shipping Company

@@ -6,7 +6,7 @@
   <title>POS</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <script src="/static/js/no-zoom.js"></script>
-  <script src="/static/js/print-utils.js"></script>
+  <script src="/static/js/print-utils.js?v=20260826-no-login-print"></script>
   <script src="/static/js/digits-enforcer.js"></script>
   <meta name="format-detection" content="telephone=no">
   <!-- Favicon -->
@@ -26,8 +26,9 @@
   </script>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
-  <link rel="stylesheet" href="/static/css/design-refresh.css">
-  <link rel="stylesheet" href="/static/css/saas-admin.css">
+  <link rel="stylesheet" href="/static/css/design-refresh.css?v=20260826-dark">
+  <link rel="stylesheet" href="/static/css/theme-dark.css?v=20260826-all">
+  <link rel="stylesheet" href="/static/css/saas-admin.css?v=20260826-dark">
 
   <style>
     :root[data-theme="dark"] {
@@ -1180,6 +1181,37 @@
       text-decoration: none;
     }
 
+    .pos-installment-toggle {
+      min-height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 16px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 900;
+      cursor: pointer;
+      border: 2px solid #9aa3b2;
+      background: #f4f6f9;
+      color: #4b5565;
+    }
+    .pos-installment-toggle.is-on {
+      border-color: #c9a227;
+      background: linear-gradient(135deg, #ffe8a3, #ffd56a);
+      color: #5c4300;
+      box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.18);
+    }
+    .pos-installment-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #9aa3b2;
+    }
+    .pos-installment-toggle.is-on .pos-installment-dot {
+      background: #2f9e44;
+    }
+
     .pos-shell {
       min-height: calc(100vh - 28px);
       border: 1px solid rgba(230, 237, 245, 0.82);
@@ -1470,6 +1502,18 @@
         <span>رجوع</span>
       </a>
       {% endif %}
+      {% set _oil = order_installment_ui or {} %}
+      {% if _oil.get('can_toggle') and not order_data %}
+      <button type="button"
+        id="installmentModeToggleBtn"
+        class="pos-installment-toggle {% if _oil.get('mode_on') %}is-on{% else %}is-off{% endif %}"
+        title="فعّل هذا الوضع حتى يتم تسجيل الطلبات الجديدة ضمن دورة الأقساط."
+        aria-pressed="{% if _oil.get('mode_on') %}true{% else %}false{% endif %}"
+        onclick="toggleInstallmentOrderMode()">
+        <span class="pos-installment-dot" aria-hidden="true"></span>
+        <span id="installmentModeToggleLabel">{% if _oil.get('mode_on') %}الأقساط ON ✓{% else %}الأقساط OFF{% endif %}</span>
+      </button>
+      {% endif %}
       {% if can_view_my_orders %}
       <a href="{{ url_for('pos.my_orders') }}" class="pos-my-orders" title="طلباتي">
         <i class="fas fa-receipt"></i>
@@ -1489,6 +1533,19 @@
         <span style="font-size:16px;font-weight:600;opacity:0.9;">— الموظف: {{ order_data['employee_name'] }}</span>
         {% endif %}
       </h3>
+    </div>
+    {% endif %}
+    {% set _oil = order_installment_ui or {} %}
+    {% if _oil.get('can_toggle') and not order_data %}
+    <div class="card" id="installmentModeBanner"
+      style="display:{% if _oil.get('mode_on') %}block{% else %}none{% endif %};background:linear-gradient(135deg, rgba(201,162,39,0.22), rgba(245,158,11,0.12));border:2px solid rgba(201,162,39,0.55);margin-bottom:16px;padding:14px 18px;">
+      <div style="color:#7a5b00;font-weight:800;font-size:18px;margin-bottom:4px;">⚠ وضع الأقساط مفعّل</div>
+      <div style="color:#5c4300;font-size:14px;line-height:1.6;">
+        دورة الأقساط مفعّلة — هذا الطلب سيتم إنشاؤه كطلب أقساط.
+        مدة الدورة: <span id="installmentDurationLabel">{{ _oil.get('settings', {}).get('duration_value', 7) }}
+        {% if _oil.get('settings', {}).get('duration_unit') == 'hours' %}ساعات{% else %}أيام{% endif %}</span>.
+        <div style="margin-top:6px;">نوع الطلب: <strong>أقساط</strong></div>
+      </div>
     </div>
     {% endif %}
 
@@ -1558,6 +1615,11 @@
             <option value="{{ provinces_group_label }}">{{ provinces_group_label }}</option>
           </select>
           <input id="address" placeholder="العنوان *" class="modal-input" required autocomplete="street-address">
+          <div style="grid-column:1/-1;">
+            <label for="customerLocationInput" style="display:block;margin:4px 0 6px;font-weight:600;color:var(--text);">رابط أو إحداثيات (اختياري)</label>
+            <input id="customerLocationInput" class="modal-input" dir="ltr" placeholder="33.3152, 44.3661 أو رابط الخريطة" autocomplete="off">
+            <div id="customerLocationMap" style="height:160px;margin-top:8px;border-radius:12px;overflow:hidden;border:1px solid var(--border);"></div>
+          </div>
         </div>
 
         <!-- OCR Section inside Modal -->
@@ -1760,7 +1822,7 @@
         <span id="totalPrice">0</span> <span style="font-size:20px;color:var(--text-muted)">د.ع</span>
       </div>
       <div class="pos-total-actions">
-        <button class="btn-primary" onclick="openOrderNotesModal()" id="btnExecuteOrder">{% if order_data %}💾 حفظ التعديل{% else %}✅ تنفيذ الطلب{% endif %}</button>
+        <button class="btn-primary" onclick="openOrderNotesModal()" id="btnExecuteOrder">{% if order_data %}💾 حفظ التعديل{% elif can_print_invoice %}🖨️ تنفيذ وطباعة{% else %}✅ تنفيذ{% endif %}</button>
         <button class="btn-success" onclick="openScheduleModal()">📅 تأجيل الطلب</button>
       </div>
     </section>
@@ -1804,6 +1866,9 @@
       {% endif %}
       <textarea id="orderNotesInput" class="modal-input" placeholder="أدخل ملاحظة البيع (اختياري)" rows="3"
         style="min-height:80px;resize:vertical"></textarea>
+      <label style="display:block;margin:12px 0 6px;font-weight:600;">رابط أو إحداثيات الزبون</label>
+      <input id="orderLocationInput" class="modal-input" dir="ltr" placeholder="33.3152, 44.3661 أو رابط الخريطة">
+      <div id="orderLocationMap" style="height:180px;margin-top:8px;border-radius:12px;overflow:hidden"></div>
       <div class="modal-actions">
         <button class="modal-btn modal-btn-secondary" onclick="closeOrderNotesModal()">إلغاء</button>
         <button class="modal-btn modal-btn-primary" onclick="confirmOrderWithNotes()">✅ تأكيد الطلب</button>
@@ -1827,7 +1892,7 @@
 
   <!-- Bootstrap data for JS (avoid Jinja inside JS parser) -->
   <script type="application/json"
-    id="posBootstrapData">{{ {"canEditPrice": can_edit_price, "orderData": order_data}|tojson }}</script>
+    id="posBootstrapData">{{ {"canEditPrice": can_edit_price, "canPrintInvoice": can_print_invoice, "orderData": order_data, "products": bootstrap_products, "primaryProvince": primary_province or "بغداد"}|tojson }}</script>
 
   <script>
     let items = []
@@ -1848,6 +1913,13 @@
         return;
       }
       document.getElementById('customerModal').classList.add('show');
+      const locationInput = document.getElementById('customerLocationInput');
+      if (locationInput) locationInput.value = "";
+      if (window.OrderLocationPin) {
+        setTimeout(function () {
+          window.OrderLocationPin.bind('customerLocationInput', 'customerLocationMap', null, null);
+        }, 80);
+      }
       document.getElementById('name').focus();
     }
 
@@ -1864,10 +1936,52 @@
     const bootstrapDataEl = document.getElementById("posBootstrapData");
     const bootstrapData = bootstrapDataEl ? JSON.parse(bootstrapDataEl.textContent || "{}") : {};
     const canEditPrice = !!bootstrapData.canEditPrice;
+    const canPrintInvoice = !!bootstrapData.canPrintInvoice;
+    const PRIMARY_PROVINCE = String(bootstrapData.primaryProvince || "بغداد").trim() || "بغداد";
 
     // تحميل بيانات الطلب للتعديل (بدون Jinja control tags داخل JS لتفادي أخطاء الـ parser)
     let editingOrderId = null;
     const initialOrderData = bootstrapData.orderData ?? null;
+    let selectedCustomerCity = (initialOrderData && initialOrderData.customer_city) || "";
+
+    function isPrimaryCustomerCity(city) {
+      const value = String(city || "").trim();
+      if (!value) return true;
+      return value === PRIMARY_PROVINCE;
+    }
+
+    function regionSalePriceForProduct(product, colorRow) {
+      const bagdad = colorRow && colorRow.sale_price != null && colorRow.sale_price !== ""
+        ? Number(colorRow.sale_price)
+        : Number(product?.price ?? product?.sale_price ?? 0);
+      if (!product?.dual_region_pricing) return bagdad || 0;
+      if (isPrimaryCustomerCity(selectedCustomerCity)) return bagdad || 0;
+      const govRaw = colorRow && colorRow.governorate_sale_price != null && colorRow.governorate_sale_price !== ""
+        ? Number(colorRow.governorate_sale_price)
+        : Number(product?.governorate_sale_price ?? 0);
+      return (govRaw > 0 ? govRaw : bagdad) || 0;
+    }
+
+    function repriceCartForCustomerCity() {
+      let changed = false;
+      const products = Array.isArray(bootstrapData.products) ? bootstrapData.products : [];
+      items.forEach((item) => {
+        if (String(item.sale_mode || "normal") !== "normal") return;
+        const product = products.find((p) => Number(p.id) === Number(item.product_id));
+        if (!product?.dual_region_pricing) return;
+        const colorName = String(item.variant_color || item.color || "").trim();
+        const colorRow = colorName
+          ? (product.colors || []).find((c) => (c.name || c) === colorName)
+          : null;
+        const next = regionSalePriceForProduct(product, colorRow);
+        if (next > 0 && Number(item.price) !== next) {
+          item.price = next;
+          changed = true;
+        }
+      });
+      if (changed && typeof renderItems === "function") renderItems();
+    }
+
     if (initialOrderData) {
       editingOrderId = initialOrderData.id ?? null;
       selectedCustomerId = initialOrderData.customer_id ?? null;
@@ -1970,12 +2084,14 @@
         return;
       }
       selectedCustomerId = c.id
+      selectedCustomerCity = c.city || ""
       isSelectingCustomer = true
       if (selectedCustomer) {
         selectedCustomer.innerText = `${c.name} - ${c.phone}`
         customerResults.style.display = "none"
       }
       if (searchCustomer) searchCustomer.value = ""
+      repriceCartForCustomerCity()
     }
 
     function isPhone11Digits(value) {
@@ -2083,10 +2199,12 @@
           }
           if (d.status === "success" && d.id && d.name && d.phone) {
             selectedCustomerId = d.id
+            selectedCustomerCity = cityValue
             if (selectedCustomer) {
               selectedCustomer.innerText = `${d.name} - ${d.phone}`
             }
             isSelectingCustomer = true
+            repriceCartForCustomerCity()
             // مسح الحقول بعد الحفظ
             if (nameInput) nameInput.value = ""
             if (phoneInput) phoneInput.value = ""
@@ -2095,6 +2213,22 @@
             clearFieldError(phone2Input)
             if (cityInput && cityInput.options.length) cityInput.selectedIndex = 0
             if (addressInput) addressInput.value = ""
+            const customerLocationInput = document.getElementById("customerLocationInput")
+            const orderLocationInput = document.getElementById("orderLocationInput")
+            if (customerLocationInput && orderLocationInput) {
+              const locationValue = customerLocationInput.value.trim()
+              orderLocationInput.value = locationValue
+              if (window.OrderLocationPin) {
+                const pin = window.OrderLocationPin.read()
+                window.OrderLocationPin.bind(
+                  "orderLocationInput",
+                  "orderLocationMap",
+                  pin && pin.lat != null ? pin.lat : null,
+                  pin && pin.lng != null ? pin.lng : null
+                )
+              }
+              customerLocationInput.value = ""
+            }
             toast("✅ تم حفظ الزبون بنجاح")
             closeCustomerModal()
           } else {
@@ -2167,21 +2301,68 @@
 
     function addItem(id, name, price, stock) {
       const idNum = typeof id === 'string' ? parseInt(id, 10) : id;
+      const products = Array.isArray(bootstrapData.products) ? bootstrapData.products : [];
+      const productConfig = products.find(p => Number(p.id) === Number(idNum)) || {};
+      let color = "";
+      const colors = Array.isArray(productConfig.colors) ? productConfig.colors : [];
+      let colorRow = null;
+      if (productConfig.has_colors && colors.length) {
+        color = (window.prompt(
+          `اختر لون ${name}:\n` + colors.map((row, index) => `${index + 1}. ${row.name}`).join("\n"),
+          colors[0].name
+        ) || "").trim();
+        colorRow = colors.find(row => row.name === color) ||
+          colors[Number(color) - 1];
+        if (!colorRow) {
+          toast("❌ يجب اختيار لون صحيح");
+          return;
+        }
+        color = colorRow.name;
+        stock = Number(colorRow.quantity ?? colorRow.qty ?? 0);
+      }
+
+      let saleMode = "normal";
+      if (productConfig.has_exchange_sale && window.confirm("هل العملية استبدال؟\nموافق: استبدال — إلغاء: بيع")) {
+        saleMode = "exchange";
+        price = Number(productConfig.exchange_sale_price || price);
+      } else {
+        price = regionSalePriceForProduct(productConfig, colorRow);
+      }
       const rawStock = typeof stock === 'string' ? parseInt(stock, 10) : (stock || 0);
       const stockNum = Math.max(rawStock || 0, Number(editStockByProduct[idNum] || 0));
-      const item = items.find(i => i.product_id === idNum);
+      const item = items.find(i =>
+        Number(i.product_id) === Number(idNum) &&
+        String(i.variant_color || i.color || "") === color &&
+        String(i.sale_mode || "normal") === saleMode
+      );
+      const physicalUsed = items
+        .filter(i =>
+          Number(i.product_id) === Number(idNum) &&
+          String(i.variant_color || i.color || "") === color
+        )
+        .reduce((sum, row) => sum + Number(row.qty || 0), 0);
 
       if (item) {
         const itemStock = Math.max(Number(item.stock || 0), stockNum);
         item.stock = itemStock;
         item.qty++;
-        if (itemStock <= 0 || item.qty > itemStock) {
+        if (itemStock <= 0 || physicalUsed + 1 > itemStock) {
           toast(`⚠ تمت زيادة الكمية وسيقفل الطلب بانتظار المخزون`);
         } else {
           toast(`✅ تم زيادة كمية ${name}`);
         }
       } else {
-        items.push({ product_id: idNum, name: name || '', price: Number(price) || 0, qty: 1, stock: stockNum });
+        items.push({
+          product_id: idNum,
+          name: name || '',
+          price: Number(price) || 0,
+          qty: 1,
+          stock: stockNum,
+          variant_color: color || null,
+          sale_mode: saleMode,
+          trade_in_source_product_id: null,
+          trade_in_source_product_name: null
+        });
         if (stockNum <= 0) {
           toast(`⚠ تمت الإضافة وسيقفل الطلب بانتظار المخزون`);
         } else {
@@ -2206,7 +2387,12 @@
         total += t
         return `
     <tr>
-      <td data-label="المنتج">${i.name}</td>
+      <td data-label="المنتج">${i.name}
+        <small style="display:block;color:var(--text-muted)">
+          ${i.sale_mode === "exchange" ? "استبدال" : "بيع"}
+          ${(i.variant_color || i.color) ? ` — ${i.variant_color || i.color}` : ""}
+        </small>
+      </td>
       <td data-label="الكمية">
         <div style="display:flex; align-items:center; justify-content:center; gap:8px;">
             <button class="qty-btn" onclick="updateQty(${idx},-1)" style="width:28px; height:28px;">-</button>
@@ -2231,9 +2417,16 @@
     function updateQty(i, d) {
       const item = items[i];
       const newQty = item.qty + d;
+      const physicalUsedByOthers = items
+        .filter((row, index) =>
+          index !== i &&
+          Number(row.product_id) === Number(item.product_id) &&
+          String(row.variant_color || row.color || "") === String(item.variant_color || item.color || "")
+        )
+        .reduce((sum, row) => sum + Number(row.qty || 0), 0);
 
       item.qty = Math.max(1, newQty)
-      if (d > 0 && (item.stock <= 0 || item.qty > item.stock)) {
+      if (d > 0 && (item.stock <= 0 || physicalUsedByOthers + item.qty > item.stock)) {
         toast(`⚠ الكمية أكبر من المخزون، سيقفل الطلب بانتظار المخزون`);
       }
       renderItems()
@@ -2363,10 +2556,22 @@
 
       document.getElementById("orderNotesModal").classList.add("show")
       const orderNotesInputEl = document.getElementById("orderNotesInput");
+      const locationInputEl = document.getElementById("orderLocationInput");
       if (orderNotesInputEl && editingOrderId && initialOrderData?.note) {
         orderNotesInputEl.value = String(initialOrderData.note);
       } else if (orderNotesInputEl && !editingOrderId) {
         orderNotesInputEl.value = "";
+      }
+      if (locationInputEl) {
+        locationInputEl.value = (editingOrderId && initialOrderData && initialOrderData.location_url) ? String(initialOrderData.location_url) : (editingOrderId ? "" : locationInputEl.value);
+      }
+      if (window.OrderLocationPin) {
+        window.OrderLocationPin.bind(
+          "orderLocationInput",
+          "orderLocationMap",
+          editingOrderId && initialOrderData ? initialOrderData.location_lat : null,
+          editingOrderId && initialOrderData ? initialOrderData.location_lng : null
+        );
       }
       orderNotesInputEl?.focus()
     }
@@ -2380,6 +2585,39 @@
       }
     }
 
+    window.__ORDER_INSTALLMENT_UI = {{ (order_installment_ui or {})|tojson }};
+    async function toggleInstallmentOrderMode() {
+      const ui = window.__ORDER_INSTALLMENT_UI || {};
+      if (!ui.can_toggle) return;
+      const enabling = !ui.mode_on;
+      try {
+        const res = await fetch(enabling ? "/api/order-installment/mode/enable" : "/api/order-installment/mode/disable", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          toast(data.error || "تعذر تبديل وضع الأقساط");
+          return;
+        }
+        ui.mode_on = !!data.mode_on;
+        window.__ORDER_INSTALLMENT_UI = ui;
+        const btn = document.getElementById("installmentModeToggleBtn");
+        const label = document.getElementById("installmentModeToggleLabel");
+        const banner = document.getElementById("installmentModeBanner");
+        if (btn) {
+          btn.classList.toggle("is-on", ui.mode_on);
+          btn.classList.toggle("is-off", !ui.mode_on);
+          btn.setAttribute("aria-pressed", ui.mode_on ? "true" : "false");
+        }
+        if (label) label.textContent = ui.mode_on ? "الأقساط ON ✓" : "الأقساط OFF";
+        if (banner) banner.style.display = ui.mode_on ? "block" : "none";
+        toast(data.message || (ui.mode_on ? "تم تفعيل وضع الأقساط" : "تم إيقاف وضع الأقساط"));
+      } catch (e) {
+        toast("تعذر تبديل وضع الأقساط");
+      }
+    }
+
     function confirmOrderWithNotes() {
       if (isSubmittingOrder) { toast("جاري إنشاء الطلب، انتظر لحظة..."); return }
       const notesInput = document.getElementById("orderNotesInput")
@@ -2388,6 +2626,26 @@
 
       if (!selectedCustomerId) { toast("اختر زبون"); return }
       if (!items.length) { toast("لا توجد منتجات"); return }
+
+      const oilUi = window.__ORDER_INSTALLMENT_UI || {};
+      if (!editingOrderId && oilUi && oilUi.mode_on && oilUi.settings && oilUi.settings.confirm_on_create !== false) {
+        const days = (oilUi.settings && oilUi.settings.duration_value) || 7;
+        const unit = (oilUi.settings && oilUi.settings.duration_unit) === "hours" ? "ساعات" : "أيام";
+        const due = new Date();
+        if ((oilUi.settings && oilUi.settings.duration_unit) === "hours") {
+          due.setHours(due.getHours() + Number(days));
+        } else {
+          due.setDate(due.getDate() + Number(days));
+        }
+        const dueLabel = due.toLocaleDateString("en-GB");
+        if (!window.confirm(
+          "إنشاء طلب أقساط؟\n\nسيتم تسجيل هذا الطلب ضمن دورة أقساط مدتها " +
+          days + " " + unit + ".\n\nإذا لم يتم ترجيعه قبل " + dueLabel +
+          "\nسيتم تسديده تلقائياً."
+        )) {
+          return;
+        }
+      }
 
       let pageId = null
       let pageName = null
@@ -2437,7 +2695,10 @@
           scheduled_date: null,
           page_id: pageId || null,
           page_name: pageName || null,
-          submission_token: submissionToken
+          submission_token: submissionToken,
+          location_url: (document.getElementById("orderLocationInput") || {}).value ? document.getElementById("orderLocationInput").value.trim() : "",
+          location_lat: window.OrderLocationPin ? window.OrderLocationPin.read().lat : null,
+          location_lng: window.OrderLocationPin ? window.OrderLocationPin.read().lng : null
         })
       }).then(r => r.json()).then(d => {
         isSubmittingOrder = false
@@ -2452,7 +2713,7 @@
         }
         closeOrderNotesModal()
 
-        printServerInvoice(d.invoice_id);
+        if (canPrintInvoice) printServerInvoice(d.invoice_id);
 
         if (!editingOrderId) {
           items = []
@@ -2472,6 +2733,7 @@
 
     /* ===== طباعة الفاتورة (قالب السيرفر — /orders/invoice) ===== */
     function printServerInvoice(invoiceId) {
+      if (!canPrintInvoice) return;
       finoraPrintUrl('/orders/invoice/' + encodeURIComponent(invoiceId));
     }
 
@@ -2557,7 +2819,10 @@
           scheduled_date: scheduleDate,
           page_id: pageId || null,
           page_name: pageName || null,
-          submission_token: submissionToken
+          submission_token: submissionToken,
+          location_url: (document.getElementById("orderLocationInput") || {}).value ? document.getElementById("orderLocationInput").value.trim() : "",
+          location_lat: window.OrderLocationPin ? window.OrderLocationPin.read().lat : null,
+          location_lng: window.OrderLocationPin ? window.OrderLocationPin.read().lng : null
         })
       }).then(r => r.json()).then(d => {
         isSubmittingOrder = false
@@ -2696,7 +2961,11 @@
         .then(d => {
           if (d.status === "success" || d.status === "exists") {
             selectedCustomerId = d.id
+            selectedCustomerCity = document.getElementById("ocrCity")
+              ? (document.getElementById("ocrCity").value || "").trim()
+              : ""
             selectedCustomer.innerText = `${d.name} - ${d.phone}`
+            repriceCartForCustomerCity()
             closeOCR()
             toast("تم حفظ بيانات OCR")
           } else {
@@ -3114,7 +3383,7 @@
     <span class="chat-badge hidden" id="chatBadge">0</span>
   </a>
   {% endif %}
-
+  <script src="/static/js/order-location.js"></script>
 </body>
 
 </html>

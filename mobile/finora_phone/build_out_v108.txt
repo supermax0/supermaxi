@@ -1,0 +1,115 @@
+﻿=== START 2026-08-05T14:14:19.7205522+03:00 ===
+
+pubspec.yaml:4:version: 1.0.8+9
+
+
+Analyzing finora_phone_build...                                 
+
+   info - Use 'const' for final variables initialized to a constant value - lib\app\finora_phone_app.dart:119:3 - prefer_const_declarations
+warning - The value of the field '_deviceId' isn't used - lib\domain\usecases\call_event_coordinator.dart:72:11 - unused_field
+warning - Unused import: '../../../core/di/providers.dart' - lib\features\dashboard\presentation\dashboard_page.dart:5:8 - unused_import
+warning - Unnecessary type check; the result is always 'true' - lib\features\overlay\data\active_call_controller.dart:169:20 - unnecessary_type_check
+   info - Use 'const' for final variables initialized to a constant value - lib\features\overlay\data\active_call_controller.dart:290:5 - prefer_const_declarations
+   info - The import of 'dart:ui' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' - lib\features\phone\presentation\phone_dial_pad_page.dart:2:8 - unnecessary_import
+   info - Use 'const' for final variables initialized to a constant value - lib\features\settings\presentation\diagnostics_page.dart:35:5 - prefer_const_declarations
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\settings\presentation\settings_page.dart:276:46 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps, guarded by an unrelated 'mounted' check - lib\features\settings\presentation\settings_page.dart:286:46 - use_build_context_synchronously
+
+flutter.bat : 9 issues found. (ran in 6.3s)
+At C:\finora_phone_build\_run_build_v108.ps1:8 char:1
++ & C:\flutter\bin\flutter.bat analyze --no-fatal-infos --no-fatal-warn ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (9 issues found. (ran in 6.3s):String) [], RemoteEx 
+   ception
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+analyze_exit=0
+
+Running Gradle task 'assembleStagingRelease'...                 
+Font asset "CupertinoIcons.ttf" was tree-shaken, reducing it from 257628 to 848 bytes (99.7% reduction). Tree-shaking can be disabled by providing the --no-tree-shake-icons flag when building your app.
+Font asset "MaterialIcons-Regular.otf" was tree-shaken, reducing it from 1645184 to 10620 bytes (99.4% reduction). Tree-shaking can be disabled by providing the --no-tree-shake-icons flag when building your app.
+flutter.bat : app\src\main\kotlin\iq\finora\finora_phone\call\CallStateMonitor.kt:5:26: 
+warning: 'PhoneStateListener' is deprecated. Deprecated in Java
+At C:\finora_phone_build\_run_build_v108.ps1:10 char:1
++ & C:\flutter\bin\flutter.bat build apk --flavor staging --release --d ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (app\src\main\ko...recated in Java:String) [], Remo 
+   teException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+import android.telephony.PhoneStateListener
+                         ^
+app\src\main\kotlin\iq\finora\finora_phone\call\CallStateReceiver.kt:18:61: warning: 
+'EXTRA_INCOMING_NUMBER: String' is deprecated. Deprecated in Java
+        val number = intent.getStringExtra(TelephonyManager.EXTRA_INCOMING_NUMBER) ?: ""
+                                                            ^
+app\src\main\kotlin\iq\finora\finora_phone\overlay\CrmOverlayService.kt:172:48: warning: 
+'FLAG_SHOW_WHEN_LOCKED: Int' is deprecated. Deprecated in Java
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED,
+                                               ^
+e: C:/Users/msi/.gradle/caches/transforms-3/6e8f361e0ecaba38d3edf159cbfd090c/transformed/fragmen
+t-1.6.2/jars/classes.jar!/META-INF/fragment_release.kotlin_module: Module was compiled with an 
+incompatible version of Kotlin. The binary version of its metadata is 1.8.0, expected version 
+is 1.6.0.
+e: C:/Users/msi/.gradle/caches/transforms-3/7e30f4b09ad63b0fe951adc42de2658a/transformed/jetifie
+d-activity-1.7.2/jars/classes.jar!/META-INF/activity_release.kotlin_module: Module was compiled 
+with an incompatible version of Kotlin. The binary version of its metadata is 1.8.0, expected 
+version is 1.6.0.
+e: C:/Users/msi/.gradle/caches/transforms-3/08a5c1248b5e9a636aede73245683bfa/transformed/lifecyc
+le-livedata-2.6.1/jars/classes.jar!/META-INF/lifecycle-livedata_release.kotlin_module: Module 
+was compiled with an incompatible version of Kotlin. The binary version of its metadata is 
+1.8.0, expected version is 1.6.0.
+e: C:/Users/msi/.gradle/caches/transforms-3/16b43ec4d4d703c704cd90c51d5d42eb/transformed/lifecyc
+le-viewmodel-2.6.1/jars/classes.jar!/META-INF/lifecycle-viewmodel_release.kotlin_module: Module 
+was compiled with an incompatible version of Kotlin. The binary version of its metadata is 
+1.8.0, expected version is 1.6.0.
+e: C:/Users/msi/.gradle/caches/transforms-3/397e6087a7a7dc934a902c04bab8630e/transformed/lifecyc
+le-livedata-core-2.6.1/jars/classes.jar!/META-INF/lifecycle-livedata-core_release.kotlin_module:
+ Module was compiled with an incompatible version of Kotlin. The binary version of its metadata 
+is 1.8.0, expected version is 1.6.0.
+e: C:/Users/msi/.gradle/caches/transforms-3/cf77f4f2e7e8613859aac78b170de6a1/transformed/jetifie
+d-lifecycle-viewmodel-savedstate-2.6.1/jars/classes.jar!/META-INF/lifecycle-viewmodel-savedstate
+_release.kotlin_module: Module was compiled with an incompatible version of Kotlin. The binary 
+version of its metadata is 1.8.0, expected version is 1.6.0.
+e: C:/Users/msi/.gradle/caches/transforms-3/de312b122ff8f91227f080e64c7d0f0f/transformed/jetifie
+d-core-ktx-1.12.0/jars/classes.jar!/META-INF/core-ktx_release.kotlin_module: Module was 
+compiled with an incompatible version of Kotlin. The binary version of its metadata is 1.8.0, 
+expected version is 1.6.0.
+e: C:/Users/msi/.gradle/caches/transforms-3/6247dd56d81c6b16d694b7768e18cada/transformed/core-1.
+12.0/jars/classes.jar!/META-INF/core_release.kotlin_module: Module was compiled with an 
+incompatible version of Kotlin. The binary version of its metadata is 1.8.0, expected version 
+is 1.6.0.
+e: C:/Users/msi/.gradle/caches/transforms-3/6047402913d961f13a2b1594593b91cd/transformed/lifecyc
+le-runtime-2.6.1/jars/classes.jar!/META-INF/lifecycle-runtime_release.kotlin_module: Module was 
+compiled with an incompatible version of Kotlin. The binary version of its metadata is 1.8.0, 
+expected version is 1.6.0.
+e: C:/Users/msi/.gradle/caches/modules-2/files-2.1/androidx.lifecycle/lifecycle-common/2.6.1/10f
+354fdb64868baecd67128560c5a0d6312c495/lifecycle-common-2.6.1.jar!/META-INF/lifecycle-common.kotl
+in_module: Module was compiled with an incompatible version of Kotlin. The binary version of 
+its metadata is 1.8.0, expected version is 1.6.0.
+e: C:/Users/msi/.gradle/caches/transforms-3/526bb5512d8d3f2d15bcce29fe0c92ba/transformed/jetifie
+d-savedstate-1.2.1/jars/classes.jar!/META-INF/savedstate_release.kotlin_module: Module was 
+compiled with an incompatible version of Kotlin. The binary version of its metadata is 1.8.0, 
+expected version is 1.6.0.
+e: C:/Users/msi/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib/1.8.22/636
+bf8b320e7627482771bbac9ed7246773c02bd/kotlin-stdlib-1.8.22.jar!/META-INF/kotlin-stdlib-jdk7.kotl
+in_module: Module was compiled with an incompatible version of Kotlin. The binary version of 
+its metadata is 1.8.0, expected version is 1.6.0.
+e: C:/Users/msi/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib/1.8.22/636
+bf8b320e7627482771bbac9ed7246773c02bd/kotlin-stdlib-1.8.22.jar!/META-INF/kotlin-stdlib.kotlin_mo
+dule: Module was compiled with an incompatible version of Kotlin. The binary version of its 
+metadata is 1.8.0, expected version is 1.6.0.
+e: C:/Users/msi/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib/1.8.22/636
+bf8b320e7627482771bbac9ed7246773c02bd/kotlin-stdlib-1.8.22.jar!/META-INF/kotlin-stdlib-jdk8.kotl
+in_module: Module was compiled with an incompatible version of Kotlin. The binary version of 
+its metadata is 1.8.0, expected version is 1.6.0.
+e: C:/Users/msi/.gradle/caches/modules-2/files-2.1/org.jetbrains.kotlin/kotlin-stdlib-common/1.8
+.22/1a8e3601703ae14bb58757ea6b2d8e8e5935a586/kotlin-stdlib-common-1.8.22.jar!/META-INF/kotlin-st
+dlib-common.kotlin_module: Module was compiled with an incompatible version of Kotlin. The 
+binary version of its metadata is 1.8.0, expected version is 1.6.0.
+Running Gradle task 'assembleStagingRelease'...                    87.9s
+ÔêÜ  Built build\app\outputs\flutter-apk\app-staging-release.apk (49.7MB).
+build_exit=0
+apk_size=52102275
+apk_time=2026-08-05T14:15:58.6003329+03:00
+=== END 2026-08-05T14:16:00.7018985+03:00 ===

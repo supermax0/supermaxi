@@ -1,0 +1,123 @@
+{
+  "products": 3000,
+  "workers": 4,
+  "think_seconds": "5,15",
+  "threads_per_worker": 16,
+  "machine": {
+    "cpu": 12,
+    "ram_gb": 15.7
+  },
+  "levels": [
+    {
+      "users": 100,
+      "seconds": 59.4,
+      "requests": 498,
+      "errors": 0,
+      "error_rate_pct": 0.0,
+      "throughput_rps": 8.4,
+      "by_page": {
+        "home": {
+          "count": 176,
+          "p50_ms": 474.1,
+          "p95_ms": 850.1,
+          "p99_ms": 874.0
+        },
+        "search": {
+          "count": 122,
+          "p50_ms": 141.2,
+          "p95_ms": 390.7,
+          "p99_ms": 731.6
+        },
+        "suggest": {
+          "count": 100,
+          "p50_ms": 30.6,
+          "p95_ms": 200.1,
+          "p99_ms": 231.2
+        },
+        "product": {
+          "count": 100,
+          "p50_ms": 167.0,
+          "p95_ms": 392.2,
+          "p99_ms": 496.2
+        }
+      },
+      "servers_cpu_pct_avg": 59.6,
+      "servers_cpu_pct_max": 261.5,
+      "servers_rss_mb_max": 1339
+    },
+    {
+      "users": 500,
+      "seconds": 72.7,
+      "requests": 1075,
+      "errors": 12,
+      "error_rate_pct": 1.12,
+      "throughput_rps": 14.8,
+      "by_page": {
+        "home": {
+          "count": 488,
+          "p50_ms": 25535.0,
+          "p95_ms": 32463.1,
+          "p99_ms": 34266.3
+        },
+        "search": {
+          "count": 469,
+          "p50_ms": 8370.8,
+          "p95_ms": 17015.2,
+          "p99_ms": 18902.8
+        },
+        "suggest": {
+          "count": 106,
+          "p50_ms": 12913.3,
+          "p95_ms": 16087.0,
+          "p99_ms": 16253.4
+        },
+        "product": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null
+        }
+      },
+      "servers_cpu_pct_avg": 111.0,
+      "servers_cpu_pct_max": 264.1,
+      "servers_rss_mb_max": 1493
+    },
+    {
+      "users": 1000,
+      "seconds": 96.8,
+      "requests": 2257,
+      "errors": 34,
+      "error_rate_pct": 1.51,
+      "throughput_rps": 23.3,
+      "by_page": {
+        "home": {
+          "count": 1000,
+          "p50_ms": 5007.4,
+          "p95_ms": 5313.3,
+          "p99_ms": 5362.9
+        },
+        "search": {
+          "count": 966,
+          "p50_ms": 36309.1,
+          "p95_ms": 56638.1,
+          "p99_ms": 59618.3
+        },
+        "suggest": {
+          "count": 257,
+          "p50_ms": 19439.1,
+          "p95_ms": 55568.3,
+          "p99_ms": 59145.8
+        },
+        "product": {
+          "count": 0,
+          "p50_ms": null,
+          "p95_ms": null,
+          "p99_ms": null
+        }
+      },
+      "servers_cpu_pct_avg": 150.2,
+      "servers_cpu_pct_max": 286.3,
+      "servers_rss_mb_max": 1566
+    }
+  ]
+}

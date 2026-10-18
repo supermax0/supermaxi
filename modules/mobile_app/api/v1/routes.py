@@ -43,6 +43,8 @@ def bind_mobile_tenant() -> tuple | None:
     g.tenant = slug
     try:
         ensure_mobile_app_schema()
+        from utils.branch_context import init_public_default_branch
+        init_public_default_branch()
     except Exception:
         logger.exception("mobile schema guard failed for tenant=%s", slug)
         return api_error("Tenant schema unavailable", 500, code="schema_error")

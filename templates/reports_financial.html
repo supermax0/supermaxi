@@ -6,12 +6,16 @@
 {% macro money(v) %}{{ "{:,}".format(v|int) }}{% endmacro %}
 <style>
 .report-page {
-  max-width: 1080px; margin: 0 auto 32px; padding: 28px;
+  max-width: 1180px; margin: 0 auto 32px; padding: clamp(16px, 2.4vw, 30px);
   font-family: 'Tajawal', sans-serif; direction: rtl; text-align: right;
   background: var(--card); border-radius: 22px; border: 1px solid var(--border-light);
-  box-shadow: 0 18px 40px rgba(15,23,42,0.35); color: var(--text);
+  box-shadow: 0 14px 34px rgba(15,23,42,0.16); color: var(--text);
 }
-.report-section { margin-bottom: 26px; }
+.report-section {
+  margin-bottom: 18px; padding: 20px; border: 1px solid var(--border-light);
+  border-radius: 16px; background: color-mix(in srgb, var(--card-alt) 55%, transparent);
+  scroll-margin-top: 90px;
+}
 .report-section h2 {
   font-size: 20px; color: var(--text); padding-bottom: 8px; margin-bottom: 14px;
   display: flex; align-items: center; gap: 10px;
@@ -29,7 +33,7 @@
 .report-table th { background: rgba(99,102,241,0.12); color: var(--text); font-weight: 700; }
 .report-table tbody tr:nth-child(even) { background: rgba(148,163,184,0.06); }
 .report-table tbody tr:hover { background: rgba(99,102,241,0.08); }
-.report-table .amount { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.report-table .amount { font-variant-numeric: tabular-nums; white-space: nowrap; direction: ltr; text-align: left; }
 .report-table tfoot td, .report-table tr.total-row td { font-weight: 700; background: rgba(99,102,241,0.10); }
 .pos { color: var(--success, #10b981); font-weight: 700; }
 .neg { color: var(--danger, #ef4444); font-weight: 700; }
@@ -57,12 +61,12 @@
 /* ─── KPI cards ─── */
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 26px; }
 .kpi-card {
-  padding: 16px; border-radius: 16px; border: 1px solid var(--border-light);
+  min-height: 124px; padding: 18px; border-radius: 16px; border: 1px solid var(--border-light);
   background: var(--card-alt); position: relative; overflow: hidden;
 }
 .kpi-card::before { content: ""; position: absolute; inset-inline-start: 0; top: 0; bottom: 0; width: 5px; background: var(--primary); }
-.kpi-card .kpi-label { font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
-.kpi-card .kpi-value { font-size: 22px; font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; }
+.kpi-card .kpi-label { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
+.kpi-card .kpi-value { font-size: clamp(19px, 2vw, 24px); font-weight: 800; color: var(--text); font-variant-numeric: tabular-nums; direction: ltr; text-align: right; }
 .kpi-card .kpi-unit { font-size: 12px; color: var(--text-muted); font-weight: 500; }
 .kpi-card .kpi-trend { font-size: 12px; margin-top: 6px; }
 .kpi-card.green::before { background: #10b981; }
@@ -86,9 +90,23 @@
 .report-section strong { color: var(--text); }
 .report-print-head, .report-print-foot { display: none; }
 .balance-check { font-size: 13px; margin-top: 8px; padding: 8px 12px; border-radius: 8px; background: rgba(16,185,129,0.10); border: 1px solid rgba(16,185,129,0.4); color: var(--text); }
+.report-disclosure { display: flex; gap: 9px; align-items: flex-start; font-size: 13px; line-height: 1.75; padding: 11px 13px; margin: 10px 0 14px; border-radius: 10px; color: var(--text); background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.28); }
+.report-disclosure i { color: #3b82f6; margin-top: 5px; }
+
+/* ─── Arithmetic checks and section navigation ─── */
+.checks-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 20px; }
+.check-card { display: flex; gap: 10px; align-items: flex-start; padding: 12px; border: 1px solid rgba(16,185,129,0.35); border-radius: 12px; background: rgba(16,185,129,0.07); }
+.check-card.failed { border-color: rgba(239,68,68,0.45); background: rgba(239,68,68,0.08); }
+.check-icon { color: #10b981; font-size: 18px; line-height: 1; }
+.check-card.failed .check-icon { color: #ef4444; }
+.check-title { color: var(--text); font-weight: 800; font-size: 13px; }
+.check-formula { color: var(--text-muted); font-size: 11px; margin-top: 3px; }
+.report-toc { display: flex; gap: 8px; flex-wrap: wrap; margin: -8px 0 20px; }
+.report-toc a { color: var(--text-muted); text-decoration: none; font-size: 12px; padding: 7px 10px; border: 1px solid var(--border-light); border-radius: 999px; background: var(--card-alt); }
+.report-toc a:hover { color: var(--primary); border-color: var(--primary); }
 
 /* ─── Actions bar ─── */
-.report-actions { margin-top: 28px; padding-top: 20px; border-top: 1px solid var(--border-light); display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px; }
+.report-actions { position: sticky; top: 8px; z-index: 20; margin: 0 0 18px; padding: 12px; border: 1px solid var(--border-light); border-radius: 14px; background: color-mix(in srgb, var(--card) 94%, transparent); backdrop-filter: blur(12px); box-shadow: 0 8px 22px rgba(15,23,42,0.10); display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
 .report-actions .report-period-label { color: var(--text-muted); font-size: 14px; }
 .report-actions .report-period-link { color: var(--primary); text-decoration: none; padding: 6px 12px; border-radius: 8px; font-size: 14px; transition: background 0.2s, color 0.2s; border: 1px solid transparent; }
 .report-actions .report-period-link:hover { background: rgba(99,102,241,0.15); }
@@ -111,6 +129,8 @@
 :root[data-theme="light"] .report-table th { background: #eef2ff; color: #334155; }
 :root[data-theme="light"] .report-table th, :root[data-theme="light"] .report-table td { border-color: #e2e8f0; color: #334155; }
 :root[data-theme="light"] .kpi-card, :root[data-theme="light"] .chart-box { background: #f8fafc; border-color: #e2e8f0; }
+:root[data-theme="light"] .report-section { background: #fbfdff; border-color: #e2e8f0; }
+:root[data-theme="light"] .report-actions { background: rgba(255,255,255,0.94); }
 :root[data-theme="light"] .kpi-card .kpi-value { color: #0f172a; }
 :root[data-theme="light"] .report-header { background: linear-gradient(135deg, #eef2ff, #ecfdf5); border-color: #e2e8f0; }
 :root[data-theme="light"] .report-header .rh-info h1 { color: #0f172a; }
@@ -122,6 +142,17 @@
   .charts-grid { grid-template-columns: 1fr; }
   .report-header { flex-direction: column; text-align: center; }
   .report-header .rh-meta { text-align: center; }
+  .checks-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .report-actions { position: static; }
+}
+
+@media (max-width: 560px) {
+  .report-page { padding: 10px; border-radius: 14px; }
+  .kpi-grid, .checks-grid { grid-template-columns: 1fr; }
+  .report-section { padding: 14px 10px; }
+  .report-table { font-size: 12px; }
+  .report-table th, .report-table td { padding: 8px; }
+  .report-actions form.custom-range { width: 100%; flex-wrap: wrap; }
 }
 
 @page { size: A4; margin: 10mm; }
@@ -129,7 +160,7 @@
 @media print {
   html, body { background: #fff !important; color: #000 !important; }
   .no-print, .sidebar, .topbar, .sidebar-backdrop, .sidebar-mobile-header,
-  .assistant-quick-btn, .toggle, .user-box, .report-chart, .report-actions { display: none !important; }
+  .assistant-quick-btn, .toggle, .user-box, .report-actions, .report-toc { display: none !important; }
   .app, .content, main { width: 100% !important; max-width: 100% !important; margin: 0 !important; padding: 0 !important; display: block !important; overflow: visible !important; }
   .report-page { width: 100% !important; max-width: none !important; margin: 0 !important; padding: 6mm !important; box-shadow: none !important; border: none !important; border-radius: 0 !important; background: #fff !important; color: #000 !important; }
   .report-print-head, .report-print-foot { display: block !important; }
@@ -146,7 +177,7 @@
   .kpi-card { border: 1px solid #111827 !important; background: #fff !important; break-inside: avoid; }
   .kpi-card .kpi-value, .kpi-card .kpi-label { color: #000 !important; }
   .kpi-card::before { background: #111827 !important; }
-  .report-section { break-inside: auto; page-break-inside: auto; margin-bottom: 6mm !important; }
+  .report-section { break-inside: auto; page-break-inside: auto; margin-bottom: 6mm !important; padding: 0 !important; border: 0 !important; background: #fff !important; }
   .report-section h2 { border-bottom: 1px solid #111827 !important; color: #000 !important; }
   .report-section h2 .sec-num { background: #111827 !important; color: #fff !important; }
   .report-table { background: #fff !important; border: 1px solid #111827 !important; }
@@ -157,10 +188,31 @@
   .pos, .neg { color: #000 !important; }
   .report-note { background: #fff !important; border: 1px dashed #92400e !important; color: #000 !important; }
   .balance-check { background: #fff !important; border: 1px solid #111 !important; color: #000 !important; }
+  .checks-grid { grid-template-columns: repeat(3, 1fr) !important; gap: 2mm !important; }
+  .check-card { background: #fff !important; border: 1px solid #111 !important; color: #000 !important; break-inside: avoid; }
+  .check-title, .check-formula, .check-icon { color: #000 !important; }
 }
 </style>
 
 <div class="report-page" id="reportRoot">
+  <!-- شريط التحكم يبقى قريباً أثناء التصفح ويُخفى عند الطباعة -->
+  <div class="no-print report-actions">
+    <span class="report-period-label"><i class="fas fa-calendar-days"></i> الفترة</span>
+    <a href="/reports/financial?period_type=this_month" class="report-period-link {{ 'active' if period_type == 'this_month' }}">هذا الشهر</a>
+    <a href="/reports/financial?period_type=last_month" class="report-period-link {{ 'active' if period_type == 'last_month' }}">الشهر الماضي</a>
+    <a href="/reports/financial?period_type=this_year" class="report-period-link {{ 'active' if period_type == 'this_year' }}">السنة الحالية</a>
+    <a href="/reports/financial?period_type=last_30_days" class="report-period-link {{ 'active' if period_type == 'last_30_days' }}">آخر 30 يوم</a>
+    <form class="custom-range" method="get" action="/reports/financial">
+      <input type="hidden" name="period_type" value="custom">
+      <input type="date" aria-label="من تاريخ" name="date_from" data-help="reports.date_from" value="{{ date_from.strftime('%Y-%m-%d') if date_from else '' }}">
+      <input type="date" aria-label="إلى تاريخ" name="date_to" data-help="reports.date_to" value="{{ date_to.strftime('%Y-%m-%d') if date_to else '' }}">
+      <button type="submit" class="report-btn report-btn-apply"><i class="fas fa-filter"></i> تطبيق</button>
+    </form>
+    <a href="/reports" class="report-btn report-btn-back"><i class="fas fa-arrow-right"></i> رجوع</a>
+    <button type="button" class="report-btn report-btn-print" onclick="window.print()"><i class="fas fa-print"></i> طباعة</button>
+    <button type="button" class="report-btn report-btn-pdf" id="exportPdfBtn" data-help="reports.export"><i class="fas fa-file-pdf"></i> PDF</button>
+  </div>
+
   <!-- ترويسة الطباعة -->
   <header class="report-print-head">
     {% if report_logo %}<img src="{{ report_logo }}" alt="logo">{% endif %}
@@ -168,6 +220,17 @@
     <p>الفترة: {{ period_label }} | من {{ date_from.strftime('%Y-%m-%d') if date_from else '—' }} إلى {{ date_to.strftime('%Y-%m-%d') if date_to else '—' }}</p>
     {% if report_address or report_phone %}<p>{{ report_address or '' }}{% if report_address and report_phone %} — {% endif %}{{ report_phone or '' }}</p>{% endif %}
   </header>
+
+  <nav class="no-print report-toc" aria-label="أقسام التقرير">
+    <a href="#executive-summary">الملخص</a>
+    <a href="#income-statement">الأرباح والخسائر</a>
+    <a href="#financial-position">المركز المالي</a>
+    <a href="#cash-flow">التدفق النقدي</a>
+    <a href="#ratios">النسب</a>
+    <a href="#rankings">الأفضل أداءً</a>
+    <a href="#inventory-section">المخزون</a>
+    <a href="#recommendations">التوصيات</a>
+  </nav>
 
   <!-- 1) ترويسة التقرير -->
   <header class="report-header">
@@ -186,7 +249,7 @@
     <div class="rh-meta">
       <span class="rh-badge">تقرير مالي شامل</span>
       <div><strong>الفترة:</strong> {{ period_label }}</div>
-      <div>{{ date_from.strftime('%Y-%m-%d') if date_from else '—' }} ← {{ date_to.strftime('%Y-%m-%d') if date_to else '—' }}</div>
+      <div>من {{ date_from.strftime('%Y-%m-%d') if date_from else '—' }} إلى {{ date_to.strftime('%Y-%m-%d') if date_to else '—' }}</div>
       <div>أُنشئ: {% if report_generated_at %}{{ report_generated_at.strftime('%Y-%m-%d %H:%M') }}{% endif %}</div>
     </div>
   </header>
@@ -220,40 +283,59 @@
     <div class="kpi-card purple">
       <div class="kpi-label">قيمة المخزون</div>
       <div class="kpi-value">{{ money(inventory_value) }} <span class="kpi-unit">د.ع</span></div>
+      <div class="kpi-trend">رصيد حالي</div>
     </div>
     <div class="kpi-card amber">
       <div class="kpi-label">الذمم المدينة</div>
       <div class="kpi-value">{{ money(accounts_receivable) }} <span class="kpi-unit">د.ع</span></div>
+      <div class="kpi-trend">رصيد حالي: عملاء + شركات نقل</div>
     </div>
     <div class="kpi-card red">
       <div class="kpi-label">إجمالي الالتزامات</div>
       <div class="kpi-value">{{ money(total_liabilities) }} <span class="kpi-unit">د.ع</span></div>
+      <div class="kpi-trend">رصيد حالي</div>
     </div>
     <div class="kpi-card blue">
-      <div class="kpi-label">حقوق الملكية</div>
+      <div class="kpi-label">صافي الأصول</div>
       <div class="kpi-value {{ 'neg' if equity < 0 else '' }}">{{ money(equity) }} <span class="kpi-unit">د.ع</span></div>
+      <div class="kpi-trend">الأصول − الالتزامات</div>
     </div>
   </div>
 
+  <div class="checks-grid" aria-label="فحوص اتساق الأرقام">
+    {% for check in number_checks|default([]) %}
+    <div class="check-card {{ '' if check.ok else 'failed' }}">
+      <i class="check-icon fas fa-{{ 'circle-check' if check.ok else 'triangle-exclamation' }}"></i>
+      <div>
+        <div class="check-title">{{ check.label }} — {{ 'متطابق' if check.ok else 'يحتاج مراجعة' }}</div>
+        <div class="check-formula">{{ check.formula }}</div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
   <!-- 3) الملخص التنفيذي -->
-  <section class="report-section">
+  <section class="report-section" id="executive-summary">
     <h2><span class="sec-num">1</span> الملخص التنفيذي</h2>
     <p>أداء الشركة المالي خلال الفترة <strong>{{ period_label }}</strong>:</p>
     <ul>
-      <li>إجمالي الإيرادات: <strong>{{ money(total_revenue) }} د.ع</strong> ({{ invoices_count }} فاتورة).</li>
-      <li>المبيعات النقدية المحصّلة: <strong>{{ money(cash_sales) }} د.ع</strong> — المبيعات الآجلة: <strong>{{ money(credit_sales) }} د.ع</strong>.</li>
+      <li>صافي الإيرادات: <strong>{{ money(total_revenue) }} د.ع</strong> ({{ invoices_count }} فاتورة بيع{% if return_documents_count|default(0) %}، {{ return_documents_count }} مستند مرتجع{% endif %}).</li>
+      {% if return_documents_count|default(0) %}
+      <li>مرتجعات الفترة: <strong>{{ money(return_credit_period) }} د.ع</strong>. يحتسب أصل البيع بتاريخ البيع، والمرتجع بتاريخ مستنده؛ القيم السالبة تمثل عكس بيع سابق.</li>
+      {% endif %}
+      <li>المسدّد من فواتير الفترة حتى الآن: <strong>{{ money(cash_sales) }} د.ع</strong> — غير المحصّل من فواتير الفترة: <strong>{{ money(credit_sales) }} د.ع</strong>{% if collection_rate_pct is not none %} — نسبة التحصيل: <strong>{{ collection_rate_pct }}%</strong>{% endif %}.</li>
       {% if installment_debt_total %}<li>إجمالي ديون الأجل والأقساط: <strong>{{ money(installment_debt_total) }} د.ع</strong>{% if installment_active_plans %} ({{ installment_active_plans }} خطة نشطة){% endif %}{% if installment_debt_unlinked %} — منها غير مرتبطة بفاتورة: <strong>{{ money(installment_debt_unlinked) }} د.ع</strong>{% endif %}.</li>{% endif %}
       <li>صافي الربح/الخسارة: <strong class="{{ 'pos' if net_profit_period >= 0 else 'neg' }}">{{ money(net_profit_period) }} د.ع</strong>{% if net_profit_period < 0 %} (خسارة){% endif %}.</li>
       {% if growth_revenue_pct is not none %}<li>نسبة تغيّر الإيرادات مقارنة بـ {{ prev_label or 'الفترة السابقة' }}: <strong class="{{ 'pos' if growth_revenue_pct >= 0 else 'neg' }}">{{ growth_revenue_pct }}%</strong>.</li>{% endif %}
       {% if growth_profit_pct is not none %}<li>نسبة تغيّر الربح: <strong class="{{ 'pos' if growth_profit_pct >= 0 else 'neg' }}">{{ growth_profit_pct }}%</strong>.</li>{% endif %}
       {% if fixed_assets_active_count %}<li>الأصول الثابتة النشطة: <strong>{{ fixed_assets_active_count }}</strong> — القيمة الدفترية: <strong>{{ money(fixed_assets_book_value) }} د.ع</strong>{% if fixed_assets_depreciation_period %} — استهلاك الفترة: <strong>{{ money(fixed_assets_depreciation_period) }} د.ع</strong>{% endif %}.</li>{% endif %}
-      {% if rotating_savings_active_count %}<li>الجمعيات النشطة: <strong>{{ rotating_savings_active_count }}</strong> — المدفوع: <strong>{{ money(rotating_savings_paid) }} د.ع</strong> — المستلم: <strong>{{ money(rotating_savings_received) }} د.ع</strong> — أصل الجمعيات: <strong>{{ money(rotating_savings_asset) }} د.ع</strong> — الالتزامات: <strong>{{ money(rotating_savings_liability) }} د.ع</strong> — رسوم فقط في الدخل: <strong>{{ money(rotating_savings_fees) }} د.ع</strong>.</li>{% endif %}
+      {% if rotating_savings_active_count %}<li>الجمعيات النشطة: <strong>{{ rotating_savings_active_count }}</strong> — حركة الفترة: مدفوع <strong>{{ money(rotating_savings_paid) }} د.ع</strong>، مستلم <strong>{{ money(rotating_savings_received) }} د.ع</strong>، ورسوم <strong>{{ money(rotating_savings_fees) }} د.ع</strong> — الأرصدة الحالية: أصل <strong>{{ money(rotating_savings_asset) }} د.ع</strong> والتزام <strong>{{ money(rotating_savings_liability) }} د.ع</strong>.</li>{% endif %}
     </ul>
-    <p class="report-no-data">جميع الأرقام مستخرجة من سجلات النظام دون تخمين.</p>
+    <p class="report-no-data">أرقام الدخل تخص الفترة المختارة، بينما بطاقات المخزون والذمم والأصول والالتزامات هي أرصدة حالية وقت إنشاء التقرير.</p>
   </section>
 
   <!-- 4) الأرباح والخسائر -->
-  <section class="report-section">
+  <section class="report-section" id="income-statement">
     <h2><span class="sec-num">2</span> قائمة الأرباح والخسائر (Income Statement)</h2>
     <table class="report-table">
       <thead><tr><th>البند</th><th>المبلغ (د.ع)</th></tr></thead>
@@ -261,13 +343,17 @@
         <tr><td>إجمالي الإيرادات (المبيعات)</td><td class="amount">{{ money(total_revenue) }}</td></tr>
         <tr><td>تكلفة البضاعة المباعة (COGS)</td><td class="amount neg">({{ money(cogs_period) }})</td></tr>
         <tr class="total-row"><td>إجمالي الربح</td><td class="amount">{{ money(gross_profit) }}</td></tr>
-        <tr><td>إجمالي المصاريف التشغيلية</td><td class="amount neg">({{ money(expenses_period) }})</td></tr>
+        <tr><td>المصاريف التشغيلية المسجّلة</td><td class="amount neg">({{ money(expenses_period) }})</td></tr>
+        {% if inventory_losses_period is defined and inventory_losses_period %}
+        <tr><td>صافي خسائر المخزون / العكس</td><td class="amount {{ 'neg' if inventory_losses_period > 0 else 'pos' }}">({{ money(inventory_losses_period) }})</td></tr>
+        {% endif %}
         {% if fixed_assets_depreciation_period %}
         <tr><td>استهلاك الأصول الثابتة (الفترة)</td><td class="amount neg">({{ money(fixed_assets_depreciation_period) }})</td></tr>
         {% endif %}
         {% if rotating_savings_fees %}
-        <tr><td>مصاريف ورسوم جمعيات (فقط)</td><td class="amount neg">({{ money(rotating_savings_fees) }})</td></tr>
+        <tr><td>رسوم جمعيات خلال الفترة</td><td class="amount neg">({{ money(rotating_savings_fees) }})</td></tr>
         {% endif %}
+        <tr class="total-row"><td>إجمالي مصاريف الفترة</td><td class="amount neg">({{ money(total_operating_expenses_period) }})</td></tr>
         <tr class="total-row"><td>صافي الربح / الخسارة</td><td class="amount {{ 'pos' if net_profit_period >= 0 else 'neg' }}">{{ money(net_profit_period) }}</td></tr>
       </tbody>
     </table>
@@ -284,8 +370,11 @@
         </tr>
         {% endfor %}
       </tbody>
-      <tfoot><tr><td>الإجمالي</td><td class="amount">{{ money(expenses_period) }}</td><td class="amount">100%</td></tr></tfoot>
+      <tfoot><tr><td>إجمالي المصاريف المسجّلة حسب الفئة</td><td class="amount">{{ money(expenses_period) }}</td><td class="amount">100%</td></tr></tfoot>
     </table>
+    {% if non_cash_expenses_period or other_operating_expenses_period %}
+    <p class="report-no-data">تفصيل الفئات أعلاه يخص سجلات المصاريف فقط؛ الاستهلاك ورسوم الجمعيات يظهران كسطرين مستقلين حتى لا يُحتسبا مرتين.</p>
+    {% endif %}
     {% else %}
     <p class="report-no-data">لا يوجد تفصيل مصاريف للفترة.</p>
     {% endif %}
@@ -307,8 +396,12 @@
   </section>
 
   <!-- 6) الميزانية العمومية -->
-  <section class="report-section">
-    <h2><span class="sec-num">4</span> الميزانية العمومية (Balance Sheet)</h2>
+  <section class="report-section" id="financial-position">
+    <h2><span class="sec-num">4</span> المركز المالي الحالي</h2>
+    <div class="report-disclosure">
+      <i class="fas fa-circle-info"></i>
+      <div>هذه لقطة للأرصدة الحالية وقت إنشاء التقرير، وليست أرصدة تاريخية في نهاية الفترة المختارة. صافي الأصول أدناه قيمة موازِنة محسوبة من الأصول ناقص الالتزامات، وليس رصيداً مستقلاً من ميزان مراجعة عام.</div>
+    </div>
     <table class="report-table">
       <thead><tr><th>البند</th><th>المبلغ (د.ع)</th></tr></thead>
       <tbody>
@@ -330,17 +423,6 @@
           </td>
           <td class="amount">{{ money(customer_receivables if customer_receivables is defined else accounts_receivable) }}</td>
         </tr>
-        {% if installment_debt_total %}
-        <tr>
-          <td>
-            ديون الأجل والأقساط (إجمالي النظام)
-            {% if installment_debt_linked %}
-            <small> — {{ money(installment_debt_linked) }} مرتبطة بفواتير (ضمن الذمم أعلاه)</small>
-            {% endif %}
-          </td>
-          <td class="amount">{{ money(installment_debt_total) }}</td>
-        </tr>
-        {% endif %}
         <tr>
           <td>
             ذمم شركات النقل (طلبات + رصيد افتتاحي)
@@ -350,11 +432,12 @@
           </td>
           <td class="amount">{{ money(shipping_receivables if shipping_receivables is defined else 0) }}</td>
         </tr>
-        {% if fixed_assets_book_value %}
-        <tr><td>الأصول الثابتة (صافي القيمة الدفترية)</td><td class="amount">{{ money(fixed_assets_book_value) }}</td></tr>
-        {% endif %}
         {% if rotating_savings_asset %}
         <tr><td>سلف وجمعيات دوّارة (باسم الشركة)</td><td class="amount">{{ money(rotating_savings_asset) }}</td></tr>
+        {% endif %}
+        <tr class="total-row"><td>إجمالي الأصول المتداولة</td><td class="amount">{{ money(current_assets) }}</td></tr>
+        {% if fixed_assets_book_value %}
+        <tr><td>الأصول الثابتة (صافي القيمة الدفترية)</td><td class="amount">{{ money(fixed_assets_book_value) }}</td></tr>
         {% endif %}
         <tr class="total-row"><td>إجمالي الأصول</td><td class="amount">{{ money(total_assets) }}</td></tr>
         <tr><td colspan="2"><strong>الالتزامات</strong></td></tr>
@@ -369,22 +452,23 @@
         <tr><td>التزامات جمعيات دوّارة</td><td class="amount">{{ money(rotating_savings_liability) }}</td></tr>
         {% endif %}
         <tr class="total-row"><td>إجمالي الالتزامات</td><td class="amount">{{ money(total_liabilities) }}</td></tr>
-        <tr class="total-row"><td>حقوق الملكية (الأصول − الالتزامات)</td><td class="amount {{ 'neg' if equity < 0 else '' }}">{{ money(equity) }}</td></tr>
+        <tr class="total-row"><td>رأس المال العامل (الأصول المتداولة − الالتزامات)</td><td class="amount {{ 'neg' if working_capital < 0 else 'pos' }}">{{ money(working_capital) }}</td></tr>
+        <tr class="total-row"><td>صافي الأصول (الأصول − الالتزامات)</td><td class="amount {{ 'neg' if equity < 0 else '' }}">{{ money(equity) }}</td></tr>
       </tbody>
     </table>
     <div class="balance-check">
-      <i class="fas fa-scale-balanced"></i> التحقق من التوازن: إجمالي الأصول ({{ money(total_assets) }}) = إجمالي الالتزامات ({{ money(total_liabilities) }}) + حقوق الملكية ({{ money(equity) }}).
+      <i class="fas fa-calculator"></i> فحص الجمع: إجمالي الأصول ({{ money(total_assets) }}) = إجمالي الالتزامات ({{ money(total_liabilities) }}) + صافي الأصول ({{ money(equity) }}).
     </div>
   </section>
 
   <!-- 7) التدفق النقدي -->
-  <section class="report-section">
+  <section class="report-section" id="cash-flow">
     <h2><span class="sec-num">5</span> قائمة التدفق النقدي (Cash Flow)</h2>
     <table class="report-table">
       <thead><tr><th>البند</th><th>المبلغ (د.ع)</th></tr></thead>
       <tbody>
-        <tr><td>المقبوضات النقدية من المبيعات (خلال الفترة)</td><td class="amount pos">{{ money(cash_inflow) }}</td></tr>
-        <tr><td>المدفوعات (المصاريف خلال الفترة)</td><td class="amount neg">({{ money(cash_outflow) }})</td></tr>
+        <tr><td>إجمالي المقبوضات المسجّلة في الخزينة</td><td class="amount pos">{{ money(cash_inflow) }}</td></tr>
+        <tr><td>إجمالي المدفوعات المسجّلة في الخزينة</td><td class="amount neg">({{ money(cash_outflow) }})</td></tr>
         <tr class="total-row"><td>صافي التدفق النقدي للفترة</td><td class="amount {{ 'pos' if net_cash_flow >= 0 else 'neg' }}">{{ money(net_cash_flow) }}</td></tr>
         <tr><td>رصيد الصندوق الحالي (كما في النظام)</td><td class="amount {{ 'neg' if cash_balance < 0 else '' }}">{{ money(cash_balance) }}</td></tr>
         {% if bank_balances|default([]) %}
@@ -393,11 +477,26 @@
         {% endif %}
       </tbody>
     </table>
-    <p class="report-no-data">المقبوضات محسوبة من المبالغ المسددة فعلياً على فواتير الفترة، والمدفوعات من مصاريف الفترة المسجّلة.</p>
+    {% if cash_flow_breakdown %}
+    <h3>تفصيل حركة الخزينة حسب السبب</h3>
+    <table class="report-table">
+      <thead><tr><th>النوع</th><th>السبب</th><th>المبلغ (د.ع)</th></tr></thead>
+      <tbody>
+        {% for row in cash_flow_breakdown %}
+        <tr>
+          <td>{{ 'قبض' if row.direction == 'cash_in' else 'صرف' }}</td>
+          <td>{{ row.reason }}</td>
+          <td class="amount {{ 'pos' if row.direction == 'cash_in' else 'neg' }}">{{ money(row.amount) }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% endif %}
+    <p class="report-no-data">الحركة مأخوذة من دفتر الخزينة حسب تاريخ القبض أو الصرف، وتشمل تحصيلات فواتير قديمة ودفعات الموردين والمشتريات والأصول والمصاريف. التحويلات الداخلية بين الصندوق والبنوك مستبعدة.</p>
   </section>
 
   <!-- 8) التحليل المالي -->
-  <section class="report-section">
+  <section class="report-section" id="ratios">
     <h2><span class="sec-num">6</span> التحليل المالي والنسب</h2>
     <table class="report-table">
       <thead><tr><th>المؤشر</th><th>القيمة</th><th>الدلالة</th></tr></thead>
@@ -405,17 +504,19 @@
         <tr><td>هامش الربح الإجمالي</td><td class="amount">{{ (gross_margin_pct ~ '%') if gross_margin_pct is not none else '—' }}</td><td>الربح الإجمالي ÷ الإيرادات</td></tr>
         <tr><td>هامش صافي الربح</td><td class="amount">{{ (profit_margin_pct ~ '%') if profit_margin_pct is not none else '—' }}</td><td>صافي الربح ÷ الإيرادات</td></tr>
         <tr><td>نسبة المصاريف إلى الإيرادات</td><td class="amount">{{ (expense_to_revenue_pct ~ '%') if expense_to_revenue_pct is not none else '—' }}</td><td>المصاريف ÷ الإيرادات</td></tr>
-        <tr><td>نسبة السيولة</td><td class="amount">{{ liquidity_ratio if liquidity_ratio is not none else '—' }}</td><td>الأصول ÷ الالتزامات</td></tr>
+        <tr><td>نسبة تحصيل فواتير الفترة</td><td class="amount">{{ (collection_rate_pct ~ '%') if collection_rate_pct is not none else '—' }}</td><td>المسدّد حتى الآن ÷ مبيعات الفترة</td></tr>
+        <tr><td>نسبة التداول</td><td class="amount">{{ current_ratio if current_ratio is not none else '—' }}</td><td>الأصول المتداولة ÷ الالتزامات الحالية المسجّلة</td></tr>
+        <tr><td>نسبة الالتزامات إلى الأصول</td><td class="amount">{{ (debt_to_assets_pct ~ '%') if debt_to_assets_pct is not none else '—' }}</td><td>إجمالي الالتزامات ÷ إجمالي الأصول</td></tr>
       </tbody>
     </table>
   </section>
 
   <!-- 9) الأفضل مبيعاً -->
-  <section class="report-section">
+  <section class="report-section" id="rankings">
     <h2><span class="sec-num">7</span> أفضل المنتجات مبيعاً</h2>
     {% if top_products %}
     <table class="report-table">
-      <thead><tr><th>#</th><th>المنتج</th><th>الكمية</th><th>الإيراد (د.ع)</th><th>الربح (د.ع)</th></tr></thead>
+      <thead><tr><th>#</th><th>المنتج</th><th>الكمية</th><th>الإيراد (د.ع)</th><th>الربح الإجمالي (د.ع)</th></tr></thead>
       <tbody>
         {% for p in top_products %}
         <tr><td>{{ loop.index }}</td><td>{{ p.name }}</td><td class="amount">{{ money(p.qty) }}</td><td class="amount">{{ money(p.revenue) }}</td><td class="amount {{ 'pos' if p.profit >= 0 else 'neg' }}">{{ money(p.profit) }}</td></tr>
@@ -445,7 +546,7 @@
     <h2><span class="sec-num">9</span> أفضل الموظفين</h2>
     {% if top_employees %}
     <table class="report-table">
-      <thead><tr><th>#</th><th>الموظف</th><th>عدد الفواتير</th><th>إجمالي المبيعات (د.ع)</th><th>الربح (د.ع)</th></tr></thead>
+      <thead><tr><th>#</th><th>الموظف</th><th>عدد الفواتير</th><th>إجمالي المبيعات (د.ع)</th><th>الربح الإجمالي قبل المصاريف (د.ع)</th></tr></thead>
       <tbody>
         {% for e in top_employees %}
         <tr><td>{{ loop.index }}</td><td>{{ e.name }}</td><td class="amount">{{ money(e.count) }}</td><td class="amount">{{ money(e.total) }}</td><td class="amount {{ 'pos' if e.profit >= 0 else 'neg' }}">{{ money(e.profit) }}</td></tr>
@@ -460,7 +561,7 @@
     <h2><span class="sec-num">10</span> أفضل البيجات</h2>
     {% if top_pages %}
     <table class="report-table">
-      <thead><tr><th>#</th><th>البيج</th><th>عدد الفواتير</th><th>إجمالي المبيعات (د.ع)</th><th>الربح (د.ع)</th></tr></thead>
+      <thead><tr><th>#</th><th>البيج</th><th>عدد الفواتير</th><th>إجمالي المبيعات (د.ع)</th><th>الربح الإجمالي قبل المصاريف (د.ع)</th></tr></thead>
       <tbody>
         {% for p in top_pages %}
         <tr><td>{{ loop.index }}</td><td>{{ p.name }}</td><td class="amount">{{ money(p.count) }}</td><td class="amount">{{ money(p.total) }}</td><td class="amount {{ 'pos' if p.profit >= 0 else 'neg' }}">{{ money(p.profit) }}</td></tr>
@@ -486,13 +587,13 @@
   </section>
 
   <!-- 14) المخزون -->
-  <section class="report-section">
+  <section class="report-section" id="inventory-section">
     <h2><span class="sec-num">12</span> المخزون</h2>
     <table class="report-table">
       <tbody>
         <tr><td>إجمالي قيمة المخزون</td><td class="amount">{{ money(inventory_value) }} د.ع</td></tr>
-        <tr><td>منتجات بمخزون منخفض (≤ 2)</td><td class="amount">{{ low_stock_count }}</td></tr>
-        <tr><td>منتجات بدون كمية</td><td class="amount">{{ zero_stock_count }}</td></tr>
+        <tr><td>منتجات نشطة بمخزون منخفض (أكبر من صفر وتحت حد التنبيه)</td><td class="amount">{{ low_stock_count }}</td></tr>
+        <tr><td>منتجات نشطة نافدة</td><td class="amount">{{ zero_stock_count }}</td></tr>
       </tbody>
     </table>
     {% if low_stock_count > 0 or zero_stock_count > 0 %}
@@ -501,14 +602,15 @@
   </section>
 
   <!-- 15) الملاحظات والتوصيات -->
-  <section class="report-section">
+  <section class="report-section" id="recommendations">
     <h2><span class="sec-num">13</span> الملاحظات والتوصيات</h2>
     <ul>
-      <li>جميع الأرقام مستخرجة من سجلات النظام الرسمية (فواتير، مصاريف، مخزون، موردين، نقدية) دون تقدير أو افتراض.</li>
+      <li>الأرقام مستخرجة من سجلات النظام (فواتير، مصاريف، مخزون، موردين وخزينة). صافي الأصول مشتق حسابياً كما هو موضح في قسم المركز المالي.</li>
       {% if net_profit_period < 0 %}<li class="neg"><strong>تحذير:</strong> صافي الربح للفترة سالب (خسارة). يُنصح بمراجعة المصاريف والإيرادات.</li>{% endif %}
       {% if cash_balance < 0 %}<li class="neg"><strong>تحذير:</strong> عجز في الصندوق حسب السجلات. يُنصح بمراجعة التحصيلات والمدفوعات.</li>{% endif %}
       {% if accounts_receivable > 0 %}<li>لديك ذمم مدينة بقيمة {{ money(accounts_receivable) }} د.ع؛ منها {{ money(shipping_receivables if shipping_receivables is defined else 0) }} د.ع عند شركات النقل، ومتابعة التحصيل تحسّن التدفق النقدي.</li>{% endif %}
-      {% if liquidity_ratio is not none and liquidity_ratio < 1 %}<li class="neg">نسبة السيولة أقل من 1، ما يشير إلى ضغط على القدرة على سداد الالتزامات.</li>{% endif %}
+      {% if current_ratio is not none and current_ratio < 1 %}<li class="neg">نسبة التداول أقل من 1، ما يشير إلى ضغط على القدرة على سداد الالتزامات المسجّلة.</li>{% endif %}
+      {% if working_capital < 0 %}<li class="neg">رأس المال العامل سالب بقيمة {{ money(working_capital) }} د.ع؛ راجع خطة سداد الموردين وتسريع التحصيل.</li>{% endif %}
       <li>توصية: مراجعة المنتجات ذات المخزون المنخفض والذمم المدينة لتحسين رأس المال العامل.</li>
     </ul>
   </section>
@@ -518,26 +620,6 @@
     <h2><span class="sec-num">14</span> الخاتمة</h2>
     <p>تم توليد هذا التقرير تلقائياً من نظام المحاسبة. جميع الأرقام مستخرجة من السجلات الرسمية. التقرير جاهز للطباعة أو التصدير كـ PDF.</p>
   </section>
-
-  <!-- شريط التحكم -->
-  <div class="no-print report-actions">
-    <span class="report-period-label">الفترة:</span>
-    <a href="/reports/financial?period_type=this_month" class="report-period-link {{ 'active' if period_type == 'this_month' }}">هذا الشهر</a>
-    <a href="/reports/financial?period_type=last_month" class="report-period-link {{ 'active' if period_type == 'last_month' }}">الشهر الماضي</a>
-    <a href="/reports/financial?period_type=this_year" class="report-period-link {{ 'active' if period_type == 'this_year' }}">السنة الحالية</a>
-    <a href="/reports/financial?period_type=last_30_days" class="report-period-link {{ 'active' if period_type == 'last_30_days' }}">آخر 30 يوم</a>
-    <span class="report-sep">|</span>
-    <form class="custom-range" method="get" action="/reports/financial">
-      <input type="hidden" name="period_type" value="custom">
-      <input type="date" name="date_from" data-help="reports.date_from" value="{{ date_from.strftime('%Y-%m-%d') if date_from else '' }}">
-      <input type="date" name="date_to" data-help="reports.date_to" value="{{ date_to.strftime('%Y-%m-%d') if date_to else '' }}">
-      <button type="submit" class="report-btn report-btn-apply"><i class="fas fa-filter"></i> تطبيق</button>
-    </form>
-    <span class="report-sep">|</span>
-    <a href="/reports" class="report-btn report-btn-back"><i class="fas fa-arrow-right"></i> العودة</a>
-    <button type="button" class="report-btn report-btn-print" onclick="window.print()"><i class="fas fa-print"></i> طباعة</button>
-    <button type="button" class="report-btn report-btn-pdf" id="exportPdfBtn" data-help="reports.export"><i class="fas fa-file-pdf"></i> تصدير PDF</button>
-  </div>
 
   <footer class="report-print-foot">
     <p>{{ report_footer }}</p>
@@ -607,9 +689,7 @@
     pdfBtn.addEventListener('click', function () {
       const root = document.getElementById('reportRoot');
       const actions = root.querySelector('.report-actions');
-      const charts = root.querySelectorAll('.report-chart');
       if (actions) actions.style.display = 'none';
-      charts.forEach(c => c.style.display = 'none');
       const fileName = 'financial_report_{{ (period_label or "") | replace(" ", "_") }}.pdf';
       const opt = {
         margin: [8, 8, 8, 8],
@@ -625,12 +705,10 @@
       if (oldPrintFoot) oldPrintFoot.style.display = 'block';
       html2pdf().set(opt).from(root).save().then(function () {
         if (actions) actions.style.display = '';
-        charts.forEach(c => c.style.display = '');
         if (oldPrintHead) oldPrintHead.style.display = '';
         if (oldPrintFoot) oldPrintFoot.style.display = '';
       }).catch(function () {
         if (actions) actions.style.display = '';
-        charts.forEach(c => c.style.display = '');
         if (oldPrintHead) oldPrintHead.style.display = '';
         if (oldPrintFoot) oldPrintFoot.style.display = '';
       });

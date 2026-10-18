@@ -13,10 +13,10 @@
     style.textContent = `
       .dfp-overlay {
         position: fixed; inset: 0; z-index: 10050;
-        background: rgba(2, 6, 23, 0.78);
-        backdrop-filter: blur(10px);
+        background: rgba(2, 6, 23, 0.64);
+        backdrop-filter: blur(6px);
         display: flex; align-items: center; justify-content: center;
-        padding: 20px;
+        padding: 16px;
         animation: dfpFadeIn 0.2s ease-out;
       }
       @keyframes dfpFadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -25,112 +25,294 @@
         to { opacity: 1; transform: translateY(0) scale(1); }
       }
       .dfp-box {
-        width: 100%; max-width: 520px;
-        border-radius: 26px;
-        border: 1px solid rgba(59, 130, 246, 0.28);
-        background: linear-gradient(165deg, rgba(15, 23, 42, 0.99), rgba(30, 41, 59, 0.98));
-        box-shadow: 0 28px 80px rgba(0, 0, 0, 0.55);
+        width: 100%; max-width: 570px; max-height: 88vh;
+        display:flex; flex-direction:column;
+        border-radius: 18px;
+        border: 1px solid var(--border, rgba(255,255,255,.08));
+        background: var(--card-alt, #0f172a);
+        color: var(--orders-text, var(--text, #f8fafc));
+        box-shadow: var(--shadow, 0 20px 55px rgba(0,0,0,.42));
         overflow: hidden;
         animation: dfpSlideUp 0.26s cubic-bezier(0.16, 1, 0.3, 1);
       }
       .dfp-header {
         position: relative;
-        padding: 24px 26px 18px;
-        border-bottom: 1px solid rgba(59, 130, 246, 0.16);
+        padding: 15px 18px;
+        border-bottom: 1px solid var(--border, rgba(255,255,255,.08));
+        background: var(--card, rgba(17,24,39,.7));
       }
-      .dfp-header-main { display: flex; align-items: center; gap: 14px; }
+      .dfp-header-main { display: flex; align-items: center; gap: 11px; }
       .dfp-icon {
-        width: 54px; height: 54px; border-radius: 17px; flex: 0 0 auto;
+        width: 40px; height: 40px; border-radius: 12px; flex: 0 0 auto;
         display: flex; align-items: center; justify-content: center;
-        font-size: 25px;
-        background: linear-gradient(135deg, rgba(34, 197, 94, 0.22), rgba(59, 130, 246, 0.18));
+        font-size: 18px; color:var(--success, #10b981);
+        background: var(--success-glow, rgba(16,185,129,.15));
       }
-      .dfp-title { margin: 0 0 6px; font-size: 20px; font-weight: 800; color: #f8fafc; }
-      .dfp-subtitle { margin: 0; font-size: 13px; color: #94a3b8; line-height: 1.5; }
+      .dfp-title { margin: 0 0 3px; font-size: 18px; font-weight: 800; color:inherit; }
+      .dfp-subtitle { margin: 0; font-size: 12px; color:var(--orders-muted, var(--text-muted, #94a3b8)); line-height:1.35; }
       .dfp-close {
-        position: absolute; top: 14px; left: 14px; width: 34px; height: 34px;
-        border: 1px solid rgba(148,163,184,.16); border-radius: 11px;
-        background: rgba(15,23,42,.45); color: #94a3b8; cursor: pointer;
-        font-size: 20px; line-height: 1;
+        position: absolute; top: 15px; left: 15px; width: 32px; height: 32px;
+        border: 1px solid var(--border, rgba(255,255,255,.08)); border-radius: 10px;
+        background:var(--glass-bg, rgba(255,255,255,.03));
+        color:var(--orders-muted, var(--text-muted, #94a3b8)); cursor:pointer;
+        font-size:18px; line-height:1;
       }
-      .dfp-close:hover { color: #fff; background: rgba(148,163,184,.14); }
-      .dfp-body { padding: 20px 26px; display: grid; gap: 16px; }
+      .dfp-close:hover { color:var(--danger, #ef4444); background:var(--danger-glow, rgba(239,68,68,.15)); }
+      .dfp-body {
+        padding:12px 16px; display:grid; gap:10px;
+        overflow-y:auto; overscroll-behavior:contain;
+      }
+      .dfp-summary { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
       .dfp-row {
         display: flex; justify-content: space-between; align-items: center;
-        padding: 12px 14px; border-radius: 14px;
-        background: rgba(15, 23, 42, 0.55);
-        border: 1px solid rgba(148, 163, 184, 0.12);
+        padding:10px 12px; border-radius:12px;
+        background:var(--glass-bg, rgba(255,255,255,.03));
+        border:1px solid var(--border, rgba(255,255,255,.08));
       }
-      .dfp-row span { color: #94a3b8; font-size: 13px; }
-      .dfp-row strong { color: #f8fafc; font-size: 16px; font-weight: 800; }
-      .dfp-row.net strong { color: #4ade80; }
+      .dfp-row span { color:var(--orders-muted, var(--text-muted, #94a3b8)); font-size:11px; }
+      .dfp-row strong { color:inherit; font-size:14px; font-weight:800; }
+      .dfp-row.net strong { color:var(--success, #10b981); }
       .dfp-field label {
-        display: block; margin-bottom: 8px; font-size: 13px; font-weight: 700; color: #cbd5e1;
+        display:block; margin-bottom:6px; font-size:11px; font-weight:700;
+        color:var(--orders-muted, var(--text-muted, #94a3b8));
       }
       .dfp-section {
-        padding: 15px; border-radius: 17px;
-        background: rgba(15, 23, 42, 0.42);
-        border: 1px solid rgba(148, 163, 184, 0.12);
+        padding:11px; border-radius:13px;
+        background:var(--glass-bg, rgba(255,255,255,.03));
+        border:1px solid var(--border, rgba(255,255,255,.08));
       }
-      .dfp-section-title { display:flex; align-items:center; gap:8px; margin-bottom:12px; color:#f1f5f9; font-size:14px; font-weight:800; }
-      .dfp-input-wrap { display: flex; gap: 8px; }
+      .dfp-main-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:start; }
+      .dfp-main-grid > .dfp-section { min-width:0; }
+      .dfp-section-heading {
+        display:flex; align-items:center; justify-content:space-between;
+        gap:10px; margin-bottom:8px;
+      }
+      .dfp-section-title {
+        display:flex; align-items:center; gap:6px; margin:0;
+        color:inherit; font-size:13px; font-weight:800;
+      }
+      .dfp-input-wrap { display:flex; gap:6px; }
       .dfp-input {
-        flex: 1; padding: 14px 16px; border-radius: 14px;
-        border: 1px solid rgba(148, 163, 184, 0.2);
-        background: rgba(15, 23, 42, 0.7); color: #f8fafc;
-        font-size: 18px; font-weight: 700; text-align: center; direction: ltr;
+        flex:1; min-width:0; padding:10px 11px; border-radius:10px;
+        border:1px solid var(--border, rgba(255,255,255,.08));
+        background:var(--bg, #080c14); color:inherit;
+        font-size:15px; font-weight:700; text-align:center; direction:ltr;
         font-family: inherit;
       }
       .dfp-input:focus {
         outline: none;
-        border-color: rgba(59, 130, 246, 0.55);
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+        border-color:var(--primary, #3b82f6);
+        box-shadow:0 0 0 3px var(--primary-glow, rgba(59,130,246,.15));
       }
       .dfp-suggest {
-        border: 1px solid rgba(148, 163, 184, 0.2);
-        background: rgba(148, 163, 184, 0.1);
-        color: #e2e8f0; border-radius: 14px; padding: 0 14px;
-        font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap;
+        border:1px solid var(--border, rgba(255,255,255,.08));
+        background:var(--card, rgba(17,24,39,.7)); color:inherit;
+        border-radius:10px; padding:0 9px;
+        font-size:11px; font-weight:700; cursor:pointer; white-space:nowrap;
         font-family: inherit;
       }
-      .dfp-suggest:hover { background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.35); }
-      .dfp-hint { margin: 0; font-size: 12px; color: #64748b; }
+      .dfp-suggest:hover { background:var(--primary-glow, rgba(59,130,246,.15)); border-color:var(--primary, #3b82f6); }
+      .dfp-hint { margin:0; font-size:10px; color:var(--text-dim, #64748b); line-height:1.35; }
       .dfp-select {
-        width: 100%; padding: 13px 14px; border-radius: 13px;
-        border: 1px solid rgba(148, 163, 184, 0.22);
-        background: #111c30; color: #f8fafc; font: 700 14px inherit;
-        cursor: pointer;
+        width:100%; min-width:0; padding:10px 11px; border-radius:10px;
+        border:1px solid var(--border, rgba(255,255,255,.08));
+        background:var(--bg, #080c14); color:inherit;
+        font:700 12px inherit; cursor:pointer;
       }
-      .dfp-select:focus { outline:none; border-color:rgba(59,130,246,.65); box-shadow:0 0 0 3px rgba(59,130,246,.13); }
+      .dfp-select:focus { outline:none; border-color:var(--primary, #3b82f6); box-shadow:0 0 0 3px var(--primary-glow, rgba(59,130,246,.13)); }
       .dfp-select:disabled { opacity:.65; cursor:not-allowed; }
-      .dfp-branch-hint { margin:8px 0 0; color:#94a3b8; font-size:12px; line-height:1.45; }
-      .dfp-branch-hint.locked { color:#fbbf24; }
+      .dfp-native-select { display:none !important; }
+      .dfp-choice { width:100%; min-width:0; }
+      .dfp-choice-trigger {
+        width:100%; min-width:0; height:36px; padding:0 10px;
+        display:flex; align-items:center; justify-content:space-between; gap:8px;
+        border:1px solid var(--border, rgba(255,255,255,.08)); border-radius:10px;
+        background:var(--bg, #080c14); color:inherit;
+        font:700 12px inherit; cursor:pointer; text-align:right;
+      }
+      .dfp-choice-trigger:hover,
+      .dfp-choice-trigger[aria-expanded="true"] {
+        border-color:var(--primary, #3b82f6);
+        box-shadow:0 0 0 3px var(--primary-glow, rgba(59,130,246,.13));
+      }
+      .dfp-choice-trigger:disabled { opacity:.65; cursor:not-allowed; box-shadow:none; }
+      .dfp-choice-label {
+        min-width:0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;
+      }
+      .dfp-choice-arrow { flex:0 0 auto; color:var(--text-dim, #64748b); font-size:12px; }
+      .dfp-choice-menu {
+        display:none; grid-template-columns:1fr; gap:3px;
+        max-height:132px; overflow-y:auto; margin-top:5px; padding:5px;
+        border:1px solid var(--border, rgba(255,255,255,.08)); border-radius:10px;
+        background:var(--card-alt, #0f172a);
+      }
+      .dfp-choice-menu.open { display:grid; }
+      .dfp-choice-option {
+        width:100%; padding:8px 9px; border:0; border-radius:7px;
+        background:transparent; color:inherit; font:700 11px inherit;
+        text-align:right; cursor:pointer;
+      }
+      .dfp-choice-option:hover { background:var(--primary-glow, rgba(59,130,246,.15)); }
+      .dfp-choice-option.selected {
+        background:var(--primary, #3b82f6); color:#fff;
+      }
+      .dfp-branch-hint {
+        margin:6px 0 0; color:var(--text-dim, #64748b);
+        font-size:10px; line-height:1.3;
+        max-width:100%; min-width:0;
+        white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+      }
+      .dfp-branch-hint.locked { color:var(--warning, #f59e0b); }
+      .dfp-payments { display:grid; gap:7px; }
+      .dfp-payment-row {
+        display:grid; grid-template-columns:minmax(0, 1.25fr) minmax(110px, .75fr) 34px;
+        gap:6px; align-items:start;
+      }
+      .dfp-payment-amount { min-width:0; font-size:13px; padding:9px 10px; }
+      .dfp-payment-remove {
+        width:34px; height:36px; border-radius:9px;
+        border:1px solid var(--border, rgba(255,255,255,.08));
+        background:var(--danger-glow, rgba(239,68,68,.15)); color:var(--danger, #ef4444);
+        cursor:pointer; font:800 17px inherit;
+      }
+      .dfp-payment-remove:disabled { visibility:hidden; }
+      .dfp-add-payment {
+        border:1px solid var(--border, rgba(255,255,255,.08)); border-radius:9px;
+        background:var(--primary-glow, rgba(59,130,246,.15)); color:var(--primary, #3b82f6);
+        padding:6px 9px; cursor:pointer; font:700 10px inherit; white-space:nowrap;
+      }
+      .dfp-add-payment:disabled { opacity:.45; cursor:not-allowed; }
+      .dfp-payment-summary {
+        margin:7px 0 0; color:var(--orders-muted, var(--text-muted, #94a3b8));
+        font-size:10px; text-align:left;
+      }
+      .dfp-payment-summary.valid { color:var(--success, #10b981); }
+      .dfp-payment-summary.invalid { color:var(--warning, #f59e0b); }
       .dfp-footer {
-        padding: 16px 24px 22px;
+        padding:11px 16px;
         display: flex; gap: 10px;
-        border-top: 1px solid rgba(59, 130, 246, 0.12);
+        border-top:1px solid var(--border, rgba(255,255,255,.08));
+        background:var(--card, rgba(17,24,39,.7));
       }
       .dfp-btn {
-        flex: 1; border: 0; border-radius: 14px; padding: 14px 16px;
-        font-size: 15px; font-weight: 800; cursor: pointer; font-family: inherit;
+        flex:1; border:0; border-radius:10px; padding:10px 14px;
+        font-size:13px; font-weight:800; cursor:pointer; font-family:inherit;
       }
       .dfp-btn.primary {
-        background: linear-gradient(135deg, #22c55e, #16a34a);
+        background:var(--success, #10b981);
         color: #fff;
-        box-shadow: 0 10px 28px rgba(22, 163, 74, .22);
       }
       .dfp-btn.ghost {
-        background: rgba(148, 163, 184, 0.1);
-        color: #e2e8f0;
-        border: 1px solid rgba(148, 163, 184, 0.18);
+        background:var(--glass-bg, rgba(255,255,255,.03));
+        color:inherit;
+        border:1px solid var(--border, rgba(255,255,255,.08));
       }
       .dfp-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+      :root[data-theme="light"] .dfp-overlay { background:rgba(15,23,42,.38); }
+      :root[data-theme="light"] .dfp-box { background:#fff; color:var(--text, #0f172a); box-shadow:0 18px 55px rgba(15,23,42,.16); }
+      :root[data-theme="light"] .dfp-header,
+      :root[data-theme="light"] .dfp-footer { background:#f8fafc; }
+      :root[data-theme="light"] .dfp-section,
+      :root[data-theme="light"] .dfp-row { background:#f8fafc; }
+      :root[data-theme="light"] .dfp-input,
+      :root[data-theme="light"] .dfp-select,
+      :root[data-theme="light"] .dfp-choice-trigger,
+      :root[data-theme="light"] .dfp-choice-menu { background:#fff; }
       @media (max-width: 560px) {
-        .dfp-overlay { padding: 10px; align-items: flex-end; }
-        .dfp-box { border-radius: 24px 24px 16px 16px; max-height: 92vh; overflow-y: auto; }
-        .dfp-header, .dfp-body, .dfp-footer { padding-left: 18px; padding-right: 18px; }
-        .dfp-input-wrap { flex-direction: column; }
-        .dfp-suggest { padding: 11px; }
+        .dfp-overlay {
+          padding:max(6px, env(safe-area-inset-top)) 6px max(6px, env(safe-area-inset-bottom));
+          align-items:center;
+        }
+        .dfp-box {
+          width:100%; max-width:none;
+          max-height:calc(100dvh - 12px);
+          border-radius:16px;
+        }
+        .dfp-header { padding:11px 12px; }
+        .dfp-header-main { gap:9px; padding-left:40px; }
+        .dfp-icon {
+          width:36px; height:36px; border-radius:10px;
+          font-size:16px;
+        }
+        .dfp-title { font-size:16px; line-height:1.25; }
+        .dfp-subtitle { font-size:10px; line-height:1.35; }
+        .dfp-close {
+          top:11px; left:11px;
+          width:34px !important; height:34px !important;
+          min-width:34px !important; min-height:34px !important;
+          padding:0 !important;
+        }
+        .dfp-body {
+          padding:9px 10px;
+          gap:8px;
+          -webkit-overflow-scrolling:touch;
+        }
+        .dfp-summary { gap:6px; }
+        .dfp-row { min-width:0; padding:8px 9px; gap:5px; }
+        .dfp-row span { font-size:10px; white-space:nowrap; }
+        .dfp-row strong { font-size:12px; white-space:nowrap; }
+        .dfp-section { padding:9px; border-radius:12px; }
+        .dfp-section-heading { gap:7px; margin-bottom:7px; }
+        .dfp-section-title { min-width:0; font-size:12px; line-height:1.35; }
+        .dfp-main-grid { grid-template-columns:1fr; gap:8px; }
+        .dfp-input-wrap {
+          display:grid;
+          grid-template-columns:minmax(0, 1fr) 96px;
+          gap:6px;
+        }
+        .dfp-input-wrap > .dfp-input:only-child { grid-column:1 / -1; }
+        .dfp-input { width:100%; min-height:40px; padding:8px 9px; font-size:14px; }
+        .dfp-suggest {
+          width:96px !important; min-width:96px !important;
+          min-height:40px !important; padding:0 8px !important;
+        }
+        .dfp-choice-trigger {
+          height:40px; min-height:40px !important;
+          padding:0 9px !important; font-size:11px;
+        }
+        .dfp-branch-hint { margin-top:5px; font-size:9px; }
+        .dfp-payment-section .dfp-section-heading { flex-wrap:nowrap; }
+        .dfp-payment-section .dfp-section-title { flex:1 1 auto; white-space:nowrap; }
+        .dfp-add-payment {
+          flex:0 0 auto;
+          width:auto !important; min-width:104px !important;
+          min-height:34px !important; padding:5px 8px !important;
+          font-size:9px;
+        }
+        .dfp-payment-row {
+          grid-template-columns:minmax(0, 1fr) minmax(88px, .55fr) 30px;
+          gap:5px;
+        }
+        .dfp-payment-amount { min-height:40px; padding:8px 7px; font-size:12px; }
+        .dfp-payment-remove {
+          width:30px !important; height:40px !important;
+          min-width:30px !important; min-height:40px !important;
+          padding:0 !important;
+        }
+        .dfp-payment-summary { margin-top:5px; }
+        .dfp-footer {
+          padding:9px 10px max(9px, env(safe-area-inset-bottom));
+          gap:8px;
+        }
+        .dfp-btn {
+          width:auto !important; min-width:0 !important;
+          min-height:44px !important; padding:9px 8px !important;
+          font-size:12px;
+        }
+      }
+      @media (max-width: 340px) {
+        .dfp-summary { grid-template-columns:1fr; }
+        .dfp-payment-section .dfp-section-heading { align-items:stretch; flex-direction:column; }
+        .dfp-payment-section .dfp-section-title { white-space:normal; }
+        .dfp-add-payment { width:100% !important; }
+        .dfp-payment-row { grid-template-columns:minmax(0, 1fr) 82px 28px; }
+      }
+      @media (max-width: 560px) and (max-height: 700px) {
+        .dfp-header { padding-top:9px; padding-bottom:9px; }
+        .dfp-close { top:9px; }
+        .dfp-body { padding-top:7px; padding-bottom:7px; gap:6px; }
+        .dfp-section { padding:8px; }
+        .dfp-footer { padding-top:7px; }
       }
     `;
     document.head.appendChild(style);
@@ -209,10 +391,26 @@
     }
   }
 
+  async function fetchPaymentAccounts() {
+    try {
+      const res = await fetch("/orders/payment-accounts", {
+        headers: { Accept: "application/json" },
+      });
+      if (!res.ok) return [];
+      const data = await res.json();
+      return Array.isArray(data.accounts) ? data.accounts : [];
+    } catch (_err) {
+      return [];
+    }
+  }
+
   /**
    * @param {object} opts
    * @param {number} [opts.orderId]
    * @param {number} [opts.orderTotal]
+   * @param {number} [opts.paymentAmount]
+   * @param {number} [opts.maxPaymentAmount]
+   * @param {boolean} [opts.editablePaymentAmount]
    * @param {string} [opts.customerCity]
    * @param {Array} [opts.items]
    * @param {string} [opts.title]
@@ -227,6 +425,18 @@
     const onCancel = typeof options.onCancel === "function" ? options.onCancel : function () {};
 
     let orderTotal = Math.max(0, Number(options.orderTotal) || 0);
+    let paymentAmount = Math.max(
+      0,
+      Number(options.paymentAmount != null ? options.paymentAmount : orderTotal) || 0
+    );
+    const editablePaymentAmount = !!options.editablePaymentAmount;
+    const maxPaymentAmount = Math.max(
+      0,
+      Number(options.maxPaymentAmount != null ? options.maxPaymentAmount : paymentAmount) || 0
+    );
+    if (editablePaymentAmount && paymentAmount > maxPaymentAmount) {
+      paymentAmount = maxPaymentAmount;
+    }
     let customerCity = String(options.customerCity || "").trim();
     let quoteItems = Array.isArray(options.items) ? options.items.slice() : [];
     const orderId = options.orderId ? Number(options.orderId) : null;
@@ -238,6 +448,24 @@
 
     const title = options.title || (orderId ? `تسديد الطلب #${orderId}` : "تسديد الطلب");
     const confirmLabel = options.confirmLabel || "تأكيد التسديد";
+    const subtitle = options.subtitle || "حدد الاستلام، أجرة التوصيل وفرع الخصم.";
+    const totalLabel = options.totalLabel || "إجمالي الطلب";
+    const netLabel = options.netLabel || "الصافي بعد الأجرة";
+    const paymentAmountField = editablePaymentAmount ? `
+      <div class="dfp-section">
+        <div class="dfp-section-heading">
+          <div class="dfp-section-title"><span>💵</span> مبلغ التسديد الجزئي</div>
+        </div>
+        <div class="dfp-field">
+          <div class="dfp-input-wrap">
+            <input id="dfpPaymentAmountInput" class="dfp-input" type="text" inputmode="numeric"
+              value="${paymentAmount || ""}" placeholder="أدخل مبلغ التسديد"
+              autocomplete="off" aria-label="مبلغ التسديد الجزئي">
+          </div>
+          <p class="dfp-branch-hint">الحد الأعلى: ${fmtMoney(maxPaymentAmount)}</p>
+        </div>
+      </div>
+    ` : "";
 
     overlay.innerHTML = `
       <div class="dfp-box">
@@ -247,38 +475,55 @@
             <div class="dfp-icon">✓</div>
             <div>
               <h3 class="dfp-title">${title}</h3>
-              <p class="dfp-subtitle">راجع تفاصيل التسديد وحدد أجرة التوصيل وفرع خصم المخزون.</p>
+              <p class="dfp-subtitle">${subtitle}</p>
             </div>
           </div>
         </div>
         <div class="dfp-body">
-          <div class="dfp-row">
-            <span>إجمالي الطلب</span>
-            <strong id="dfpOrderTotal">${fmtMoney(orderTotal)}</strong>
+          <div class="dfp-summary">
+            <div class="dfp-row">
+              <span>${totalLabel}</span>
+              <strong id="dfpOrderTotal">${fmtMoney(orderTotal)}</strong>
+            </div>
+            <div class="dfp-row net">
+              <span>${netLabel}</span>
+              <strong id="dfpNetTotal">${fmtMoney(editablePaymentAmount ? paymentAmount : orderTotal)}</strong>
+            </div>
           </div>
-          <div class="dfp-section">
-            <div class="dfp-section-title"><span>🚚</span> أجرة التوصيل</div>
-            <div class="dfp-field">
-              <div class="dfp-input-wrap">
-                <input id="dfpFeeInput" class="dfp-input" type="text" inputmode="numeric" value="0" autocomplete="off" aria-label="أجرة التوصيل">
-                <button type="button" class="dfp-suggest" id="dfpSuggestBtn">احتساب المقترح</button>
+          ${paymentAmountField}
+          <div class="dfp-main-grid">
+            <div class="dfp-section">
+              <div class="dfp-section-heading">
+                <div class="dfp-section-title"><span>🚚</span> أجرة التوصيل</div>
               </div>
-              <p class="dfp-hint">اتركها 0 إذا لم توجد أجرة توصيل.</p>
+              <div class="dfp-field">
+                <div class="dfp-input-wrap">
+                  <input id="dfpFeeInput" class="dfp-input" type="text" inputmode="numeric" value="0" autocomplete="off" aria-label="أجرة التوصيل">
+                  <button type="button" class="dfp-suggest" id="dfpSuggestBtn">المقترح</button>
+                </div>
+              </div>
+            </div>
+            <div class="dfp-section" id="dfpBranchSection" ${orderId ? "" : "hidden"}>
+              <div class="dfp-section-heading">
+                <div class="dfp-section-title"><span>🏬</span> فرع خصم المخزون</div>
+              </div>
+              <div class="dfp-field">
+                <select id="dfpBranchSelect" class="dfp-select" aria-label="فرع خصم المخزون" disabled>
+                  <option value="">جاري تحميل الفروع...</option>
+                </select>
+                <p class="dfp-branch-hint" id="dfpBranchHint">يتم التحقق من الكمية قبل التسديد.</p>
+              </div>
             </div>
           </div>
-          <div class="dfp-section" id="dfpBranchSection" ${orderId ? "" : "hidden"}>
-            <div class="dfp-section-title"><span>🏬</span> خصم المخزون</div>
-            <div class="dfp-field">
-              <label for="dfpBranchSelect">الفرع الذي تُخصم منه أصناف الطلب</label>
-              <select id="dfpBranchSelect" class="dfp-select" disabled>
-                <option value="">جاري تحميل الفروع...</option>
-              </select>
-              <p class="dfp-branch-hint" id="dfpBranchHint">سيتم التحقق من توفر الكميات في الفرع قبل إكمال التسديد.</p>
+          <div class="dfp-section dfp-payment-section">
+            <div class="dfp-section-heading">
+              <div class="dfp-section-title"><span>💳</span> طريقة استلام المبلغ</div>
+              <button type="button" class="dfp-add-payment" id="dfpAddPaymentBtn" disabled>+ تقسيم الدفعة</button>
             </div>
-          </div>
-          <div class="dfp-row net">
-            <span>الصافي بعد الأجرة</span>
-            <strong id="dfpNetTotal">${fmtMoney(orderTotal)}</strong>
+            <div class="dfp-payments" id="dfpPaymentRows">
+              <p class="dfp-hint">جاري تحميل الصندوق والحسابات البنكية...</p>
+            </div>
+            <p class="dfp-payment-summary" id="dfpPaymentSummary"></p>
           </div>
         </div>
         <div class="dfp-footer">
@@ -291,6 +536,7 @@
     document.body.appendChild(overlay);
 
     const feeInput = overlay.querySelector("#dfpFeeInput");
+    const paymentAmountInput = overlay.querySelector("#dfpPaymentAmountInput");
     const orderTotalEl = overlay.querySelector("#dfpOrderTotal");
     const netTotalEl = overlay.querySelector("#dfpNetTotal");
     const suggestBtn = overlay.querySelector("#dfpSuggestBtn");
@@ -299,17 +545,118 @@
     const closeBtn = overlay.querySelector("#dfpCloseBtn");
     const branchSelect = overlay.querySelector("#dfpBranchSelect");
     const branchHint = overlay.querySelector("#dfpBranchHint");
+    const paymentRowsEl = overlay.querySelector("#dfpPaymentRows");
+    const addPaymentBtn = overlay.querySelector("#dfpAddPaymentBtn");
+    const paymentSummary = overlay.querySelector("#dfpPaymentSummary");
     let currentBranchId = Number(options.branchId) || 0;
     let stockDeducted = !!options.stockDeducted;
-    if (orderId) confirmBtn.disabled = true;
+    let branchReady = !orderId;
+    let accountsReady = false;
+    let allPaymentAccounts = [];
+    let paymentAccounts = [];
+    let paymentAllocations = [];
+    confirmBtn.disabled = true;
 
     function close() {
       overlay.remove();
     }
 
+    function closeChoiceMenus(exceptMenu) {
+      overlay.querySelectorAll(".dfp-choice-menu.open").forEach(function (menu) {
+        if (menu === exceptMenu) return;
+        menu.classList.remove("open");
+        const trigger = menu.parentElement.querySelector(".dfp-choice-trigger");
+        if (trigger) trigger.setAttribute("aria-expanded", "false");
+      });
+    }
+
+    function createInlineChoice(select) {
+      select.classList.add("dfp-native-select");
+
+      const choice = document.createElement("div");
+      choice.className = "dfp-choice";
+
+      const trigger = document.createElement("button");
+      trigger.type = "button";
+      trigger.className = "dfp-choice-trigger";
+      trigger.setAttribute("aria-haspopup", "listbox");
+      trigger.setAttribute("aria-expanded", "false");
+
+      const label = document.createElement("span");
+      label.className = "dfp-choice-label";
+      const arrow = document.createElement("span");
+      arrow.className = "dfp-choice-arrow";
+      arrow.textContent = "⌄";
+      trigger.appendChild(label);
+      trigger.appendChild(arrow);
+
+      const menu = document.createElement("div");
+      menu.className = "dfp-choice-menu";
+      menu.setAttribute("role", "listbox");
+
+      function refreshChoice() {
+        menu.innerHTML = "";
+        const options = Array.from(select.options);
+        const selected = options.find(function (option) {
+          return option.value === select.value;
+        }) || options[0];
+        label.textContent = selected ? selected.textContent : "اختر";
+        trigger.disabled = !!select.disabled || !options.length;
+
+        options.forEach(function (option) {
+          const optionButton = document.createElement("button");
+          optionButton.type = "button";
+          optionButton.className = "dfp-choice-option";
+          optionButton.setAttribute("role", "option");
+          optionButton.setAttribute(
+            "aria-selected",
+            option.value === select.value ? "true" : "false"
+          );
+          optionButton.classList.toggle("selected", option.value === select.value);
+          optionButton.textContent = option.textContent;
+          optionButton.addEventListener("click", function (event) {
+            event.stopPropagation();
+            select.value = option.value;
+            select.dispatchEvent(new Event("change", { bubbles: true }));
+            refreshChoice();
+            closeChoiceMenus();
+            trigger.focus();
+          });
+          menu.appendChild(optionButton);
+        });
+      }
+
+      trigger.addEventListener("click", function (event) {
+        event.stopPropagation();
+        if (trigger.disabled) return;
+        const willOpen = !menu.classList.contains("open");
+        closeChoiceMenus(menu);
+        menu.classList.toggle("open", willOpen);
+        trigger.setAttribute("aria-expanded", willOpen ? "true" : "false");
+      });
+
+      choice.appendChild(select);
+      choice.appendChild(trigger);
+      choice.appendChild(menu);
+      select._dfpRefreshChoice = refreshChoice;
+      refreshChoice();
+      return choice;
+    }
+
+    function refreshInlineChoice(select) {
+      if (select && typeof select._dfpRefreshChoice === "function") {
+        select._dfpRefreshChoice();
+      }
+    }
+
+    const branchSelectParent = branchSelect.parentNode;
+    const branchChoice = createInlineChoice(branchSelect);
+    branchSelectParent.insertBefore(branchChoice, branchHint);
+
     function refreshNet() {
       const fee = parseFee(feeInput.value);
-      const net = Math.max(0, orderTotal - fee);
+      const netBase = editablePaymentAmount ? paymentAmount : orderTotal;
+      const net = Math.max(0, netBase - fee);
       netTotalEl.textContent = fmtMoney(net);
     }
 
@@ -323,6 +670,177 @@
       onCancel();
     }
 
+    function paymentTotal() {
+      return paymentAllocations.reduce(function (sum, allocation) {
+        return sum + Math.max(0, Number(allocation.amount) || 0);
+      }, 0);
+    }
+
+    function paymentIsValid() {
+      return accountsReady
+        && paymentAmount > 0
+        && (!editablePaymentAmount || paymentAmount <= maxPaymentAmount)
+        && paymentAllocations.length > 0
+        && paymentAllocations.every(function (allocation) {
+          return Number(allocation.accountId) > 0 && Number(allocation.amount) >= 0;
+        })
+        && paymentTotal() === paymentAmount;
+    }
+
+    function refreshConfirmState() {
+      const total = paymentTotal();
+      const remaining = paymentAmount - total;
+      const valid = paymentIsValid();
+      paymentSummary.classList.toggle("valid", valid);
+      paymentSummary.classList.toggle("invalid", !valid);
+      if (!accountsReady) {
+        paymentSummary.textContent = "تعذر تحميل حسابات الدفع";
+      } else if (editablePaymentAmount && paymentAmount <= 0) {
+        paymentSummary.textContent = "أدخل مبلغ التسديد الجزئي أولاً";
+      } else if (editablePaymentAmount && paymentAmount > maxPaymentAmount) {
+        paymentSummary.textContent = `المبلغ يتجاوز المستحق: ${fmtMoney(maxPaymentAmount)}`;
+      } else if (remaining === 0) {
+        paymentSummary.textContent = `موزّع بالكامل: ${fmtMoney(total)}`;
+      } else if (remaining > 0) {
+        paymentSummary.textContent = `المتبقي: ${fmtMoney(remaining)}`;
+      } else {
+        paymentSummary.textContent = `زيادة: ${fmtMoney(Math.abs(remaining))}`;
+      }
+      confirmBtn.disabled = !(branchReady && paymentIsValid());
+      addPaymentBtn.disabled = !accountsReady
+        || paymentAllocations.length >= paymentAccounts.length;
+    }
+
+    if (paymentAmountInput) {
+      paymentAmountInput.addEventListener("input", function () {
+        paymentAmount = parseFee(paymentAmountInput.value);
+        paymentAmountInput.value = paymentAmount ? String(paymentAmount) : "";
+        if (paymentAllocations.length) {
+          rebalancePrimary();
+          renderPaymentRows();
+        } else {
+          refreshConfirmState();
+        }
+        refreshNet();
+      });
+    }
+
+    function rebalancePrimary() {
+      if (!paymentAllocations.length) return;
+      const secondaryTotal = paymentAllocations.slice(1).reduce(function (sum, allocation) {
+        return sum + Math.max(0, Number(allocation.amount) || 0);
+      }, 0);
+      paymentAllocations[0].amount = Math.max(0, paymentAmount - secondaryTotal);
+    }
+
+    function renderPaymentRows() {
+      paymentRowsEl.innerHTML = "";
+      paymentAllocations.forEach(function (allocation, index) {
+        const row = document.createElement("div");
+        row.className = "dfp-payment-row";
+
+        const select = document.createElement("select");
+        select.className = "dfp-select";
+        select.setAttribute("aria-label", "طريقة الدفع");
+        paymentAccounts.forEach(function (account) {
+          const option = document.createElement("option");
+          option.value = String(account.id);
+          option.textContent = account.label || account.name;
+          option.selected = Number(account.id) === Number(allocation.accountId);
+          select.appendChild(option);
+        });
+        select.addEventListener("change", function () {
+          allocation.accountId = Number(select.value) || 0;
+          refreshConfirmState();
+        });
+
+        const amountInput = document.createElement("input");
+        amountInput.className = "dfp-input dfp-payment-amount";
+        amountInput.type = "text";
+        amountInput.inputMode = "numeric";
+        amountInput.value = String(Math.max(0, Number(allocation.amount) || 0));
+        amountInput.setAttribute("aria-label", "مبلغ الدفعة");
+        amountInput.addEventListener("input", function () {
+          allocation.amount = parseFee(amountInput.value);
+          amountInput.value = String(allocation.amount);
+          if (index > 0) {
+            rebalancePrimary();
+            renderPaymentRows();
+            const currentInputs = paymentRowsEl.querySelectorAll(".dfp-payment-amount");
+            if (currentInputs[index]) {
+              currentInputs[index].focus();
+              currentInputs[index].setSelectionRange(
+                currentInputs[index].value.length,
+                currentInputs[index].value.length
+              );
+            }
+            return;
+          }
+          refreshConfirmState();
+        });
+
+        const removeBtn = document.createElement("button");
+        removeBtn.type = "button";
+        removeBtn.className = "dfp-payment-remove";
+        removeBtn.textContent = "×";
+        removeBtn.disabled = index === 0;
+        removeBtn.setAttribute("aria-label", "حذف طريقة الدفع");
+        removeBtn.addEventListener("click", function () {
+          paymentAllocations.splice(index, 1);
+          rebalancePrimary();
+          renderPaymentRows();
+        });
+
+        row.appendChild(createInlineChoice(select));
+        row.appendChild(amountInput);
+        row.appendChild(removeBtn);
+        paymentRowsEl.appendChild(row);
+      });
+      refreshConfirmState();
+    }
+
+    function applyPaymentAccountsForBranch() {
+      paymentAccounts = currentBranchId
+        ? allPaymentAccounts.filter(function (account) {
+            return Number(account.branch_id) === Number(currentBranchId);
+          })
+        : allPaymentAccounts.slice();
+      accountsReady = paymentAccounts.length > 0;
+      if (!accountsReady) {
+        paymentAllocations = [];
+        paymentRowsEl.innerHTML = '<p class="dfp-hint">لا يوجد صندوق أو حساب بنكي مفعّل لهذا الفرع.</p>';
+        refreshConfirmState();
+        return;
+      }
+      const defaultAccount = paymentAccounts.find(function (account) {
+        return account.type === "cash" && account.is_default;
+      }) || paymentAccounts[0];
+      paymentAllocations = [{
+        accountId: Number(defaultAccount.id),
+        amount: paymentAmount,
+      }];
+      renderPaymentRows();
+    }
+
+    addPaymentBtn.addEventListener("click", function () {
+      const used = new Set(paymentAllocations.map(function (allocation) {
+        return Number(allocation.accountId);
+      }));
+      const nextAccount = paymentAccounts.find(function (account) {
+        return !used.has(Number(account.id)) && account.type === "bank";
+      }) || paymentAccounts.find(function (account) {
+        return !used.has(Number(account.id));
+      });
+      if (!nextAccount) return;
+      paymentAllocations.push({ accountId: Number(nextAccount.id), amount: 0 });
+      renderPaymentRows();
+      const inputs = paymentRowsEl.querySelectorAll(".dfp-payment-amount");
+      if (inputs.length) {
+        inputs[inputs.length - 1].focus();
+        inputs[inputs.length - 1].select();
+      }
+    });
+
     cancelBtn.addEventListener("click", cancel);
     closeBtn.addEventListener("click", cancel);
 
@@ -330,6 +848,8 @@
       if (e.target === overlay) {
         close();
         onCancel();
+      } else if (!e.target.closest(".dfp-choice")) {
+        closeChoiceMenus();
       }
     });
 
@@ -339,9 +859,33 @@
         alert("أجرة التوصيل لا يمكن أن تتجاوز إجمالي الطلب.");
         return;
       }
+      if (editablePaymentAmount && (paymentAmount <= 0 || paymentAmount > maxPaymentAmount)) {
+        alert(`أدخل مبلغاً أكبر من صفر ولا يتجاوز ${fmtMoney(maxPaymentAmount)}.`);
+        if (paymentAmountInput) paymentAmountInput.focus();
+        return;
+      }
+      if (!paymentIsValid()) {
+        alert("مجموع طرق الدفع يجب أن يساوي المبلغ المطلوب تحصيله.");
+        return;
+      }
       confirmBtn.disabled = true;
       close();
-      onConfirm(fee, { branchId: branchSelect ? (Number(branchSelect.value) || null) : null });
+      onConfirm(fee, {
+        // A deducted order is already bound to the fulfillment branch recorded
+        // on its lines. Do not send the disabled display value as a branch change.
+        branchId: stockDeducted
+          ? null
+          : (branchSelect ? (Number(branchSelect.value) || null) : null),
+        paymentAllocations: paymentAllocations
+          .filter(function (allocation) { return Number(allocation.amount) > 0; })
+          .map(function (allocation) {
+            return {
+              treasury_account_id: Number(allocation.accountId),
+              amount: Number(allocation.amount),
+            };
+          }),
+        paymentAmount: paymentAmount,
+      });
     });
 
     suggestBtn.addEventListener("click", async function () {
@@ -368,6 +912,11 @@
         return;
       }
       if (e.key === "Escape") {
+        const openMenu = overlay.querySelector(".dfp-choice-menu.open");
+        if (openMenu) {
+          closeChoiceMenus();
+          return;
+        }
         close();
         onCancel();
       }
@@ -378,8 +927,9 @@
     });
 
     setTimeout(function () {
-      feeInput.focus();
-      feeInput.select();
+      const initialInput = paymentAmountInput || feeInput;
+      initialInput.focus();
+      initialInput.select();
     }, 60);
 
     if (orderId && (!customerCity || !quoteItems.length)) {
@@ -393,6 +943,11 @@
         if (details.items.length) quoteItems = details.items;
       });
     }
+
+    fetchPaymentAccounts().then(function (accounts) {
+      allPaymentAccounts = accounts;
+      applyPaymentAccountsForBranch();
+    });
 
     if (orderId && branchSelect) {
       Promise.all([fetchBranches(), fetchOrderQuote(orderId)]).then(function (results) {
@@ -417,6 +972,8 @@
         }
         if (!branches.length) {
           branchSelect.innerHTML = '<option value="">لا توجد فروع متاحة</option>';
+          branchSelect.disabled = true;
+          refreshInlineChoice(branchSelect);
           branchHint.textContent = "سيُستخدم فرع الطلب الافتراضي عند التسديد.";
           return;
         }
@@ -430,7 +987,10 @@
         });
         const fallback = branches[0];
         branchSelect.value = String(currentBranchId || fallback.id);
+        currentBranchId = Number(branchSelect.value) || 0;
         branchSelect.disabled = stockDeducted;
+        refreshInlineChoice(branchSelect);
+        applyPaymentAccountsForBranch();
         if (stockDeducted) {
           branchHint.textContent = "تم خصم مخزون الطلب سابقاً؛ لا يمكن تغيير الفرع عند التسديد.";
           branchHint.classList.add("locked");
@@ -441,7 +1001,12 @@
           branchHint.classList.add("locked");
         }
       }).finally(function () {
-        confirmBtn.disabled = false;
+        branchReady = true;
+        refreshConfirmState();
+      });
+      branchSelect.addEventListener("change", function () {
+        currentBranchId = Number(branchSelect.value) || 0;
+        applyPaymentAccountsForBranch();
       });
     }
   }

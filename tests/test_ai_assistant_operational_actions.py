@@ -10,6 +10,9 @@ TENANT = f"test_ai_assistant_actions_{os.getpid()}"
 
 
 def _fresh_tenant_db():
+    from extensions_tenant import clear_tenant_engine
+
+    clear_tenant_engine(TENANT)
     db_file = ROOT / "tenants" / f"{TENANT}.db"
     if db_file.exists():
         db_file.unlink()
@@ -19,7 +22,7 @@ def _setup():
     from app import app
     from extensions import db
     from extensions_tenant import init_tenant_db
-    from flask import g
+    from flask import g, session
     from models.employee import Employee
 
     g.tenant = TENANT
@@ -27,6 +30,8 @@ def _setup():
     employee = Employee(name="AI Admin", username="ai-admin", password="test", role="admin")
     db.session.add(employee)
     db.session.commit()
+    session["user_id"] = employee.id
+    session["role"] = employee.role
     return app, employee
 
 
@@ -45,7 +50,7 @@ def test_duplicate_shipping_collection_plan_deletes_only_latest_and_restores_due
     from utils.treasury_calculations import calculate_treasury_balance
     from utils.treasury_helpers import get_default_cash_account
 
-    with app.app_context():
+    with app.test_request_context():
         _, employee = _setup()
         cash = get_default_cash_account()
         company = ShippingCompany(name="Test Courier", opening_balance=100_000)
@@ -108,7 +113,7 @@ def test_router_cash_asset_plan_posts_asset_and_withdraws_cash():
     from utils.treasury_calculations import calculate_treasury_balance
     from utils.treasury_helpers import get_default_cash_account
 
-    with app.app_context():
+    with app.test_request_context():
         _, employee = _setup()
         cash = get_default_cash_account()
         db.session.add(AccountTransaction(type="deposit", amount=500_000, note="test funding", treasury_account_id=cash.id))
@@ -146,7 +151,7 @@ def test_car_asset_capital_plan_does_not_change_cash_or_create_supplier_debt():
     from utils.treasury_calculations import calculate_treasury_balance
     from utils.treasury_helpers import get_default_cash_account
 
-    with app.app_context():
+    with app.test_request_context():
         _, employee = _setup()
         cash = get_default_cash_account()
         db.session.add(AccountTransaction(type="deposit", amount=1_000_000, note="test funding", treasury_account_id=cash.id))

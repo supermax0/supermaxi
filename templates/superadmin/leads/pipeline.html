@@ -1,0 +1,22 @@
+{% extends 'superadmin/leads/_base.html' %}
+{% set page_title = 'مسار المبيعات' %}
+{% set page_subtitle = 'اسحب البطاقات بين المراحل لتحديث حالة العميل' %}
+{% block leads_content %}
+<div class="lc-pipeline" id="lcPipeline">
+    {% for code, col in board.items() %}
+    <div class="lc-pipeline-col" data-status="{{ code }}">
+        <header><h3>{{ col.label }}</h3><span>{{ col.leads|length }}</span></header>
+        <div class="lc-pipeline-cards">
+            {% for lead in col.leads %}
+            <article class="lc-pipeline-card" draggable="true" data-lead-id="{{ lead.id }}" data-status="{{ code }}">
+                <strong>{{ lead.business_name }}</strong>
+                <small><i class="fas fa-phone"></i> {{ lead.primary_phone or '—' }}</small>
+                <small><i class="fas fa-location-dot"></i> {{ lead.governorate or '—' }}</small>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+{% block leads_scripts %}<script>window.LC_PIPELINE = true;</script>{% endblock %}

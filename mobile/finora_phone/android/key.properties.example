@@ -1,0 +1,7 @@
+# Local release signing — DO NOT COMMIT real passwords.
+# Copy to android/key.properties and fill values.
+
+storePassword=CHANGE_ME
+keyPassword=CHANGE_ME
+keyAlias=finora_phone
+storeFile=../keystore/finora-phone-upload.jks

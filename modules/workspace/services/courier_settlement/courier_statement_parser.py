@@ -36,18 +36,32 @@ class CourierStatementParser:
         text = (extraction_result.extracted_text or extraction_result.text_sample or "") if extraction_result else ""
         warnings: List[str] = []
         rows: List[Dict[str, Any]] = []
+        statement_totals: Dict[str, Optional[int]] = {}
+        extraction_method = None
+        extraction_confidence = None
 
         if tables:
             for tbl in tables:
                 parsed, w = CourierStatementParser._parse_table(tbl)
                 rows.extend(parsed)
                 warnings.extend(w)
+                if tbl.get("statement_totals"):
+                    statement_totals = dict(tbl.get("statement_totals") or {})
+                if tbl.get("method") == "openai_vision_structured":
+                    extraction_method = tbl.get("method")
+                    extraction_confidence = tbl.get("confidence")
         if not rows and text:
             parsed, w = CourierStatementParser._parse_text_lines(text)
             rows.extend(parsed)
             warnings.extend(w)
 
-        return {"rows": rows, "warnings": warnings}
+        return {
+            "rows": rows,
+            "warnings": warnings,
+            "statement_totals": statement_totals,
+            "extraction_method": extraction_method,
+            "extraction_confidence": extraction_confidence,
+        }
 
     @staticmethod
     def _parse_table(table: Dict[str, Any]) -> Tuple[List[Dict], List[str]]:
@@ -65,7 +79,6 @@ class CourierStatementParser:
             col_map = CourierStatementParser._infer_columns_from_data(raw_rows) if raw_rows else {}
 
         out: List[Dict] = []
-        start = 1 if headers else 0
         for i, raw in enumerate(raw_rows):
             if not raw or not any(str(c or "").strip() for c in raw):
                 continue
@@ -76,6 +89,24 @@ class CourierStatementParser:
                 raw, col_map, row_index=len(out) + 1, page=page, tidx=tidx
             )
             if row:
+                metadata_rows = table.get("row_metadata") or []
+                metadata = metadata_rows[i] if i < len(metadata_rows) else {}
+                if metadata:
+                    row["row_index"] = metadata.get("row_index") or row["row_index"]
+                    row["source_page"] = metadata.get("source_page") or row["source_page"]
+                    row["confidence"] = float(
+                        metadata.get("confidence")
+                        if metadata.get("confidence") is not None
+                        else row.get("confidence") or 0
+                    )
+                    row["warnings"] = list(row.get("warnings") or []) + list(
+                        metadata.get("warnings") or []
+                    )
+                    # Model confidence is intentionally conservative on rotated
+                    # phone photos. Exact statement totals + server matching are
+                    # the hard gates; only genuinely weak visual rows are blocked.
+                    if row["confidence"] < 0.85:
+                        row["warnings"].append("AI_LOW_CONFIDENCE")
                 out.append(row)
             elif raw:
                 warnings.append(f"صف غير واضح في الجدول {tidx}: {line[:60]}")
@@ -103,18 +134,20 @@ class CourierStatementParser:
                 col_map.setdefault("order", idx)
             elif HEADER_ORDER.search(text):
                 col_map.setdefault("order", idx)
-            elif HEADER_CUSTOMER.search(text):
-                col_map.setdefault("customer", idx)
             elif HEADER_PHONE.search(text):
                 col_map.setdefault("phone", idx)
-            elif HEADER_COLLECTED.search(text):
-                col_map.setdefault("collected", idx)
             elif HEADER_FEE.search(text):
                 col_map.setdefault("fee", idx)
             elif HEADER_NET.search(text):
                 col_map.setdefault("net", idx)
             elif HEADER_DATE.search(text):
                 col_map.setdefault("date", idx)
+            elif HEADER_CUSTOMER.search(text):
+                col_map.setdefault("customer", idx)
+            # Keep the broad amount/total matcher last: structured headers such
+            # as net_amount must not be consumed as collected_amount.
+            elif HEADER_COLLECTED.search(text):
+                col_map.setdefault("collected", idx)
         return col_map
 
     @staticmethod
@@ -218,6 +251,10 @@ class CourierStatementParser:
             for c in cells:
                 if CourierStatementParser._looks_like_order_cell(c):
                     continue
+                # A phone is also a valid integer syntactically. Never let the
+                # amount fallback consume it when OCR shifts table columns.
+                if DocumentNormalizationService.normalize_phone(c).get("valid"):
+                    continue
                 amt = CourierStatementParser._parse_amount(c)
                 if amt is not None:
                     if collected is None:
@@ -226,6 +263,17 @@ class CourierStatementParser:
                         fee = amt
                     elif net is None:
                         net = amt
+
+        collected, fee, net = CourierStatementParser._reject_phone_as_amount(
+            collected,
+            fee,
+            net,
+            phone_info,
+            warnings,
+        )
+
+        if collected is None and fee is not None and net is not None:
+            collected = fee + net
 
         if fee is None and collected is not None and net is not None and net <= collected:
             fee = collected - net
@@ -269,6 +317,62 @@ class CourierStatementParser:
         if parsed.get("valid"):
             return int(parsed["value"])
         return None
+
+    @staticmethod
+    def _reject_phone_as_amount(
+        collected: Optional[int],
+        fee: Optional[int],
+        net: Optional[int],
+        phone_info: Dict[str, Any],
+        warnings: List[str],
+    ) -> Tuple[Optional[int], Optional[int], Optional[int]]:
+        if not phone_info.get("valid"):
+            return collected, fee, net
+
+        phone_values = set()
+        for key in ("local", "international"):
+            digits = re.sub(r"\D", "", str(phone_info.get(key) or ""))
+            if digits:
+                phone_values.add(int(digits))
+        if not phone_values:
+            return collected, fee, net
+
+        original_collected = collected
+        original_fee = fee
+        original_net = net
+        collided = []
+        if collected is not None and int(collected) in phone_values:
+            collected = None
+            collided.append("collected_amount")
+        if fee is not None and int(fee) in phone_values:
+            fee = None
+            collided.append("delivery_fee")
+        if net is not None and int(net) in phone_values:
+            net = None
+            collided.append("net_amount")
+
+        # Vision models sometimes copy the phone into collected_amount and then
+        # calculate a mathematically consistent, but equally invalid, net value.
+        if (
+            "collected_amount" in collided
+            and original_net is not None
+            and original_fee is not None
+            and int(original_net) == int(original_collected) - int(original_fee)
+        ):
+            net = None
+            collided.append("net_amount_derived_from_phone")
+        if (
+            "delivery_fee" in collided
+            and original_net is not None
+            and original_collected is not None
+            and int(original_net) == int(original_collected) - int(original_fee)
+        ):
+            net = None
+            collided.append("net_amount_derived_from_phone")
+
+        if collided:
+            warnings.append("PHONE_MISREAD_AS_AMOUNT:" + ",".join(collided))
+        return collected, fee, net
 
     @staticmethod
     def _parse_text_lines(text: str) -> Tuple[List[Dict], List[str]]:

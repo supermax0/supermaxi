@@ -1,0 +1,1 @@
+# Receipts services package

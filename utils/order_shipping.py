@@ -57,9 +57,14 @@ def order_item_display_name(item) -> str:
     else:
         name = (getattr(item, "product_name", None) or "").strip() or "منتج"
     color = (getattr(item, "variant_color", None) or "").strip()
+    parts = [name]
     if color:
-        return f"{name} — {color}"
-    return name
+        parts.append(color)
+    if (getattr(item, "sale_mode", None) or "normal") == "exchange":
+        parts.append("استبدال")
+    else:
+        parts.append("بيع")
+    return " — ".join(parts)
 
 
 def sync_product_name_to_order_items(product_id: int, new_name: str) -> int:
@@ -140,11 +145,18 @@ def is_shipping_fee_deducted_from_invoice(invoice) -> bool:
     return invoice_total == net_total_after_shipping(non_shipping_items_total(invoice), fee)
 
 
-def apply_manual_delivery_fee_on_payment(invoice, delivery_fee: int, tenant_id: int | None = None) -> int:
+def apply_manual_delivery_fee_on_payment(
+    invoice,
+    delivery_fee: int,
+    tenant_id: int | None = None,
+    accumulate: bool = False,
+) -> int:
     """يُستدعى يدوياً عند التسديد فقط: يحفظ الأجرة كبند داخلي بدون إنقاص إيراد الفاتورة."""
     fee = max(0, _safe_int(delivery_fee, 0))
     if fee <= 0 or invoice is None:
         return 0
+    if accumulate:
+        fee += max(0, get_shipping_fee_from_invoice(invoice))
     return add_shipping_line_item(invoice, fee, tenant_id)
 
 
@@ -212,17 +224,24 @@ def prepare_invoice_items_for_print(items):
     يُرجع (printable_items, display_total).
     """
     items = list(items or [])
-    printable = [
-        SimpleNamespace(
-            product_name=order_item_display_name(i),
-            quantity=_safe_int(getattr(i, "quantity", 1), 1),
-            price=_safe_int(getattr(i, "price", 0)),
-            total=_safe_int(getattr(i, "total", 0)),
-            product=getattr(i, "product", None),
+    printable = []
+    for item in items:
+        if is_shipping_item(item):
+            continue
+        display_name = order_item_display_name(item)
+        printable.append(
+            SimpleNamespace(
+                id=getattr(item, "id", None),
+                # Some invoice templates use product_name, while others use
+                # display_name. Keep both aliases populated for consistent print output.
+                product_name=display_name,
+                display_name=display_name,
+                quantity=_safe_int(getattr(item, "quantity", 1), 1),
+                price=_safe_int(getattr(item, "price", 0)),
+                total=_safe_int(getattr(item, "total", 0)),
+                product=getattr(item, "product", None),
+            )
         )
-        for i in items
-        if not is_shipping_item(i)
-    ]
     display_total = sum(i.total for i in printable)
     return printable, display_total
 
@@ -244,6 +263,12 @@ def invoice_display_amounts(order, raw_items, print_total: int) -> dict:
     print_total = max(0, _safe_int(print_total, 0))
     pos_discount = max(0, _safe_int(getattr(order, "discount_amount", 0), 0))
     coupon_discount = _coupon_discount_from_items(raw_items)
+    from modules.sales_returns.facts import summary
+    returned = summary(order)
+    if returned:
+        return {"total_before_discount": print_total if pos_discount else returned["original_total"] + coupon_discount,
+            "discount_amount": pos_discount + coupon_discount, "total": returned["net_total"],
+            "return_credit": returned["credit"], "original_total": returned["original_total"]}
 
     if pos_discount > 0:
         total_before_discount = print_total
@@ -266,6 +291,10 @@ def invoice_print_amounts(order, total: int) -> dict:
     total = int(total or 0)
     payment_status = (getattr(order, "payment_status", None) or "").strip()
     paid = min(max(int(getattr(order, "paid_amount", None) or 0), 0), total)
+    from modules.sales_returns.facts import summary
+    if summary(order):
+        due = max(total-paid, 0)
+        return {"total": total, "paid_amount": paid, "due": due, "is_partial": paid > 0 and due > 0}
 
     if payment_status == "مسدد":
         paid = total

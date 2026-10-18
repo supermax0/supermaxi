@@ -1,0 +1,108 @@
+/* Product choices stay readable without opening menus. */
+.sf-color-picker { position: relative; padding-top: 6px; }
+.sf-color-picker legend { padding-inline-end: 38px; font-size: 15px; }
+.sf-color-picker legend [data-sf-color-label] { display: block; margin: 6px 0 0; font-size: 12px; line-height: 1.7; }
+.sf-option-help { position: absolute; inset-inline-end: 0; top: -32px; margin: 0; z-index: 3; }
+.sf-option-help summary { list-style: none; background: var(--surface-soft); }
+.sf-option-help summary::-webkit-details-marker { display: none; }
+.sf-option-help p { width: min(300px, 75vw); margin: 8px 0; box-shadow: 0 12px 32px #14243b12; }
+.sf-option-axes { display: grid; grid-template-columns: 1fr; gap: 22px; margin: 12px 0 16px; }
+.sf-option-heading { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; font-size: 14px; font-weight: 700; }
+[data-sf-axis-value] { color: var(--muted); font-size: 12px; font-weight: 400; }
+.sf-option-clear { margin-inline-start: auto; border: 0; padding: 4px 8px; background: transparent; color: var(--muted); font: inherit; font-size: 11px; cursor: pointer; text-decoration: underline; }
+.sf-option-clear[hidden] { display: none; }
+.sf-option-choices { display: flex; flex-wrap: wrap; align-items: start; gap: 12px; }
+.sf-option-choice { position: relative; display: flex; flex-direction: column; align-items: center; gap: 7px; border: 0; padding: 0; background: transparent; color: var(--text); font: inherit; font-size: 12px; cursor: pointer; }
+.sf-option-disc { position: relative; display: grid; place-items: center; width: 48px; height: 48px; box-sizing: border-box; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--text); font-size: 14px; font-weight: 700; transition: border-color .15s, box-shadow .15s, background .15s; }
+.sf-option-choice.is-long .sf-option-disc { width: 64px; height: 64px; padding: 5px; font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.sf-option-choice:hover:not(:disabled) .sf-option-disc { border-color: var(--brand); }
+.sf-option-choice[aria-checked="true"] .sf-option-disc { border: 2px solid var(--brand); background: color-mix(in srgb, var(--brand) 8%, white); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 12%, transparent); }
+.sf-option-choice.is-color .sf-option-disc { background: var(--sf-swatch, #eee); border: 5px solid white; box-shadow: 0 0 0 1px var(--line); }
+.sf-option-choice.is-color[aria-checked="true"] .sf-option-disc { border: 5px solid white; box-shadow: 0 0 0 2px var(--brand), 0 0 0 5px color-mix(in srgb, var(--brand) 12%, transparent); }
+.sf-option-choice.is-color[aria-checked="true"] .sf-option-disc::after { content: "✓"; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; color: white; background: #16233dc9; font-size: 12px; }
+.sf-option-choice.is-unavailable .sf-option-disc::before { content: ""; position: absolute; width: 85%; height: 2px; background: #7e8798; transform: rotate(-45deg); box-shadow: 0 0 0 1px #fff9; }
+.sf-option-choice:disabled { opacity: .38; cursor: not-allowed; }
+.sf-option-choice:focus-visible { outline: 2px solid var(--brand); outline-offset: 6px; border-radius: 24px; }
+.sf-option-variants[hidden] { display: none !important; }
+[data-sf-option-status] { border-radius: 10px; padding: 10px 12px; background: var(--surface-soft); line-height: 1.7; margin: 0; }
+[data-sf-option-status][data-state="available"] { background: #ecf9f1; color: #137448; }
+[data-sf-option-status][data-state="unavailable"] { background: #fff0ef; color: #b53d39; }
+.sf-color-options .sf-color-option.sf-legacy-swatch { flex-direction: column; gap: 7px; padding: 0; border: 0; box-shadow: none; background: transparent; min-width: 48px; font-size: 12px; }
+.sf-legacy-swatch .sf-option-disc { background: var(--sf-swatch, #eee); border: 5px solid white; box-shadow: 0 0 0 1px var(--line); }
+.sf-legacy-swatch[aria-pressed="true"] .sf-option-disc { box-shadow: 0 0 0 2px var(--brand), 0 0 0 5px color-mix(in srgb, var(--brand) 12%, transparent); }
+.sf-legacy-swatch.is-unavailable .sf-option-disc::before { content: ""; position: absolute; width: 85%; height: 2px; background: #7e8798; transform: rotate(-45deg); }
+
+/* Balanced gallery and purchase panel, scoped to the product page. */
+.lux-pd.lux-pd--refined { grid-template-columns: minmax(0, 1.08fr) minmax(360px, .92fr); align-items: start; height: auto; max-height: none; gap: 28px; max-width: 1280px; margin: 0 auto 40px; }
+.lux-pd.lux-pd--refined .lux-pd-gallery { height: auto; padding: 16px; border-radius: 24px; box-shadow: 0 8px 32px #15243c06; }
+.lux-pd.lux-pd--refined .lux-pd-gallery-wrap { height: auto; top: 112px; }
+.lux-pd.lux-pd--refined .lux-pd-media { width: 100%; height: auto; min-height: 0; max-height: 640px; aspect-ratio: 1; border-radius: 18px; background: #f6f7fa; }
+.lux-pd.lux-pd--refined .lux-pd-main-img { width: 100%; height: 100%; max-height: none; padding: 20px; }
+.lux-pd.lux-pd--refined .lux-pd-info { display: block; position: static; height: auto; overflow: visible; padding: 28px; border-radius: 24px; box-shadow: 0 8px 32px #15243c06; }
+.lux-pd.lux-pd--refined .lux-pd-title { font-size: clamp(22px, 2.1vw, 30px); line-height: 1.6; margin-bottom: 12px; }
+.lux-pd.lux-pd--refined .lux-pd-meta { margin-bottom: 20px; font-size: 12px; }
+.lux-pd.lux-pd--refined .lux-pd-prices { margin: 0 0 12px; padding: 0; border: 0; }
+.lux-pd.lux-pd--refined .lux-pd-price { font-size: 30px; font-weight: 800; }
+.lux-pd.lux-pd--refined .lux-pd-stock { margin: 0 0 24px; padding-bottom: 20px; border-bottom: 1px solid var(--line); font-size: 12px; }
+.lux-pd.lux-pd--refined .lux-pd-buy { margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+.lux-pd.lux-pd--refined .lux-pd-add-cart { order: 0; min-height: 52px; border-radius: 14px; font-size: 15px; background: var(--brand); }
+.lux-pd.lux-pd--refined .lux-pd-add-cart:hover:not(:disabled) { background: color-mix(in srgb, var(--brand) 85%, black); }
+.lux-pd--refined + .lux-pd-mobile-bar .lux-pd-mobile-add { order: 0; background: var(--brand); }
+.lux-pd.lux-pd--refined .lux-pd-qty { border-radius: 12px; overflow: hidden; }
+.lux-pd.lux-pd--refined .lux-pd-qty-btn, .lux-pd.lux-pd--refined .lux-pd-qty-input { height: 44px; }
+.lux-pd.lux-pd--refined .lux-pd-trust { display: flex; flex-wrap: wrap; gap: 10px 16px; padding-top: 16px; font-size: 11px; }
+.lux-pd.lux-pd--refined .lux-pd-specs--inline { overflow: visible; max-height: none; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+@media (max-width: 900px) {
+  .lux-pd.lux-pd--refined { grid-template-columns: minmax(0, 1fr); gap: 16px; margin-bottom: 24px; }
+  .lux-pd.lux-pd--refined .lux-pd-gallery-wrap { position: static; }
+  .lux-pd.lux-pd--refined .lux-pd-gallery { padding: 10px; border-radius: 20px; }
+  .lux-pd.lux-pd--refined .lux-pd-media { max-height: 480px; }
+  .lux-pd.lux-pd--refined .lux-pd-info { padding: 20px 18px; border-radius: 20px; }
+  .lux-pd.lux-pd--refined .lux-pd-title { font-size: 22px; }
+  .lux-pd.lux-pd--refined .lux-pd-price { font-size: 28px; }
+  .sf-option-choices { gap: 14px; }
+}
+
+/* Short feedback only; stock and prices update immediately. */
+@keyframes sfDetailEnter {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes sfChoiceEnter {
+  from { opacity: 0; transform: translateY(8px) scale(.94); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes sfCheckEnter {
+  from { opacity: 0; transform: scale(.5); }
+  to { opacity: 1; transform: scale(1); }
+}
+@keyframes sfCartLoading { to { transform: rotate(360deg); } }
+.lux-pd--refined .lux-pd-gallery-wrap { animation: sfDetailEnter 420ms cubic-bezier(.22, 1, .36, 1) both; }
+.lux-pd--refined .lux-pd-info { animation: sfDetailEnter 420ms cubic-bezier(.22, 1, .36, 1) 60ms both; }
+.sf-option-choice { animation: sfChoiceEnter 320ms cubic-bezier(.22, 1, .36, 1) calc(var(--sf-choice-index, 0) * 35ms) both; transition: opacity 180ms ease; }
+.sf-option-disc { transition: transform 220ms cubic-bezier(.22, 1, .36, 1), border-color 180ms ease, box-shadow 220ms ease, background-color 180ms ease; }
+.sf-option-choice.is-color[aria-checked="true"] .sf-option-disc::after { animation: sfCheckEnter 180ms ease-out both; }
+[data-sf-option-status] { transition: background-color 220ms ease, color 220ms ease; }
+.sf-option-help[open] p { animation: sfDetailEnter 180ms ease-out both; }
+.lux-pd--refined .lux-pd-add-cart, .lux-pd--refined + .lux-pd-mobile-bar .lux-pd-mobile-add { transition: transform 180ms ease, box-shadow 180ms ease, background-color 180ms ease, opacity 180ms ease; }
+.lux-pd--refined .lux-pd-add-cart:active:not(:disabled), .lux-pd--refined + .lux-pd-mobile-bar .lux-pd-mobile-add:active:not(:disabled) { transform: scale(.98); }
+.lux-pd--refined .lux-pd-add-cart.is-loading::before, .lux-pd--refined + .lux-pd-mobile-bar .lux-pd-mobile-add.is-loading::before { background-image: none; border: 2px solid #ffffff60; border-top-color: #fff; border-radius: 50%; animation: sfCartLoading 650ms linear infinite; }
+.lux-pd--refined .lux-pd-qty-btn { transition: background-color 150ms ease, transform 150ms ease; }
+.lux-pd--refined .lux-pd-qty-btn:active { transform: scale(.9); }
+@media (hover: hover) and (pointer: fine) {
+  .sf-option-choice:hover:not(:disabled) .sf-option-disc, .sf-legacy-swatch:hover .sf-option-disc { transform: translateY(-3px); }
+  .lux-pd--refined .lux-pd-thumb { transition: transform 180ms ease, border-color 180ms ease; }
+  .lux-pd--refined .lux-pd-thumb:hover { transform: translateY(-3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lux-pd--refined, .lux-pd--refined *, .lux-pd--refined *::before, .lux-pd--refined *::after,
+  .sf-color-picker *, .sf-color-picker *::before, .sf-color-picker *::after,
+  .lux-pd--refined + .lux-pd-mobile-bar *, .lux-pd--refined + .lux-pd-mobile-bar *::before {
+    animation: none !important;
+    transition: none !important;
+  }
+  .sf-option-choice:hover:not(:disabled) .sf-option-disc, .sf-legacy-swatch:hover .sf-option-disc,
+  .lux-pd--refined .lux-pd-media:hover .lux-pd-main-img,
+  .lux-pd--refined .lux-pd-add-cart:hover:not(:disabled), .lux-pd--refined .lux-pd-add-cart:active:not(:disabled),
+  .lux-pd--refined .lux-pd-thumb:hover, .lux-pd--refined .lux-pd-qty-btn:active { transform: none; }
+}

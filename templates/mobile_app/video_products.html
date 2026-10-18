@@ -1,0 +1,115 @@
+{% extends "mobile_app/_layout.html" %}
+{% block mobile_app_body %}
+<div class="ma-stack">
+  <div class="ma-page-head">
+    <h2 class="ma-page-title">ربط المنتجات</h2>
+    <p class="ma-page-subtitle">اختر فيديو ومنتجاً ثم اضغط ربط — يظهر المنتج مع الفيديو في تطبيق الهاتف</p>
+  </div>
+
+  <div class="ma-card">
+    <div class="ma-card-head">
+      <div class="ma-card-icon is-gold"><i class="fas fa-link"></i></div>
+      <div>
+        <h3 class="ma-card-title">ربط جديد</h3>
+        <p class="ma-card-desc">الفيديو يظهر في الفيد، والمنتج يظهر معه للشراء</p>
+      </div>
+    </div>
+    <form method="post" action="{{ url_for('mobile_admin.video_products_link') }}" class="ma-form-grid" style="max-width:640px">
+      <label class="ma-field">
+        <span class="ma-field-label">الفيديو</span>
+        <select class="ma-input" name="video_id" required>
+          <option value="">— اختر فيديو —</option>
+          {% for v in videos %}
+          <option value="{{ v.id }}">#{{ v.id }} — {{ v.title or 'بدون عنوان' }} ({{ v.status }})</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="ma-field">
+        <span class="ma-field-label">المنتج</span>
+        <select class="ma-input" name="product_id" required>
+          <option value="">— اختر منتجاً —</option>
+          {% for p in products %}
+          <option value="{{ p.id }}">#{{ p.id }} — {{ p.name }}{% if p.sale_price %} ({{ "{:,}".format(p.sale_price|int) }} د.ع){% endif %}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <div class="ma-form-grid-2">
+        <label class="ma-field">
+          <span class="ma-field-label">عنوان مخصص <em>(اختياري)</em></span>
+          <input class="ma-input" type="text" name="custom_title" placeholder="يظهر بدل اسم المنتج">
+        </label>
+        <label class="ma-field">
+          <span class="ma-field-label">نص الزر <em>(اختياري)</em></span>
+          <input class="ma-input" type="text" name="custom_cta" placeholder="مثال: اطلب الآن">
+        </label>
+      </div>
+      <label class="ma-field">
+        <span class="ma-field-label">سعر خاص بالفيديو <em>(اختياري)</em></span>
+        <input class="ma-input" type="number" name="special_price" min="0" step="1" placeholder="اتركه فارغاً لسعر المنتج العادي">
+      </label>
+      <div class="ma-upload-actions">
+        <button class="ma-btn ma-btn-primary" type="submit">
+          <i class="fas fa-link"></i>
+          <span>ربط</span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <section class="ma-videos-list-card">
+    <div class="ma-videos-list-head">
+      <h3>الروابط الحالية</h3>
+      <span class="ma-videos-count">{{ links|length }} ربط</span>
+    </div>
+    <div class="ma-table-wrap">
+      <table class="ma-table">
+        <thead>
+          <tr>
+            <th>الفيديو</th>
+            <th>المنتج</th>
+            <th>السعر</th>
+            <th>الزر</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for link in links %}
+          <tr>
+            <td class="ma-table-title">
+              #{{ link.video_id }} — {{ link.video_title }}
+              <div class="ma-muted" style="font-size:12px;margin-top:4px">{{ link.video_status }}</div>
+            </td>
+            <td>
+              #{{ link.product_id }} — {{ link.product_name }}
+              {% if link.custom_title %}
+              <div class="ma-muted" style="font-size:12px;margin-top:4px">{{ link.custom_title }}</div>
+              {% endif %}
+            </td>
+            <td>
+              {% if link.special_price is not none %}
+              {{ "{:,}".format(link.special_price|int) }} د.ع
+              <div class="ma-muted" style="font-size:12px">سعر خاص</div>
+              {% else %}
+              {{ "{:,}".format(link.product_price|int) }} د.ع
+              {% endif %}
+            </td>
+            <td>{{ link.custom_cta or '—' }}</td>
+            <td class="ma-row-actions">
+              <form method="post" action="{{ url_for('mobile_admin.video_products_unlink') }}" onsubmit="return confirm('إلغاء ربط هذا المنتج؟');">
+                <input type="hidden" name="video_id" value="{{ link.video_id }}">
+                <input type="hidden" name="product_id" value="{{ link.product_id }}">
+                <button class="ma-btn ma-btn-sm ma-btn-ghost" type="submit">إلغاء الربط</button>
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" class="ma-empty">لا توجد روابط بعد — اربط أول منتج من الأعلى</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+</div>
+{% endblock %}

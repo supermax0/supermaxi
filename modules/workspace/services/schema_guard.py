@@ -95,10 +95,34 @@ WORKSPACE_TABLES = {
         "created_at": "DATETIME",
         "updated_at": "DATETIME",
     },
+    "ai_workspace_courier_statement_analysis_rows": {
+        "treasury_account_id": "INTEGER",
+    },
 }
 
 
 _tenant_schema_ready: set = set()
+
+
+def _ensure_workspace_columns(engine) -> None:
+    """Add nullable compatibility columns to an existing workspace schema."""
+    inspector = inspect(engine)
+    table_names = set(inspector.get_table_names())
+    with engine.begin() as conn:
+        for table_name, cols in WORKSPACE_TABLES.items():
+            if table_name not in table_names:
+                continue
+            existing = {c["name"] for c in inspector.get_columns(table_name)}
+            for col_name, col_type in cols.items():
+                if col_name in existing:
+                    continue
+                conn.execute(
+                    text(
+                        f'ALTER TABLE "{table_name}" '
+                        f'ADD COLUMN "{col_name}" {col_type}'
+                    )
+                )
+                existing.add(col_name)
 
 
 def ensure_workspace_schema_for_tenant(tenant_slug: str | None) -> None:
@@ -112,12 +136,17 @@ def ensure_workspace_schema_for_tenant(tenant_slug: str | None) -> None:
     from modules.workspace.models.courier_statement_analysis import CourierStatementAnalysis  # noqa: F401
     from modules.workspace.models.courier_statement_analysis_row import CourierStatementAnalysisRow  # noqa: F401
     from modules.workspace.models.courier_statement_analysis_issue import CourierStatementAnalysisIssue  # noqa: F401
+    from models.inventory_audit import InventoryQuantityAudit, InventoryStockSnapshot  # noqa: F401
+    from models.stock_movement import StockMovement  # noqa: F401
 
     try:
         from extensions_tenant import get_tenant_engine
 
         engine = get_tenant_engine(tenant_slug)
         db.Model.metadata.create_all(engine)
+        _ensure_workspace_columns(engine)
+        from utils.inventory_audit_trail import ensure_inventory_audit_schema_on_engine
+        ensure_inventory_audit_schema_on_engine(engine)
         _tenant_schema_ready.add(tenant_slug)
     except Exception:
         current_app.logger.warning(
@@ -134,9 +163,13 @@ def ensure_workspace_schema() -> None:
     from modules.workspace.models.courier_statement_analysis import CourierStatementAnalysis  # noqa: F401
     from modules.workspace.models.courier_statement_analysis_row import CourierStatementAnalysisRow  # noqa: F401
     from modules.workspace.models.courier_statement_analysis_issue import CourierStatementAnalysisIssue  # noqa: F401
+    from models.inventory_audit import InventoryQuantityAudit, InventoryStockSnapshot  # noqa: F401
+    from models.stock_movement import StockMovement  # noqa: F401
 
     try:
         db.create_all()
+        from utils.inventory_audit_trail import ensure_inventory_audit_schema
+        ensure_inventory_audit_schema()
     except Exception:
         current_app.logger.error(traceback.format_exc())
 
@@ -144,7 +177,12 @@ def ensure_workspace_schema() -> None:
         from extensions_tenant import get_tenant_engine
 
         tenants_dir = os.path.join(current_app.root_path, "tenants")
-        if os.path.isdir(tenants_dir):
+        # Active companies are upgraded by ``ensure_workspace_schema_for_tenant``.
+        # Do not scan archived/test SQLite files during every web startup.
+        if (
+            os.environ.get("RUN_STARTUP_TENANT_MIGRATIONS") == "1"
+            and os.path.isdir(tenants_dir)
+        ):
             for db_name in os.listdir(tenants_dir):
                 if not db_name.endswith(".db"):
                     continue
@@ -152,6 +190,8 @@ def ensure_workspace_schema() -> None:
                 try:
                     engine = get_tenant_engine(slug)
                     db.Model.metadata.create_all(engine)
+                    from utils.inventory_audit_trail import ensure_inventory_audit_schema_on_engine
+                    ensure_inventory_audit_schema_on_engine(engine)
                 except Exception:
                     current_app.logger.warning(
                         "Workspace schema skip tenant %s: %s", slug, traceback.format_exc()
@@ -160,22 +200,6 @@ def ensure_workspace_schema() -> None:
         current_app.logger.error(traceback.format_exc())
 
     try:
-        inspector = inspect(db.engine)
-        table_names = set(inspector.get_table_names())
-        conn = db.engine.connect()
-        trans = conn.begin()
-        try:
-            for table_name, cols in WORKSPACE_TABLES.items():
-                if table_name not in table_names:
-                    continue
-                existing = {c["name"] for c in inspector.get_columns(table_name)}
-                for col_name, col_type in cols.items():
-                    if col_name not in existing:
-                        conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type}"))
-            trans.commit()
-        except Exception:
-            trans.rollback()
-        finally:
-            conn.close()
+        _ensure_workspace_columns(db.engine)
     except Exception:
         pass

@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{{ item.seo_title or item.title }}</title>
+  <meta name="description" content="{{ item.seo_description or item.short_description or item.title }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installments.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installment_store.css', v='20260813-hover-zoom-pane-2') }}">
+</head>
+<body class="store-body">
+  {% include 'installments/store/_header.html' %}
+
+  {% set images = item.media|selectattr('media_type', 'equalto', 'image')|list %}
+  {% set videos = item.media|selectattr('media_type', 'equalto', 'video')|list %}
+  {% set main = images|selectattr('is_main')|first %}
+  {% if not main %}{% set main = images|first %}{% endif %}
+  {% set has_image = main or item.product.image_url %}
+  {% if main %}{% set poster_url = url_for('static', filename=main.file_path, v=main.size_bytes) %}
+  {% elif item.product.image_url %}{% set poster_url = item.product.image_url %}
+  {% else %}{% set poster_url = '' %}{% endif %}
+
+  <main class="store-shell store-product-page">
+    <nav class="store-breadcrumb" aria-label="مسار الصفحة">
+      <a href="{{ url_for('installments_store.store_index', tenant_slug=tenant_slug) }}">الرئيسية</a><span>‹</span>
+      {% if item.category %}<a href="{{ url_for('installments_store.store_index', tenant_slug=tenant_slug, category=item.category) }}">{{ item.category }}</a><span>‹</span>{% endif %}
+      <strong>{{ item.title }}</strong>
+    </nav>
+
+    <section class="store-product-layout">
+      <section class="store-gallery {{ 'is-empty' if not has_image }}" aria-label="صور المنتج">
+        {% if item.featured %}<span class="store-gallery__badge">منتج مميز</span>{% endif %}
+        <div class="store-gallery__main" id="galleryMain">
+          {% if main %}<img src="{{ url_for('static', filename=main.file_path, v=main.size_bytes) }}" alt="{{ item.title }}" decoding="async" fetchpriority="high" draggable="false">
+          {% elif item.product.image_url %}<img src="{{ item.product.image_url }}" alt="{{ item.title }}" decoding="async" fetchpriority="high" draggable="false">
+          {% else %}<div class="store-no-image"><svg viewBox="0 0 120 100" aria-hidden="true"><rect x="15" y="17" width="90" height="62" rx="7"></rect><circle cx="40" cy="39" r="8"></circle><path d="m24 69 22-20 16 14 13-11 21 17"></path><path d="M44 88h32"></path></svg><strong>لا توجد صورة للمنتج</strong><small>ستُضاف صورة المنتج قريباً</small></div>{% endif %}
+        </div>
+        {% if images or videos or item.product.image_url %}
+          <div class="store-gallery__thumbs">
+            {% for media in images %}
+              <button type="button" class="{{ 'active' if main and media.id == main.id else '' }}" data-image="{{ url_for('static', filename=media.file_path, v=media.size_bytes) }}" aria-label="عرض الصورة {{ loop.index }}"><img src="{{ url_for('static', filename=media.file_path, v=media.size_bytes) }}" alt="" loading="lazy" decoding="async"></button>
+            {% endfor %}
+            {% if not images and item.product.image_url %}<button type="button" class="active" data-image="{{ item.product.image_url }}"><img src="{{ item.product.image_url }}" alt="" loading="lazy" decoding="async"></button>{% endif %}
+            {% for media in videos %}
+              <button type="button" class="is-video" data-video="{{ url_for('static', filename=media.file_path) }}" {% if poster_url %}data-poster="{{ poster_url }}"{% endif %} aria-label="تشغيل فيديو المنتج">{% if poster_url %}<img src="{{ poster_url }}" alt="" loading="lazy" decoding="async">{% endif %}<span>▶</span><small>فيديو المنتج</small></button>
+            {% endfor %}
+          </div>
+        {% endif %}
+        <div class="store-gallery__assurance"><span>✓</span><div><strong>تفاصيل واضحة قبل الطلب</strong><small>راجع الخطة والأقساط كاملة قبل الإضافة للسلة</small></div></div>
+      </section>
+
+      <section class="store-product-info">
+        <div class="store-product-info__top">
+          <div>
+            <div class="store-product-kicker"><span>{{ item.category or 'منتجات الأقساط' }}</span>{% if item.show_stock %}<b class="store-stock-pill {{ 'is-reservation' if item.product.quantity <= 0 }}">{{ 'متوفر' if item.product.quantity > 0 else 'متاح للحجز' }}</b>{% endif %}</div>
+            <h1>{{ item.title }}</h1>
+            <p>{{ item.short_description or item.product.name }}</p>
+            <small dir="ltr">{{ item.product.sku or 'SKU غير محدد' }}</small>
+          </div>
+          <div class="store-product-actions">
+            <button type="button" data-share data-share-title="{{ item.title }}" data-share-text="{{ item.short_description or item.title }}" aria-label="مشاركة المنتج">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><path d="m8.6 13.5 6.8 4m0-11-6.8 4"></path></svg>
+            </button>
+            <button type="button" data-favorite="{{ item.id }}" data-favorite-url="{{ url_for('installments_store.favorite_toggle', tenant_slug=tenant_slug, product_id=item.id) }}" data-title="{{ item.title }}" class="{{ 'is-active' if item.id in favorite_ids }}" aria-pressed="{{ 'true' if item.id in favorite_ids else 'false' }}" aria-label="{{ 'إزالة المنتج من المفضلة' if item.id in favorite_ids else 'إضافة المنتج للمفضلة' }}">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"></path></svg>
+            </button>
+          </div>
+        </div>
+
+        <section class="store-finance-summary">
+          <div class="store-finance-summary__monthly"><small>القسط الشهري</small><strong id="topMonthlyPayment">—</strong><span>ابتداءً من الخطة المختارة</span></div>
+          <div><small>إجمالي التقسيط</small><strong id="topInstallmentTotal">—</strong><span>شامل تفاصيل الخطة</span></div>
+          <div><small>مدة السداد</small><strong id="topPlanMonths">—</strong><span>دفعات شهرية</span></div>
+        </section>
+
+        <section class="store-calculator">
+          <div class="store-calculator__heading"><div><span>حاسبة الأقساط</span><h2>اختر مدة التقسيط المناسبة</h2></div><small>{{ plans|length }} {{ 'خطة متاحة' if plans|length == 1 else 'خطط متاحة' }}</small></div>
+          <div class="store-plan-tabs {{ 'has-one' if plans|length == 1 }}">
+            {% for plan in plans %}<button type="button" data-plan="{{ plan.id }}" class="{{ 'active' if loop.last }}"><strong>{{ plan.months }}</strong><span>شهر</span></button>{% endfor %}
+          </div>
+          <div class="store-calculator__totals">
+            <div><small>الدفعة الأولى</small><strong id="down">—</strong></div>
+            <div><small>المبلغ المتبقي</small><strong id="financed">—</strong></div>
+            <div class="is-accent"><small>القسط الشهري</small><strong id="monthly">—</strong></div>
+            <div><small>إجمالي التقسيط</small><strong id="total">—</strong></div>
+            <div><small>عدد الدفعات</small><strong><span id="count">—</span> دفعة</strong></div>
+          </div>
+          <div class="store-calculator__footer"><p>الرسوم ضمن الخطة: <strong id="fees">—</strong></p><div><svg viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.4 8 8 9 4.6-1 8-4 8-9V6z"></path><path d="m8.5 12 2.2 2.2 4.8-5"></path></svg><span><strong>حساب واضح وآمن</strong><small>كل المبالغ تظهر قبل إرسال الطلب</small></span></div></div>
+        </section>
+
+        {% if item.product.quantity <= 0 %}<div class="store-stock-alert is-reservation"><span class="store-stock-alert__icon">✓</span><div><strong>المنتج متاح للحجز المسبق</strong><small>أرسل الطلب الآن، وسيتواصل معك فريق المتجر لتأكيد موعد التجهيز والتسليم.</small></div></div>{% endif %}
+        <form class="store-buy-form" id="cartForm" method="post" action="{{ url_for('installments_store.cart_add', tenant_slug=tenant_slug) }}">
+          <input type="hidden" name="installment_product_id" value="{{ item.id }}"><input type="hidden" name="plan_id" id="cartPlanId"><input type="hidden" name="quantity" value="1">
+          <button class="store-buy-form__cart" type="button" data-add-cart><svg viewBox="0 0 24 24"><circle cx="9" cy="20" r="1"></circle><circle cx="18" cy="20" r="1"></circle><path d="M3 3h2l2.5 11h10.8l2-7H6"></path></svg><span>{{ 'أضف طلب الحجز' if item.product.quantity <= 0 else 'أضف إلى السلة' }}</span></button><button class="store-buy-form__apply" type="submit">{{ 'إرسال طلب الحجز' if item.product.quantity <= 0 else 'تنفيذ طلب التقسيط' }}</button>
+        </form>
+
+        {% include 'installments/store/_trust.html' %}
+        <div class="store-toast" role="status" aria-live="polite" data-toast></div>
+      </section>
+    </section>
+
+    <section class="store-specs" aria-label="مواصفات المنتج">
+      <header class="store-specs__head">
+        <div>
+          <span>تفاصيل واضحة</span>
+          <h2>مواصفات المنتج</h2>
+        </div>
+        <p>كل المعلومات المهمة مرتبة لتسهيل المقارنة قبل طلب التقسيط.</p>
+      </header>
+
+      <div class="store-specs__layout">
+        <article class="store-specs__main">
+          {% if specs.rows or specs.features %}
+            {% if specs.rows %}
+              <div class="store-specs__grid">
+                {% for row in specs.rows %}
+                  <div class="store-specs__item">
+                    <span>{{ row.label }}</span>
+                    <strong>{{ row.value }}</strong>
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
+            {% if specs.features %}
+              <ul class="store-specs__features">
+                {% for feature in specs.features %}
+                  <li>{{ feature }}</li>
+                {% endfor %}
+              </ul>
+            {% endif %}
+          {% elif specs.paragraph %}
+            <p class="store-specs__paragraph">{{ specs.paragraph }}</p>
+          {% else %}
+            <p class="store-specs__paragraph">تتوفر تفاصيل المنتج ومعلومات خطة الدفع بوضوح قبل تقديم الطلب.</p>
+          {% endif %}
+
+          {% if item.warranty_information or item.delivery_information %}
+            <div class="store-specs__notes">
+              {% if item.warranty_information %}<div><strong>الضمان</strong><span>{{ item.warranty_information }}</span></div>{% endif %}
+              {% if item.delivery_information %}<div><strong>التوصيل</strong><span>{{ item.delivery_information }}</span></div>{% endif %}
+            </div>
+          {% endif %}
+        </article>
+
+        <aside class="store-specs__side">
+          <section>
+            <h3>معلومات المنتج</h3>
+            <dl>
+              <div><dt>القسم</dt><dd>{{ item.category or '—' }}</dd></div>
+              <div><dt>رمز المنتج</dt><dd dir="ltr">{{ item.product.sku or '—' }}</dd></div>
+              {% if item.show_cash_price %}<div><dt>السعر كامل</dt><dd>{{ item.cash_price|toLocaleString }} {{ settings.currency }}</dd></div>{% endif %}
+              {% if item.show_stock %}<div><dt>التوفر</dt><dd class="is-ok">{{ 'متوفر' if item.product.quantity > 0 else 'متاح للحجز' }}</dd></div>{% endif %}
+            </dl>
+          </section>
+          <section>
+            <h3>مواصفات التقسيط</h3>
+            <dl>
+              <div><dt>الخطط المتاحة</dt><dd>{{ plans|length }}</dd></div>
+              <div><dt>أقصى مدة</dt><dd>{{ plans|map(attribute='months')|max }} شهر</dd></div>
+              <div><dt>القسط الشهري</dt><dd id="detailsMonthly">—</dd></div>
+            </dl>
+          </section>
+        </aside>
+      </div>
+    </section>
+
+    <details class="store-schedule"><summary><span>عرض جدول الأقساط التقديري</span><small>تفاصيل الدفعات الشهرية للخطة المختارة</small></summary><div><table class="ins-table"><thead><tr><th>#</th><th>الدفعة</th><th>المبلغ</th><th>النوع</th></tr></thead><tbody id="scheduleBody"></tbody></table></div></details>
+  </main>
+
+  {% include 'installments/store/_footer.html' %}
+  <script>
+    const calculations = {{ calculations|tojson }};
+    const currency = {{ settings.currency|tojson }};
+    const money = value => `${Number(value || 0).toLocaleString('en-US')} ${currency}`;
+    const planButtons = [...document.querySelectorAll('[data-plan]')];
+
+    function showPlan(id) {
+      const calculation = calculations[id];
+      if (!calculation) return;
+      const cartPlanInput = document.getElementById('cartPlanId');
+      if (cartPlanInput) cartPlanInput.value = id;
+      planButtons.forEach(button => button.classList.toggle('active', button.dataset.plan === String(id)));
+      document.getElementById('down').textContent = money(calculation.down_payment);
+      document.getElementById('financed').textContent = money(calculation.financed_amount);
+      document.getElementById('monthly').textContent = money(calculation.monthly_payment);
+      document.getElementById('total').textContent = money(calculation.installment_total);
+      document.getElementById('fees').textContent = calculation.fees ? money(calculation.fees) : 'بدون رسوم إضافية';
+      document.getElementById('count').textContent = calculation.number_of_payments;
+      document.getElementById('topInstallmentTotal').textContent = money(calculation.installment_total);
+      document.getElementById('topMonthlyPayment').textContent = money(calculation.monthly_payment);
+      document.getElementById('topPlanMonths').textContent = `${calculation.number_of_payments} شهر`;
+      document.getElementById('detailsMonthly').textContent = money(calculation.monthly_payment);
+      document.getElementById('scheduleBody').innerHTML = calculation.schedule.map(row => `<tr><td>${row.sequence}</td><td>الشهر ${row.sequence}</td><td>${money(row.amount)}</td><td>${row.type === 'final' ? 'القسط الأخير' : 'قسط'}</td></tr>`).join('');
+    }
+    planButtons.forEach(button => button.addEventListener('click', () => showPlan(button.dataset.plan)));
+    showPlan(planButtons.at(-1)?.dataset.plan);
+
+    const galleryMain = document.getElementById('galleryMain');
+    const productGallery = galleryMain.closest('.store-gallery');
+    const productTitle = {{ item.title|tojson }};
+    let hoverZoomCleanup = null;
+    const clearHoverZoom = () => {
+      if (hoverZoomCleanup) hoverZoomCleanup();
+      hoverZoomCleanup = null;
+      galleryMain.querySelector('.store-gallery__zoom-selector')?.remove();
+      productGallery?.querySelector('.store-gallery__zoom-preview')?.remove();
+      galleryMain.classList.remove('has-hover-zoom');
+    };
+    const setupHoverZoom = () => {
+      clearHoverZoom();
+      if (!window.matchMedia('(min-width: 1180px) and (hover: hover) and (pointer: fine)').matches) return;
+      const image = galleryMain.querySelector(':scope > img');
+      if (!image || !productGallery) return;
+
+      image.draggable = false;
+      const selector = document.createElement('div');
+      selector.className = 'store-gallery__zoom-selector';
+      selector.setAttribute('aria-hidden', 'true');
+      const preview = document.createElement('div');
+      preview.className = 'store-gallery__zoom-preview';
+      preview.setAttribute('aria-hidden', 'true');
+      galleryMain.appendChild(selector);
+      productGallery.appendChild(preview);
+      galleryMain.classList.add('has-hover-zoom');
+
+      const hideZoom = () => {
+        selector.classList.remove('is-visible');
+        preview.classList.remove('is-visible');
+      };
+      const moveZoom = event => {
+        if (!image.naturalWidth || !image.naturalHeight) {
+          hideZoom();
+          return;
+        }
+        const mainRect = galleryMain.getBoundingClientRect();
+        const imageRect = image.getBoundingClientRect();
+        const style = window.getComputedStyle(image);
+        const paddingLeft = parseFloat(style.paddingLeft) || 0;
+        const paddingRight = parseFloat(style.paddingRight) || 0;
+        const paddingTop = parseFloat(style.paddingTop) || 0;
+        const paddingBottom = parseFloat(style.paddingBottom) || 0;
+        const availableWidth = Math.max(imageRect.width - paddingLeft - paddingRight, 1);
+        const availableHeight = Math.max(imageRect.height - paddingTop - paddingBottom, 1);
+        const imageScale = Math.min(
+          availableWidth / image.naturalWidth,
+          availableHeight / image.naturalHeight
+        );
+        const drawnWidth = image.naturalWidth * imageScale;
+        const drawnHeight = image.naturalHeight * imageScale;
+        const imageLeft = imageRect.left - mainRect.left + paddingLeft + (availableWidth - drawnWidth) / 2;
+        const imageTop = imageRect.top - mainRect.top + paddingTop + (availableHeight - drawnHeight) / 2;
+        const pointerX = event.clientX - mainRect.left;
+        const pointerY = event.clientY - mainRect.top;
+
+        if (
+          pointerX < imageLeft || pointerX > imageLeft + drawnWidth ||
+          pointerY < imageTop || pointerY > imageTop + drawnHeight
+        ) {
+          hideZoom();
+          return;
+        }
+
+        const selectorSize = Math.min(190, drawnWidth * .68, drawnHeight * .5);
+        if (selectorSize < 48) {
+          hideZoom();
+          return;
+        }
+        const half = selectorSize / 2;
+        const selectorCenterX = Math.min(
+          Math.max(pointerX, imageLeft + half),
+          imageLeft + drawnWidth - half
+        );
+        const selectorCenterY = Math.min(
+          Math.max(pointerY, imageTop + half),
+          imageTop + drawnHeight - half
+        );
+        const selectorLeft = selectorCenterX - half;
+        const selectorTop = selectorCenterY - half;
+
+        selector.style.width = `${selectorSize}px`;
+        selector.style.height = `${selectorSize}px`;
+        selector.style.left = `${selectorLeft}px`;
+        selector.style.top = `${selectorTop}px`;
+
+        preview.style.width = `${galleryMain.clientWidth}px`;
+        preview.style.height = `${galleryMain.clientHeight}px`;
+        const previewRect = preview.getBoundingClientRect();
+        const scaleX = previewRect.width / selectorSize;
+        const scaleY = previewRect.height / selectorSize;
+        preview.style.backgroundImage = `url(${JSON.stringify(image.currentSrc || image.src)})`;
+        preview.style.backgroundSize = `${drawnWidth * scaleX}px ${drawnHeight * scaleY}px`;
+        preview.style.backgroundPosition = `${-(selectorLeft - imageLeft) * scaleX}px ${-(selectorTop - imageTop) * scaleY}px`;
+        selector.classList.add('is-visible');
+        preview.classList.add('is-visible');
+      };
+
+      galleryMain.addEventListener('pointermove', moveZoom);
+      galleryMain.addEventListener('pointerleave', hideZoom);
+      image.addEventListener('dragstart', event => event.preventDefault());
+      hoverZoomCleanup = () => {
+        galleryMain.removeEventListener('pointermove', moveZoom);
+        galleryMain.removeEventListener('pointerleave', hideZoom);
+      };
+    };
+    const activateThumb = button => {
+      document.querySelectorAll('.store-gallery__thumbs button').forEach(item => item.classList.remove('active'));
+      button.classList.add('active');
+    };
+    const showGalleryMedia = html => {
+      clearHoverZoom();
+      galleryMain.classList.add('is-switching');
+      window.setTimeout(() => {
+        galleryMain.innerHTML = html;
+        galleryMain.classList.remove('is-switching');
+        setupHoverZoom();
+      }, 120);
+    };
+    document.querySelectorAll('[data-image]').forEach(button => button.addEventListener('click', () => {
+      activateThumb(button);
+      galleryMain.classList.remove('is-video');
+      showGalleryMedia(`<img src="${button.dataset.image}" alt=${JSON.stringify(productTitle)} decoding="async" draggable="false">`);
+    }));
+    document.querySelectorAll('[data-video]').forEach(button => button.addEventListener('click', () => {
+      activateThumb(button);
+      galleryMain.classList.add('is-video');
+      const poster = button.dataset.poster ? ` poster="${button.dataset.poster}"` : '';
+      showGalleryMedia(`<video src="${button.dataset.video}"${poster} controls playsinline preload="metadata"></video>`);
+    }));
+    setupHoverZoom();
+    document.querySelector('[data-add-cart]')?.addEventListener('click', async () => {
+      const form = document.getElementById('cartForm'); const button = document.querySelector('[data-add-cart]'); button.disabled = true;
+      try { const response = await fetch(form.action,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(Object.fromEntries(new FormData(form)))}); const result = await response.json(); if(!response.ok) throw new Error(result.error||'تعذر إضافة المنتج'); const cartCount=document.querySelector('[data-cart-count]'); cartCount.textContent=result.count; cartCount.classList.toggle('is-empty', !Number(result.count)); const toast=document.querySelector('[data-toast]'); toast.textContent='تمت إضافة المنتج إلى السلة'; toast.classList.add('is-visible'); setTimeout(()=>toast.classList.remove('is-visible'),2200); }
+      catch(error){ alert(error.message); } finally { button.disabled=false; }
+    });
+  </script>
+</body>
+</html>

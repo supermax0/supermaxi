@@ -89,7 +89,8 @@
     var parts = [];
     if (p.discount_percent) parts.push('<span class="lux-badge lux-badge-sale">-' + escapeHtml(p.discount_percent) + '%</span>');
     if (p.is_new) parts.push('<span class="lux-badge lux-badge-new">جديد</span>');
-    if (p.is_available === false) parts.push('<span class="lux-badge lux-badge-out">غير متوفر</span>');
+    if (p.is_reservation) parts.push('<span class="lux-badge lux-badge-reservation">متاح للطلب</span>');
+    else if (p.is_available === false) parts.push('<span class="lux-badge lux-badge-out">غير متوفر</span>');
     return parts.join("");
   }
 
@@ -135,7 +136,7 @@
       .replace(/\{\{BADGES\}\}/g, buildBadges(p))
       .replace(/\{\{META_LINE\}\}/g, buildMetaLine(p))
       .replace(/\{\{PRICE_BLOCK\}\}/g, buildPriceBlock(p))
-      .replace(/\{\{DISABLED\}\}/g, p.is_available === false ? "disabled" : "");
+      .replace(/\{\{DISABLED\}\}/g, p.is_available === false && !p.is_reservation ? "disabled" : "");
   }
 
   function getFilters() {
@@ -298,7 +299,7 @@
     }
 
     function formatMoney(n) {
-      return new Intl.NumberFormat("ar-IQ").format(Number(n) || 0) + " د.ع";
+      return new Intl.NumberFormat(cfg.v2 ? "en-US" : "ar-IQ").format(Number(n) || 0) + " د.ع";
     }
 
     function showToast(message, type) {
@@ -314,6 +315,7 @@
     function updateCartBadge(count) {
       document.querySelectorAll("[data-sf-cart-count]").forEach(function (node) {
         node.textContent = String(count || 0);
+        if (cfg.v2) node.hidden = !count;
       });
     }
 
@@ -332,10 +334,13 @@
       updateCartBadge(cart.count);
     }
 
-    function findCartItem(cart, productId) {
+    function findCartItem(cart, productId, lineKey) {
       if (!cart || !cart.items) return null;
       for (var i = 0; i < cart.items.length; i++) {
-        if (Number(cart.items[i].id) === Number(productId)) return cart.items[i];
+        if (
+          (lineKey && cart.items[i].line_key === lineKey) ||
+          (!lineKey && Number(cart.items[i].id) === Number(productId))
+        ) return cart.items[i];
       }
       return null;
     }
@@ -343,16 +348,23 @@
     function updateLineTotal(row, cartItem) {
       var totalEl = row.querySelector("[data-lux-line-total]");
       if (totalEl && cartItem) {
-        totalEl.innerHTML = new Intl.NumberFormat("ar-IQ").format(cartItem.line_total || 0) + " <small>د.ع</small>";
+        var usd = (row.getAttribute("data-currency") || totalEl.getAttribute("data-currency")) === "USD";
+        var amount = usd
+          ? (Number(row.getAttribute("data-unit-price")) || 0) * (Number(cartItem.quantity) || 0)
+          : (cartItem.line_total || 0);
+        var formatted = new Intl.NumberFormat(cfg.v2 ? "en-US" : "ar-IQ").format(amount);
+        totalEl.innerHTML = usd
+          ? '<b class="lux-usd-mark">$</b>' + formatted
+          : formatted + " <small>د.ع</small>";
       }
     }
 
-    function syncCart(productId, qty, row) {
+    function syncCart(productId, lineKey, qty, row) {
       if (row) row.classList.add("is-updating");
       return fetch(apiUrl("cart/update"), {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
-        body: JSON.stringify({ product_id: productId, quantity: qty }),
+        body: JSON.stringify({ product_id: productId, line_key: lineKey, quantity: qty }),
       })
         .then(function (res) {
           return res.json().then(function (data) {
@@ -370,7 +382,7 @@
               row.remove();
               if (!page.querySelector("[data-lux-cart-item]")) window.location.reload();
             } else {
-              updateLineTotal(row, findCartItem(cart, productId));
+              updateLineTotal(row, findCartItem(cart, productId, lineKey));
             }
           }
           return cart;
@@ -383,29 +395,30 @@
         });
     }
 
-    function scheduleSync(row, productId) {
+    function scheduleSync(row, productId, lineKey) {
       var input = row.querySelector(".lux-cart-qty-input");
       if (!input) return;
-      clearTimeout(updateTimers[productId]);
-      updateTimers[productId] = setTimeout(function () {
+      clearTimeout(updateTimers[lineKey || productId]);
+      updateTimers[lineKey || productId] = setTimeout(function () {
         var qty = parseInt(input.value, 10) || 0;
-        var max = parseInt(input.getAttribute("max"), 10) || 999;
+        var max = parseInt(input.getAttribute("max"), 10) || 9999;
         qty = Math.min(max, Math.max(1, qty));
         input.value = String(qty);
-        syncCart(productId, qty, row);
+        syncCart(productId, lineKey, qty, row);
       }, 450);
     }
 
     page.querySelectorAll("[data-lux-cart-item]").forEach(function (row) {
       var productId = parseInt(row.getAttribute("data-product-id"), 10);
+      var lineKey = row.getAttribute("data-line-key") || "";
       var input = row.querySelector(".lux-cart-qty-input");
       var minusBtn = row.querySelector("[data-lux-cart-qty-minus]");
       var plusBtn = row.querySelector("[data-lux-cart-qty-plus]");
       var removeBtn = row.querySelector("[data-lux-cart-remove]");
 
       function bounds() {
-        var max = input ? parseInt(input.getAttribute("max"), 10) : 999;
-        if (!max || max < 1) max = 999;
+        var max = input ? parseInt(input.getAttribute("max"), 10) : 9999;
+        if (!max || max < 1) max = 9999;
         return { min: 1, max: max };
       }
 
@@ -414,7 +427,7 @@
         var b = bounds();
         var value = Math.min(b.max, Math.max(b.min, next));
         input.value = String(value);
-        scheduleSync(row, productId);
+        scheduleSync(row, productId, lineKey);
       }
 
       if (minusBtn) {
@@ -434,7 +447,7 @@
       }
       if (removeBtn) {
         removeBtn.addEventListener("click", function () {
-          syncCart(productId, 0, row);
+          syncCart(productId, lineKey, 0, row);
         });
       }
     });
@@ -450,8 +463,8 @@
 
     function qtyBounds() {
       var min = 1;
-      var max = qtyInput ? parseInt(qtyInput.getAttribute("max"), 10) : 999;
-      if (!max || max < 1) max = 999;
+      var max = qtyInput ? parseInt(qtyInput.getAttribute("max"), 10) : 9999;
+      if (!max || max < 1) max = 9999;
       return { min: min, max: max };
     }
 

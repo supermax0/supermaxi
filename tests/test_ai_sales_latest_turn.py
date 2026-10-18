@@ -4,6 +4,7 @@ from modules.ai_sales.engine import (
 )
 from modules.ai_sales.agent import _quick_decline_reply
 from modules.ai_sales.message_guard import classify_customer_message
+import pytest
 
 
 def test_latest_greeting_breaks_old_product_burst():
@@ -15,10 +16,11 @@ def test_latest_greeting_breaks_old_product_burst():
     assert continuation is False
 
 
-def test_latest_address_question_breaks_old_product_burst():
-    combined = "رسالة الزبون 1: اريد ثلاجة 7 قدم\nرسالة الزبون 2: العنوان وين"
+@pytest.mark.parametrize('latest', ['العنوان وين', 'اريد عنوان المحل', 'فاتحين اليوم'])
+def test_latest_address_question_breaks_old_product_burst(latest):
+    combined = f"رسالة الزبون 1: اريد ثلاجة 7 قدم\nرسالة الزبون 2: {latest}"
 
-    text, continuation = _latest_turn_analysis_text("العنوان وين", combined, 2)
+    text, continuation = _latest_turn_analysis_text(latest, combined, 2)
     guard = classify_customer_message(text)
     needs_product = _latest_message_needs_product_answer(
         text,
@@ -38,7 +40,7 @@ def test_latest_address_question_breaks_old_product_burst():
         previous_products=[{"product_id": 1, "name": "ثلاجة 7 قدم"}],
     )
 
-    assert text == "العنوان وين"
+    assert text == latest
     assert continuation is False
     assert needs_product is False
 

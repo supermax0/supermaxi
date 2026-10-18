@@ -1,4 +1,5 @@
 from datetime import datetime
+
 from extensions import db
 
 
@@ -10,17 +11,34 @@ class PublisherSettings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     tenant_slug = db.Column(db.String(100), nullable=True, index=True)
 
-    fb_app_id     = db.Column(db.String(50),   nullable=True)
-    fb_app_secret = db.Column(db.Text,          nullable=True)   # مشفر
+    fb_app_id = db.Column(db.String(50), nullable=True)
+    fb_app_secret = db.Column(db.Text, nullable=True)  # مشفر
     # Long-lived user token (اختياري — يُستخدم لجلب الصفحات)
-    fb_user_token = db.Column(db.Text,          nullable=True)
+    fb_user_token = db.Column(db.Text, nullable=True)
+    fb_verify_token = db.Column(db.Text, nullable=True)
+    fb_webhook_verified = db.Column(db.Boolean, default=False)
+    fb_webhook_at = db.Column(db.DateTime, nullable=True)
+    fb_token_expires_at = db.Column(db.DateTime, nullable=True)
     # OpenAI API Key (اختياري — يُستخدم لمساعد الذكاء الاصطناعي في Publisher)
-    openai_api_key = db.Column(db.Text,         nullable=True)
+    openai_api_key = db.Column(db.Text, nullable=True)
+    # Optional Marketing API fields (nullable; monitor stores live ads config
+    # in facebook_monitor_ads, but these columns must exist so ORM SELECTs never crash).
+    ads_app_id = db.Column(db.String(50), nullable=True)
+    ads_app_secret = db.Column(db.Text, nullable=True)
+    ads_user_token = db.Column(db.Text, nullable=True)
+    ads_account_id = db.Column(db.String(64), nullable=True)
 
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     @classmethod
     def get(cls, tenant_slug):
+        from modules.publisher.services.schema_guard import ensure_publisher_schema
+
+        try:
+            ensure_publisher_schema()
+        except Exception:
+            pass
+
         obj = cls.query.filter_by(tenant_slug=tenant_slug).first()
         if not obj:
             obj = cls(tenant_slug=tenant_slug)
@@ -30,13 +48,13 @@ class PublisherSettings(db.Model):
 
     def to_dict(self):
         return {
-            "fb_app_id":     self.fb_app_id or "",
+            "fb_app_id": self.fb_app_id or "",
             # نُرجع نجوم بدل السر الفعلي للعرض
             "fb_app_secret": "●●●●●●●●" if self.fb_app_secret else "",
             "fb_user_token": "●●●●●●●●" if self.fb_user_token else "",
             "openai_api_key": "●●●●●●●●" if self.openai_api_key else "",
-            "has_secret":    bool(self.fb_app_secret),
-            "has_token":     bool(self.fb_user_token),
+            "has_secret": bool(self.fb_app_secret),
+            "has_token": bool(self.fb_user_token),
             "has_openai_key": bool(self.openai_api_key),
-            "updated_at":    self.updated_at.isoformat() if self.updated_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

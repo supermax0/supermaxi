@@ -20,6 +20,7 @@ from utils.employee_commission_service import delivered_paid_filter
 from utils.treasury_calculations import InsufficientTreasuryBalance, assert_sufficient_balance
 from utils.treasury_helpers import resolve_treasury_account_id
 from utils.treasury_schema_guard import ensure_treasury_schema
+from utils.branch_scope import active_branch_id, scope_query, viewing_all_branches
 
 PAY_TYPE_NONE = "none"
 PAY_TYPE_MONTHLY = "monthly"
@@ -152,6 +153,45 @@ def compute_next_salary_date(payee: Payee, *, today: Optional[date] = None) -> O
     return None
 
 
+def _salary_cycle_start(payee: Payee, *, today: Optional[date] = None) -> Optional[date]:
+    """Return the beginning of the salary cycle that contains ``today``."""
+    if not _has_salary_schedule(payee):
+        return None
+
+    today = today or date.today()
+    pay_type = _get_pay_type(payee)
+    if pay_type in MONTHLY_PAY_TYPES:
+        pay_day = int(getattr(payee, "pay_day_of_month", 25) or 25)
+        current_month_date = _clamp_month_day(today.year, today.month, pay_day)
+        if current_month_date <= today:
+            cycle_start = current_month_date
+        elif today.month == 1:
+            cycle_start = _clamp_month_day(today.year - 1, 12, pay_day)
+        else:
+            cycle_start = _clamp_month_day(today.year, today.month - 1, pay_day)
+    elif pay_type in WEEKLY_PAY_TYPES:
+        pay_weekday = int(getattr(payee, "pay_weekday", 4) or 4)
+        cycle_start = today - timedelta(days=(today.weekday() - pay_weekday) % 7)
+    else:
+        return None
+
+    effective = getattr(payee, "payroll_effective_from", None)
+    if effective:
+        cycle_start = max(cycle_start, effective)
+    return cycle_start
+
+
+def salary_paid_in_current_cycle(payee: Payee, *, today: Optional[date] = None) -> bool:
+    """Whether this payee already received the salary for the active cycle."""
+    today = today or date.today()
+    cycle_start = _salary_cycle_start(payee, today=today)
+    last_paid = getattr(payee, "last_salary_paid_at", None)
+    if cycle_start is None or last_paid is None:
+        return False
+    last_paid_date = last_paid.date() if isinstance(last_paid, datetime) else last_paid
+    return cycle_start <= last_paid_date <= today
+
+
 def is_salary_due(payee: Payee, *, today: Optional[date] = None) -> bool:
     today = today or date.today()
     next_date = compute_next_salary_date(payee, today=today)
@@ -183,6 +223,10 @@ def _invoice_is_commission_eligible(invoice: Invoice) -> bool:
 
 def sync_commission_line_for_invoice(invoice: Invoice) -> Optional[EmployeeCommissionLine]:
     """Create, void, or keep commission line when invoice state changes."""
+    if invoice is not None:
+        from modules.hr.commissions import sync_invoice
+        if sync_invoice(invoice):
+            return EmployeeCommissionLine.query.filter_by(invoice_id=invoice.id).first()
     if invoice is None or not invoice.employee_id:
         return None
 
@@ -208,6 +252,8 @@ def sync_commission_line_for_invoice(invoice: Invoice) -> Optional[EmployeeCommi
         return line
 
     if line:
+        if line.status == "paid":
+            return line
         if line.status == "void":
             line.status = "pending"
         line.amount = amount
@@ -230,31 +276,172 @@ def sync_commission_line_for_invoice(invoice: Invoice) -> Optional[EmployeeCommi
     return line
 
 
-def remove_commission_lines_for_deleted_invoice(invoice_id: int) -> int:
-    """Remove unpaid commission lines before deleting an invoice; block paid lines."""
-    lines = EmployeeCommissionLine.query.filter_by(invoice_id=int(invoice_id)).all()
-    paid_lines = [line for line in lines if line.status == "paid" or line.payment_id]
-    if paid_lines:
-        raise ValueError("لا يمكن حذف الطلب لأن عمولته مدفوعة ضمن الرواتب")
-
-    for line in lines:
-        db.session.delete(line)
-    return len(lines)
-
-
-def get_pending_commission_lines(employee_id: int) -> list[EmployeeCommissionLine]:
+def _payroll_expense_withdraw_note(expense: Expense) -> str:
+    note_extra = f" - {expense.note}" if expense.note else ""
     return (
-        EmployeeCommissionLine.query.filter_by(employee_id=employee_id, status="pending")
-        .order_by(EmployeeCommissionLine.accrued_at.asc(), EmployeeCommissionLine.id.asc())
-        .all()
+        f"مصروف: {expense.title} ({expense.category}) "
+        f"بتاريخ {expense.expense_date}{note_extra}"
     )
 
 
-def get_pending_commission_total(employee_id: int) -> dict[str, Any]:
-    lines = get_pending_commission_lines(employee_id)
+def remove_commission_lines_for_deleted_invoice(
+    invoice_id: int,
+    *,
+    allow_paid: bool = False,
+) -> int:
+    """Remove invoice commission and, when authorized, its paid payroll share.
+
+    A commission payment may contain many invoices.  In that case only this
+    invoice's share is removed from the payment, expense, treasury withdrawal,
+    and monthly settlement instead of deleting the other employees' history.
+    """
+    from sqlalchemy import inspect
+    if inspect(db.session.get_bind()).has_table("hr_commission"):
+        from modules.hr.models import HRCommission
+        if HRCommission.query.filter_by(invoice_id=int(invoice_id)).first():
+            raise ValueError("الفاتورة مرتبطة بسجل عمولة؛ استخدم الإلغاء والتسوية لحفظ التاريخ المالي")
+    lines = EmployeeCommissionLine.query.filter_by(invoice_id=int(invoice_id)).all()
+    paid_lines = [line for line in lines if line.status == "paid" or line.payment_id]
+    if paid_lines and not allow_paid:
+        raise ValueError("لا يمكن حذف الطلب لأن عمولته مدفوعة ضمن الرواتب")
+
+    paid_by_payment: dict[int, int] = {}
+    for line in paid_lines:
+        if line.payment_id:
+            paid_by_payment[int(line.payment_id)] = (
+                paid_by_payment.get(int(line.payment_id), 0)
+                + max(0, int(line.amount or 0))
+            )
+
+    payments_to_delete = []
+    for payment_id, removed_amount in paid_by_payment.items():
+        payment = EmployeePayment.query.get(payment_id)
+        if not payment:
+            continue
+        old_amount = max(0, int(payment.amount or 0))
+        new_amount = max(0, old_amount - removed_amount)
+        expense = payment.expense or Expense.query.filter_by(
+            employee_payment_id=payment.id
+        ).first()
+        withdraw_tx = None
+        if expense:
+            withdraw_tx = AccountTransaction.query.filter_by(
+                type="withdraw",
+                note=_payroll_expense_withdraw_note(expense),
+            ).order_by(AccountTransaction.id.desc()).first()
+
+        settlements = EmployeeCommissionSettlement.query.filter_by(
+            payment_id=payment.id
+        ).all()
+        for settlement in settlements:
+            settlement.amount = max(0, int(settlement.amount or 0) - removed_amount)
+            settlement.order_count = max(0, int(settlement.order_count or 0) - 1)
+
+        if new_amount > 0:
+            payment.amount = new_amount
+            if expense:
+                expense.amount = new_amount
+            if withdraw_tx:
+                withdraw_tx.amount = new_amount
+            for settlement in settlements:
+                if int(settlement.amount or 0) <= 0:
+                    db.session.delete(settlement)
+        else:
+            for settlement in settlements:
+                db.session.delete(settlement)
+            if withdraw_tx:
+                db.session.delete(withdraw_tx)
+            if expense:
+                payment.expense_id = None
+                expense.employee_payment_id = None
+                db.session.delete(expense)
+            payments_to_delete.append(payment)
+
+    for line in lines:
+        db.session.delete(line)
+    if payments_to_delete:
+        # Remove child rows first.  Several tenant databases enforce the
+        # commission-line/payment foreign key immediately during autoflush.
+        db.session.flush()
+        for payment in payments_to_delete:
+            db.session.delete(payment)
+    return len(lines)
+
+
+def get_pending_commission_lines(
+    employee_id: int,
+    *,
+    year: Optional[int] = None,
+    month: Optional[int] = None,
+    include_carried: bool = True,
+) -> list[EmployeeCommissionLine]:
+    """Pending commission lines, optionally scoped to a settlement month.
+
+    When ``year``/``month`` are set:
+    - lines accrued in that month are included
+    - if ``include_carried`` (default): unpaid lines from earlier months are
+      also included so former "جاري شحن" orders that delivered later are paid
+      with the selected month and are never lost after a prior settlement
+    - lines accrued after the selected month are excluded
+    """
+    query = (
+        EmployeeCommissionLine.query
+        .join(Invoice, Invoice.id == EmployeeCommissionLine.invoice_id)
+        .filter(EmployeeCommissionLine.employee_id == employee_id, EmployeeCommissionLine.status == "pending")
+    )
+    branch_id = active_branch_id()
+    if branch_id is None and viewing_all_branches():
+        from flask import has_request_context, request
+
+        if has_request_context() and request.method in {"POST", "PUT", "PATCH", "DELETE"}:
+            payload = request.get_json(silent=True) if request.is_json else request.form
+            try:
+                branch_id = int((payload or {}).get("branch_id") or 0) or None
+            except (TypeError, ValueError):
+                branch_id = None
+    if branch_id is not None and not viewing_all_branches():
+        query = query.filter(Invoice.branch_id == int(branch_id))
+    elif branch_id is not None:
+        query = query.filter(Invoice.branch_id == int(branch_id))
+    lines = (
+        query
+        .order_by(EmployeeCommissionLine.accrued_at.asc(), EmployeeCommissionLine.id.asc())
+        .all()
+    )
+    if year is not None and month is not None:
+        start, end = _month_datetime_bounds(int(year), int(month))
+        if include_carried:
+            lines = [line for line in lines if line.accrued_at and line.accrued_at <= end]
+        else:
+            lines = [
+                line
+                for line in lines
+                if line.accrued_at and start <= line.accrued_at <= end
+            ]
+    return lines
+
+
+def get_pending_commission_total(
+    employee_id: int,
+    *,
+    year: Optional[int] = None,
+    month: Optional[int] = None,
+    include_carried: bool = True,
+) -> dict[str, Any]:
+    lines = get_pending_commission_lines(
+        employee_id,
+        year=year,
+        month=month,
+        include_carried=include_carried,
+    )
+    carried_orders = 0
+    if year is not None and month is not None and lines:
+        start, _end = _month_datetime_bounds(int(year), int(month))
+        carried_orders = sum(1 for line in lines if line.accrued_at and line.accrued_at < start)
     return {
         "orders": len(lines),
         "amount": sum(int(l.amount or 0) for l in lines),
+        "carried_orders": carried_orders,
         "lines": lines,
     }
 
@@ -265,6 +452,7 @@ def _post_payroll_expense_to_treasury(expense: Expense, treasury_account_id: Opt
     assert_sufficient_balance(account_id, expense.amount)
     note_extra = f" - {expense.note}" if expense.note else ""
     withdraw_tx = AccountTransaction(
+        branch_id=expense.branch_id,
         type="withdraw",
         amount=expense.amount,
         note=f"مصروف: {expense.title} ({expense.category}) بتاريخ {expense.expense_date}{note_extra}",
@@ -283,8 +471,10 @@ def _create_payroll_expense(
     treasury_account_id: int,
     employee_id: Optional[int] = None,
     note: Optional[str] = None,
+    branch_id: Optional[int] = None,
 ) -> Expense:
     expense = Expense(
+        branch_id=branch_id,
         title=title,
         category="salary",
         amount=amount,
@@ -306,6 +496,25 @@ def _salary_payment_kind(payee: Payee) -> str:
     return "salary_monthly"
 
 
+def resolve_payroll_payout_branch(treasury, payee) -> tuple[Optional[int], Optional[str]]:
+    """Pick the expense branch for a salary payout.
+
+    Shared/legacy companies use one logical treasury. A leftover branch_id on
+    the cash box must not block paying employees who belong to another branch.
+    Independent-branch companies must pay from the employee's branch treasury.
+    """
+    from utils.branch_mode import independent_branches_enabled
+
+    payee_branch_id = int(getattr(payee, "branch_id", 0) or 0) or None
+    treasury_branch_id = int(getattr(treasury, "branch_id", 0) or 0) if treasury else None
+    if not independent_branches_enabled():
+        return payee_branch_id or treasury_branch_id, None
+    branch_id = treasury_branch_id or payee_branch_id
+    if payee_branch_id and branch_id != payee_branch_id:
+        return None, "يجب صرف الراتب من خزينة فرع الموظف"
+    return branch_id, None
+
+
 def pay_salary(
     payee: Payee,
     *,
@@ -315,15 +524,27 @@ def pay_salary(
     today: Optional[date] = None,
 ) -> dict[str, Any]:
     """Pay fixed salary for employee or delivery agent."""
+    if isinstance(payee, Employee):
+        from utils.hr_schema import salary_owned_by_hr_workspace
+        if salary_owned_by_hr_workspace(payee.id):
+            return {"ok": False, "error": "راتب الموظف مُدار بمسير الموارد البشرية؛ استخدم صرف المسير المعتمد"}
     today = today or date.today()
     amount = get_salary_due_amount(payee)
     if amount <= 0:
         return {"ok": False, "error": "لا يوجد راتب محدد"}
 
+    if salary_paid_in_current_cycle(payee, today=today):
+        return {"ok": False, "error": "تم صرف راتب هذه الدورة مسبقاً"}
+
     if not manual and not is_salary_due(payee, today=today):
         return {"ok": False, "error": "الراتب غير مستحق بعد"}
 
     treasury_account_id = resolve_treasury_account_id(treasury_account_id)
+    from models.treasury_account import TreasuryAccount
+    treasury = TreasuryAccount.query.get(treasury_account_id)
+    branch_id, branch_error = resolve_payroll_payout_branch(treasury, payee)
+    if branch_error:
+        return {"ok": False, "error": branch_error}
     payee_type = _payee_type(payee)
     payee_id = _payee_id(payee)
     name = _payee_name(payee)
@@ -337,8 +558,10 @@ def pay_salary(
             treasury_account_id=treasury_account_id,
             employee_id=employee_id,
             note=f"payroll:{payee_type}:{payee_id}:{kind}",
+            branch_id=branch_id,
         )
         payment = EmployeePayment(
+            branch_id=branch_id,
             payee_type=payee_type,
             payee_id=payee_id,
             payment_kind=kind,
@@ -353,7 +576,9 @@ def pay_salary(
         db.session.flush()
         expense.employee_payment_id = payment.id
         payment.expense_id = expense.id
-        payee.last_salary_paid_at = datetime.utcnow()
+        # Keep the logical payroll date aligned with ``today`` even when the
+        # server timezone differs from the business timezone.
+        payee.last_salary_paid_at = datetime.combine(today, datetime.min.time())
         db.session.commit()
     except InsufficientTreasuryBalance as exc:
         db.session.rollback()
@@ -385,16 +610,18 @@ def settle_employee_commission_payment(
     if not is_commission_eligible_employee(employee):
         return {"ok": False, "error": "المدير غير مشمول بعمولة الطلبات"}
 
-    lines = get_pending_commission_lines(employee_id)
-    if year is not None and month is not None:
-        start, end = _month_datetime_bounds(year, month)
-        lines = [line for line in lines if line.accrued_at and start <= line.accrued_at <= end]
+    lines = get_pending_commission_lines(employee_id, year=year, month=month)
     if not lines:
+        if year is not None and month is not None:
+            return {"ok": False, "error": f"لا توجد عمولات معلّقة لشهر {year}-{int(month):02d}"}
         return {"ok": False, "error": "لا توجد عمولات معلّقة للسداد"}
 
     amount = sum(int(l.amount or 0) for l in lines)
     order_count = len(lines)
     treasury_account_id = resolve_treasury_account_id(treasury_account_id)
+    from models.treasury_account import TreasuryAccount
+    treasury = TreasuryAccount.query.get(treasury_account_id)
+    branch_id = int(treasury.branch_id) if treasury and treasury.branch_id else int(employee.branch_id or 0) or None
     now = datetime.utcnow()
     period_year = year or now.year
     period_month = month or now.month
@@ -406,8 +633,10 @@ def settle_employee_commission_payment(
             treasury_account_id=treasury_account_id,
             employee_id=employee_id,
             note=f"commission_settle:{employee_id}:{period_year}-{period_month:02d}",
+            branch_id=branch_id,
         )
         payment = EmployeePayment(
+            branch_id=branch_id,
             payee_type="employee",
             payee_id=employee_id,
             payment_kind="commission",
@@ -469,7 +698,7 @@ def process_due_salary_payments(
     paid = []
     skipped = []
 
-    payees: list[Payee] = list(Employee.query.filter(Employee.is_active.is_(True)).all())
+    payees: list[Payee] = list(scope_query(Employee.query, Employee).filter(Employee.is_active.is_(True)).all())
     payees.extend(DeliveryAgent.query.filter(DeliveryAgent.is_active.is_(True)).all())
 
     for payee in payees:
@@ -501,6 +730,7 @@ def _serialize_payee_due(payee: Payee, *, today: Optional[date] = None) -> Optio
         salary_amount = get_salary_due_amount(payee)
         next_date = compute_next_salary_date(payee, today=today)
         due = is_salary_due(payee, today=today)
+        paid_in_cycle = salary_paid_in_current_cycle(payee, today=today)
         rows.append(
             {
                 "kind": "salary",
@@ -511,6 +741,8 @@ def _serialize_payee_due(payee: Payee, *, today: Optional[date] = None) -> Optio
                 "amount": salary_amount,
                 "next_pay_date": next_date.isoformat() if next_date else None,
                 "is_due": due,
+                "paid_in_current_cycle": paid_in_cycle,
+                "can_pay_manually": not paid_in_cycle,
                 "schedule_label": _schedule_label(payee),
             }
         )
@@ -546,12 +778,17 @@ def _schedule_label(payee: Payee) -> str:
     return ""
 
 
-def build_payroll_dashboard(*, today: Optional[date] = None) -> dict[str, Any]:
+def build_payroll_dashboard(
+    *,
+    today: Optional[date] = None,
+    commission_year: Optional[int] = None,
+    commission_month: Optional[int] = None,
+) -> dict[str, Any]:
     today = today or date.today()
     due_rows: list[dict[str, Any]] = []
     schedule_rows: list[dict[str, Any]] = []
 
-    employees = Employee.query.filter(Employee.is_active.is_(True)).order_by(Employee.name).all()
+    employees = scope_query(Employee.query, Employee).filter(Employee.is_active.is_(True)).order_by(Employee.name).all()
     agents = DeliveryAgent.query.filter(DeliveryAgent.is_active.is_(True)).order_by(DeliveryAgent.name).all()
 
     for emp in employees:
@@ -594,7 +831,11 @@ def build_payroll_dashboard(*, today: Optional[date] = None) -> dict[str, Any]:
     for emp in employees:
         if not _has_commission(emp):
             continue
-        pending = get_pending_commission_total(emp.id)
+        pending = get_pending_commission_total(
+            emp.id,
+            year=commission_year,
+            month=commission_month,
+        )
         if pending["orders"] <= 0:
             continue
         commission_employees.append(
@@ -602,6 +843,7 @@ def build_payroll_dashboard(*, today: Optional[date] = None) -> dict[str, Any]:
                 "employee_id": emp.id,
                 "employee_name": emp.name,
                 "orders": pending["orders"],
+                "carried_orders": pending.get("carried_orders", 0),
                 "amount": pending["amount"],
                 "commission_rate": get_employee_commission_amount(emp),
             }
@@ -615,6 +857,8 @@ def build_payroll_dashboard(*, today: Optional[date] = None) -> dict[str, Any]:
         "due_rows": due_rows,
         "schedule_rows": schedule_rows,
         "commission_employees": commission_employees,
+        "commission_year": commission_year,
+        "commission_month": commission_month,
         "total_salary_due": total_salary_due,
         "total_commission_due": total_commission_due,
         "total_due": total_salary_due + total_commission_due,
@@ -658,8 +902,13 @@ def get_payment_history(*, limit: int = 100) -> list[dict[str, Any]]:
     return rows
 
 
-def serialize_commission_lines(employee_id: int) -> list[dict[str, Any]]:
-    lines = get_pending_commission_lines(employee_id)
+def serialize_commission_lines(
+    employee_id: int,
+    *,
+    year: Optional[int] = None,
+    month: Optional[int] = None,
+) -> list[dict[str, Any]]:
+    lines = get_pending_commission_lines(employee_id, year=year, month=month)
     result = []
     for line in lines:
         inv = line.invoice
@@ -675,3 +924,141 @@ def serialize_commission_lines(employee_id: int) -> list[dict[str, Any]]:
             }
         )
     return result
+
+
+def build_monthly_orders_statement(year: int, month: int) -> dict[str, Any]:
+    """Monthly employee order sheet with full status breakdown.
+
+    Counts for the selected month:
+    - orders created in that month (all statuses)
+    - plus still-open (pending/shipping) orders created in earlier months
+      so they roll into the next month until closed — employee credit is not lost
+
+    Columns: total = delivered + returned + canceled + pending
+    """
+    from sqlalchemy import and_, case, func, not_, or_
+
+    from utils.order_status import CANCELED_STATUSES, COMPLETED_STATUSES, RETURN_STATUSES
+
+    start = datetime(year, month, 1)
+    _, last_day = monthrange(year, month)
+    end = datetime(year, month, last_day, 23, 59, 59)
+
+    returned_list = list(RETURN_STATUSES)
+    canceled_list = list(CANCELED_STATUSES)
+    completed_list = list(COMPLETED_STATUSES)
+
+    is_returned = or_(
+        func.coalesce(Invoice.status, "").in_(returned_list),
+        func.coalesce(Invoice.payment_status, "").in_(returned_list),
+    )
+    is_canceled = or_(
+        func.coalesce(Invoice.status, "").in_(canceled_list),
+        func.coalesce(Invoice.payment_status, "").in_(canceled_list),
+    )
+    is_delivered = and_(
+        not_(is_returned),
+        not_(is_canceled),
+        or_(
+            func.coalesce(Invoice.payment_status, "") == "مسدد",
+            func.coalesce(Invoice.status, "").in_(completed_list),
+        ),
+    )
+    # جاري = أي طلب لم يُغلق بعد (تم الطلب / معباة / جاري الشحن / غيرها)
+    is_pending = and_(not_(is_returned), not_(is_canceled), not_(is_delivered))
+
+    # طلبات الشهر المحدد + طلبات جاري مرحّلة من أشهر سابقة
+    in_month = and_(Invoice.created_at >= start, Invoice.created_at <= end)
+    carried_open = and_(Invoice.created_at < start, is_pending)
+
+    rows_q = (
+        db.session.query(
+            Invoice.employee_id,
+            func.sum(case((is_delivered, 1), else_=0)).label("delivered_orders"),
+            func.sum(case((or_(is_canceled, is_returned), 1), else_=0)).label(
+                "returned_orders"
+            ),
+            func.sum(case((is_pending, 1), else_=0)).label("pending_orders"),
+            func.sum(case((carried_open, 1), else_=0)).label("carried_pending"),
+        )
+        .filter(
+            Invoice.employee_id.isnot(None),
+            or_(in_month, carried_open),
+        )
+        .group_by(Invoice.employee_id)
+        .all()
+    )
+
+    empty = {
+        "year": year,
+        "month": month,
+        "title": f"طلبات شهر {month}",
+        "rows": [],
+        "totals": {
+            "total_orders": 0,
+            "returned_orders": 0,
+            "delivered_orders": 0,
+            "pending_orders": 0,
+            "carried_pending": 0,
+            "total_amount": 0,
+        },
+        "note": (
+            "الكلي = الواصل + الراجع/الملغي + الجاري. "
+            "المبلغ الكلي = عمولة الطلبات الواصلة فقط. "
+            "طلبات جاري الشحن المفتوحة من أشهر سابقة تُرحَّل لهذا الشهر حتى تُغلق "
+            "حتى لا يضيع حق الموظف."
+        ),
+    }
+    if not rows_q:
+        return empty
+
+    employee_ids = [r.employee_id for r in rows_q]
+    employees = Employee.query.filter(Employee.id.in_(employee_ids)).all()
+    emp_map = {e.id: e for e in employees}
+
+    rows = []
+    for r in rows_q:
+        emp = emp_map.get(r.employee_id)
+        if emp and getattr(emp, "role", None) == "admin":
+            continue
+        delivered = int(r.delivered_orders or 0)
+        returned = int(r.returned_orders or 0)
+        pending = int(r.pending_orders or 0)
+        carried = int(r.carried_pending or 0)
+        rate = get_employee_commission_amount(emp) if emp else 0
+        amount = delivered * rate
+        total = delivered + returned + pending
+        if total <= 0:
+            continue
+        rows.append(
+            {
+                "employee_id": r.employee_id,
+                "employee_name": emp.name if emp else f"#{r.employee_id}",
+                "transfer_number": (getattr(emp, "transfer_number", None) or "").strip() if emp else "",
+                "total_orders": total,
+                "delivered_orders": delivered,
+                "returned_orders": returned,
+                "pending_orders": pending,
+                "carried_pending": carried,
+                "commission_rate": rate,
+                "total_amount": amount,
+            }
+        )
+
+    rows.sort(key=lambda x: x["employee_name"])
+    totals = {
+        "total_orders": sum(x["total_orders"] for x in rows),
+        "returned_orders": sum(x["returned_orders"] for x in rows),
+        "delivered_orders": sum(x["delivered_orders"] for x in rows),
+        "pending_orders": sum(x["pending_orders"] for x in rows),
+        "carried_pending": sum(x["carried_pending"] for x in rows),
+        "total_amount": sum(x["total_amount"] for x in rows),
+    }
+    return {
+        "year": year,
+        "month": month,
+        "title": f"طلبات شهر {month}",
+        "rows": rows,
+        "totals": totals,
+        "note": empty["note"],
+    }

@@ -38,7 +38,7 @@ from .decision_engine import (
     rank_products_for_customer,
     update_customer_facts,
 )
-from .media import analyze_image, download_inbound_media, generate_speech, transcribe_audio
+from .media import analyze_image, analyze_video, download_inbound_media, generate_speech, transcribe_audio
 from .links import extract_link_previews, first_map_preview
 from .message_guard import classify_customer_message, normalize_arabic
 from .models import AISalesAgentProfile, AISalesConversation, AISalesLead, AISalesMessage
@@ -82,6 +82,7 @@ def get_or_create_conversation(
     phone: str,
     contact_name: str = "",
     contact_profile_picture_url: str = "",
+    route_facebook: bool = True,
 ):
     conversation = AISalesConversation.query.filter_by(
         channel_account_id=channel.id,
@@ -99,10 +100,11 @@ def get_or_create_conversation(
             conversation.status = "waiting_employee" if use_employee else "open"
             conversation.ai_enabled = use_ai
             conversation.human_takeover = use_employee
-            conversation.assigned_employee_id = channel.default_employee_id
             conversation.ai_paused_until = None
             conversation.handoff_reason = None
             conversation.closed_at = None
+        if route_facebook:
+            _maybe_route_facebook(conversation, channel)
         return conversation
     customer = Customer.query.filter_by(phone=phone).first() if phone else None
     if not customer and phone:
@@ -122,13 +124,30 @@ def get_or_create_conversation(
         sales_stage="new",
         ai_enabled=use_ai,
         human_takeover=use_employee,
-        assigned_employee_id=channel.default_employee_id,
+        assigned_employee_id=None if _is_facebook_channel(channel) else channel.default_employee_id,
         status="waiting_employee" if use_employee else "open",
     )
     db.session.add(conversation)
     db.session.flush()
     db.session.add(AISalesLead(conversation_id=conversation.id, customer_id=conversation.customer_id))
+    if route_facebook:
+        _maybe_route_facebook(conversation, channel)
     return conversation
+
+
+def _is_facebook_channel(channel) -> bool:
+    return str(getattr(channel, "channel_type", "") or "").lower() in {"messenger", "facebook", "instagram"}
+
+
+def _maybe_route_facebook(conversation, channel) -> None:
+    if not _is_facebook_channel(channel):
+        return
+    try:
+        from modules.facebook_routing.engine import apply_inbound_routing
+
+        apply_inbound_routing(conversation, channel)
+    except Exception:
+        return
 
 
 def recent_history(conversation_id: int, limit: int = 12, *, before_message_id: int | None = None) -> list[dict]:
@@ -718,6 +737,9 @@ def _latest_message_needs_product_answer(
         return False
     if visual_reference_active or requested_media or purchase_intent or price_objection or price_flexibility_question:
         return True
+    # A caller may carry the previous selection; require evidence in this turn.
+    if current_product_family and _product_family(text):
+        return True
     if mid_range_preference or show_all_options or advertised_dollar_amount:
         return True
     if direct_screen_size_price or requested_features:
@@ -937,14 +959,14 @@ def _requested_product_media(text: str) -> str | None:
     """Detect when the customer asks us to SEND product media, not when they send a photo."""
     normalized = str(text or "").strip().lower()
     if re.search(
-        r"(?:دز|دزلي|ارسل|أرسل|ابعت|ابعث|عطني|عطيني|اريد|أريد|اكو|عندكم|عندك).{0,24}(?:صورة|صوره|صور)"
+        r"(?:دز|دزلي|ارسل|أرسل|ابعت|ابعث|عطني|عطيني|اريد|أريد|اكو|عندكم|عندك|عدك).{0,24}(?:صورة|صوره|صور)"
         r"|(?:صورة|صوره|صور).{0,16}(?:المنتج|اللي|حق|مال|لها|له|الالوان|الألوان)"
         r"|صوره?\s*(?:لو\s*)?سمحت",
         normalized,
     ):
         return "image"
     if re.search(
-        r"(?:دز|دزلي|ارسل|أرسل|ابعت|ابعث|عطني|عطيني|اريد|أريد|اكو|عندكم|عندك).{0,24}(?:فيديو|فديو|مقطع)"
+        r"(?:دز|دزلي|ارسل|أرسل|ابعت|ابعث|عطني|عطيني|اريد|أريد|اكو|عندكم|عندك|عدك).{0,24}(?:فيديو|فديو|مقطع)"
         r"|(?:فيديو|فديو|مقطع).{0,16}(?:المنتج|اللي|حق|مال|لها|له)",
         normalized,
     ):
@@ -1596,6 +1618,27 @@ def _media_failure_reply(
     return outbound
 
 
+from .meta_reliability import record_send_failure, record_send_success  # noqa: E402
+
+
+def _is_finora_house() -> bool:
+    from modules.ai_sales.meta_policy import is_house_tenant
+
+    return is_house_tenant(getattr(g, "tenant", None))
+
+
+def _finora_core_shadow_mode() -> bool:
+    from modules.finora_core.brain.shadow import shadow_enabled
+
+    return shadow_enabled()
+
+
+def _finora_core_automation_paused() -> bool:
+    from modules.finora_core.killswitch import automation_paused_for_current_tenant
+
+    return automation_paused_for_current_tenant()
+
+
 def process_inbound_message(message_id: int, *, send_external: bool = True) -> AISalesMessage | None:
     started_at = time.monotonic()
     inbound = AISalesMessage.query.get(message_id)
@@ -1605,7 +1648,16 @@ def process_inbound_message(message_id: int, *, send_external: bool = True) -> A
     original_status = str(inbound.status or "")
     if original_status not in claimable_statuses:
         return None
-    if send_external and not _external_auto_reply_enabled():
+    if _is_finora_house() and _finora_core_shadow_mode():
+        # FINORA CORE Shadow Mode: think + store a proposal, never send or execute. Independent of the kill switch
+        # and of human takeover; the message keeps its status so humans still see it as unanswered.
+        from modules.finora_core.brain.shadow import shadow_house_message
+
+        shadow_house_message(inbound, wait_for_burst=send_external)
+        return None
+    # FINORA's own house tenant is governed by FINORA CORE's flags (AI_AUTO_REPLY + kill switch), not this global
+    # customer-tenant gate; every customer tenant keeps the existing behaviour.
+    if send_external and not _external_auto_reply_enabled() and not _is_finora_house():
         inbound.status = "handled_by_human"
         conversation = inbound.conversation
         if conversation:
@@ -1615,6 +1667,10 @@ def process_inbound_message(message_id: int, *, send_external: bool = True) -> A
             conversation.handoff_reason = "Sales AI auto reply is disabled"
         db.session.commit()
         current_app.logger.info("AI_SALES_AUTOREPLY_DISABLED skipped message_id=%s", message_id)
+        return None
+    if send_external and _finora_core_automation_paused():
+        # Kill switch: keep the inbound message (status unchanged) but take no automatic action.
+        current_app.logger.info("AI_SALES_FINORA_CORE_PAUSED skipped message_id=%s", message_id)
         return None
     if send_external and _defer_to_newer_burst_message(inbound):
         return None
@@ -1656,6 +1712,11 @@ def process_inbound_message(message_id: int, *, send_external: bool = True) -> A
         inbound.status = "handled_by_human"
         db.session.commit()
         return None
+    if _is_finora_house():
+        # FINORA's own pages are answered by the FINORA CORE brain (B2B sales / onboarding), not the product-sales agent.
+        from modules.finora_core.brain.runtime import handle_house_message
+
+        return handle_house_message(inbound, burst_messages, send_external=send_external)
     text = (inbound.text_content or inbound.transcription or "").strip()
     try:
         if inbound.message_type in {"audio", "voice"} and not inbound.transcription:
@@ -1687,13 +1748,27 @@ def process_inbound_message(message_id: int, *, send_external: bool = True) -> A
                         "اطلب منه يوضح اسم المنتج أو القياس بدون الاعتماد على المنتج السابق."
                     )
         elif inbound.message_type == "video" and inbound.external_media_id:
-            download_inbound_media(inbound)
-            inbound.status = "needs_human_review"
-            conversation.human_takeover = True
-            conversation.ai_enabled = False
-            conversation.status = "waiting_employee"
-            db.session.commit()
-            return None
+            try:
+                vision = analyze_video(inbound, profile=profile, max_seconds=int((profile.max_video_seconds if profile else 0) or 60))
+                visual_reference_active = True
+                visual_reference_analysis = vision
+                text = " | ".join(part for part in (inbound.text_content, vision) if part)
+            except Exception as video_exc:
+                # Unlike images, there is no safe generic fallback text for an
+                # unseen video — keep the pre-existing safe behavior: hand off
+                # to a human instead of guessing.
+                current_app.logger.warning(
+                    "AI_SALES_VIDEO_FALLBACK message_id=%s error=%s",
+                    inbound.id,
+                    video_exc,
+                )
+                inbound.failure_message = str(video_exc)[:700]
+                inbound.status = "needs_human_review"
+                conversation.human_takeover = True
+                conversation.ai_enabled = False
+                conversation.status = "waiting_employee"
+                db.session.commit()
+                return None
     except Exception as exc:
         return _media_failure_reply(inbound, exc, send_external=send_external)
     if not text:
@@ -2681,16 +2756,26 @@ def process_inbound_message(message_id: int, *, send_external: bool = True) -> A
     )
     if send_external and not voice_only_external:
         recipient = conversation.external_phone if conversation.channel.channel_type == "whatsapp" else conversation.external_contact_id
+        meta_channel = conversation.channel.channel_type in {"messenger", "instagram"}
         for index, message in enumerate(outbound_messages):
+            if meta_channel and index > 0 and outbound_messages[index - 1].status != "sent":
+                # Keep reply parts in order: once a part is held for retry, the following parts wait behind it.
+                message.status = "retry_scheduled"
+                message.set_media_metadata({**message.get_media_metadata(), "send": {"attempts": 0, "waiting_for": outbound_messages[index - 1].id}})
+                continue
             try:
                 body = channel_client(conversation.channel).send_text(recipient, message.text_content)
                 external_id = outbound_message_id(body)
-                message.external_message_id = external_id or None
-                message.status = "sent"
-                message.sent_at = datetime.utcnow()
+                if meta_channel:
+                    # Sent only after Meta returned a real message id (meta_reliability.require_message_id).
+                    record_send_success(message, conversation.channel, external_id)
+                else:
+                    message.external_message_id = external_id or None
+                    message.status = "sent"
+                    message.sent_at = datetime.utcnow()
+                    conversation.channel.connection_status = "connected"
+                    conversation.channel.last_error = None
                 conversation.last_business_message_at = message.sent_at
-                conversation.channel.connection_status = "connected"
-                conversation.channel.last_error = None
                 current_app.logger.warning(
                     "AI_SALES_OUTBOUND accepted part=%s/%s outbound_message_id=%s external_message_id=%s graph_body=%r",
                     index + 1,
@@ -2702,10 +2787,15 @@ def process_inbound_message(message_id: int, *, send_external: bool = True) -> A
                 if index + 1 < len(outbound_messages):
                     time.sleep(0.12)
             except Exception as exc:
-                message.status = "failed"
-                message.failure_message = str(exc)
-                conversation.channel.last_error = str(exc)
-                message.failure_code = str(getattr(exc, "meta_code", "") or "") or None
+                if meta_channel:
+                    # Classified: rate limit / 5xx / network -> retry_scheduled with backoff; auth / permission ->
+                    # failed + channel health updated. Never reported as sent.
+                    record_send_failure(message, conversation.channel, exc)
+                else:
+                    message.status = "failed"
+                    message.failure_message = str(exc)
+                    conversation.channel.last_error = str(exc)
+                    message.failure_code = str(getattr(exc, "meta_code", "") or "") or None
                 current_app.logger.exception(
                     "AI_SALES_OUTBOUND failed part=%s/%s outbound_message_id=%s meta_code=%s response_body=%r",
                     index + 1,
@@ -2900,5 +2990,8 @@ def dispatch_inbound_async(app, tenant_slug: str, message_id: int, *, send_exter
 
 def mark_customer_activity(conversation: AISalesConversation, timestamp: datetime | None = None) -> None:
     now = timestamp or datetime.utcnow()
+    # Out-of-order / delayed provider events must never move activity (or the 24h reply window) backwards.
+    if conversation.last_customer_message_at and now < conversation.last_customer_message_at:
+        return
     conversation.last_customer_message_at = now
     conversation.service_window_expires_at = now + timedelta(hours=24)

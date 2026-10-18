@@ -127,6 +127,7 @@
     .summary-card:nth-child(2) .summary-icon { background: #ecfeff; color: #0891b2; }
     .summary-label { color: var(--muted); font-size: 13px; font-weight: 600; }
     .summary-value { margin-top: 2px; font-size: 22px; font-weight: 800; }
+    .summary-hint { margin-top: 2px; color: var(--muted); font-size: 12px; font-weight: 600; }
 
     .panel {
       overflow: hidden;
@@ -138,12 +139,22 @@
 
     .filters {
       display: grid;
-      grid-template-columns: minmax(240px, 1fr) minmax(190px, .36fr) auto;
+      grid-template-columns: minmax(220px, 1.3fr) minmax(150px, .32fr) minmax(180px, .38fr) auto;
       gap: 12px;
       padding: 18px;
       border-bottom: 1px solid var(--border);
       background: linear-gradient(180deg, #fff, #fbfcfe);
     }
+    .custom-range {
+      display: none;
+      grid-column: 1 / -1;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .filters:has(select[name="period_type"] option[value="custom"]:checked) .custom-range {
+      display: grid;
+    }
+    .field--plain input { padding: 0 14px; }
 
     .field { position: relative; }
     .field i {
@@ -289,8 +300,9 @@
       <article class="summary-card">
         <span class="summary-icon"><i class="fas fa-list-check"></i></span>
         <div>
-          <div class="summary-label">نتائج البحث الحالية</div>
+          <div class="summary-label">نتائج الفترة الحالية</div>
           <div class="summary-value">{{ pagination.total }}</div>
+          <div class="summary-hint">{{ period_label }}</div>
         </div>
       </article>
     </section>
@@ -309,7 +321,22 @@
             {% endfor %}
           </select>
         </div>
+        <div class="field">
+          <select name="period_type" aria-label="تصفية حسب الفترة">
+            {% for value, label in period_options %}
+            <option value="{{ value }}"{% if period_type == value %} selected{% endif %}>{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
         <button class="filter-btn" type="submit"><i class="fas fa-sliders"></i> تطبيق</button>
+        <div class="custom-range">
+          <div class="field field--plain">
+            <input type="date" name="date_from" value="{{ custom_date_from }}" aria-label="من تاريخ">
+          </div>
+          <div class="field field--plain">
+            <input type="date" name="date_to" value="{{ custom_date_to }}" aria-label="إلى تاريخ">
+          </div>
+        </div>
       </form>
 
       {% if orders %}
@@ -348,8 +375,8 @@
       {% else %}
       <div class="empty">
         <div class="empty-icon"><i class="fas fa-inbox"></i></div>
-        <h3>{% if search or selected_status %}لا توجد نتائج مطابقة{% else %}لا توجد طلبات حتى الآن{% endif %}</h3>
-        <p>{% if search or selected_status %}جرّب تغيير كلمات البحث أو الحالة المحددة.{% else %}ستظهر هنا الطلبات التي تسجلها من نقطة البيع.{% endif %}</p>
+        <h3>{% if search or selected_status or period_type != 'all' %}لا توجد نتائج مطابقة{% else %}لا توجد طلبات حتى الآن{% endif %}</h3>
+        <p>{% if search or selected_status or period_type != 'all' %}جرّب تغيير كلمات البحث أو الحالة أو الفترة المحددة.{% else %}ستظهر هنا الطلبات التي تسجلها من نقطة البيع.{% endif %}</p>
       </div>
       {% endif %}
 
@@ -357,13 +384,13 @@
       <footer class="panel-footer">
         <span>صفحة {{ pagination.page }} من {{ pagination.pages }}</span>
         <nav class="pagination" aria-label="صفحات الطلبات">
-          <a class="page-link{% if not pagination.has_prev %} disabled{% endif %}" href="{{ url_for('pos.my_orders', page=pagination.prev_num, q=search, status=selected_status) }}" aria-label="السابق"><i class="fas fa-chevron-right"></i></a>
+          <a class="page-link{% if not pagination.has_prev %} disabled{% endif %}" href="{{ url_for('pos.my_orders', page=pagination.prev_num, **filter_args) }}" aria-label="السابق"><i class="fas fa-chevron-right"></i></a>
           {% for page_number in pagination.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
             {% if page_number %}
-            <a class="page-link{% if page_number == pagination.page %} active{% endif %}" href="{{ url_for('pos.my_orders', page=page_number, q=search, status=selected_status) }}">{{ page_number }}</a>
+            <a class="page-link{% if page_number == pagination.page %} active{% endif %}" href="{{ url_for('pos.my_orders', page=page_number, **filter_args) }}">{{ page_number }}</a>
             {% else %}<span class="page-link disabled">…</span>{% endif %}
           {% endfor %}
-          <a class="page-link{% if not pagination.has_next %} disabled{% endif %}" href="{{ url_for('pos.my_orders', page=pagination.next_num, q=search, status=selected_status) }}" aria-label="التالي"><i class="fas fa-chevron-left"></i></a>
+          <a class="page-link{% if not pagination.has_next %} disabled{% endif %}" href="{{ url_for('pos.my_orders', page=pagination.next_num, **filter_args) }}" aria-label="التالي"><i class="fas fa-chevron-left"></i></a>
         </nav>
       </footer>
       {% endif %}

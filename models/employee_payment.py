@@ -9,6 +9,7 @@ class EmployeePayment(db.Model):
     __tablename__ = "employee_payment"
 
     id = db.Column(db.Integer, primary_key=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey("branch.id"), nullable=True, index=True)
     payee_type = db.Column(db.String(20), nullable=False)  # employee | delivery_agent
     payee_id = db.Column(db.Integer, nullable=False, index=True)
     payment_kind = db.Column(db.String(30), nullable=False)  # salary_weekly | salary_monthly | commission
@@ -20,6 +21,10 @@ class EmployeePayment(db.Model):
     expense_id = db.Column(db.Integer, db.ForeignKey("expense.id"), nullable=True)
     settled_by = db.Column(db.Integer, db.ForeignKey("employee.id"), nullable=True)
     note = db.Column(db.String(255), nullable=True)
+    payout_method = db.Column(db.String(30), nullable=True)  # direct | salary_fund | bank
+    voucher_code = db.Column(db.String(40), nullable=True, index=True)
+    period_year = db.Column(db.Integer, nullable=True, index=True)
+    period_month = db.Column(db.Integer, nullable=True, index=True)
 
     expense = db.relationship("Expense", foreign_keys=[expense_id], lazy=True)
     settler = db.relationship("Employee", foreign_keys=[settled_by], lazy=True)

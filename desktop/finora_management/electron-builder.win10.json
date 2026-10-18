@@ -1,0 +1,49 @@
+{
+  "appId": "company.finora.management",
+  "productName": "FINORA Management",
+  "copyright": "FINORA",
+  "directories": {
+    "buildResources": "build",
+    "output": "release/win10-11"
+  },
+  "files": [
+    "dist/**/*",
+    "dist-electron/**/*",
+    "build/icon.ico",
+    "package.json",
+    "!node_modules/**/*"
+  ],
+  "asar": true,
+  "win": {
+    "icon": "build/icon.ico",
+    "publisherName": "FINORA",
+    "target": [
+      {
+        "target": "nsis",
+        "arch": [
+          "x64"
+        ]
+      }
+    ]
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": "always",
+    "createStartMenuShortcut": true,
+    "shortcutName": "FINORA Management",
+    "installerIcon": "build/icon.ico",
+    "uninstallerIcon": "build/icon.ico",
+    "installerHeaderIcon": "build/icon.ico",
+    "uninstallDisplayName": "FINORA Management",
+    "deleteAppDataOnUninstall": false,
+    "installerLanguages": [
+      "ar_SA",
+      "en_US"
+    ],
+    "language": "1025",
+    "multiLanguageInstaller": false
+  },
+  "artifactName": "FINORA-Management-Setup-${version}-Windows-10-11-x64.${ext}"
+}

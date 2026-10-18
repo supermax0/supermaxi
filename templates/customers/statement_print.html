@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>كشف مستحقات {{ customer.name }} — FINORA</title>
+  <style>
+    @page { size: A4; margin: 14mm; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f7f5fc; color: #25213d; font: 12px Tahoma, Arial, sans-serif; line-height: 1.7; }
+    main { width: 182mm; max-width: 100%; margin: 20px auto; padding: 8mm; border: 1px solid #e9e1f8; border-radius: 14px; background: white; }
+    header { display: flex; justify-content: space-between; gap: 16px; padding-bottom: 16px; border-bottom: 2px solid #7544df; }
+    h1 { margin: 0; font-size: 22px; } h2 { margin: 0; font-size: 16px; } p { margin: 4px 0; }
+    .brand { color: #7544df; font-size: 22px; font-weight: bold; letter-spacing: 2px; }
+    .muted { color: #72688b; } .number { direction: ltr; unicode-bidi: isolate; white-space: nowrap; }
+    .customer { margin: 18px 0; padding: 12px 16px; border-radius: 10px; background: #f7f3ff; overflow-wrap: anywhere; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-top: 18px; }
+    thead { display: table-header-group; } th { background: #f7f3ff; font-weight: bold; }
+    th, td { text-align: right; border-bottom: 1px solid #e9e1f8; padding: 10px 7px; vertical-align: top; overflow-wrap: anywhere; }
+    th:first-child { width: 30%; } th:nth-child(2) { width: 18%; }
+    tr { break-inside: avoid; } .totals { display: flex; gap: 12px; margin-top: 20px; break-inside: avoid; }
+    .totals div { flex: 1; padding: 10px 14px; border: 1px solid #e9e1f8; border-radius: 10px; }
+    .totals strong { display: block; font-size: 15px; margin-top: 6px; }
+    .balance { background: #f7f3ff; color: #6334ca; } .note { margin-top: 16px; }
+    footer { margin-top: 20px; padding-top: 12px; border-top: 1px solid #e9e1f8; color: #72688b; font-size: 10px; }
+    .toolbar { max-width: 182mm; margin: 20px auto 0; } button { padding: 10px 20px; border: 0; border-radius: 10px; background: #7544df; color: white; cursor: pointer; font: inherit; }
+    @media print { body { background: white; } main { width: 100%; margin: 0; padding: 0; border: 0; border-radius: 0; } .toolbar { display: none; } }
+  </style>
+</head>
+<body>
+  <div class="toolbar"><button onclick="window.print()">طباعة / حفظ PDF</button></div>
+  <main>
+    <header>
+      <div><h1>كشف المستحقات الحالية</h1><p class="muted">تاريخ المراجعة: <bdi>{{ as_of }}</bdi></p></div>
+      <div><div class="brand">FINORA</div><h2>{{ settings.company_name if settings else 'إدارة الشركة' }}</h2>{% if settings and settings.company_phone %}<p class="number">{{ settings.company_phone }}</p>{% endif %}</div>
+    </header>
+    <section class="customer"><h2>{{ customer.name }}</h2><p>الهاتف: <bdi>{{ customer.phone }}</bdi></p>{% if customer.city or customer.address %}<p>{{ customer.city or '' }} {{ customer.address or '' }}</p>{% endif %}</section>
+    <table aria-label="المستندات المستحقة">
+      <thead><tr><th>المستند</th><th>التاريخ</th><th>الأصل</th><th>التسديد المحتسب</th><th>المتبقي</th></tr></thead>
+      <tbody>{% for row in rows %}<tr>
+        <td>{% if row.kind == 'invoice' %}فاتورة #{{ row.id }}{% else %}{{ row.description or 'دين مستقل' }} <span class="muted">#{{ row.id }}</span>{% endif %}</td>
+        <td><bdi>{{ row.date.strftime('%Y-%m-%d') if row.date else '—' }}</bdi></td>
+        <td><bdi class="number">{{ '{:,}'.format(row.total) }}</bdi></td><td><bdi class="number">{{ '{:,}'.format(row.paid) }}</bdi></td><td><strong class="number">{{ '{:,}'.format(row.remaining) }}</strong></td>
+      </tr>{% else %}<tr><td colspan="5">لا توجد مستندات مستحقة حالياً.</td></tr>{% endfor %}</tbody>
+    </table>
+    <section class="totals"><div>أصل المستندات<strong class="number">{{ '{:,}'.format(total) }} د.ع</strong></div><div>التسديد المحتسب<strong class="number">{{ '{:,}'.format(paid) }} د.ع</strong></div><div class="balance">المتبقي الحالي<strong class="number">{{ '{:,}'.format(remaining) }} د.ع</strong></div></section>
+    <p class="muted note">هذا كشف للمستندات التي عليها مبلغ متبقٍ الآن، وليس رصيداً تاريخياً أو إيصال قبض. أقساط الفاتورة جزء من دينها ولا تُضاف مرة ثانية. التسديد المحتسب يشمل التسويات المسجلة على المستند.</p>
+    <footer>FINORA · المبالغ بالدينار العراقي · جميع المستندات المستحقة ضمن الفروع المسموحة</footer>
+  </main>
+</body>
+</html>

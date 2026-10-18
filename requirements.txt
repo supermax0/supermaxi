@@ -15,5 +15,14 @@ Flask-Compress
 psycopg2-binary
 APScheduler
 requests
+cryptography>=42,<47
+jsonschema>=4.23,<5
+mcp>=1.26,<2
+PyJWT>=2.9,<3
+# Keep MCP's ASGI dependencies compatible with the existing optional FastAPI runtime.
+starlette>=0.37.2,<0.39
+sse-starlette>=2.1,<3
 redis>=5,<7
-openai
+openai>=1.68.2,<3
+Pillow>=10
+weasyprint==69.0

@@ -6,6 +6,7 @@ from urllib.parse import parse_qs, urlparse
 from flask import Blueprint, render_template, request, jsonify, session, redirect, g
 from jinja2 import TemplateNotFound
 from sqlalchemy.orm import selectinload
+from werkzeug.exceptions import HTTPException
 from extensions import db
 from datetime import datetime
 
@@ -19,18 +20,33 @@ from utils.product_schema_guard import ensure_customer_blacklist_columns, ensure
 from utils.order_item_schema_guard import ensure_order_item_schema
 from utils.invoice_schema_guard import ensure_invoice_schema
 from utils.product_color_service import (
+    colors_quantity_total,
     colors_for_product_dict,
     get_color_quantity,
     product_has_colors,
     ProductColorError,
+)
+from utils.trade_in_service import (
+    TradeInError,
+    employee_can_access_replacement_product,
+    product_sale_options,
+    resolve_sale_selection,
+    sync_trade_in_receipts,
 )
 from utils.customer_blacklist import is_phone_blacklisted_for_new_customer
 from utils.permission_checks import employee_can, guard_permission
 from utils.activity_logger import INVOICE_SNAPSHOT_FIELDS, log_activity, snapshot_attrs
 from utils.branch_migration import ensure_branch_schema, get_default_branch
 from utils.branch_context import current_branch_id, init_branch_context
+from utils.branch_mode import independent_branches_enabled
+from utils.branch_scope import resolve_write_branch_id
 from utils.branch_stock_service import get_branch_stock, get_total_stock, BranchStockError
-from utils.order_shipping import is_shipping_item
+from utils.branch_product_service import product_for_branch
+from utils.order_shipping import (
+    apply_manual_delivery_fee_on_payment,
+    get_shipping_fee_from_invoice,
+    is_shipping_item,
+)
 from utils.order_stock_lock import (
     apply_stock_actions,
     check_stock_rows,
@@ -46,68 +62,35 @@ from utils.order_stock_policy import (
     restore_order_stock,
     stock_is_deducted,
 )
+from utils.cash_calculations import _effective_paid_amount
+from utils.invoice_mutation_policy import (
+    PAID_INVOICE_MUTATION_DISABLED_MESSAGE,
+    paid_invoice_mutation_denied,
+    paid_invoice_mutations_enabled,
+)
+from utils.payment_ledger import append_payment_ledger_delta
+from utils.date_periods import get_period_dates, get_period_label
+from services.pos_catalog import (
+    catalog_family as _catalog_family,
+    pos_catalog_products as _pos_catalog_products,
+    product_bootstrap_dict as _product_bootstrap_dict,
+    search_pos_customers,
+    search_pos_products,
+    shared_catalog_mode as _shared_catalog_mode,
+)
+from services.pos_checkout import (
+    PosCheckoutError,
+    activate_pos_request_branch as _activate_pos_request_branch,
+    create_pos_order,
+    fallback_fulfillment_branch_id as _fallback_fulfillment_branch_id,
+)
 
 pos_bp = Blueprint("pos", __name__, url_prefix="/pos")
-_POS_SUBMISSION_LOCK = threading.Lock()
-_POS_SUBMISSIONS = {}
-_POS_SUBMISSION_TTL_SECONDS = 10 * 60
-
-
-def _cleanup_pos_submissions(now=None):
-    now = now or time.time()
-    expired = [
-        token
-        for token, record in _POS_SUBMISSIONS.items()
-        if now - float(record.get("created_at", 0) or 0) > _POS_SUBMISSION_TTL_SECONDS
-    ]
-    for token in expired:
-        _POS_SUBMISSIONS.pop(token, None)
-
-
-def _begin_pos_submission(token):
-    token = (token or "").strip()
-    if not token:
-        return "new", None
-    now = time.time()
-    with _POS_SUBMISSION_LOCK:
-        _cleanup_pos_submissions(now)
-        existing = _POS_SUBMISSIONS.get(token)
-        if existing:
-            if existing.get("status") == "done" and existing.get("response"):
-                return "done", dict(existing["response"])
-            return "busy", None
-        _POS_SUBMISSIONS[token] = {"status": "busy", "created_at": now}
-    return "new", None
-
-
-def _finish_pos_submission(token, response=None, success=False):
-    token = (token or "").strip()
-    if not token:
-        return
-    with _POS_SUBMISSION_LOCK:
-        if success and response:
-            _POS_SUBMISSIONS[token] = {
-                "status": "done",
-                "response": dict(response),
-                "created_at": time.time(),
-            }
-        else:
-            _POS_SUBMISSIONS.pop(token, None)
 
 
 def _should_use_legacy_ui():
     """Legacy POS UI via ?legacy=1; White Pro is the default."""
     return request.args.get("legacy") == "1"
-
-
-def _parse_product_meta(product):
-    raw = getattr(product, "meta_json", None)
-    if not raw:
-        return {}
-    try:
-        return json.loads(raw) if isinstance(raw, str) else dict(raw)
-    except (json.JSONDecodeError, TypeError, ValueError):
-        return {}
 
 
 def _editing_order_id_from_request(data: dict) -> int | None:
@@ -122,52 +105,6 @@ def _editing_order_id_from_request(data: dict) -> int | None:
         return int(raw) if raw not in (None, "", 0, "0") else None
     except (TypeError, ValueError):
         return None
-
-
-def _product_bootstrap_dict(product):
-    from utils.branch_sales import is_sell_from_all_branches_enabled
-    from models.branch import BranchStock
-
-    meta = _parse_product_meta(product)
-    branch_total = get_total_stock(product.id)
-    has_branch_stock = BranchStock.query.filter_by(product_id=product.id).first() is not None
-    total_qty = branch_total if has_branch_stock else int(product.quantity or 0)
-    if is_sell_from_all_branches_enabled():
-        display_qty = total_qty
-    else:
-        branch_id = current_branch_id()
-        if not branch_id:
-            default_branch = get_default_branch()
-            branch_id = default_branch.id if default_branch else None
-        display_qty = get_branch_stock(branch_id, product.id) if branch_id else total_qty
-    payload = {
-        "id": product.id,
-        "name": product.name,
-        "sku": product.sku or "",
-        "barcode": product.barcode or "",
-        "sale_price": product.sale_price or 0,
-        "price": product.sale_price or 0,
-        "quantity": display_qty,
-        "total_quantity": total_qty,
-        "image_url": product.image_url or "",
-        "low_stock_threshold": product.low_stock_threshold or 5,
-        "category": (meta.get("category") or "").strip(),
-        "store_badge": (meta.get("store_badge") or "").strip(),
-        "sell_from_all_branches": is_sell_from_all_branches_enabled(),
-    }
-    payload.update(colors_for_product_dict(product))
-    return payload
-
-
-def _fallback_fulfillment_branch_id(invoice=None):
-    branch_id = getattr(invoice, "branch_id", None) if invoice else None
-    if branch_id:
-        return branch_id
-    branch_id = current_branch_id()
-    if branch_id:
-        return branch_id
-    default_branch = get_default_branch()
-    return default_branch.id if default_branch else None
 
 
 def _branch_with_enough_stock(product_id, qty, *preferred_branch_ids):
@@ -213,6 +150,11 @@ def pos_use_tenant_db():
         ensure_product_schema()
         ensure_order_item_schema()
         ensure_invoice_schema()
+        try:
+            from modules.employee_desk.page_link import ensure_desk_link_schema
+            ensure_desk_link_schema()
+        except Exception:
+            pass
         ensure_customer_blacklist_columns()
         ensure_branch_schema()
         init_branch_context()
@@ -224,6 +166,9 @@ def pos_permission_guard():
     if request.endpoint in ("pos.pos_login", "pos.logout"):
         return None
     if "user_id" not in session:
+        if request.endpoint in ("pos.search_customer", "pos.search_product", "pos.last_orders"):
+            # lookups return company data: an anonymous caller gets a 401, never an empty-looking 200
+            return jsonify({"success": False, "error": "غير مسجّل الدخول"}), 401
         return None
     try:
         from utils.permission_checks import ensure_cashier_role_has_messages
@@ -247,42 +192,59 @@ def pos():
 
     ensure_product_schema()
     ensure_customer_blacklist_columns()
+    employee = Employee.query.get(session["user_id"])
 
-    # المنتجات والزبائن من قاعدة بيانات الشركة (جدول المخزون product)
+    # الأدمن يحتاج كتالوج كل الفروع حتى يختار فرع الخصم داخل نقطة البيع.
+    # الموظف يبقى على النطاق المفروض من فرعه فقط.
     tenant_id = session.get("tenant_id")
     if getattr(g, "tenant", None):
-        # نحن على قاعدة الـ tenant (tenants/xxx.db) — جدول product = المخزون
-        products = Product.query.filter(Product.active == True).order_by(Product.name).all()
-        customers = Customer.query.order_by(Customer.name).all()
+        product_query = Product.query
+        customer_query = Customer.query
+        if employee and employee.role == "admin":
+            product_query = product_query.execution_options(skip_branch_scope=True)
+            customer_query = customer_query.execution_options(skip_branch_scope=True)
+        products = product_query.filter(
+            Product.active == True,  # noqa: E712
+            Product.pos_visible.isnot(False),
+        ).order_by(Product.name).all()
+        customers = customer_query.order_by(Customer.name).all()
     elif tenant_id:
         products = Product.query.filter(
             db.or_(Product.tenant_id.is_(None), Product.tenant_id == tenant_id),
-            Product.active == True,
+            Product.active == True,  # noqa: E712
+            Product.pos_visible.isnot(False),
         ).order_by(Product.name).all()
         customers = Customer.query.filter(
             db.or_(Customer.tenant_id.is_(None), Customer.tenant_id == tenant_id)
         ).all()
     else:
-        products = Product.query.filter(Product.active == True).all()
+        products = Product.query.filter(
+            Product.active == True,  # noqa: E712
+            Product.pos_visible.isnot(False),
+        ).all()
         customers = Customer.query.all()
 
     # جلب معلومات المندوب للأرشيف
-    employee = None
+    products = [
+        product
+        for product in products
+        if employee_can_access_replacement_product(employee, product)
+    ]
     pages = []
     can_edit_price = False
-    if "user_id" in session:
-        employee = Employee.query.get(session["user_id"])
-        if employee:
-            # جلب البيجات بناءً على role
-            all_pages = employee.pages.all()
-            if employee.role == "admin":
-                # الأدمن يرى البيجات المرئية للأدمن
-                pages = [p for p in all_pages if getattr(p, "visible_to_admin", True)]
-            else:
-                # الكاشير يرى البيجات المرئية للكاشير
-                pages = [p for p in all_pages if getattr(p, "visible_to_cashier", True)]
-            # فحص صلاحية تعديل السعر
-            can_edit_price = employee.role == "admin" or employee.has_permission("edit_price")
+    can_print_invoice = False
+    if employee:
+        # جلب البيجات بناءً على role
+        all_pages = employee.pages.all()
+        if employee.role == "admin":
+            # الأدمن يرى البيجات المرئية للأدمن
+            pages = [p for p in all_pages if getattr(p, "visible_to_admin", True)]
+        else:
+            # الكاشير يرى البيجات المرئية للكاشير
+            pages = [p for p in all_pages if getattr(p, "visible_to_cashier", True)]
+        # فحص صلاحية تعديل السعر
+        can_edit_price = employee.role == "admin" or employee.has_permission("edit_price")
+        can_print_invoice = employee_can(employee, "print_pos_invoice")
     
     # جلب بيانات الطلب للتعديل إذا كان order_id موجود
     order_id = request.args.get("order_id")
@@ -290,8 +252,11 @@ def pos():
     if order_id:
         try:
             order_id = int(order_id)
-            invoice = Invoice.query.get(order_id)
-            if invoice:
+            invoice_query = Invoice.query
+            if employee and employee.role == "admin":
+                invoice_query = invoice_query.execution_options(skip_branch_scope=True)
+            invoice = invoice_query.filter(Invoice.id == order_id).first()
+            if invoice and not paid_invoice_mutation_denied(invoice):
                 # جلب عناصر الطلب
                 items = [item for item in OrderItem.query.filter_by(invoice_id=invoice.id).all() if not is_shipping_item(item)]
                 # إنشاء list من dictionaries للعناصر
@@ -322,6 +287,13 @@ def pos():
                         "stock": int(product_stock),
                         "color": color_name,
                         "color_stock": int(color_stock),
+                        "sale_mode": getattr(item, "sale_mode", None) or "normal",
+                        "trade_in_source_product_id": getattr(
+                            item, "trade_in_source_product_id", None
+                        ),
+                        "trade_in_source_product_name": getattr(
+                            item, "trade_in_source_product_name", None
+                        ) or "",
                         "fulfillment_branch_id": int(item_branch_id) if item_branch_id else None,
                     })
                 
@@ -331,6 +303,7 @@ def pos():
                     "id": int(invoice.id),
                     "customer_id": int(invoice.customer_id) if invoice.customer_id else None,
                     "customer_name": str(invoice.customer_name) if invoice.customer_name else "",
+                    "customer_city": str(invoice.customer.city) if invoice.customer and invoice.customer.city else "",
                     "employee_name": str(invoice.employee_name) if invoice.employee_name else "",
                     "items": items_list,
                     "note": str(invoice.note) if invoice.note else "",
@@ -338,6 +311,11 @@ def pos():
                     "page_id": int(invoice.page_id) if invoice.page_id else None,
                     "page_name": str(invoice.page_name) if invoice.page_name else "",
                     "discount_amount": int(getattr(invoice, "discount_amount", 0) or 0),
+                    "branch_id": int(invoice.branch_id) if invoice.branch_id else None,
+                    "location_url": str(invoice.location_url or ""),
+                    "location_lat": invoice.location_lat,
+                    "location_lng": invoice.location_lng,
+                    "location_label": str(invoice.location_label or ""),
                 }
         except (ValueError, AttributeError) as e:
             print(f"Error loading order data: {e}")
@@ -362,28 +340,52 @@ def pos():
     except Exception:
         pass
 
-    bootstrap_products = [_product_bootstrap_dict(p) for p in products]
+    # Admin POS loads local copies from every branch.  Present them as one
+    # shared catalogue so a single toaster/TV never appears twice.
+    bootstrap_products = _pos_catalog_products(products)
     from models.branch import Branch
 
     branches = Branch.query.filter_by(is_active=True).order_by(Branch.name).all()
     default_branch_id = current_branch_id() or (get_default_branch().id if get_default_branch() else None)
+    if employee and employee.role != "admin" and employee.branch_id:
+        default_branch_id = int(employee.branch_id)
+    branch_options = [branch.to_dict() for branch in branches]
+
+    oil_ui = {
+        "feature_enabled": False,
+        "mode_on": False,
+        "can_toggle": False,
+        "can_create": False,
+        "settings": {},
+    }
+    try:
+        from modules.order_installment_lifecycle.service import ui_context_for_employee
+
+        oil_ui = ui_context_for_employee(employee)
+    except Exception:
+        pass
 
     ctx = dict(
-        products=products,
+        products=bootstrap_products,
         bootstrap_products=bootstrap_products,
         product_pos_stock_map={p["id"]: p["quantity"] for p in bootstrap_products},
         customers=customers,
         branches=branches,
+        branch_options=branch_options,
         default_branch_id=default_branch_id,
+        is_admin=bool(employee and employee.role == "admin"),
         cashier_name=session.get("name"),
         role=session.get("role"),
         employee=employee,
         pages=pages,
         can_edit_price=can_edit_price,
+        can_print_invoice=can_print_invoice,
         can_view_my_orders=employee_can(employee, "view_my_orders"),
         order_data=order_data,
         cash_balance=cash_balance,
         company_name=session.get("tenant_slug") or session.get("name") or "Finora",
+        paid_invoice_mutations_enabled=paid_invoice_mutations_enabled(),
+        order_installment_ui=oil_ui,
     )
 
     if not _should_use_legacy_ui():
@@ -393,6 +395,49 @@ def pos():
             pass
 
     return render_template("pos.html", **ctx)
+
+
+_MY_ORDERS_PERIODS = (
+    ("this_month", "هذا الشهر"),
+    ("today", "اليوم"),
+    ("yesterday", "أمس"),
+    ("this_week", "هذا الأسبوع"),
+    ("last_7_days", "آخر 7 أيام"),
+    ("last_30_days", "آخر 30 يوم"),
+    ("last_month", "الشهر الماضي"),
+    ("this_year", "السنة الحالية"),
+    ("all", "كل الفترات"),
+    ("custom", "نطاق مخصص"),
+)
+_MY_ORDERS_PERIOD_KEYS = {key for key, _label in _MY_ORDERS_PERIODS}
+
+
+def _my_orders_period():
+    """Resolve the POS my-orders date range. Default is the current month."""
+    period_type = (request.args.get("period_type") or "this_month").strip()
+    if period_type not in _MY_ORDERS_PERIOD_KEYS:
+        period_type = "this_month"
+
+    custom_from = (request.args.get("date_from") or "").strip() or None
+    custom_to = (request.args.get("date_to") or "").strip() or None
+    if period_type == "all":
+        month_from, month_to = get_period_dates("this_month")
+        return period_type, None, None, "كل الفترات", month_from.isoformat(), month_to.isoformat()
+
+    try:
+        date_from, date_to = get_period_dates(period_type, custom_from, custom_to)
+    except (TypeError, ValueError):
+        period_type = "this_month"
+        date_from, date_to = get_period_dates("this_month")
+
+    return (
+        period_type,
+        date_from,
+        date_to,
+        get_period_label(period_type, custom_from, custom_to),
+        date_from.isoformat(),
+        date_to.isoformat(),
+    )
 
 
 def _my_order_status_tone(status):
@@ -442,6 +487,7 @@ def my_orders():
 
     search = (request.args.get("q") or "").strip()
     selected_status = (request.args.get("status") or "").strip()
+    period_type, date_from, date_to, period_label, custom_date_from, custom_date_to = _my_orders_period()
     page = request.args.get("page", 1, type=int) or 1
     page = max(page, 1)
 
@@ -451,6 +497,12 @@ def my_orders():
         .options(selectinload(Invoice.customer), selectinload(Invoice.items))
         .filter(employee_filter)
     )
+
+    if date_from and date_to:
+        query = query.filter(
+            db.func.date(Invoice.created_at) >= date_from,
+            db.func.date(Invoice.created_at) <= date_to,
+        )
 
     if selected_status:
         query = query.filter(Invoice.status == selected_status)
@@ -481,6 +533,14 @@ def my_orders():
         )
     ]
     total_orders = Invoice.query.filter(employee_filter).count()
+    filter_args = {"period_type": period_type}
+    if search:
+        filter_args["q"] = search
+    if selected_status:
+        filter_args["status"] = selected_status
+    if period_type == "custom":
+        filter_args["date_from"] = custom_date_from
+        filter_args["date_to"] = custom_date_to
 
     return render_template(
         "pos_my_orders.html",
@@ -491,6 +551,12 @@ def my_orders():
         selected_status=selected_status,
         search=search,
         total_orders=total_orders,
+        period_type=period_type,
+        period_label=period_label,
+        period_options=_MY_ORDERS_PERIODS,
+        custom_date_from=custom_date_from,
+        custom_date_to=custom_date_to,
+        filter_args=filter_args,
     )
 
 
@@ -500,30 +566,14 @@ def my_orders():
 @pos_bp.route("/search-customer")
 def search_customer():
     q = request.args.get("q", "").strip()
-
     if not q:
         return jsonify([])
-
-    ensure_customer_blacklist_columns()
-    customers = Customer.query.filter(
-        Customer.name.contains(q) |
-        Customer.phone.contains(q) |
-        Customer.phone2.contains(q)
-    ).limit(15).all()
-
-    msg = "هذا الزبون في القائمة السوداء — لا يُسمح بالتعامل معه."
-    return jsonify([
-        {
-            "id": c.id,
-            "name": c.name,
-            "phone": c.phone,
-            "phone2": c.phone2 or "",
-            "city": c.city or "بغداد",
-            "address": c.address or "",
-            "blacklisted": bool(getattr(c, "is_blacklisted", False)),
-            "blacklist_message": msg if getattr(c, "is_blacklisted", False) else "",
-        } for c in customers
-    ])
+    employee = Employee.query.get(session.get("user_id"))
+    branch_id = resolve_write_branch_id(
+        request.args,
+        allow_admin_any_branch=True,
+    )
+    return jsonify(search_pos_customers(employee, q, branch_id=branch_id))
 
 
 
@@ -544,6 +594,16 @@ def add_customer():
         phone2 = digits_only(phone2_raw) if phone2_raw else None
         city = data.get("city", "").strip() if data.get("city") else None
         address = data.get("address", "").strip() if data.get("address") else None
+        employee = Employee.query.get(session.get("user_id"))
+        write_branch_id = resolve_write_branch_id(
+            data,
+            allow_admin_any_branch=True,
+        )
+        if not _activate_pos_request_branch(write_branch_id):
+            return jsonify({
+                "status": "fail",
+                "msg": "فرع الزبون غير موجود أو غير نشط",
+            }), 400
 
         # تحقق أساسي
         if not name:
@@ -589,8 +649,17 @@ def add_customer():
                 "blacklisted": True,
             }), 400
 
-        # منع تكرار الزبون حسب الرقم
-        existing = Customer.query.filter_by(phone=phone).first()
+        # منع تكرار الزبون حسب الرقم داخل الفرع المختار فقط.
+        existing_query = Customer.query
+        if employee and employee.role == "admin":
+            existing_query = existing_query.execution_options(skip_branch_scope=True)
+        if _shared_catalog_mode():
+            existing = existing_query.filter_by(phone=phone).first()
+        else:
+            existing = existing_query.filter_by(
+                branch_id=write_branch_id,
+                phone=phone,
+            ).first()
         if existing:
             if getattr(existing, "is_blacklisted", False):
                 return jsonify({
@@ -607,6 +676,7 @@ def add_customer():
 
         tenant_id = session.get("tenant_id")
         customer = Customer(
+            branch_id=write_branch_id,
             name=name,
             phone=phone,
             phone2=phone2 if phone2 else None,
@@ -663,6 +733,8 @@ def add_customer():
             "name": customer.name or "",
             "phone": customer.phone or ""
         })
+    except HTTPException:
+        raise
     except Exception as e:
         db.session.rollback()
         return jsonify({
@@ -678,372 +750,50 @@ def add_customer():
 @pos_bp.route("/search-product")
 def search_product():
     q = request.args.get("q", "").strip()
-
     if not q:
         return jsonify([])
-
-    # قبل الطلب: pos_use_tenant_db عيّن g.tenant = slug فالاستعلام من tenants/{slug}.db → جدول product
-    # 1. مطابقة باركود ثم بحث بالاسم
-    product_by_barcode = Product.query.filter(
-        Product.barcode == q,
-        Product.active == True
-    ).first()
-
-    if product_by_barcode:
-        row = _product_bootstrap_dict(product_by_barcode)
-        row["is_barcode"] = True
-        return jsonify([row])
-
-    # 2. بحث بالاسم — كل المنتجات النشطة التي تحتوي النص (حد 20)
-    products = Product.query.filter(
-        Product.active == True,
-        Product.name.contains(q)
-    ).limit(20).all()
-
-    rows = []
-    for p in products:
-        row = _product_bootstrap_dict(p)
-        row["is_barcode"] = False
-        rows.append(row)
-    return jsonify(rows)
+    employee = Employee.query.get(session.get("user_id"))
+    branch_id = resolve_write_branch_id(
+        request.args,
+        allow_admin_any_branch=True,
+    )
+    return jsonify(search_pos_products(employee, q, branch_id=branch_id))
 
 
-# =================================================
-# CREATE ORDER (INVOICE + ITEMS)
-# =================================================
 # =================================================
 # CREATE ORDER (INVOICE + ITEMS)
 # =================================================
 @pos_bp.route("/create-order", methods=["POST"])
 def create_order():
-
-    # ✅ تحقق الجلسة
     if "user_id" not in session:
         return jsonify({"error": "غير مصرح"}), 403
-
-    ensure_customer_blacklist_columns()
+    employee = Employee.query.get(session["user_id"])
+    if not employee:
+        return jsonify({"error": "موظف غير صالح"}), 403
     data = request.json or {}
     submission_token = (
         data.get("submission_token")
         or request.headers.get("X-Submission-Token")
         or ""
     ).strip()
-
-    # ===============================
-    # الزبون
-    # ===============================
-    customer_id = data.get("customer_id")
-
-    if not customer_id:
-        return jsonify({"error": "يجب اختيار زبون"}), 400
-
-    customer = Customer.query.get(customer_id)
-    if not customer:
-        return jsonify({"error": "الزبون غير موجود"}), 400
-
-    if getattr(customer, "is_blacklisted", False):
-        return jsonify({
-            "error": "هذا الزبون في القائمة السوداء — لا يُسمح بإنشاء طلب له.",
-            "blacklisted": True,
-        }), 400
-
-    customer_name = customer.name
-
-    # ===============================
-    # المنتجات
-    # ===============================
-    items = data.get("items", [])
-    if not items:
-        return jsonify({"error": "لا توجد منتجات"}), 400
-
-    # ===============================
-    # الموظف
-    # ===============================
-    employee = Employee.query.get(session["user_id"])
-    if not employee:
-        return jsonify({"error": "موظف غير صالح"}), 403
-
-    # ===============================
-    # ملاحظة البيع
-    # ===============================
-    note = data.get("note", "").strip() if data.get("note") else None
-    
-    # ===============================
-    # تاريخ التأجيل
-    # ===============================
-    scheduled_date = None
-    if data.get("scheduled_date"):
-        try:
-            scheduled_date = datetime.strptime(data.get("scheduled_date"), "%Y-%m-%d")
-        except:
-            scheduled_date = None
-    
-    # ===============================
-    # البيج
-    # ===============================
-    page_id = data.get("page_id")
-    page_name = None
-    if page_id:
-        page = Page.query.get(page_id)
-        if page:
-            page_name = page.name
-            # التحقق من أن البيج تابع للموظف
-            if page not in employee.pages.all():
-                page_id = None
-                page_name = None
-
-    # ===============================
-    # إنشاء / تعديل الفاتورة
-    # ===============================
-    editing_order_id = _editing_order_id_from_request(data)
-    submission_started = False
-    if not editing_order_id:
-        submission_state, submission_payload = _begin_pos_submission(submission_token)
-        if submission_state == "done":
-            submission_payload["duplicate"] = True
-            return jsonify(submission_payload)
-        if submission_state == "busy":
-            return jsonify({
-                "success": False,
-                "error": "الطلب قيد الإنشاء حالياً، انتظر لحظة ولا تضغط تأكيد مرة ثانية.",
-                "in_progress": True,
-            }), 409
-        submission_started = bool(submission_token)
-
-    invoice = None
-    was_stock_deducted = False
-    if editing_order_id:
-        try:
-            invoice = Invoice.query.get(int(editing_order_id))
-        except (TypeError, ValueError):
-            invoice = None
-        if not invoice:
-            return jsonify({"error": "الطلب المراد تعديله غير موجود"}), 404
-        if (invoice.status or "") in ("تم التوصيل", "مسدد", "ملغي", "راجع", "مرتجع", "راجعة"):
-            return jsonify({"error": "لا يمكن تعديل طلب مكتمل أو ملغي أو راجع"}), 400
-
-        # تحرير الطلب المخصوم يعيد مخزونه أولاً داخل نفس المعاملة. أما الطلب
-        # المؤجل فلا يلمس المخزون إطلاقاً أثناء حذف/إعادة بناء بنوده.
-        was_stock_deducted = stock_is_deducted(invoice)
-        if was_stock_deducted:
-            restore_order_stock(invoice)
-        old_items = OrderItem.query.filter_by(invoice_id=invoice.id).all()
-        for old_item in old_items:
-            db.session.delete(old_item)
-        db.session.flush()
-
-        if int(customer_id) != int(invoice.customer_id):
-            db.session.rollback()
-            return jsonify({"error": "لا يمكن تغيير الزبون عند تعديل الطلب"}), 400
-
-        # تثبيت بيانات الهوية الأصلية — يُحدَّث المنتج والملاحظة والتأجيل فقط
-        customer = invoice.customer or Customer.query.get(invoice.customer_id)
-        invoice.total = 0
-        invoice.note = note
-        invoice.scheduled_date = scheduled_date
-    else:
-        invoice = Invoice(
-            customer_id=customer_id,
-            customer_name=customer_name,
-            employee_id=employee.id,
-            employee_name=employee.name,
-            branch_id=current_branch_id() or (get_default_branch().id if get_default_branch() else None),
-            total=0,
-            status="تم الطلب",
-            payment_status="غير مسدد",
-            note=note,
-            scheduled_date=scheduled_date,
-            page_id=page_id,
-            page_name=page_name,
-            created_at=datetime.utcnow(),
-            stock_is_deducted=False,
-        )
-
-    db.session.add(invoice)
-    db.session.flush()  # للحصول على invoice.id
-
-    # ===============================
-    # عناصر الفاتورة
-    # ===============================
-    total = 0
-    pending_items = []
-    stock_rows = []
-    preferred_branch_id = current_branch_id() or _fallback_fulfillment_branch_id(invoice)
-
-    for i in items:
-        product = Product.query.get(i.get("product_id"))
-
-        if not product:
-            db.session.rollback()
-            if submission_started:
-                _finish_pos_submission(submission_token)
-            return jsonify({"error": "منتج غير موجود"}), 400
-
-        try:
-            qty = int(i.get("qty", 0) or 0)
-        except (TypeError, ValueError):
-            qty = 0
-        if qty <= 0:
-            db.session.rollback()
-            if submission_started:
-                _finish_pos_submission(submission_token)
-            return jsonify({"error": "كمية المنتج غير صالحة"}), 400
-
-        variant_color = (i.get("color") or i.get("variant_color") or "").strip()
-        if product_has_colors(product) and not variant_color:
-            db.session.rollback()
-            if submission_started:
-                _finish_pos_submission(submission_token)
-            return jsonify({"error": f"يجب اختيار لون للمنتج: {product.name}"}), 400
-
-        explicit_branch = i.get("fulfillment_branch_id")
-        try:
-            explicit_branch = int(explicit_branch) if explicit_branch not in (None, "", 0, "0") else None
-        except (TypeError, ValueError):
-            explicit_branch = None
-
-        if editing_order_id:
-            stock_branch_id = _branch_with_enough_stock(
-                product.id,
-                qty,
-                explicit_branch,
-                preferred_branch_id,
-            )
-            if stock_branch_id:
-                explicit_branch = stock_branch_id
-
-        custom_price = i.get("price")
-        try:
-            item_price = float(custom_price) if custom_price and float(custom_price) > 0 else product.sale_price
-        except (TypeError, ValueError):
-            item_price = product.sale_price
-
-        item_total = item_price * qty
-
-        order_item = OrderItem(
-            invoice_id=invoice.id,
-            product_id=product.id,
-            product_name=product.name,
-            quantity=qty,
-            price=item_price,
-            cost=product.buy_price,
-            total=item_total,
-            fulfillment_branch_id=explicit_branch,
-            variant_color=variant_color or None,
-        )
-
-        total += item_total
-        pending_items.append(order_item)
-        stock_rows.append({
-            "product": product,
-            "product_id": product.id,
-            "quantity": qty,
-            "variant_color": variant_color or None,
-            "fulfillment_branch_id": explicit_branch,
-        })
-        db.session.add(order_item)
-
-    target_needs_stock = order_needs_stock(
-        status=invoice.status,
-        payment_status=invoice.payment_status,
-    )
-    # عند إطفاء السياسة تبقى الطلبات المؤجلة الموجودة مؤجلة حتى تتغير حالتها
-    # أو دفعها. مجرد تعديل البنود لا يحولها إلى طلبات مخصومة.
-    existing_deferred_order = bool(
-        editing_order_id and not was_stock_deducted and not target_needs_stock
-    )
-    should_deduct_now = target_needs_stock or (
-        not deferred_stock_enabled() and not existing_deferred_order
-    )
-    stock_check = (
-        check_stock_rows(stock_rows, preferred_branch_id=preferred_branch_id)
-        if should_deduct_now and not editing_order_id
-        else None
-    )
-    if not should_deduct_now:
-        invoice.stock_is_deducted = False
-        clear_order_stock_lock(invoice)
-    elif editing_order_id:
-        try:
-            db.session.flush()
-            deduct_order_stock(invoice)
-        except OrderStockError as exc:
-            db.session.rollback()
-            return jsonify({
-                "success": False,
-                "code": "INSUFFICIENT_STOCK",
-                "error": exc.message,
-                "shortages": exc.shortages,
-            }), 409
-    elif stock_check.can_fulfill:
-        try:
-            for order_item, action in zip(pending_items, stock_check.actions):
-                order_item.fulfillment_branch_id = action.fulfillment_branch_id
-            apply_stock_actions(stock_check.actions, invoice=invoice)
-            invoice.stock_is_deducted = True
-            invoice.stock_deducted_at = datetime.utcnow()
-            invoice.stock_restored_at = None
-            clear_order_stock_lock(invoice)
-        except (BranchStockError, ProductColorError) as exc:
-            db.session.rollback()
-            if submission_started:
-                _finish_pos_submission(submission_token)
-            return jsonify({"error": str(exc)}), 400
-    else:
-        mark_order_stock_locked(invoice, stock_check.reason_text)
-
-    # ===============================
-    # تحديث الإجمالي
-    # ===============================
-    raw_discount = data.get("discount_amount")
-    if raw_discount is None:
-        raw_discount = data.get("discount_value") or data.get("discount")
     try:
-        discount_amount = max(0, int(raw_discount or 0))
-    except (TypeError, ValueError):
-        discount_amount = 0
-    discount_amount = min(discount_amount, total)
-
-    invoice.discount_amount = discount_amount
-    invoice.total = max(0, total - discount_amount)
-
-    try:
-        db.session.commit()
-        try:
-            log_activity(
-                "update" if editing_order_id else "create",
-                "pos",
-                f"{'تعديل طلب' if editing_order_id else 'بيع جديد'} — فاتورة #{invoice.id} بمبلغ {invoice.total}",
-                entity_type="invoice",
-                entity_id=invoice.id,
-                payload={
-                    "invoice": snapshot_attrs(invoice, *INVOICE_SNAPSHOT_FIELDS),
-                    "items_count": len(items),
-                    **(
-                        {"edited_by_id": employee.id, "edited_by_name": employee.name}
-                        if editing_order_id else {}
-                    ),
-                },
-            )
-        except Exception:
-            pass
-        response_payload = {
-            "success": True,
-            "invoice_id": invoice.id,
-            "total": invoice.total,
-            "updated": bool(editing_order_id),
-            "stock_locked": bool(getattr(invoice, "is_stock_locked", False)),
-            "stock_lock_reason": getattr(invoice, "stock_lock_reason", None),
-        }
-        if submission_started:
-            _finish_pos_submission(submission_token, response_payload, success=True)
-        return jsonify(response_payload)
-    except Exception as e:
-        db.session.rollback()
-        if submission_started:
-            _finish_pos_submission(submission_token)
-        return jsonify({"success": False, "error": str(e)}), 500
-
+        payload = create_pos_order(
+            employee=employee,
+            customer_id=data.get("customer_id"),
+            items=data.get("items") or [],
+            branch_id=data.get("branch_id"),
+            note=data.get("note"),
+            scheduled_date=data.get("scheduled_date"),
+            page_id=data.get("page_id"),
+            discount_amount=data.get("discount_amount"),
+            order_id=_editing_order_id_from_request(data),
+            submission_token=submission_token,
+            source="web_pos",
+            raw_data=data,
+        )
+    except PosCheckoutError as exc:
+        return jsonify(exc.payload), exc.status_code
+    return jsonify(payload)
 
 
 # =================================================
@@ -1126,19 +876,22 @@ def all_products():
         return jsonify({"error": "غير مصرح"}), 403
 
     # g.tenant معيّن من before_request → الاستعلام من tenants/{slug}.db (جدول product)
-    products = Product.query.filter(Product.active == True).order_by(Product.name).all()
+    employee = Employee.query.get(session["user_id"])
+    products = Product.query.filter(
+        Product.active == True,  # noqa: E712
+        Product.pos_visible.isnot(False),
+    ).order_by(Product.name).all()
+    products = [
+        product
+        for product in products
+        if employee_can_access_replacement_product(employee, product)
+    ]
     
     return jsonify({
         "success": True,
         "products": [
-            {
-                "id": p.id,
-                "name": p.name,
-                "sale_price": p.sale_price,
-                "buy_price": p.buy_price,
-                "quantity": p.quantity,
-                "image_url": p.image_url or ""
-            } for p in products
+            {**row, "buy_price": row.get("buy_price", 0)}
+            for row in _pos_catalog_products(products)
         ]
     })
 
@@ -1176,6 +929,8 @@ def update_product_price():
     product = Product.query.get(product_id)
     if not product:
         return jsonify({"error": "المنتج غير موجود"}), 404
+    if not employee_can_access_replacement_product(employee, product):
+        return jsonify({"error": "منتج استبدال متاح للإدمن فقط"}), 403
     
     old_price = product.sale_price
     product.sale_price = int(sale_price)
@@ -1193,3 +948,78 @@ def update_product_price():
         }
     })
 
+
+# =================================================
+# JSON for API clients (FINORA Management Desktop)
+# =================================================
+def _pos_visible_catalog(employee):
+    """Same product set and payload as /pos/all-products (active, POS-visible, replacement rules)."""
+    products = Product.query.filter(
+        Product.active == True,  # noqa: E712
+        Product.pos_visible.isnot(False),
+    ).order_by(Product.name).all()
+    products = [p for p in products if employee_can_access_replacement_product(employee, p)]
+    return _pos_catalog_products(products)
+
+
+@pos_bp.route("/api/bootstrap")
+def pos_api_bootstrap():
+    """Provinces, permissions and branch the POS screen needs (checks mirror the web POS)."""
+    if "user_id" not in session:
+        return jsonify({"error": "غير مصرح"}), 403
+    from utils.branch_context import current_branch_id
+    from utils.permission_checks import employee_can
+    from utils.tenant_provinces import get_tenant_provinces_config
+
+    employee = Employee.query.get(session["user_id"])
+    config = get_tenant_provinces_config()
+    primary = config.get("primary") or ""
+    provinces = [primary] + [name for name in (config.get("list") or []) if name and name != primary]
+    from modules.inventory_locations.selection import choices as storage_choices
+    return jsonify({
+        "success": True,
+        "provinces": [name for name in provinces if name],
+        "branch_id": current_branch_id(),
+        "can_edit_price": employee_can(employee, "edit_price"),
+        "can_print": employee_can(employee, "print_pos_invoice"),
+        "can_pay": employee_can(employee, "pay_orders"),
+        "storage_sources":storage_choices(current_branch_id() or _fallback_fulfillment_branch_id()),
+    })
+
+
+@pos_bp.route("/api/products")
+def pos_api_products(*, _snapshot=False):
+    """Paginated POS catalogue (search by name / SKU / barcode, category filter)."""
+    if "user_id" not in session:
+        return jsonify({"error": "غير مصرح"}), 403
+    employee = Employee.query.get(session["user_id"])
+    rows = _pos_visible_catalog(employee)
+    categories = sorted({(row.get("category") or "").strip() for row in rows if (row.get("category") or "").strip()})
+
+    search = (request.args.get("search") or "").strip().lower()
+    if search:
+        rows = [
+            row for row in rows
+            if search in (row.get("name") or "").lower()
+            or search in (row.get("sku") or "").lower()
+            or search == (row.get("barcode") or "").lower()
+            or (len(search) >= 4 and search in (row.get("barcode") or "").lower())
+        ]
+    category = (request.args.get("category") or "").strip()
+    if category:
+        rows = [row for row in rows if (row.get("category") or "").strip() == category]
+
+    page_size = (len(rows) or 1) if _snapshot else min(60, max(1, request.args.get("page_size", 24, type=int) or 24))
+    total = len(rows)
+    total_pages = max(1, (total + page_size - 1) // page_size)
+    page = min(max(1, request.args.get("page", 1, type=int) or 1), total_pages)
+    start = (page - 1) * page_size
+    return jsonify({
+        "success": True,
+        "rows": rows[start:start + page_size],
+        "page": page,
+        "page_size": page_size,
+        "total": total,
+        "total_pages": total_pages,
+        "categories": categories,
+    })

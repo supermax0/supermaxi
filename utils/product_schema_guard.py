@@ -64,6 +64,14 @@ def ensure_product_schema() -> None:
             "ALTER TABLE product ADD COLUMN barcode VARCHAR(100)",
         )
         additions.setdefault(
+            "exchange_sale_price",
+            "ALTER TABLE product ADD COLUMN exchange_sale_price INTEGER",
+        )
+        additions.setdefault(
+            "governorate_sale_price",
+            "ALTER TABLE product ADD COLUMN governorate_sale_price INTEGER",
+        )
+        additions.setdefault(
             "low_stock_threshold",
             "ALTER TABLE product ADD COLUMN low_stock_threshold INTEGER DEFAULT 5",
         )
@@ -76,6 +84,10 @@ def ensure_product_schema() -> None:
         additions.setdefault(
             "store_visible",
             f"ALTER TABLE product ADD COLUMN store_visible {bool_true_default}",
+        )
+        additions.setdefault(
+            "pos_visible",
+            f"ALTER TABLE product ADD COLUMN pos_visible {bool_true_default}",
         )
         additions.setdefault("catalog_category", "ALTER TABLE product ADD COLUMN catalog_category VARCHAR(120)")
         additions.setdefault("expiry_date", "ALTER TABLE product ADD COLUMN expiry_date DATE")

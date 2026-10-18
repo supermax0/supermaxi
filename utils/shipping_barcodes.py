@@ -44,3 +44,16 @@ def shipping_barcodes_display(invoice) -> str:
     if len(barcodes) == 1:
         return barcodes[0]
     return " | ".join(barcodes)
+
+
+def should_move_order_to_shipping_on_barcode_save(invoice) -> bool:
+    """Only pre-shipment orders move to «جاري الشحن» when saving shipping barcodes."""
+    from utils.order_status import is_canceled, is_returned, normalize_status
+
+    if invoice is None:
+        return False
+    if is_canceled(invoice.status, invoice.payment_status) or is_returned(
+        invoice.status, invoice.payment_status
+    ):
+        return False
+    return normalize_status(invoice.status) in ("تم الطلب", "معباة")

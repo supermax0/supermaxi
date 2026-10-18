@@ -14,8 +14,8 @@
     <div class="sf-product-footer">
       <div class="sf-product-meta">
         <div class="sf-price">{{ "{:,.0f}".format(product.price) }} <small>د.ع</small></div>
-        <div class="sf-status {{ '' if product.is_available else 'out' }}">
-          {{ "متوفر" if product.is_available else "غير متوفر" }}
+        <div class="sf-status {{ '' if product.is_available else ('reservation' if product.is_reservation else 'out') }}">
+          {{ "متوفر" if product.is_available else ("متاح للطلب" if product.is_reservation else "غير متوفر") }}
           {% if product.is_available and product.stock <= 5 %}
           <span>({{ product.stock }} متبقي)</span>
           {% endif %}
@@ -23,7 +23,11 @@
       </div>
       <div class="sf-product-actions">
         <a class="sf-btn ghost" href="{{ product.url }}{% if request.args.get('dev') %}?dev=1{% endif %}">التفاصيل</a>
-        <button class="sf-btn primary" type="button" data-sf-add-cart="{{ product.id }}" {% if not product.is_available %}disabled{% endif %}>أضف للسلة</button>
+        {% if (product.has_colors or product.option_axes) and (product.is_available or product.is_reservation) %}
+        <a class="sf-btn primary" href="{{ product.url }}{% if request.args.get('dev') %}?dev=1{% endif %}">{{ 'اختر المواصفات' if product.option_axes else 'اختر اللون' }}</a>
+        {% else %}
+        <button class="sf-btn primary" type="button" data-sf-add-cart="{{ product.id }}" {% if not product.is_available and not product.is_reservation %}disabled{% endif %}>أضف للسلة</button>
+        {% endif %}
       </div>
     </div>
   </div>

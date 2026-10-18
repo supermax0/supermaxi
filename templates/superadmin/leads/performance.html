@@ -1,0 +1,47 @@
+{% extends 'superadmin/leads/_base.html' %}
+{% from 'superadmin/leads/_macros.html' import empty_state %}
+{% set page_title = 'أداء الفريق' %}
+{% set page_subtitle = 'العملاء والتحويلات حسب الموظف والمحافظة' %}
+{% block header_actions %}
+<a href="{{ url_for('superadmin_leads.reports_page') }}" class="sa-btn sa-btn-secondary"><i class="fas fa-chart-pie"></i> التقارير</a>
+{% endblock %}
+{% block leads_content %}
+<div class="lc-split">
+    <section class="lc-card">
+        <header class="lc-card-header"><div><h2><i class="fas fa-user-tie lc-card-icon"></i> حسب الموظف</h2></div></header>
+        <div class="lc-card-body" style="padding:0;">
+            <div class="lc-table-wrap" style="border:none;box-shadow:none;border-radius:0;">
+                <table class="lc-table">
+                    <thead><tr><th>المسؤول</th><th>العملاء</th><th>مشتركون</th><th>نسبة التحويل</th></tr></thead>
+                    <tbody>
+                        {% for e in employees %}
+                        <tr>
+                            <td><strong>#{{ e.superadmin_id }}</strong></td>
+                            <td>{{ e.total }}</td>
+                            <td><span class="lc-badge lc-badge-muted">{{ e.subscribed }}</span></td>
+                            <td>{% if e.total %}{{ '%.0f'|format(e.subscribed / e.total * 100) }}%{% else %}—{% endif %}</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="4">{{ empty_state('لا توجد بيانات', 'fa-users') }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <section class="lc-card">
+        <header class="lc-card-header"><div><h2><i class="fas fa-map-location-dot lc-card-icon"></i> حسب المحافظة</h2></div></header>
+        <div class="lc-card-body" style="padding:0;">
+            <div class="lc-table-wrap" style="border:none;box-shadow:none;border-radius:0;">
+                <table class="lc-table">
+                    <thead><tr><th>المحافظة</th><th>العدد</th></tr></thead>
+                    <tbody>
+                        {% for g in governorates %}<tr><td>{{ g.governorate }}</td><td><strong>{{ g.count }}</strong></td></tr>{% else %}<tr><td colspan="2">{{ empty_state('—', 'fa-map') }}</td></tr>{% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}

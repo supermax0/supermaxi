@@ -1,0 +1,26 @@
+<div class="supermax-inspection-stamp" role="img" aria-label="ختم تم فحص الجهاز مع تاريخ الطباعة">
+  <img class="supermax-inspection-stamp__image" src="/static/images/supermax-inspection-stamp.jpg" width="1254" height="1254" alt="">
+  <span class="supermax-inspection-stamp__date" data-supermax-print-date>--/--/----</span>
+</div>
+<script>
+  (function () {
+    function updateSupermaxPrintDate() {
+      var now = new Date();
+      var parts = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Baghdad',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric'
+      }).formatToParts(now);
+      var values = {};
+      parts.forEach(function (part) { values[part.type] = part.value; });
+      var printDate = values.day + '/' + values.month + '/' + values.year;
+      document.querySelectorAll('[data-supermax-print-date]').forEach(function (element) {
+        element.textContent = printDate;
+      });
+    }
+
+    updateSupermaxPrintDate();
+    window.addEventListener('beforeprint', updateSupermaxPrintDate);
+  }());
+</script>

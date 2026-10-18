@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>الشروط والأحكام | {{ settings.store_name if settings else 'Finora' }}</title>
+  <meta name="description" content="شروط وأحكام الشراء بالتقسيط في متجر {{ settings.store_name if settings else 'Finora' }}.">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installments.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/installment_store.css', v='20260812-full-width-2') }}">
+</head>
+<body class="store-body">
+  {% include 'installments/store/_header.html' %}
+
+  <main class="store-info-page">
+    <section class="store-info-hero">
+      <div class="store-shell">
+        <nav class="store-info-crumb" aria-label="مسار الصفحة">
+          <a href="{{ url_for('installments_store.store_index', tenant_slug=tenant_slug) }}">الرئيسية</a>
+          <span>/</span>
+          <strong>الشروط والأحكام</strong>
+        </nav>
+        <span>الشفافية أولاً</span>
+        <h1>الشروط والأحكام</h1>
+        <p>يرجى قراءة هذه الشروط قبل إرسال طلب التقسيط. بإرسال الطلب فإنك توافق على البنود المعتمدة لدى المتجر.</p>
+      </div>
+    </section>
+
+    <div class="store-shell store-info-body">
+      <article class="store-terms-panel">
+        {% if settings and settings.terms %}
+          <div class="store-terms-content">{{ settings.terms }}</div>
+        {% else %}
+          <section>
+            <h2>1. نطاق الخدمة</h2>
+            <p>يقدّم متجر {{ settings.store_name if settings else 'Finora' }} خدمة عرض المنتجات وطلبات الشراء بالتقسيط عبر المنصة الإلكترونية. تخضع الموافقة النهائية لسياسات المراجعة المعتمدة لدى المتجر.</p>
+          </section>
+          <section>
+            <h2>2. تقديم الطلب</h2>
+            <p>يلتزم الزبون بإدخال بيانات صحيحة وكاملة. أي بيانات غير دقيقة قد تؤدي إلى تأخير المراجعة أو رفض الطلب.</p>
+          </section>
+          <section>
+            <h2>3. خطط التقسيط</h2>
+            <p>الأسعار والدفعة الأولى والقسط الشهري المعروضة قبل الإرسال هي تقديرات حسب الخطة المختارة، وتُعتمد نهائياً بعد الموافقة وإصدار العقد.</p>
+          </section>
+          <section>
+            <h2>4. المراجعة والموافقة</h2>
+            <p>يحق للمتجر طلب مستندات إضافية أو رفض الطلب وفق معايير الائتمان والمخزون والسياسات الداخلية، مع إشعار الزبون بالحالة.</p>
+          </section>
+          <section>
+            <h2>5. التسليم والضمان</h2>
+            <p>يتم التسليم حسب توفر المنتج وعنوان الزبون. تفاصيل الضمان إن وجدت تُوضَّح في صفحة المنتج أو عقد البيع.</p>
+          </section>
+          <section>
+            <h2>6. السداد والالتزامات</h2>
+            <p>يلتزم الزبون بسداد الأقساط في مواعيدها وفق جدول العقد. التأخر عن السداد قد يترتب عليه إجراءات وفق العقد والسياسات المعمول بها.</p>
+          </section>
+          <section>
+            <h2>7. الخصوصية</h2>
+            <p>تُستخدم بيانات التواصل والطلب لإدارة الطلب والعقد وخدمة العملاء، ولا تُشارك لأطراف غير مرتبطة بتنفيذ الخدمة إلا بما يقتضيه القانون أو التشغيل الضروري.</p>
+          </section>
+          <section>
+            <h2>8. التعديلات</h2>
+            <p>قد يتم تحديث هذه الشروط من وقت لآخر. يسري الإصدار الظاهر في هذه الصفحة على الطلبات الجديدة بعد نشره.</p>
+          </section>
+        {% endif %}
+        <footer>
+          <small>آخر تحديث معروض لعام {{ current_year }}</small>
+          <a href="{{ url_for('installments_store.contact_page', tenant_slug=tenant_slug) }}">للاستفسار تواصل معنا</a>
+        </footer>
+      </article>
+    </div>
+  </main>
+
+  {% include 'installments/store/_footer.html' %}
+</body>
+</html>

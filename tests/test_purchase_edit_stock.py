@@ -1,11 +1,12 @@
-"""Regression test: editing a confirmed purchase must not duplicate stock.
+"""Regression test: editing a confirmed purchase applies only the quantity delta.
 
 Scenario that used to fail:
 1. Create a confirmed purchase with qty 2 -> stock +2, stock_applied=1.
 2. Unlock the invoice for editing (status becomes draft, stock_applied stays 1).
 3. Any later request ran a schema guard that reset stock_applied to 0 for
    draft invoices, so saving the edit skipped the stock reversal and applied
-   the quantity again (stock became 4 instead of 2).
+   the new quantity again.
+4. Change qty 2 -> 3. The final stock must be 3, never 5.
 """
 import sys
 from pathlib import Path
@@ -101,8 +102,12 @@ def test_purchase_edit_keeps_stock():
         )
     print("unlock-edit keeps stock_applied=1 after schema guard ok")
 
-    # 4) Save the edit (same qty 2, confirmed)
-    with app.test_request_context(f"/purchases/api/{purchase_id}/update", method="POST", json=payload):
+    # 4) Save the edit (qty 2 -> 3, confirmed)
+    edited_payload = {
+        **payload,
+        "items": [{**payload["items"][0], "quantity": 3}],
+    }
+    with app.test_request_context(f"/purchases/api/{purchase_id}/update", method="POST", json=edited_payload):
         g.tenant = TENANT
         _login(None, emp_id)
         resp = update_purchase(purchase_id)
@@ -112,13 +117,23 @@ def test_purchase_edit_keeps_stock():
     with app.app_context():
         g.tenant = TENANT
         qty = int(Product.query.get(product_id).quantity or 0)
-        assert qty == 2, f"stock duplicated on edit: expected 2, got {qty}"
+        assert qty == 3, f"stock duplicated on edit: expected 3, got {qty}"
+
+        from models.stock_movement import StockMovement
+
+        movements = StockMovement.query.filter_by(
+            source_type="purchase",
+            source_id=purchase_id,
+        ).all()
+        assert len(movements) == 3
+        assert sum(m.quantity for m in movements if m.direction == "in") == 5
+        assert sum(m.quantity for m in movements if m.direction == "out") == 2
 
         from utils.inventory_movements import get_product_inventory_summary
 
         summary = get_product_inventory_summary(product_id)
         assert summary["is_balanced"], summary
-    print("edit confirmed purchase keeps stock=2 and ledger balanced ok")
+    print("edit confirmed purchase qty 2 -> 3 keeps stock=3 and movement keys unique")
 
 
 if __name__ == "__main__":

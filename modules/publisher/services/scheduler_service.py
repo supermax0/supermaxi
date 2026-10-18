@@ -14,7 +14,7 @@ import os
 import sys
 import tempfile
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from logging.handlers import RotatingFileHandler
 
 from modules.publisher.services.schema_guard import ensure_publisher_schema
@@ -363,6 +363,59 @@ def _publish_due_posts(app):
         logging.getLogger("publisher").exception("Scheduler job error: %s", exc)
 
 
+def _sync_meta_inboxes(app):
+    """Server-side fallback sync for Meta inboxes across active tenants."""
+    logger = logging.getLogger("publisher")
+    try:
+        with app.app_context():
+            from flask import g
+            from extensions import db
+            from models.core.tenant import Tenant as CoreTenant
+            from modules.ai_sales.routes import _sync_meta_channels
+            from modules.ai_sales.schema import ensure_ai_sales_schema
+
+            g.tenant = None
+            try:
+                tenant_slugs = [
+                    row.slug
+                    for row in CoreTenant.query.filter_by(is_active=True).all()
+                    if row.slug
+                ]
+            except Exception:
+                tenant_slugs = []
+            if not tenant_slugs:
+                tenant_slugs = [None]
+
+            synced_channels = 0
+            imported_messages = 0
+            failures = 0
+            for tenant_slug in tenant_slugs:
+                g.tenant = tenant_slug
+                try:
+                    ensure_ai_sales_schema()
+                    result = _sync_meta_channels(ai_only=False, asynchronous=True)
+                    synced_channels += int(result.get("channels") or 0)
+                    imported_messages += int(result.get("messages_created") or 0)
+                    failures += len(result.get("errors") or [])
+                except Exception:
+                    db.session.rollback()
+                    failures += 1
+                    logger.exception("Meta inbox auto-sync failed tenant=%s", tenant_slug)
+                finally:
+                    db.session.remove()
+                    g.tenant = None
+
+            if imported_messages or failures:
+                logger.info(
+                    "Meta inbox auto-sync channels=%d messages=%d failures=%d",
+                    synced_channels,
+                    imported_messages,
+                    failures,
+                )
+    except Exception:
+        logger.exception("Meta inbox scheduler job failed")
+
+
 def start_scheduler(app):
     """
     Start the APScheduler background job.
@@ -386,6 +439,22 @@ def start_scheduler(app):
             args=[app],
             id="publish_due_posts",
         )
+        running_tests = "pytest" in os.path.basename(sys.argv[0]).lower() or bool(
+            os.environ.get("PYTEST_CURRENT_TEST")
+        )
+        if not running_tests:
+            meta_sync_seconds = max(30, min(900, int(os.environ.get("META_INBOX_SYNC_SECONDS", "60"))))
+            _scheduler.add_job(
+                _sync_meta_inboxes,
+                trigger="interval",
+                seconds=meta_sync_seconds,
+                args=[app],
+                id="meta_inbox_auto_sync",
+                replace_existing=True,
+                max_instances=1,
+                coalesce=True,
+                next_run_time=datetime.now(timezone.utc) + timedelta(seconds=10),
+            )
         _scheduler.start()
         logger.info("Publisher scheduler started (PID %d)", os.getpid())
     except Exception as exc:

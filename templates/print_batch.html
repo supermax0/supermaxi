@@ -252,6 +252,26 @@
     .warranty-notes p {
       margin-bottom: 5px;
     }
+
+    .warranty-notes h4 {
+      margin: 0 0 6px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .warranty-notes ul {
+      margin: 0 0 8px;
+      padding: 0 18px 0 0;
+      list-style: disc;
+    }
+
+    .warranty-notes li {
+      margin-bottom: 4px;
+    }
+
+    .warranty-notes strong {
+      font-weight: 800;
+    }
     
     .footer-contact {
       display: flex;
@@ -433,7 +453,7 @@
           {% for item in inv['items'] %}
           <tr>
             <td>{{ loop.index }}</td>
-            <td class="product-name-col">{{ item.product_name or "—" }}</td>
+            <td class="product-name-col">{{ item.display_name or "—" }}</td>
             <td>{{ item.quantity }} قطعة</td>
             <td>{{ "{:,.2f}".format(item.price) }}</td>
             {% if settings.show_discount_column %}<td>0.00</td>{% endif %}
@@ -486,9 +506,7 @@
     <!-- ==================== Footer ==================== -->
     <div class="invoice-footer">
       <div class="warranty-notes">
-        {% for line in settings.warranty_notes.split('\n') %}
-        <p>{{ line }}</p>
-        {% endfor %}
+        {{ settings.warranty_notes|invoice_rich_text }}
       </div>
       
       <div class="footer-contact">

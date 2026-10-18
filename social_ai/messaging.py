@@ -9,7 +9,7 @@ import requests
 from flask import current_app
 
 
-def send_whatsapp_message(phone: str, message: str) -> None:
+def send_whatsapp_message(phone: str, message: str) -> str | None:
     """
     إرسال رسالة واتساب عبر WhatsApp Cloud API.
 
@@ -20,7 +20,7 @@ def send_whatsapp_message(phone: str, message: str) -> None:
     إذا لم تُضبط هذه الإعدادات لن يتم إرسال شيء (يتم فقط تسجيل تحذير في اللوج).
     """
     if not phone or not message:
-        return
+        return None
 
     access_token = current_app.config.get("WHATSAPP_ACCESS_TOKEN") or ""
     phone_number_id = current_app.config.get("WHATSAPP_PHONE_NUMBER_ID") or ""
@@ -28,7 +28,7 @@ def send_whatsapp_message(phone: str, message: str) -> None:
         current_app.logger.warning(
             "WhatsApp send skipped: missing WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID"
         )
-        return
+        return None
 
     url = f"https://graph.facebook.com/v20.0/{phone_number_id}/messages"
     headers = {
@@ -48,10 +48,16 @@ def send_whatsapp_message(phone: str, message: str) -> None:
             current_app.logger.error(
                 "WhatsApp send failed: status=%s body=%s", resp.status_code, resp.text
             )
-        else:
-            current_app.logger.info("WhatsApp send OK: to=%s", phone)
+            return None
+        current_app.logger.info("WhatsApp send OK: to=%s", phone)
+        try:
+            payload = resp.json()
+            return str((payload.get("messages") or [{}])[0].get("id") or "sent")
+        except Exception:
+            return "sent"
     except Exception as exc:  # pragma: no cover
         current_app.logger.exception("WhatsApp send error: %s", exc)
+        return None
 
 
 def send_whatsapp_template(

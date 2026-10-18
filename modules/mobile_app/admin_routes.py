@@ -25,6 +25,9 @@ _ENDPOINT_PERMISSIONS = {
     "videos_upload": "mobile_app.manage_videos",
     "videos_publish": "mobile_app.manage_videos",
     "videos_hide": "mobile_app.manage_videos",
+    "video_products_page": "mobile_app.manage_videos",
+    "video_products_link": "mobile_app.manage_videos",
+    "video_products_unlink": "mobile_app.manage_videos",
     "flags_page": "mobile_app.manage_settings",
     "notifications_page": "mobile_app.send_notifications",
     "design_page": "mobile_app.manage_design",
@@ -146,6 +149,73 @@ def videos_hide(video_id: int):
         db.session.commit()
         flash("تم إخفاء الفيديو", "success")
     return redirect(url_for("mobile_admin.videos_page"))
+
+
+@mobile_admin_bp.get("/video-products")
+def video_products_page():
+    from models.product import Product
+    from modules.mobile_app.services import catalog as catalog_service
+
+    videos = video_admin_service.list_admin_videos(limit=100, offset=0)
+    products = (
+        Product.query.filter(Product.active == True)  # noqa: E712
+        .order_by(Product.name.asc(), Product.id.desc())
+        .limit(500)
+        .all()
+    )
+    links = catalog_service.list_video_product_links(limit=200)
+    return render_template(
+        "mobile_app/video_products.html",
+        videos=videos,
+        products=products,
+        links=links,
+    )
+
+
+@mobile_admin_bp.post("/video-products/link")
+def video_products_link():
+    from modules.mobile_app.services import catalog as catalog_service
+
+    video_id_raw = (request.form.get("video_id") or "").strip()
+    product_id_raw = (request.form.get("product_id") or "").strip()
+    custom_title = (request.form.get("custom_title") or "").strip() or None
+    custom_cta = (request.form.get("custom_cta") or "").strip() or None
+    special_raw = (request.form.get("special_price") or "").strip()
+    special_price = int(special_raw) if special_raw.isdigit() else None
+    if not video_id_raw.isdigit() or not product_id_raw.isdigit():
+        flash("اختر فيديو ومنتجاً", "danger")
+        return redirect(url_for("mobile_admin.video_products_page"))
+    try:
+        catalog_service.link_product_to_video(
+            video_id=int(video_id_raw),
+            product_id=int(product_id_raw),
+            special_price=special_price,
+            custom_title=custom_title,
+            custom_cta=custom_cta,
+        )
+        flash("تم ربط المنتج بالفيديو — سيظهر في تطبيق الهاتف", "success")
+    except ValueError as exc:
+        flash(str(exc), "danger")
+    except Exception as exc:
+        flash(f"فشل الربط: {exc}", "danger")
+    return redirect(url_for("mobile_admin.video_products_page"))
+
+
+@mobile_admin_bp.post("/video-products/unlink")
+def video_products_unlink():
+    from modules.mobile_app.services import catalog as catalog_service
+
+    video_id_raw = (request.form.get("video_id") or "").strip()
+    product_id_raw = (request.form.get("product_id") or "").strip()
+    if not video_id_raw.isdigit() or not product_id_raw.isdigit():
+        flash("بيانات الربط غير صحيحة", "danger")
+        return redirect(url_for("mobile_admin.video_products_page"))
+    removed = catalog_service.unlink_product_from_video(
+        video_id=int(video_id_raw),
+        product_id=int(product_id_raw),
+    )
+    flash("تم إلغاء الربط" if removed else "الربط غير موجود", "success" if removed else "danger")
+    return redirect(url_for("mobile_admin.video_products_page"))
 
 
 @mobile_admin_bp.route("/flags", methods=["GET", "POST"])

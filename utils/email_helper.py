@@ -71,16 +71,26 @@ def _email_notifications_enabled() -> bool:
         return True
 
 
-def send_email(*, to_email: str, subject: str, body: str, html_body: Optional[str] = None) -> bool:
-    """إرسال بريد عام."""
+def send_email(
+    *,
+    to_email: str,
+    subject: str,
+    body: str,
+    html_body: Optional[str] = None,
+    smtp_override: Optional[dict] = None,
+    sender_name: Optional[str] = None,
+) -> bool:
+    """إرسال بريد عام. يمكن تمرير smtp_override لاستخدام إعدادات SMTP مخصصة."""
     try:
-        smtp = _smtp_settings()
+        smtp = smtp_override or _smtp_settings()
         if not smtp:
             print("⚠️ Email configuration missing. Skipping email send.")
             return False
 
         msg = MIMEMultipart("alternative")
-        msg["From"] = smtp["sender"]
+        sender = smtp["sender"]
+        display_name = (sender_name or "").strip()
+        msg["From"] = f"{display_name} <{sender}>" if display_name else sender
         msg["To"] = to_email
         msg["Subject"] = subject
         msg.attach(MIMEText(body, "plain", "utf-8"))
@@ -106,6 +116,32 @@ def send_email(*, to_email: str, subject: str, body: str, html_body: Optional[st
         except Exception:
             pass
         return False
+
+
+def build_smtp_dict(
+    *,
+    host: str,
+    port: int,
+    user: str,
+    password: str,
+    sender: Optional[str] = None,
+) -> Optional[dict]:
+    """بناء قاموس SMTP من قيم صريحة."""
+    host = (host or "").strip()
+    user = (user or "").strip()
+    password = (password or "").strip()
+    if not user or not password:
+        return None
+    port = int(port or 587)
+    return {
+        "server": host or "smtp.hostinger.com",
+        "port": port,
+        "user": user,
+        "password": password,
+        "use_ssl": port == 465,
+        "use_tls": port == 587,
+        "sender": (sender or "").strip() or user,
+    }
 
 
 def _resolve_base_url() -> str:
@@ -174,11 +210,10 @@ def send_welcome_account_email(
     company_name: str,
     slug: str,
     username: str,
-    password: str,
     plan_name: Optional[str] = None,
     unsubscribe_url: Optional[str] = None,
 ) -> bool:
-    """إرسال بيانات الحساب الجديد للعميل بعد التسجيل."""
+    """إرسال بيانات الحساب الجديد للعميل — بدون كلمة المرور أبداً (البريد ليس قناة آمنة للأسرار)."""
     app_name = _app_name()
     login_url = build_tenant_login_url(slug)
     plan_line = f"\nالخطة: {plan_name}" if plan_name else ""
@@ -191,13 +226,14 @@ def send_welcome_account_email(
 
 اسم الشركة: {company_name}
 معرف الشركة: {slug}
-اسم المستخدم: {username}
-كلمة المرور: {password}{plan_line}
+اسم المستخدم: {username}{plan_line}
+
+لأسباب أمنية لا نرسل كلمة المرور عبر البريد. استخدم كلمة المرور التي سلّمها لك فريقنا أو التي اخترتها عند التسجيل، وسيُطلب منك تغييرها عند أول دخول إن كانت مؤقتة.
 
 رابط تسجيل الدخول:
 {login_url}
 
-احتفظ بهذه البيانات في مكان آمن. ننصحك بتغيير كلمة المرور بعد أول دخول.{unsub_line}
+{unsub_line}
 
 — فريق {app_name}
 """
@@ -217,8 +253,6 @@ def send_welcome_account_email(
       <td style="padding:10px 16px;font-weight:700;color:#2563EB;border-bottom:1px solid #F2F4F7;text-align:left;direction:ltr">{slug}</td></tr>
   <tr><td style="padding:10px 16px;color:#667085;border-bottom:1px solid #F2F4F7">اسم المستخدم</td>
       <td style="padding:10px 16px;font-weight:600;color:#101828;border-bottom:1px solid #F2F4F7;text-align:left;direction:ltr">{username}</td></tr>
-  <tr><td style="padding:10px 16px;color:#667085;border-bottom:1px solid #F2F4F7">كلمة المرور</td>
-      <td style="padding:10px 16px;font-weight:600;color:#101828;border-bottom:1px solid #F2F4F7;text-align:left;direction:ltr">{password}</td></tr>
   {plan_row}
 </table>
 <p style="text-align:center;margin:0 0 16px">

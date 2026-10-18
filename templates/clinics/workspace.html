@@ -1,0 +1,412 @@
+﻿{% extends "base.html" %}
+{% block title %}{{ clinics_title }} — Finora Clinics{% endblock %}
+{% block body_class %}clinics-app-mode{% if clinics_page == 'display' %} cx-display-mode{% endif %}{% endblock %}
+{% block page_title %}{{ clinics_title }}{% endblock %}
+{% block head %}
+{{ super() }}
+<script src="{{ url_for('static', filename='clinics/theme.js') }}?v=clinics-theme-20261003a"></script>
+<link rel="stylesheet" href="{{ url_for('static', filename='clinics/clinics.css') }}?v=clinics-sidebar-20261003b">
+<script src="{{ url_for('static', filename='clinics/nav.js') }}?v=clinics-ux-20260911a"></script>
+{% if clinics_page in ['doctor', 'patient_detail'] %}
+<link rel="stylesheet" href="{{ url_for('static', filename='clinics/dental-chart.css') }}?v=clinics-theme-20261003a">
+<link rel="stylesheet" href="{{ url_for('static', filename='clinics/dental-treatment-plan.css') }}?v=clinics-theme-20261003a">
+<link rel="stylesheet" href="{{ url_for('static', filename='clinics/pediatric-tools.css') }}?v=clinics-theme-20261003a">
+<link rel="stylesheet" href="{{ url_for('static', filename='clinics/gynecology-tools.css') }}?v=clinics-theme-20261003a">
+<link rel="stylesheet" href="{{ url_for('static', filename='clinics/internal-medicine-tools.css') }}?v=clinics-theme-20261003a">
+<link rel="stylesheet" href="{{ url_for('static', filename='clinics/cardiology-tools.css') }}?v=clinics-theme-20261003a">
+<script src="{{ url_for('static', filename='clinics/dental-chart.js') }}?v=clinics-patient-chart-20260914"></script>
+<script src="{{ url_for('static', filename='clinics/dental-treatment-plan.js') }}?v=clinics-dental-workspace-v29"></script>
+<script src="{{ url_for('static', filename='clinics/dental-platform.js') }}?v=clinics-dental-workspace-v29"></script>
+<script src="{{ url_for('static', filename='clinics/pediatric-tools.js') }}?v=clinics-v23-ped"></script>
+<script src="{{ url_for('static', filename='clinics/gynecology-tools.js') }}?v=clinics-v24-gyn"></script>
+<script src="{{ url_for('static', filename='clinics/internal-medicine-tools.js') }}?v=clinics-v25-im"></script>
+<script src="{{ url_for('static', filename='clinics/cardiology-tools.js') }}?v=clinics-v26-cardio"></script>
+{% endif %}
+{% if clinics_page == 'communications' %}
+<link rel="stylesheet" href="{{ url_for('static', filename='clinics/communications.css') }}?v=clinics-theme-20261003a">
+<script src="{{ url_for('static', filename='clinics/communications.js') }}?v=20260907-followup-fix"></script>
+{% endif %}
+{% if clinics_page == 'dashboard' %}
+<script src="{{ url_for('static', filename='clinics/dashboard.js') }}?v=clinics-dash-head-20260912a"></script>
+{% elif clinics_page == 'activity' %}
+<script src="{{ url_for('static', filename='clinics/activity.js') }}?v=clinics-20260911a"></script>
+{% elif clinics_page == 'reception' %}
+<script src="{{ url_for('static', filename='clinics/reception.js') }}?v=clinics-page-head-20260913a"></script>
+{% elif clinics_page == 'appointments' %}
+<script src="{{ url_for('static', filename='clinics/appointments.js') }}?v=clinics-20260901e"></script>
+{% elif clinics_page == 'queue' %}
+<script src="{{ url_for('static', filename='clinics/queue.js') }}?v=clinics-queue-layout-20260911a"></script>
+{% elif clinics_page == 'patients' %}
+<script src="{{ url_for('static', filename='clinics/patients.js') }}?v=clinics-20260901h"></script>
+{% elif clinics_page == 'patient_detail' %}
+<script src="{{ url_for('static', filename='clinics/patient-profile.js') }}?v=clinics-patient-chart-20260914"></script>
+{% elif clinics_page == 'visits' %}
+<script src="{{ url_for('static', filename='clinics/visits.js') }}?v=clinics-svc-filter-20260907a"></script>
+{% elif clinics_page in ['billing','expenses','cash','settlements'] %}
+<script src="{{ url_for('static', filename='clinics/finance-shared.js') }}?v=clinics-20260901j"></script>
+<script src="{{ url_for('static', filename='clinics/finance.js') }}?v=clinics-20260901j"></script>
+{% elif clinics_page == 'display' %}
+<script src="{{ url_for('static', filename='clinics/display.js') }}?v=clinics-20260901h"></script>
+{% elif clinics_page == 'attachments' %}
+<script src="{{ url_for('static', filename='clinics/attachments.js') }}?v=clinics-20260901a"></script>
+{% elif clinics_page == 'clinical' %}
+<script src="{{ url_for('static', filename='clinics/clinical.js') }}?v=clinics-v20-print"></script>
+{% elif clinics_page in ['inventory','suppliers'] %}
+<script src="{{ url_for('static', filename='clinics/inventory.js') }}?v=clinics-20260902s"></script>
+<script src="{{ url_for('static', filename='clinics/purchases.js') }}?v=clinics-20260902s"></script>
+{% elif clinics_page == 'purchases' %}
+<script src="{{ url_for('static', filename='clinics/inventory.js') }}?v=clinics-20260902d"></script>
+<script src="{{ url_for('static', filename='clinics/purchases.js') }}?v=clinics-20260902s"></script>
+{% elif clinics_page == 'specialties' %}
+<script src="{{ url_for('static', filename='clinics/specialty-builder.js') }}?v=clinics-v18"></script>
+{% elif clinics_page == 'services' %}
+<script src="{{ url_for('static', filename='clinics/services.js') }}?v=clinics-svc-ui-20260907a"></script>
+{% elif clinics_page == 'staff' %}
+<script src="{{ url_for('static', filename='clinics/staff.js') }}?v=clinics-staff-20260916-tutor"></script>
+{% elif clinics_page in ['labs','radiology','followups','procedures'] %}
+<script src="{{ url_for('static', filename='clinics/clinical_ops.js') }}?v=clinics-rad-upload-20260911a"></script>
+{% elif clinics_page == 'reports' %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="{{ url_for('static', filename='clinics/reports.js') }}?v=clinics-theme-20261003a"></script>
+{% endif %}
+<link rel="stylesheet" href="{{ url_for('static', filename='clinics/theme.css') }}?v=clinics-theme-20261003a">
+{% endblock %}
+{% block content %}
+<div class="cx-app{% if clinics_page == 'display' %} cx-app--display{% endif %}" dir="rtl" lang="ar">
+  <aside class="cx-sidebar" id="cxSidebar" aria-label="قائمة العيادة">
+    <div class="cx-sidebar__head">
+      <a href="/clinics/" class="cx-brand" aria-label="Finora Clinics">
+        <span class="cx-brand__mark"><i class="fa fa-stethoscope"></i></span>
+        <span>
+          <b>Finora Clinics</b>
+          <small>نظام إدارة العيادات</small>
+        </span>
+      </a>
+      <button type="button" class="cx-sidebar__close" id="cxSidebarClose" aria-label="إغلاق القائمة">
+        <i class="fa fa-xmark"></i>
+      </button>
+    </div>
+
+    <nav class="cx-sidebar__nav" id="cxSidebarNav" data-cx-nav>
+      <div class="cx-sidebar__group" data-nav-group="daily" data-finora-section="nav.group.daily">
+        <div class="cx-sidebar__label">التشغيل اليومي</div>
+        <a href="/clinics/" data-nav-key="dashboard" data-finora-action="nav.dashboard" class="cx-sidebar__link {{ 'active' if clinics_page == 'dashboard' else '' }}"><i class="fa fa-house-medical"></i><span>الرئيسية</span></a>
+        <a href="/clinics/reception" data-nav-key="reception" data-finora-action="nav.reception" class="cx-sidebar__link {{ 'active' if clinics_page == 'reception' else '' }}"><i class="fa fa-desktop"></i><span>الاستقبال</span></a>
+        <a href="/clinics/appointments" data-nav-key="appointments" data-finora-action="nav.appointments" class="cx-sidebar__link {{ 'active' if clinics_page == 'appointments' else '' }}"><i class="fa fa-calendar-check"></i><span>المواعيد</span></a>
+        <a href="/clinics/queue" data-nav-key="queue" data-finora-action="nav.queue" class="cx-sidebar__link {{ 'active' if clinics_page == 'queue' else '' }}"><i class="fa fa-list-ol"></i><span>قائمة الانتظار</span></a>
+        <a href="/clinics/display" data-nav-key="display" data-finora-action="nav.display" class="cx-sidebar__link {{ 'active' if clinics_page == 'display' else '' }}"><i class="fa fa-tv"></i><span>شاشة الانتظار</span></a>
+      </div>
+
+      <div class="cx-sidebar__group" data-nav-group="patients" data-finora-section="nav.group.patients">
+        <div class="cx-sidebar__label">المرضى</div>
+        <a href="/clinics/patients" data-nav-key="patients" data-finora-action="nav.patients" class="cx-sidebar__link {{ 'active' if clinics_page in ['patients','patient_detail'] else '' }}"><i class="fa fa-user-injured"></i><span>المرضى</span></a>
+        <a href="/clinics/visits" data-nav-key="visits" data-finora-action="nav.visits" class="cx-sidebar__link {{ 'active' if clinics_page == 'visits' else '' }}"><i class="fa fa-notes-medical"></i><span>الزيارات</span></a>
+      </div>
+
+      <div class="cx-sidebar__group" data-nav-group="clinical" data-finora-section="nav.group.clinical">
+        <div class="cx-sidebar__label">الطبي</div>
+        <a href="/clinics/doctor" data-nav-key="doctor" data-finora-action="nav.doctor" class="cx-sidebar__link {{ 'active' if clinics_page == 'doctor' else '' }}"><i class="fa fa-stethoscope"></i><span>المعاينة الطبية</span></a>
+        <a href="/clinics/clinical" data-nav-key="clinical" data-finora-action="nav.clinical" class="cx-sidebar__link {{ 'active' if clinics_page == 'clinical' else '' }}"><i class="fa fa-folder-medical"></i><span>السجل الطبي</span></a>
+        <a href="/clinics/labs" data-nav-key="labs" data-finora-action="nav.labs" class="cx-sidebar__link {{ 'active' if clinics_page == 'labs' else '' }}"><i class="fa fa-flask"></i><span>التحاليل</span></a>
+        <a href="/clinics/radiology" data-nav-key="radiology" data-finora-action="nav.radiology" class="cx-sidebar__link {{ 'active' if clinics_page == 'radiology' else '' }}"><i class="fa fa-x-ray"></i><span>الأشعة</span></a>
+        <a href="/clinics/procedures" data-nav-key="procedures" data-finora-action="nav.procedures" class="cx-sidebar__link {{ 'active' if clinics_page == 'procedures' else '' }}"><i class="fa fa-syringe"></i><span>الإجراءات</span></a>
+        <a href="/clinics/followups" data-nav-key="followups" data-finora-action="nav.followups" class="cx-sidebar__link {{ 'active' if clinics_page == 'followups' else '' }}"><i class="fa fa-calendar-plus"></i><span>المتابعات</span></a>
+      </div>
+
+      <div class="cx-sidebar__group" data-nav-group="finance" data-finora-section="nav.group.finance">
+        <div class="cx-sidebar__label">المالية</div>
+        <a href="/clinics/billing" data-nav-key="billing" data-finora-action="nav.billing" class="cx-sidebar__link {{ 'active' if clinics_page == 'billing' else '' }}"><i class="fa fa-file-invoice-dollar"></i><span>الفواتير</span></a>
+        <a href="/clinics/cash" data-nav-key="cash" data-finora-action="nav.cash" class="cx-sidebar__link {{ 'active' if clinics_page == 'cash' else '' }}"><i class="fa fa-cash-register"></i><span>الصندوق</span></a>
+        <a href="/clinics/expenses" data-nav-key="expenses" data-finora-action="nav.expenses" class="cx-sidebar__link {{ 'active' if clinics_page == 'expenses' else '' }}"><i class="fa fa-receipt"></i><span>المصروفات</span></a>
+        <a href="/clinics/settlements" data-nav-key="settlements" data-finora-action="nav.settlements" class="cx-sidebar__link {{ 'active' if clinics_page == 'settlements' else '' }}"><i class="fa fa-handshake"></i><span>تسوية الأطباء</span></a>
+      </div>
+
+      <div class="cx-sidebar__group" data-nav-group="inventory" data-finora-section="nav.group.inventory">
+        <div class="cx-sidebar__label">المخزون</div>
+        <a href="/clinics/inventory" data-nav-key="inventory" data-finora-action="nav.inventory" class="cx-sidebar__link {{ 'active' if clinics_page == 'inventory' else '' }}"><i class="fa fa-boxes-stacked"></i><span>المخزون</span></a>
+        <a href="/clinics/purchases" data-nav-key="purchases" data-finora-action="nav.purchases" class="cx-sidebar__link {{ 'active' if clinics_page == 'purchases' else '' }}"><i class="fa fa-cart-shopping"></i><span>المشتريات</span></a>
+      </div>
+
+      <div class="cx-sidebar__group" data-nav-group="admin" data-finora-section="nav.group.admin">
+        <div class="cx-sidebar__label">الإدارة</div>
+        <a href="/clinics/staff" data-nav-key="doctors" data-finora-action="nav.doctors" class="cx-sidebar__link {{ 'active' if clinics_page in ['staff','doctors'] else '' }}"><i class="fa fa-user-doctor"></i><span>الأطباء والموظفون</span></a>
+        <a href="/clinics/specialties" data-nav-key="specialties" data-finora-action="nav.specialties" class="cx-sidebar__link {{ 'active' if clinics_page == 'specialties' else '' }}"><i class="fa fa-stethoscope"></i><span>الاختصاصات</span></a>
+        <a href="/clinics/services" data-nav-key="services" data-finora-action="nav.services" class="cx-sidebar__link {{ 'active' if clinics_page == 'services' else '' }}"><i class="fa fa-hand-holding-medical"></i><span>الخدمات</span></a>
+        <a href="/clinics/schedules" data-nav-key="schedules" data-finora-action="nav.schedules" class="cx-sidebar__link {{ 'active' if clinics_page == 'schedules' else '' }}"><i class="fa fa-clock"></i><span>جداول الدوام</span></a>
+        <a href="/clinics/rooms" data-nav-key="rooms" data-finora-action="nav.rooms" class="cx-sidebar__link {{ 'active' if clinics_page == 'rooms' else '' }}"><i class="fa fa-door-open"></i><span>الغرف</span></a>
+      </div>
+
+      <div class="cx-sidebar__group" data-nav-group="more" data-finora-section="nav.group.more">
+        <div class="cx-sidebar__label">المزيد</div>
+        <a href="/clinics/suppliers" data-nav-key="suppliers" data-finora-action="nav.suppliers" class="cx-sidebar__link {{ 'active' if clinics_page == 'suppliers' else '' }}"><i class="fa fa-truck"></i><span>الموردون</span></a>
+        <a href="/clinics/attachments" data-nav-key="attachments" data-finora-action="nav.attachments" class="cx-sidebar__link {{ 'active' if clinics_page == 'attachments' else '' }}"><i class="fa fa-paperclip"></i><span>المرفقات</span></a>
+        <a href="/clinics/communications" data-nav-key="communications" data-finora-action="nav.communications" class="cx-sidebar__link {{ 'active' if clinics_page == 'communications' else '' }}"><i class="fa fa-comments"></i><span>التواصل</span></a>
+        <a href="/clinics/reports" data-nav-key="reports" data-finora-action="nav.reports" class="cx-sidebar__link {{ 'active' if clinics_page == 'reports' else '' }}"><i class="fa fa-chart-column"></i><span>التقارير</span></a>
+        <a href="/clinics/settings" data-nav-key="settings" data-finora-action="nav.settings" class="cx-sidebar__link {{ 'active' if clinics_page == 'settings' else '' }}"><i class="fa fa-sliders"></i><span>الإعدادات</span></a>
+      </div>
+      <a href="/clinics/activity" data-nav-key="activity" data-finora-action="nav.activity" class="cx-sidebar__link {{ 'active' if clinics_page == 'activity' else '' }}"><i class="fa fa-clock-rotate-left"></i><span>سجل النشاط</span></a>
+    </nav>
+
+    <div class="cx-sidebar__foot">
+      <div class="cx-sidebar__user" id="cxSidebarUser">
+        <div class="cx-sidebar__user-avatar" id="cxSidebarUserAvatar" aria-hidden="true">{{ (session.get('name') or 'م')[:1] }}</div>
+        <div class="cx-sidebar__user-meta">
+          <strong id="cxSidebarUserName">{{ session.get('name') or 'المستخدم' }}</strong>
+          <small id="cxSidebarUserRole">{{ session.get('role') or '' }}</small>
+        </div>
+      </div>
+      <div class="cx-sidebar__actions">
+        <a href="/" class="cx-sidebar__exit" aria-label="العودة لـ Finora" title="العودة لـ Finora"><i class="fa fa-house" aria-hidden="true"></i><span>Finora</span></a>
+        <a href="/logout" class="cx-sidebar__logout" aria-label="تسجيل الخروج" title="تسجيل الخروج"><i class="fa fa-right-from-bracket" aria-hidden="true"></i><span>خروج</span></a>
+      </div>
+    </div>
+  </aside>
+
+  <div class="cx-sidebar-backdrop" id="cxSidebarBackdrop" hidden></div>
+  <button type="button" class="cx-sidebar-toggle" id="cxSidebarToggle" data-finora-action="nav.menu.toggle" aria-label="فتح أو إغلاق القائمة" title="القائمة">
+    <i class="fa fa-bars" aria-hidden="true"></i>
+  </button>
+
+  <div class="cx-main">
+    <header class="cx-topbar">
+      <button type="button" class="cx-topbar__menu" id="cxSidebarOpen" data-finora-action="nav.menu.open" aria-label="فتح أو إغلاق القائمة" title="القائمة">
+        <i class="fa fa-bars"></i>
+      </button>
+      {% if clinics_page in ['inventory','suppliers','purchases'] %}
+      <div class="cxi-top-search"><i class="fa fa-magnifying-glass"></i><input id="cxiGlobalSearch" placeholder="بحث سريع..." aria-label="بحث سريع"><kbd>⌘ K</kbd></div>
+      <div class="cxi-top-icons">
+        <a href="/clinics/settings" title="الإعدادات"><i class="fa fa-gear"></i></a>
+        <a href="/clinics/" title="المساعدة"><i class="fa fa-circle-question"></i></a>
+        <a href="/clinics/" title="التنبيهات"><i class="fa fa-bell"></i><b>!</b></a>
+      </div>
+      {% else %}
+        <div class="cx-topbar__title">
+          <span class="cx-topbar__kicker">Finora Clinics</span>
+          <h1>{{ clinics_title }}</h1>
+        </div>
+        <div class="cx-topbar__actions">
+          <a href="/clinics/patients" data-topbar-key="quick_patient" class="cx-topbar__chip" title="المرضى"><i class="fa fa-user-injured"></i></a>
+          <a href="/clinics/visits" data-topbar-key="quick_visit" class="cx-topbar__chip" title="الزيارات"><i class="fa fa-notes-medical"></i></a>
+          <a href="/clinics/display" data-topbar-key="display" class="cx-topbar__chip" title="شاشة الانتظار"><i class="fa fa-tv"></i></a>
+          <a href="/clinics/reception" data-topbar-key="reception" class="cx-topbar__chip cx-topbar__chip--primary" title="الاستقبال"><i class="fa fa-desktop"></i><span>استقبال</span></a>
+        </div>
+      {% endif %}
+      <div class="cx-user-menu" id="cxUserMenu">
+        <button type="button" class="cx-user-menu__btn" id="cxUserMenuBtn" aria-haspopup="menu" aria-expanded="false" aria-controls="cxUserMenuPanel">
+          <span class="cx-user-menu__avatar" id="cxUserAvatar" aria-hidden="true">{{ (session.get('name') or 'م')[:1] }}</span>
+          <span class="cx-user-menu__text">
+            <strong id="cxUserName">{{ session.get('name') or 'المستخدم' }}</strong>
+            <small id="cxUserRole">{{ session.get('role') or 'موظف' }}</small>
+          </span>
+          <i class="fa fa-chevron-down" aria-hidden="true"></i>
+        </button>
+        <div class="cx-user-menu__panel" id="cxUserMenuPanel" role="menu" hidden>
+          <div class="cx-user-menu__head">
+            <span class="cx-user-menu__avatar cx-user-menu__avatar--lg" id="cxUserAvatarLarge" aria-hidden="true">{{ (session.get('name') or 'م')[:1] }}</span>
+            <div>
+              <strong id="cxUserNamePanel">{{ session.get('name') or 'المستخدم' }}</strong>
+              <small id="cxUserRolePanel">{{ session.get('role') or 'موظف' }}</small>
+            </div>
+          </div>
+          <a href="/" class="cx-user-menu__item" role="menuitem"><i class="fa fa-house"></i> العودة لـ Finora</a>
+          <a href="/clinics/settings" class="cx-user-menu__item" role="menuitem" data-nav-key="settings"><i class="fa fa-sliders"></i> الإعدادات</a>
+          <a href="/logout" class="cx-user-menu__item cx-user-menu__item--danger" role="menuitem"><i class="fa fa-right-from-bracket"></i> تسجيل الخروج</a>
+        </div>
+      </div>
+    </header>
+
+    <main class="cx-shell"
+      data-clinics-page="{{ clinics_page }}"
+      data-finora-page="{{ clinics_page }}"
+      data-visit-id="{{ visit_id or '' }}"
+      data-patient-id="{{ patient_id or '' }}"
+      data-doctor-id="{{ doctor_id or '' }}"
+      data-inventory-item-id="{{ inventory_item_id or '' }}"
+      data-inventory-view="{{ inventory_view or '' }}"
+      data-purchases-view="{{ purchases_view or '' }}"
+      data-purchase-id="{{ purchase_id or '' }}"
+      data-tenant-slug="{{ session.get('tenant_slug', '') }}">
+      <div id="cxNotice" class="cx-notice" hidden></div>
+      <div id="cxRoot" aria-live="polite"></div>
+    </main>
+
+    <nav class="cx-mobile-nav" aria-label="تنقل سريع">
+      <a href="/clinics/" data-mobile-key="dashboard" class="cx-mobile-nav__item {{ 'active' if clinics_page == 'dashboard' else '' }}"><i class="fa fa-house-medical"></i><span>الرئيسية</span></a>
+      <a href="/clinics/reception" data-mobile-key="reception" class="cx-mobile-nav__item {{ 'active' if clinics_page == 'reception' else '' }}"><i class="fa fa-desktop"></i><span>استقبال</span></a>
+      <a href="/clinics/patients" data-mobile-key="patients" class="cx-mobile-nav__item {{ 'active' if clinics_page in ['patients','patient_detail'] else '' }}"><i class="fa fa-user-injured"></i><span>مرضى</span></a>
+      <a href="/clinics/billing" data-mobile-key="billing" class="cx-mobile-nav__item {{ 'active' if clinics_page == 'billing' else '' }}"><i class="fa fa-file-invoice-dollar"></i><span>مالية</span></a>
+      <button type="button" class="cx-mobile-nav__item cx-mobile-nav__menu" id="cxMobileMenuOpen" data-finora-action="nav.menu.open" aria-label="القائمة"><i class="fa fa-bars"></i><span>القائمة</span></button>
+    </nav>
+  </div>
+</div>
+
+<div id="cxModal" class="cx-modal-backdrop" data-finora-section="modal" hidden>
+  <div class="cx-modal" role="dialog" aria-modal="true">
+    <div class="cx-modal__head">
+      <h3 id="cxModalTitle">إجراء</h3>
+      <button type="button" class="cx-modal__close" id="cxModalClose" aria-label="إغلاق"><i class="fa fa-xmark"></i></button>
+    </div>
+    <div id="cxModalBody" class="cx-modal__body"></div>
+    <div class="cx-modal__actions">
+      <button type="button" class="cx-btn cx-btn--ghost" id="cxModalCancel" data-finora-action="modal.cancel">إلغاء</button>
+      <button type="button" class="cx-btn cx-btn--primary" id="cxModalSave" data-finora-action="modal.save">حفظ</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const sidebar = document.getElementById("cxSidebar");
+  const backdrop = document.getElementById("cxSidebarBackdrop");
+  const openBtn = document.getElementById("cxSidebarOpen");
+  const closeBtn = document.getElementById("cxSidebarClose");
+  const toggleBtn = document.getElementById("cxSidebarToggle");
+  const mobileOpenBtn = document.getElementById("cxMobileMenuOpen");
+  if (!sidebar) return;
+
+  const STORAGE_KEY = "cx-sidebar-collapsed";
+  const mqMobile = window.matchMedia("(max-width: 1024px)");
+  const isMobile = () => mqMobile.matches;
+
+  const setCollapsed = (collapsed) => {
+    document.body.classList.toggle("cx-sidebar-collapsed", collapsed);
+    try { localStorage.setItem(STORAGE_KEY, collapsed ? "1" : "0"); } catch (_) {}
+    const label = collapsed ? "فتح القائمة" : "إغلاق القائمة";
+    openBtn?.setAttribute("aria-label", label);
+    toggleBtn?.setAttribute("aria-label", label);
+    toggleBtn?.setAttribute("title", collapsed ? "فتح القائمة" : "إغلاق القائمة");
+    const icon = toggleBtn?.querySelector("i");
+    if (icon) icon.className = collapsed ? "fa fa-bars" : "fa fa-angles-right";
+    const openIcon = openBtn?.querySelector("i");
+    if (openIcon) openIcon.className = collapsed ? "fa fa-bars" : "fa fa-angles-right";
+  };
+
+  const openDrawer = () => {
+    sidebar.classList.add("is-open");
+    if (backdrop) backdrop.hidden = false;
+    document.body.classList.add("cx-nav-open");
+  };
+  const closeDrawer = () => {
+    sidebar.classList.remove("is-open");
+    if (backdrop) backdrop.hidden = true;
+    document.body.classList.remove("cx-nav-open");
+  };
+
+  const open = () => {
+    if (isMobile()) {
+      setCollapsed(false);
+      openDrawer();
+      return;
+    }
+    setCollapsed(false);
+  };
+  const close = () => {
+    if (isMobile()) {
+      closeDrawer();
+      return;
+    }
+    setCollapsed(true);
+  };
+  const toggle = () => {
+    if (isMobile()) {
+      if (sidebar.classList.contains("is-open")) closeDrawer();
+      else {
+        setCollapsed(false);
+        openDrawer();
+      }
+      return;
+    }
+    setCollapsed(!document.body.classList.contains("cx-sidebar-collapsed"));
+  };
+
+  try {
+    if (localStorage.getItem(STORAGE_KEY) === "1") setCollapsed(true);
+    else setCollapsed(false);
+  } catch (_) {
+    setCollapsed(false);
+  }
+
+  openBtn?.addEventListener("click", toggle);
+  toggleBtn?.addEventListener("click", toggle);
+  mobileOpenBtn?.addEventListener("click", open);
+  closeBtn?.addEventListener("click", close);
+  backdrop?.addEventListener("click", close);
+  sidebar.querySelectorAll(".cx-sidebar__link").forEach((link) => {
+    link.addEventListener("click", () => {
+      if (isMobile()) closeDrawer();
+    });
+  });
+
+  mqMobile.addEventListener("change", () => {
+    closeDrawer();
+  });
+
+  const userMenu = document.getElementById("cxUserMenu");
+  const userBtn = document.getElementById("cxUserMenuBtn");
+  const userPanel = document.getElementById("cxUserMenuPanel");
+  const closeUserMenu = () => {
+    if (!userPanel || !userBtn) return;
+    userPanel.hidden = true;
+    userBtn.setAttribute("aria-expanded", "false");
+    userMenu?.classList.remove("is-open");
+  };
+  const toggleUserMenu = () => {
+    if (!userPanel || !userBtn) return;
+    const openMenu = userPanel.hidden;
+    userPanel.hidden = !openMenu;
+    userBtn.setAttribute("aria-expanded", openMenu ? "true" : "false");
+    userMenu?.classList.toggle("is-open", openMenu);
+  };
+  userBtn?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleUserMenu();
+  });
+  document.addEventListener("click", (e) => {
+    if (userMenu && !userMenu.contains(e.target)) closeUserMenu();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      close();
+      closeUserMenu();
+    }
+  });
+
+  sidebar.querySelectorAll(".cx-sidebar__group").forEach((group) => {
+    const label = group.querySelector(".cx-sidebar__label");
+    const key = label?.textContent?.trim() || "";
+    if (!label || !key) return;
+    const stored = sessionStorage.getItem(`cx-nav-${key}`);
+    const hasActive = !!group.querySelector(".cx-sidebar__link.active");
+    if (stored === "collapsed" && !hasActive && key !== "التشغيل اليومي") {
+      group.classList.add("is-collapsed");
+    }
+    if (hasActive) group.classList.remove("is-collapsed");
+    label.addEventListener("click", () => {
+      group.classList.toggle("is-collapsed");
+      sessionStorage.setItem(`cx-nav-${key}`, group.classList.contains("is-collapsed") ? "collapsed" : "open");
+    });
+  });
+
+  const nav = sidebar.querySelector(".cx-sidebar__nav");
+  if (nav) {
+    nav.scrollTop = 0;
+    const active = nav.querySelector(".cx-sidebar__link.active");
+    if (active) {
+      window.requestAnimationFrame(() => {
+        active.scrollIntoView({ block: "nearest", behavior: "instant" in window ? "instant" : "auto" });
+      });
+    }
+  }
+})();
+</script>
+{% if clinics_page == 'doctor' %}
+<script src="{{ url_for('static', filename='clinics/doctor-specialty-packs.js') }}?v=clinics-specialty-packs-20260906a"></script>
+<script src="{{ url_for('static', filename='clinics/prescription-print.js') }}?v=clinics-rx-print-20260908c"></script>
+<script src="{{ url_for('static', filename='clinics/doctor.js') }}?v=clinics-critical-fixes-20260915"></script>
+{% endif %}
+<script src="{{ url_for('static', filename='clinics/clinics.js') }}?v=clinics-theme-20261003a"></script>
+{# Rendered only when the tenant has the AI Tutor feature; nothing is emitted otherwise. #}
+{% if feature_enabled('clinic_ai_tutor') %}
+<script type="module" src="{{ url_for('static', filename='ai-tutor/loader.js') }}?v=tutor-layout-20261003"></script>
+{% endif %}
+{% endblock %}

@@ -3,13 +3,11 @@
 {% block page_title %}{% if form_mode == 'edit' %}تعديل فاتورة شراء{% else %}فاتورة شراء جديدة{% endif %}{% endblock %}
 
 {% block content %}
-{% from "partials/fd_icons.html" import icon %}
-<link rel="stylesheet" href="/static/css/finora-ui.css?v=20261018e">
-<div class="fd purchases-page pur-form-page" id="fdPage">
+<div class="purchases-page pur-form-page">
   <style>
-    .purchases-page { width: 100%; max-width: 1100px; margin: 0 auto; direction: rtl; }
+    .purchases-page { width: 100%; max-width: 1180px; margin: 0 auto; direction: rtl; }
     .pur-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
-    .pur-card { background: var(--card); border: 1px solid var(--border-light); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+    .pur-card { background: var(--card); border: 1px solid var(--border-light); border-radius: 18px; padding: 20px; margin-bottom: 16px; box-shadow: 0 8px 24px rgba(15,23,42,.04); }
     .pur-grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
     .pur-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
     .pur-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -23,7 +21,8 @@
     .pur-btn-primary { background: var(--primary); color: #fff; }
     .pur-btn-danger { background: #dc2626; color: #fff; }
     .pur-btn-muted { background: var(--card-alt); color: var(--text); border: 1px solid var(--border-light); }
-    .pur-title { font-weight: 800; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .pur-title { font-weight: 800; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; font-size: 17px; }
+    .pur-title i { color: var(--primary); }
     .pur-table-wrap { border: 1px solid var(--border-light); border-radius: 12px; overflow: auto; }
     table.pur-table { width: 100%; border-collapse: collapse; min-width: 700px; }
     table.pur-table th, table.pur-table td { border-bottom: 1px solid var(--border-light); padding: 8px; font-size: 13px; text-align: right; }
@@ -37,12 +36,15 @@
     .pur-totals { display: flex; gap: 20px; flex-wrap: wrap; }
     .pur-totals > div small { color: var(--text-muted); display: block; font-size: 12px; }
     .muted { color: var(--text-muted); font-size: 12px; }
-    .pay-mode-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .pay-mode-group { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
     .pay-mode-btn {
-      flex: 1; min-width: 100px; border: 2px solid var(--border-light); background: var(--card-alt);
-      color: var(--text); border-radius: 12px; padding: 12px; font-weight: 700; cursor: pointer; text-align: center;
+      border: 1px solid var(--border-light); background: var(--card-alt); color: var(--text); border-radius: 14px;
+      padding: 13px 12px; font-weight: 700; cursor: pointer; text-align: center; transition: .18s ease;
     }
-    .pay-mode-btn.active { border-color: var(--primary); background: rgba(99,102,241,0.12); color: var(--primary); }
+    .pay-mode-btn:hover { border-color: var(--primary); transform: translateY(-1px); }
+    .pay-mode-btn.active { border-color: var(--primary); background: rgba(99,102,241,0.12); color: var(--primary); box-shadow: 0 4px 12px rgba(99,102,241,.12); }
+    .pay-mode-note { margin-top: 10px; padding: 10px 12px; border-radius: 10px; background: #f0fdf4; color: #166534; font-size: 13px; display: none; }
+    .pay-mode-note.show { display: block; }
     .product-suggest {
       position: absolute; top: 100%; right: 0; left: 0; z-index: 20;
       background: var(--card); border: 1px solid var(--border-light); border-radius: 10px;
@@ -69,102 +71,20 @@
     }
     .collapse-body { display: none; margin-top: 10px; }
     .collapse-body.open { display: block; }
-
-    /* ===== Finora desktop look (overrides the base styles above) ===== */
-    #fdPage.pur-form-page { max-width: 1180px; gap: 14px; }
-    #fdPage .pur-card {
-      margin: 0; padding: 20px 22px;
-      border: 1px solid var(--fd-border); border-radius: 18px;
-      background: var(--fd-surface); box-shadow: var(--fd-shadow);
-    }
-    #fdPage .pur-title { gap: 8px; margin-bottom: 14px; font-size: 16px; font-weight: 800; color: var(--fd-text); }
-    #fdPage .pur-title i { color: var(--fd-purple); }
-    #fdPage .pur-grid-4, #fdPage .pur-grid-3, #fdPage .pur-grid-2 { gap: 14px 16px; }
-    #fdPage .pur-field label { font-size: 14px; font-weight: 600; color: var(--fd-text-2); }
-    #fdPage .pur-field input:not([type="file"]),
-    #fdPage .pur-field select,
-    #fdPage .pur-field textarea {
-      min-height: 48px !important; padding: 0 14px !important;
-      border: 1px solid var(--fd-border-strong) !important; border-radius: 14px !important;
-      background: var(--fd-surface) !important; color: var(--fd-text) !important;
-      font: inherit !important; font-size: 15px !important; font-weight: 600 !important;
-    }
-    #fdPage .pur-field textarea { padding: 10px 14px !important; }
-    #fdPage .pur-field input:focus, #fdPage .pur-field select:focus, #fdPage .pur-field textarea:focus {
-      outline: none !important; border-color: var(--fd-purple) !important;
-      box-shadow: 0 0 0 3px rgba(108, 63, 209, 0.12) !important;
-    }
-    #fdPage .pur-btn {
-      min-height: 46px !important; padding: 0 18px !important; border-radius: 14px !important;
-      font: inherit !important; font-size: 15px !important; font-weight: 700 !important; justify-content: center;
-    }
-    #fdPage .pur-btn-primary {
-      border: 0 !important; color: #fff !important;
-      background: linear-gradient(135deg, #7b4be6 0%, #5f33c9 100%) !important;
-      box-shadow: 0 6px 16px rgba(108, 63, 209, 0.25) !important;
-    }
-    #fdPage .pur-btn-muted {
-      border: 1px solid var(--fd-border-strong) !important;
-      background: var(--fd-surface) !important; color: var(--fd-text) !important;
-    }
-    #fdPage .pay-mode-group { gap: 10px; }
-    #fdPage .pay-mode-btn {
-      min-height: 50px !important; border: 1px solid var(--fd-border-strong) !important; border-radius: 14px !important;
-      background: var(--fd-surface) !important; color: var(--fd-text-2) !important;
-      font: inherit !important; font-size: 15px !important; font-weight: 700 !important;
-    }
-    #fdPage .pay-mode-btn.active {
-      border-color: #b9a3f1 !important; background: var(--fd-purple-soft) !important; color: var(--fd-purple) !important;
-    }
-    #fdPage .pur-table-wrap { border: 1px solid var(--fd-border); border-radius: 14px; }
-    #fdPage table.pur-table th {
-      height: 48px; background: var(--fd-soft) !important; color: var(--fd-text-2) !important;
-      font-size: 14px; font-weight: 700; border-color: var(--fd-border) !important;
-    }
-    #fdPage table.pur-table td {
-      height: 56px; background: transparent !important; color: var(--fd-text) !important;
-      font-size: 14px; border-color: #eef0f4 !important;
-    }
-    #fdPage .collapse-toggle {
-      min-height: 48px !important; border: 1px solid var(--fd-border-strong) !important; border-radius: 14px !important;
-      background: var(--fd-soft) !important; color: var(--fd-text) !important; font: inherit !important; font-weight: 700 !important;
-    }
-    #fdPage .product-suggest { border: 1px solid var(--fd-border); border-radius: 14px; background: var(--fd-surface); box-shadow: 0 18px 48px rgba(16, 24, 40, 0.16); }
-    #fdPage .product-suggest button { min-height: 0 !important; padding: 10px 14px !important; border-radius: 0 !important; font-size: 14px !important; }
-    #fdPage .product-suggest button:hover { background: var(--fd-purple-soft) !important; }
-    #fdPage .pur-total-bar {
-      padding: 14px 20px; border: 1px solid var(--fd-border); border-radius: 18px;
-      background: rgba(255, 255, 255, 0.96); box-shadow: 0 -8px 28px rgba(16, 24, 40, 0.08);
-    }
-    #fdPage .pur-totals > div small { font-size: 13px; color: var(--fd-muted); }
-    #fdPage .pur-totals strong { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
-    #fdPage #sumRemain { color: #e11d48; }
-    @media (max-width: 900px) {
-      #fdPage .pur-grid-4, #fdPage .pur-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-    @media (max-width: 560px) {
-      #fdPage .pur-grid-4, #fdPage .pur-grid-3, #fdPage .pur-grid-2 { grid-template-columns: 1fr; }
-      #fdPage .pur-field[style*="span 2"] { grid-column: auto !important; }
-      #fdPage .pur-total-bar > div:last-child { width: 100%; }
-      #fdPage .pur-total-bar .pur-btn { flex: 1 1 0; }
+    @media (max-width: 720px) {
+      .pur-card { padding: 14px; border-radius: 14px; }
+      .pur-grid-4, .pur-grid-3, .pur-grid-2, .pay-mode-group { grid-template-columns: 1fr; }
+      .pur-field[style*="span 2"] { grid-column: auto !important; }
+      .pur-total-bar { position: static; }
     }
   </style>
 
-  <header class="fd-header no-print">
-    <div class="fd-header-main">
-      <span class="fd-header-icon" style="color: var(--fd-purple);">{{ icon('receipt', 26) }}</span>
-      <div class="fd-header-text">
-        <h1 class="fd-title">{% if form_mode == 'edit' %}تعديل فاتورة شراء{% else %}فاتورة شراء جديدة{% endif %}</h1>
-        <p class="fd-subtitle">{% if form_mode == 'edit' %}تعديل مسودة أو فاتورة مفتوحة{% else %}أدخل البيانات الأساسية ثم أضف المنتجات{% endif %}</p>
-      </div>
-    </div>
-  </header>
-
-  <nav class="fd-subnav no-print" aria-label="المشتريات">
-    <a class="fd-subnav-link" href="{{ url_for('purchases.purchases_index') }}">سجل المشتريات</a>
-    <a class="fd-subnav-link active" href="{{ url_for('purchases.purchases_new') }}">{% if form_mode == 'edit' %}تعديل فاتورة{% else %}فاتورة شراء جديدة{% endif %}</a>
-    <a class="fd-subnav-link" href="{{ url_for('suppliers.suppliers') }}">الموردون</a>
-  </nav>
+  <div class="pur-topbar">
+    <a href="{{ url_for('purchases.purchases_index') }}" class="pur-btn pur-btn-muted">
+      <i class="fa fa-arrow-right"></i> العودة للسجل
+    </a>
+    <span class="muted">{% if form_mode == 'edit' %}تعديل مسودة أو فاتورة مفتوحة{% else %}أدخل البيانات الأساسية ثم أضف المنتجات{% endif %}</span>
+  </div>
 
   <!-- الأساسيات -->
   <div class="pur-card">
@@ -189,12 +109,14 @@
       </div>
     </div>
     <div style="margin-top:14px;">
-      <label class="muted" style="display:block;margin-bottom:8px;font-weight:700;">طريقة الدفع</label>
+      <label class="muted" style="display:block;margin-bottom:8px;font-weight:700;">حالة السداد</label>
       <div class="pay-mode-group">
-        <button type="button" class="pay-mode-btn" data-mode="cash">نقدي كامل</button>
+        <button type="button" class="pay-mode-btn" data-mode="cash">صندوق نقدي كامل</button>
+        <button type="button" class="pay-mode-btn" data-mode="bank">بنك كامل</button>
         <button type="button" class="pay-mode-btn active" data-mode="credit">آجل (دين)</button>
         <button type="button" class="pay-mode-btn" data-mode="mixed">دفعات جزئية</button>
       </div>
+      <div class="pay-mode-note" id="cashModeNote"><i class="fa fa-circle-check"></i> <span id="payModeNoteText"></span></div>
     </div>
   </div>
 
@@ -256,7 +178,7 @@
         <label>{{ _('pay_from_account') }}</label>
         <select id="payTreasury">
           {% for acc in treasury_choices|default([]) %}
-          <option value="{{ acc.id }}">{{ acc.name }}</option>
+          <option value="{{ acc.id }}">{{ acc.branch_name }} — {{ acc.name }}</option>
           {% endfor %}
         </select>
       </div>
@@ -283,11 +205,11 @@
       <div class="pur-grid-4" style="margin-top:4px;">
         <div class="pur-field"><label>رقم الفاتورة الداخلية</label><input type="text" id="invoiceNo" placeholder="يولّد تلقائياً"></div>
         <div class="pur-field"><label>رقم فاتورة المورد<span data-help="purchases.invoice_number"></span></label><input type="text" id="supplierInvoiceNo"></div>
-        <div class="pur-field"><label>الفرع</label>
-          <select id="branchId">
+        <div class="pur-field"><label>فرع استلام المخزون</label>
+          <select id="branchId" required>
             <option value="">— اختر الفرع —</option>
             {% for b in branches %}
-            <option value="{{ b.id }}">{{ b.name }} ({{ b.code }})</option>
+              <option value="{{ b.id }}"{% if not edit_purchase and current_branch_id and b.id == current_branch_id %} selected{% endif %}>{{ b.name }} ({{ b.code }})</option>
             {% endfor %}
           </select>
         </div>
@@ -324,7 +246,7 @@
 
 <div id="purchaseColorModal" class="pur-color-modal">
   <div class="pur-color-card">
-    <h3 style="margin:0 0 8px;">اختر اللون</h3>
+    <h3 style="margin:0 0 8px;">اختر خيار المنتج</h3><details><summary aria-label="شرح اختيار المنتج">?</summary><p>اختر الحجم أو المقاس أو اللون المستلم. الكمية تضاف إلى مخزون هذا الخيار فقط، ويظهر الاختيار بالفاتورة.</p></details>
     <div id="purchaseColorProductName" class="muted" style="margin-bottom:8px;"></div>
     <div id="purchaseColorList" class="pur-color-list"></div>
     <div class="pur-color-new">
@@ -340,7 +262,7 @@
 <script>
   const treasuryChoices = [
     {% for acc in treasury_choices|default([]) %}
-    { id: {{ acc.id }}, name: {{ acc.name|tojson }}, is_cash: {{ 'true' if acc.is_cash else 'false' }} },
+    { id: {{ acc.id }}, name: {{ ((acc.branch_name ~ ' — ' ~ acc.name)|tojson) }}, is_cash: {{ 'true' if acc.is_cash else 'false' }} },
     {% endfor %}
   ];
 
@@ -374,12 +296,22 @@
       document.querySelectorAll(".pay-mode-btn").forEach(x => x.classList.remove("active"));
       btn.classList.add("active");
       paymentMode = btn.dataset.mode;
-      byId("paymentsSection").style.display = paymentMode === "mixed" ? "block" : "none";
-      if (paymentMode !== "mixed") payments.splice(0, payments.length);
+      updatePaymentModeUI();
       renderPayments();
       recalc();
     });
   });
+
+  function updatePaymentModeUI() {
+    const isMixed = paymentMode === "mixed";
+    byId("paymentsSection").style.display = isMixed ? "block" : "none";
+    const isFullPayment = paymentMode === "cash" || paymentMode === "bank";
+    byId("cashModeNote").classList.toggle("show", isFullPayment);
+    byId("payModeNoteText").textContent = paymentMode === "bank"
+      ? "عند اختيار «بنك كامل» سيُسجّل كامل الإجمالي كمدفوع على حساب البنك الافتراضي."
+      : "عند اختيار «صندوق نقدي كامل» سيُسجّل كامل الإجمالي كمدفوع من الصندوق الافتراضي.";
+    if (!isMixed) payments.splice(0, payments.length);
+  }
 
   byId("toggleAdvanced").addEventListener("click", () => {
     const body = byId("advancedBody");
@@ -393,7 +325,7 @@
     const ship = Number(byId("shippingExtra").value || 0);
     const grand = Math.max(sub - discount + ship, 0);
     let paid = 0;
-    if (paymentMode === "cash") paid = grand;
+    if (paymentMode === "cash" || paymentMode === "bank") paid = grand;
     else if (paymentMode === "mixed") paid = Math.min(payments.reduce((a, b) => a + b.amount, 0), grand);
     const remain = Math.max(grand - paid, 0);
     byId("sumGrand").textContent = fmt(grand);
@@ -455,6 +387,16 @@
   function finishProductSelection(color) {
     selectedColor = (color || "").trim();
     byId("selectedColor").value = selectedColor;
+    if (selectedProduct) {
+      let unitCost = Number(selectedProduct.buy_price || 0);
+      if (selectedColor && Array.isArray(selectedProduct.colors)) {
+        const colorRow = selectedProduct.colors.find(c => String(c.name || c) === selectedColor);
+        if (colorRow && colorRow.buy_price != null && colorRow.buy_price !== "") {
+          unitCost = Number(colorRow.buy_price || 0);
+        }
+      }
+      byId("itemUnitCost").value = unitCost;
+    }
     byId("itemQty").focus();
     byId("itemQty").select();
   }
@@ -466,13 +408,18 @@
   function openPurchaseColorModal(product) {
     byId("purchaseColorProductName").textContent = product.name || "";
     const list = byId("purchaseColorList");
-    const colors = Array.isArray(product.colors) ? product.colors : [];
+    const colors = Array.isArray(product.colors) ? product.colors.filter(c => c.active !== false) : [];
     if (!colors.length) {
       list.innerHTML = '<div class="muted">لا توجد ألوان معرّفة — أدخل لوناً جديداً أدناه</div>';
     } else {
       list.innerHTML = colors.map(c => {
         const name = (c.name || c).toString().replace(/"/g, "&quot;");
-        return `<button type="button" class="pur-color-btn" data-color="${name}">${name}</button>`;
+        const buy = Number(c.buy_price || product.buy_price || 0);
+        const qty = Number(c.qty || c.quantity || 0);
+        return `<button type="button" class="pur-color-btn" data-color="${name}" data-buy="${buy}">
+          ${name}
+          <small style="display:block;font-weight:600;color:#64748b;margin-top:4px;">شراء: ${fmt(buy)} · متوفر: ${qty}</small>
+        </button>`;
       }).join("");
       list.querySelectorAll("[data-color]").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -481,6 +428,7 @@
         });
       });
     }
+    byId("purchaseNewColorInput").closest(".pur-color-new").hidden = !!(product.option_axes && product.option_axes.length);
     byId("purchaseNewColorInput").value = "";
     byId("purchaseColorModal").classList.add("open");
   }
@@ -594,6 +542,13 @@
   byId("addPayBtn").addEventListener("click", () => {
     const amount = Number(byId("payAmount").value || 0);
     if (amount <= 0) { alert("أدخل مبلغ الدفعة."); return; }
+    const totals = recalc();
+    const alreadyPaid = payments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+    const remaining = Math.max(0, Number(totals.grand || 0) - alreadyPaid);
+    if (amount > remaining) {
+      alert(`مبلغ الدفعة أكبر من المتبقي (${remaining.toLocaleString("ar-IQ")} د.ع).`);
+      return;
+    }
     const payment_method = byId("payMethod").value || "cash";
     payments.push({
       amount,
@@ -616,8 +571,7 @@
     const totals = recalc();
     let mode = paymentMode;
     let payList = [];
-    if (mode === "cash") {
-      mode = "cash";
+    if (mode === "cash" || mode === "bank") {
       payList = [];
     } else if (mode === "mixed") {
       payList = [...payments];
@@ -649,6 +603,7 @@
 
   async function savePurchase(status) {
     if (!byId("supplierId").value) { alert("يرجى اختيار المورد."); return; }
+    if (!byId("branchId").value) { alert("يرجى اختيار فرع استلام المخزون."); return; }
     if (!items.length) { alert("أضف منتجاً واحداً على الأقل."); return; }
     const formData = new FormData();
     formData.append("payload", JSON.stringify(buildPayload(status)));
@@ -727,11 +682,11 @@
     items.push(...(p.items || []));
     payments.push(...(p.payments || []));
     const mode = (p.purchase_mode || "credit").toLowerCase();
-    paymentMode = mode === "cash" ? "cash" : (mode === "mixed" || (p.payments || []).length ? "mixed" : "credit");
+    paymentMode = mode === "cash" || mode === "bank" ? mode : (mode === "mixed" || (p.payments || []).length ? "mixed" : "credit");
     document.querySelectorAll(".pay-mode-btn").forEach(btn => {
       btn.classList.toggle("active", btn.dataset.mode === paymentMode);
     });
-    byId("paymentsSection").style.display = paymentMode === "mixed" ? "block" : "none";
+    updatePaymentModeUI();
     byId("advancedBody").classList.add("open");
     byId("toggleIcon").className = "fa fa-chevron-up";
     renderItems();

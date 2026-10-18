@@ -1,0 +1,34 @@
+{% set row = card.item %}
+{% set favorited = row.id in favorite_ids %}
+<article class="store-product-card {{ 'is-unavailable' if not card.plans }} {{ 'is-reservation' if row.product.quantity <= 0 and card.plans }}" data-favorite-card="{{ row.id }}">
+  <div class="store-product-card__badges">
+    {% if card.max_months %}<span class="store-duration"><i>✓</i> تقسيط حتى {{ card.max_months }} شهر</span>{% endif %}
+    {% if row.featured %}<span class="store-featured-badge">مميز</span>{% endif %}
+  </div>
+  <button class="store-favorite {{ 'is-active' if favorited }}" type="button" data-favorite="{{ row.id }}" data-favorite-url="{{ url_for('installments_store.favorite_toggle', tenant_slug=tenant_slug, product_id=row.id) }}" data-title="{{ row.title }}" aria-pressed="{{ 'true' if favorited else 'false' }}" aria-label="{{ 'إزالة ' ~ row.title ~ ' من المفضلة' if favorited else 'إضافة ' ~ row.title ~ ' للمفضلة' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8l1.1 1.1L12 21l7.8-7.5 1.1-1.1a5.5 5.5 0 0 0-.1-7.8Z"></path></svg></button>
+  <a class="store-product-card__media" href="{{ store_product_url(tenant_slug, row.slug) }}">
+    {% if card.main_media or row.product.image_url %}<span class="store-card-image-loader" aria-hidden="true"><i></i></span>{% endif %}
+    {% if card.main_media %}<img src="{{ url_for('static', filename=card.main_media.file_path, v=card.main_media.size_bytes) }}" alt="{{ row.title }}" loading="lazy" decoding="async" data-store-card-image>
+    {% elif row.product.image_url %}<img src="{{ row.product.image_url }}" alt="{{ row.title }}" loading="lazy" decoding="async" data-store-card-image>
+    {% else %}<span class="store-product-card__empty-image"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="8.5" cy="9" r="1.5"></circle><path d="m4 17 4.5-4.5 3 3 2-2 6.5 6.5"></path></svg><b>صورة المنتج غير متوفرة</b></span>{% endif %}
+  </a>
+  <div class="store-product-card__body">
+    <div class="store-product-card__meta"><span>{{ row.category or 'منتجات الأقساط' }}</span>{% if row.product.sku %}<small dir="ltr">{{ row.product.sku }}</small>{% endif %}</div>
+    <h3><a href="{{ store_product_url(tenant_slug, row.slug) }}">{{ row.title }}</a></h3>
+    <p>{{ row.short_description or 'منتج أصلي بخطة تقسيط واضحة ومراجعة سريعة للطلب.' }}</p>
+    {% if row.show_cash_price %}
+      <div class="store-monthly">
+        <span>السعر كامل</span>
+        <div><strong>{{ row.cash_price|toLocaleString }}</strong><small>{{ settings.currency }}</small></div>
+      </div>
+    {% elif card.best %}
+      <div class="store-monthly is-empty"><span>تفاصيل التقسيط في صفحة المنتج</span></div>
+    {% else %}
+      <div class="store-monthly is-empty"><span>خطة التقسيط غير متاحة حالياً</span></div>
+    {% endif %}
+    <div class="store-product-card__footer">
+      {% if card.plans %}<span class="store-stock-status {{ 'is-reservation' if row.product.quantity <= 0 }}"><i></i> {{ 'متوفر' if row.product.quantity > 0 else 'متاح للحجز' }}</span><a class="store-product-card__button" href="{{ store_product_url(tenant_slug, row.slug) }}"><span>{{ 'التفاصيل' if row.product.quantity > 0 else 'احجز الآن' }}</span><b>←</b></a>
+      {% else %}<span class="store-stock-status is-out"><i></i> الخطة غير متاحة</span><span class="store-product-card__button is-disabled">غير متاح</span>{% endif %}
+    </div>
+  </div>
+</article>

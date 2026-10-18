@@ -1,0 +1,106 @@
+{% extends 'superadmin/leads/_base.html' %}
+{% from 'superadmin/leads/_macros.html' import kpi_card %}
+{% set page_title = 'معالج الاستيراد' %}
+{% set page_subtitle = batch.filename %}
+{% block header_actions %}
+<a href="{{ url_for('superadmin_leads.imports_page') }}" class="sa-btn sa-btn-secondary"><i class="fas fa-arrow-right"></i> رجوع</a>
+{% endblock %}
+{% block leads_content %}
+<div class="lc-wizard-steps">
+    {% set steps = [('preview', '١. المعاينة'), ('mapped', '٢. ربط الأعمدة'), ('validated', '٣. التحقق'), ('deduped', '٤. فحص التكرار'), ('committed', '٥. الاستيراد')] %}
+    {% set order = ['preview','mapped','validated','deduped','committed'] %}
+    {% set current_idx = order.index(batch.status) if batch.status in order else 0 %}
+    {% for code, label in steps %}
+    {% set idx = order.index(code) %}
+    <span class="{% if batch.status == code %}active{% elif idx < current_idx %}done{% endif %}">{{ label }}</span>
+    {% endfor %}
+</div>
+
+{% if preview.rows %}
+<section class="lc-card">
+    <header class="lc-card-header"><div><h2><i class="fas fa-table lc-card-icon"></i> المعاينة</h2><p>{{ preview.total_rows }} صف — أول {{ preview.rows|length }} صفوف</p></div></header>
+    <div class="lc-card-body" style="padding:0;">
+        <div class="lc-table-wrap lc-table-scroll" style="border:none;box-shadow:none;border-radius:0;">
+            <table class="lc-table">
+                <thead><tr>{% for col in preview.columns %}<th>{{ col }}</th>{% endfor %}</tr></thead>
+                <tbody>
+                    {% for row in preview.rows %}
+                    <tr>{% for col in preview.columns %}<td>{{ row.data.get(col, '') }}</td>{% endfor %}</tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
+
+<section class="lc-card" id="lcImportMapping">
+    <header class="lc-card-header">
+        <div>
+            <h2><i class="fas fa-arrows-left-right lc-card-icon"></i> ربط الأعمدة</h2>
+            <p>{% if mapping and mapping.get('business_name') %}تم الربط تلقائياً — يمكنك تعديله قبل الاستيراد{% else %}اربط أعمدة Excel بحقول العميل{% endif %}</p>
+        </div>
+    </header>
+    <div class="lc-card-body">
+        <form id="lcMappingForm" class="lc-form">
+            <div class="lc-form-grid">
+                {% for field in import_fields %}
+                <label>{{ import_field_labels.get(field, field) }}
+                    <select name="{{ field }}" data-lc-map="{{ field }}">
+                        <option value="">— تجاهل —</option>
+                        {% for col in preview.columns %}<option value="{{ col }}" {% if mapping and mapping.get(field) == col %}selected{% endif %}>{{ col }}</option>{% endfor %}
+                    </select>
+                </label>
+                {% endfor %}
+            </div>
+            <div class="lc-form-actions" style="border:none;">
+                <button type="button" class="sa-btn sa-btn-primary" id="lcSaveMapping" data-batch-id="{{ batch.id }}"><i class="fas fa-save"></i> حفظ الربط</button>
+            </div>
+        </form>
+    </div>
+</section>
+{% endif %}
+
+{% if batch_summary and batch_summary.stats and batch.status in ['validated', 'deduped', 'committed'] %}
+<section class="lc-card">
+    <header class="lc-card-header"><div><h2><i class="fas fa-clipboard-check lc-card-icon"></i> ملخص الفحص</h2></div></header>
+    <div class="lc-card-body">
+        <div class="lc-kpi-grid lc-kpi-grid-sm">
+            {{ kpi_card('إجمالي', batch_summary.stats.total, 'fa-list') }}
+            {{ kpi_card('صالحة', batch_summary.stats.valid, 'fa-check', 'lc-kpi-success') }}
+            {{ kpi_card('غير صالحة', batch_summary.stats.invalid, 'fa-xmark', 'lc-kpi-danger') }}
+            {{ kpi_card('تكرار تام', batch_summary.stats.exact, 'fa-clone', 'lc-kpi-danger') }}
+            {{ kpi_card('تكرار قوي', batch_summary.stats.strong, 'fa-clone', 'lc-kpi-warn') }}
+            {{ kpi_card('تكرار محتمل', batch_summary.stats.possible, 'fa-clone') }}
+            {{ kpi_card('جديدة', batch_summary.stats.clean, 'fa-sparkles', 'lc-kpi-success') }}
+        </div>
+    </div>
+</section>
+{% elif batch.status in ['preview', 'mapped'] and not (mapping and mapping.get('business_name')) %}
+<section class="lc-alert lc-alert-warn">
+    <p><strong>خطوة مطلوبة:</strong> لم يتم التعرف على الأعمدة تلقائياً — اربط <em>اسم المحل/الشركة</em> و<em>رقم الهاتف</em> يدوياً.</p>
+</section>
+{% elif mapping and mapping.get('business_name') %}
+<section class="lc-alert lc-alert-ok">
+    <p><strong>ربط تلقائي:</strong>
+    {% for field, col in mapping.items() if col %}
+    {{ import_field_labels.get(field, field) }} ← {{ col }}{% if not loop.last %} · {% endif %}
+    {% endfor %}
+    </p>
+</section>
+{% endif %}
+
+<section class="lc-import-actions">
+    <button type="button" class="sa-btn sa-btn-secondary" id="lcValidateBatch" data-batch-id="{{ batch.id }}"><i class="fas fa-wand-magic-sparkles"></i> تطبيع وتحقق</button>
+    <button type="button" class="sa-btn sa-btn-secondary" id="lcDedupBatch" data-batch-id="{{ batch.id }}"><i class="fas fa-clone"></i> فحص التكرار</button>
+    <button type="button" class="sa-btn sa-btn-primary" id="lcCommitBatch" data-batch-id="{{ batch.id }}"><i class="fas fa-database"></i> تنفيذ الاستيراد</button>
+</section>
+
+{% if commit_stats %}
+<section class="lc-alert lc-alert-ok">
+    <h3><i class="fas fa-check-circle"></i> نتائج الاستيراد</h3>
+    <pre style="margin:0;font-size:0.85rem;overflow:auto;">{{ commit_stats|tojson(indent=2) }}</pre>
+</section>
+{% endif %}
+<div id="lcImportStatus" class="lc-import-status" hidden></div>
+{% endblock %}
+{% block leads_scripts %}<script>window.LC_IMPORT_WIZARD = true;</script>{% endblock %}

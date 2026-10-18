@@ -14,16 +14,17 @@
 """
 
 from extensions import db
-from sqlalchemy import func, or_, and_
+from sqlalchemy import func, or_, and_, select, inspect
 from models.invoice import Invoice
 from models.order_item import OrderItem
-from models.inventory_lot import OrderItemCostLayer
+from models.inventory_lot import InventoryLot, OrderItemCostLayer
 from models.product import Product
+from models.branch import BranchStock
 from models.expense import Expense
 from models.supplier import Supplier
 from models.shipping import ShippingCompany
 from utils.order_item_costs import exclude_delivery_fee_items
-from utils.inventory_lots import current_lot_inventory_value, ensure_inventory_lot_schema
+from utils.inventory_lots import ensure_inventory_lot_schema
 from utils.order_stock_lock import stock_unlocked_filter
 from utils.order_status import CANCELED_STATUSES as ORDER_CANCELED_STATUSES
 from utils.order_status import RETURN_STATUSES as ORDER_RETURN_STATUSES
@@ -49,7 +50,39 @@ def _order_item_layer_costs_subquery():
 
 
 def _order_item_cogs_expr(layer_costs):
-    return func.coalesce(layer_costs.c.layer_cogs, OrderItem.cost * OrderItem.quantity)
+    from modules.sales_returns.facts import recovered_cost_expr
+    return func.coalesce(layer_costs.c.layer_cogs, OrderItem.cost * OrderItem.quantity) - recovered_cost_expr(OrderItem)
+
+
+def booked_sale_filter():
+    """A sale is booked only after stock/fulfilment or an actual collection."""
+    return or_(
+        Invoice.stock_is_deducted.is_(True),
+        Invoice.payment_status.in_(["مسدد", "جزئي", "مسدد جزئي"]),
+        Invoice.status.in_(["جاري الشحن", "قيد الشحن", "تم التوصيل", "مسدد"]),
+    )
+
+
+def invoice_cogs_by_ids(invoice_ids) -> dict[int, int]:
+    """FIFO cost by invoice, with the saved line cost as a legacy fallback."""
+    clean_ids = [int(invoice_id) for invoice_id in invoice_ids or [] if invoice_id]
+    if not clean_ids:
+        return {}
+    layer_costs = _order_item_layer_costs_subquery()
+    rows = (
+        db.session.query(
+            OrderItem.invoice_id,
+            func.sum(_order_item_cogs_expr(layer_costs)).label("cogs_sum"),
+        )
+        .outerjoin(layer_costs, layer_costs.c.order_item_id == OrderItem.id)
+        .filter(
+            OrderItem.invoice_id.in_(clean_ids),
+            exclude_delivery_fee_items(OrderItem),
+        )
+        .group_by(OrderItem.invoice_id)
+        .all()
+    )
+    return {int(invoice_id): int(cogs_sum or 0) for invoice_id, cogs_sum in rows}
 
 
 def _valid_revenue_payment_status_filter():
@@ -60,6 +93,7 @@ def _valid_revenue_payment_status_filter():
             Invoice.payment_status.is_(None),
             Invoice.payment_status.notin_(RETURN_STATUSES + CANCELED_STATUSES),
         ),
+        booked_sale_filter(),
     )
 
 
@@ -216,7 +250,92 @@ def calculate_inventory_value():
     Returns:
         int: قيمة المخزون الحالي
     """
-    return current_lot_inventory_value()
+    from utils.branch_mode import independent_branches_enabled
+    from utils.inventory_transfer_valuation import in_transit_value
+    transit_value = in_transit_value()
+    products = db.session.query(Product.id, Product.quantity, Product.buy_price).all()
+    if not products:
+        return 0
+
+    if not independent_branches_enabled():
+        # In legacy shared mode Product.quantity can be a copied/aggregated
+        # value on every branch row. Use branch_stock as the source of truth
+        # and count each shared product family once.
+        shared_products = db.session.query(
+            Product.id, Product.quantity, Product.buy_price,
+            Product.catalog_group_id, Product.barcode, Product.sku,
+        ).all()
+        product_ids = [int(row.id) for row in shared_products]
+        stock_rows = (
+            BranchStock.query.execution_options(skip_branch_scope=True)
+            .filter(BranchStock.product_id.in_(product_ids))
+            .all()
+        )
+        stock_by_product = {}
+        for row in stock_rows:
+            stock_by_product[int(row.product_id)] = stock_by_product.get(int(row.product_id), 0) + max(0, int(row.quantity or 0))
+        groups = {}
+        for row in shared_products:
+            group_id = str(row.catalog_group_id or "").strip()
+            barcode = str(row.barcode or "").strip().casefold()
+            sku = str(row.sku or "").strip().casefold()
+            key = f"barcode:{barcode}" if barcode else (f"group:{group_id}" if group_id else (f"sku:{sku}" if sku else f"product:{row.id}"))
+            groups.setdefault(key, []).append(row)
+        shared_total = 0
+        shared_lots = {}
+        if "inventory_lot" in inspect(db.session.get_bind()).get_table_names():
+            for lot in InventoryLot.query.execution_options(skip_branch_scope=True).filter(
+                InventoryLot.product_id.in_(product_ids), InventoryLot.remaining_quantity > 0
+            ).order_by(InventoryLot.created_at.asc(), InventoryLot.id.asc()):
+                shared_lots.setdefault((lot.branch_id,lot.product_id),[]).append(lot)
+        for members in groups.values():
+            members.sort(key=lambda row: int(row.id))
+            representative = members[0]
+            branch_stock_qty = sum(stock_by_product.get(int(row.id), 0) for row in members)
+            quantity = branch_stock_qty if any(int(row.id) in stock_by_product for row in members) else max(0, int(representative.quantity or 0))
+            member_ids = {int(row.id) for row in members}
+            scoped_stocks = [row for row in stock_rows if int(row.product_id) in member_ids]
+            if not scoped_stocks:
+                shared_total += quantity * max(0, int(representative.buy_price or 0))
+                continue
+            for stock in scoped_stocks:
+                remaining=max(0,int(stock.quantity or 0))
+                for lot in shared_lots.get((stock.branch_id,stock.product_id),[]):
+                    used=min(remaining,lot.remaining_quantity)
+                    shared_total+=used*int(lot.unit_cost or 0);remaining-=used
+                    if not remaining:break
+                shared_total+=remaining*max(0,int(representative.buy_price or 0))
+        return int(shared_total) + transit_value
+
+    bind = db.session.get_bind()
+    if "inventory_lot" not in inspect(bind).get_table_names():
+        return int(sum(int(qty or 0) * int(cost or 0) for _id, qty, cost in products)) + transit_value
+
+    product_ids = [int(row.id) for row in products]
+    lots_by_product: dict[int, list] = {}
+    for lot in (
+        InventoryLot.query.filter(
+            InventoryLot.product_id.in_(product_ids),
+            InventoryLot.remaining_quantity > 0,
+        )
+        .order_by(InventoryLot.product_id.asc(), InventoryLot.created_at.asc(), InventoryLot.id.asc())
+        .all()
+    ):
+        lots_by_product.setdefault(int(lot.product_id), []).append(lot)
+
+    total = 0
+    for product_id, raw_qty, fallback_cost in products:
+        remaining = max(0, int(raw_qty or 0))
+        for lot in lots_by_product.get(int(product_id), []):
+            if remaining <= 0:
+                break
+            used = min(remaining, max(0, int(lot.remaining_quantity or 0)))
+            total += used * int(lot.unit_cost or 0)
+            remaining -= used
+        # Opening/legacy stock without a cost lot keeps a deterministic fallback.
+        if remaining > 0:
+            total += remaining * int(fallback_cost or 0)
+    return int(total) + transit_value
 
 # ======================================================
 # 4️⃣ حساب المصاريف (Expenses)
@@ -257,14 +376,18 @@ def calculate_total_returns():
     Returns:
         int: إجمالي المرتجعات
     """
-    total_returns = db.session.query(func.sum(Invoice.total)).filter(
+    query = db.session.query(func.sum(Invoice.total)).filter(
         or_(
             Invoice.status.in_(RETURN_STATUSES),
             Invoice.payment_status.in_(RETURN_STATUSES),
         )
-    ).scalar() or 0
-
-    return int(total_returns)
+    )
+    from modules.sales_returns.facts import available, exists_expr, totals
+    modern = 0
+    if available():
+        query = query.filter(~exists_expr(Invoice))
+        modern = totals()[0]
+    return int(query.scalar() or 0) + modern
 
 def calculate_returns_cogs():
     """
@@ -278,7 +401,7 @@ def calculate_returns_cogs():
         int: إجمالي COGS للمرتجعات
     """
     layer_costs = _order_item_layer_costs_subquery()
-    returns_cogs = db.session.query(
+    query = db.session.query(
         func.sum(_order_item_cogs_expr(layer_costs))
     ).select_from(OrderItem).outerjoin(
         layer_costs, layer_costs.c.order_item_id == OrderItem.id
@@ -290,9 +413,13 @@ def calculate_returns_cogs():
             Invoice.payment_status.in_(RETURN_STATUSES),
         ),
         exclude_delivery_fee_items(OrderItem),
-    ).scalar() or 0
-
-    return int(returns_cogs)
+    )
+    from modules.sales_returns.facts import available, exists_expr, totals
+    modern = 0
+    if available():
+        query = query.filter(~exists_expr(Invoice))
+        modern = totals()[1]
+    return int(query.scalar() or 0) + modern
 
 # ======================================================
 # 6️⃣ حساب صافي الربح (Net Profit)
@@ -327,7 +454,8 @@ def calculate_net_profit():
     expenses = calculate_total_expenses()
     
     # صافي الربح = الإيرادات - COGS - المصاريف
-    net_profit = revenue - net_cogs - expenses
+    from utils.inventory_writeoff_totals import inventory_writeoff_loss
+    net_profit = revenue - net_cogs - expenses - inventory_writeoff_loss()
     
     return net_profit
 
@@ -419,7 +547,8 @@ def calculate_operational_profit():
     expenses = calculate_total_expenses()
     
     # الربح التشغيلي = المبيعات المسددة - COGS المسدد - المصاريف
-    operational_profit = paid_sales - paid_cogs - expenses
+    from utils.inventory_writeoff_totals import inventory_writeoff_loss
+    operational_profit = paid_sales - paid_cogs - expenses - inventory_writeoff_loss()
     
     return operational_profit
 
@@ -442,11 +571,22 @@ def calculate_supplier_debts():
     try:
         from utils.supplier_accounting_repair import expected_supplier_totals
 
-        suppliers = db.session.query(Supplier.id).all()
+        suppliers = db.session.query(Supplier.id, Supplier.name).all()
+        from utils.branch_mode import independent_branches_enabled
         total = 0
-        for (supplier_id,) in suppliers:
-            expected_debt, expected_paid = expected_supplier_totals(int(supplier_id))
-            total += max(expected_debt - expected_paid, 0)
+        if not independent_branches_enabled():
+            grouped = {}
+            for supplier_id, name in suppliers:
+                key = " ".join(str(name or "").strip().casefold().replace("أ", "ا").replace("إ", "ا").replace("آ", "ا").split()) or f"supplier:{supplier_id}"
+                debt, paid = expected_supplier_totals(int(supplier_id))
+                row = grouped.setdefault(key, [0, 0])
+                row[0] += int(debt or 0)
+                row[1] += int(paid or 0)
+            total = sum(max(debt - paid, 0) for debt, paid in grouped.values())
+        else:
+            for supplier_id, _name in suppliers:
+                expected_debt, expected_paid = expected_supplier_totals(int(supplier_id))
+                total += max(expected_debt - expected_paid, 0)
         return int(total)
     except Exception:
         db.session.rollback()
@@ -514,7 +654,7 @@ def calculate_shipping_opening_balance():
 
 def calculate_accounts_receivable():
     """
-    حساب الذمم المدينة (ديون الزبائن)
+    حساب ذمم العملاء المباشرة فقط (باستثناء ذمم شركات النقل)
     
     السبب المحاسبي:
     - الذمم المدينة تُعتبر أصل (Asset)
@@ -532,6 +672,9 @@ def calculate_accounts_receivable():
         Invoice.total,
         Invoice.paid_amount,
     ).filter(
+        # الطلب المرتبط بشركة نقل يُحسب حصراً في calculate_shipping_due().
+        # الفصل من مصدر الاستعلام يمنع احتسابه في الحسابين معاً.
+        Invoice.shipping_company_id.is_(None),
         Invoice.status.notin_(CANCELED_STATUSES + RETURN_STATUSES),
         _valid_revenue_payment_status_filter(),
     ).all()

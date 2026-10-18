@@ -141,7 +141,8 @@ def test_messenger_regular_sticker_is_not_treated_as_image():
 
     assert event["message_type"] == "sticker"
     assert event["text"] == "[ملصق]"
-    assert event["attachment_url"] == ""
+    # Keep the original sticker for display without treating it as an image.
+    assert event["attachment_url"] == "https://example.com/sticker.png"
     assert event["is_like"] is False
 
 

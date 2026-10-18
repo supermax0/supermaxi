@@ -54,10 +54,12 @@
                 <i class="fas fa-pen"></i>
               </button>
               {% if role.name not in ['admin', 'cashier'] %}
-              <a href="{{ url_for('permissions.delete_role', id=role.id) }}" class="action-btn danger" title="{{ _('roles_action_delete') }}"
-                onclick="return confirm('{{ _('roles_confirm_delete') }}')">
-                <i class="fas fa-trash"></i>
-              </a>
+              <form method="post" action="{{ url_for('permissions.delete_role', id=role.id) }}" class="d-inline"
+                onsubmit="return confirm('{{ _('roles_confirm_delete') }}')">
+                <button type="submit" class="action-btn danger" title="{{ _('roles_action_delete') }}">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </form>
               {% endif %}
             </div>
           </td>
@@ -120,6 +122,7 @@
           </div>
         </div>
         <div class="team-modal-actions">
+          <button type="button" class="btn btn-light" onclick="grantInstallmentBasic({{ role.id }})">منح صلاحيات الأقساط الأساسية</button>
           <button type="button" class="btn btn-light" onclick="closeModal('editRoleModal{{ role.id }}')">{{ _('cancel') }}</button>
           <button type="submit" class="btn btn-primary">{{ _('roles_save_changes') }}</button>
         </div>
@@ -153,4 +156,23 @@
 
 {% block settings_extra_script %}
 <script src="{{ url_for('static', filename='js/permissions-admin.js') }}"></script>
+<script>
+async function grantInstallmentBasic(roleId) {
+  try {
+    const res = await fetch(`/api/order-installment/grant-basic/${roleId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) {
+      alert(data.error || "تعذر منح الصلاحيات");
+      return;
+    }
+    alert(data.message || "تم منح صلاحيات الأقساط الأساسية");
+    location.reload();
+  } catch (e) {
+    alert("تعذر منح الصلاحيات");
+  }
+}
+</script>
 {% endblock %}

@@ -20,8 +20,17 @@ instance/
 *.db
 *.sqlite
 *.sqlite3
+*.db-wal
+*.db-shm
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3-wal
+*.sqlite3-shm
 tenants/*.db
 tenants/profiles/*.json
+tenants/
+uploads/
+backups/
 
 # بيئة وتكوين
 .env
@@ -51,6 +60,10 @@ playwright-report/
 test-results/
 blob-report/
 playwright/.cache/
+tests/_artifacts/
+docs/reports/
+mobile/**/.gradle/
+mobile/**/build/
 
 # مرفقات مؤقتة
 static/uploads/
@@ -59,5 +72,19 @@ outputs/
 temp/
 tmp/
 
+# كاش أدوات محلية (Codex/Cursor) — لا يُرفع مع Smart Deploy
+.codex-tmp/
+.cursor/
+.claude/
+
+# تصدير ترويجي محلي (فيديو 4K) — ليس جزء من التطبيق؛ يمنع تضخيم Smart Deploy
+marketing/
+output/
+
 # ملفات ثقيلة (تجاوز حد GitHub 100MB)
 *.glb
+
+# Desktop installers are deployed as release artifacts (larger than GitHub's file limit).
+static/downloads/*.exe
+static/downloads/*.apk
+*.tsbuildinfo

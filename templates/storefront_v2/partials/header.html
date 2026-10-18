@@ -1,0 +1,84 @@
+{% set home_url = url_for('storefront.store_index', tenant_slug=shop_tenant_slug) %}
+<header class="sm-header">
+  <div class="sm-shell sm-header__row">
+    <button class="sm-icon-btn sm-only-mobile" type="button" aria-label="القائمة" aria-expanded="false" aria-controls="smDrawer" data-sm-menu>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+    </button>
+
+    <a class="sm-logo" href="{{ home_url }}" aria-label="{{ store_design.store_name }} — الرئيسية">
+      {% if store_design.logo_url %}<img src="{{ store_design.logo_url }}" alt="{{ store_design.store_name }}" width="120" height="36">
+      {% else %}<strong>{{ store_design.store_name }}</strong>{% endif %}
+    </a>
+
+    <form class="sm-search" method="get" action="{{ home_url }}" role="search" data-sm-search>
+      <svg class="sm-search__icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+      <input type="search" name="q" value="{{ filters.q|default('') if filters is defined else '' }}" autocomplete="off"
+             placeholder="ابحث عن شاشة، غسالة، سبلت أو رقم موديل…" aria-label="البحث في المتجر"
+             aria-autocomplete="list" aria-controls="smSuggest" aria-expanded="false" enterkeyhint="search" maxlength="80">
+      <button type="submit" class="sm-search__go">بحث</button>
+      <div class="sm-suggest" id="smSuggest" role="listbox" hidden></div>
+    </form>
+
+    <div class="sm-actions">
+      <button class="sm-chip sm-area" type="button" data-sm-area aria-haspopup="dialog">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+        <span data-sm-area-label>منطقة التوصيل</span>
+      </button>
+      <a class="sm-icon-btn sm-only-desktop" href="{{ url_for('storefront.favorites_page', tenant_slug=shop_tenant_slug) }}" aria-label="المفضلة">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8Z"/></svg>
+        <b class="sm-count" data-favorite-count {{ 'hidden' if not favorite_count }}>{{ favorite_count }}</b>
+      </a>
+      <a class="sm-icon-btn" href="{{ url_for('storefront.account_page', tenant_slug=shop_tenant_slug) }}" aria-label="حسابي">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 21a8 8 0 0 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
+      </a>
+      <a class="sm-icon-btn sm-cart" href="{{ url_for('storefront.cart_page', tenant_slug=shop_tenant_slug) }}" aria-label="السلة">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="20" r="1"/><circle cx="18" cy="20" r="1"/><path d="M3 3h2l2.5 11h10.8l2-7H6"/></svg>
+        <b class="sm-count" data-sf-cart-count {{ 'hidden' if not cart_count }}>{{ cart_count }}</b>
+      </a>
+    </div>
+  </div>
+
+  {% if store_badges %}
+  <nav class="sm-cats-nav" aria-label="الأقسام">
+    <div class="sm-shell sm-cats-nav__row">
+      <a href="{{ url_for('storefront.categories_page', tenant_slug=shop_tenant_slug) }}">كل الأقسام</a>
+      {% for badge in store_badges[:12] %}
+      <a href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug, badge=badge) }}"
+         {% if filters is defined and filters.badge == badge %}aria-current="page"{% endif %}>{{ badge }}</a>
+      {% endfor %}
+      <a href="{{ url_for('storefront.offers_page', tenant_slug=shop_tenant_slug) }}">العروض</a>
+    </div>
+  </nav>
+  {% endif %}
+
+  <div class="sm-drawer" id="smDrawer" hidden>
+    <button class="sm-drawer__scrim" type="button" aria-label="إغلاق القائمة" data-sm-menu-close></button>
+    <nav class="sm-drawer__panel" aria-label="القائمة">
+      <a href="{{ home_url }}">الرئيسية</a>
+      <a href="{{ url_for('storefront.categories_page', tenant_slug=shop_tenant_slug) }}">الأقسام</a>
+      <a href="{{ url_for('storefront.offers_page', tenant_slug=shop_tenant_slug) }}">العروض</a>
+      <a href="{{ url_for('storefront.favorites_page', tenant_slug=shop_tenant_slug) }}">المفضلة</a>
+      <a href="{{ url_for('storefront.tracking_page', tenant_slug=shop_tenant_slug) }}">تتبع الطلب</a>
+      <a href="{{ url_for('storefront.account_page', tenant_slug=shop_tenant_slug) }}">حسابي</a>
+      <a href="{{ url_for('storefront.contact_page', tenant_slug=shop_tenant_slug) }}">الدعم والتواصل</a>
+    </nav>
+  </div>
+
+  <dialog class="sm-dialog" id="smAreaDialog" aria-labelledby="smAreaTitle">
+    <form method="dialog" class="sm-dialog__body">
+      <h2 id="smAreaTitle">إلى أين نوصل؟</h2>
+      <p>اختر المحافظة لنعرض لك التوفر وكلفة التوصيل الصحيحة عند إتمام الطلب.</p>
+      <label class="sm-field">
+        <span>المحافظة</span>
+        <select name="province" data-sm-area-select>
+          <option value="">— اختر —</option>
+          {% for province in store_provinces or [] %}<option value="{{ province }}">{{ province }}</option>{% endfor %}
+        </select>
+      </label>
+      <div class="sm-dialog__actions">
+        <button type="submit" value="save" class="sm-btn sm-btn--primary">حفظ</button>
+        <button type="submit" value="cancel" class="sm-btn">إلغاء</button>
+      </div>
+    </form>
+  </dialog>
+</header>

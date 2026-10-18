@@ -365,7 +365,7 @@
                     <tbody>
                         {% for item in items %}
                         <tr>
-                            <td>{{ item.product_name or (item.product.name if item.product else 'Unknown') }}</td>
+                            <td>{{ item.display_name }}</td>
                             <td style="text-align:center;">{{ "{:,.0f}".format(item.price) }}</td>
                             <td style="text-align:center;">{{ item.quantity }}</td>
                             <td style="text-align:left;">{{ "{:,.0f}".format(item.total) }}</td>

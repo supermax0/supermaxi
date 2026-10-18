@@ -1,25 +1,25 @@
-{% extends "base.html" %}
-{% from "payment_flow/_macros.html" import pf_topbar %}
-{% block title %}فشلت العملية — Finora{% endblock %}
-{% block page_title %}{% endblock %}
+{% extends "public_flow/base.html" %}
+{% from "payment_flow/_macros.html" import pf_topbar, pf_steps with context %}
+{% block title %}تعذر إرسال الطلب — Finora{% endblock %}
 
 {% block content %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/payment-flow.css') }}">
-<div class="pf-page">
-  {{ pf_topbar('/pricing', 'اختيار خطة أخرى') }}
+<div class="pf-page pf-page--status">
+  {{ pf_topbar('/payment', 'العودة للدفع') }}
+  {{ pf_steps(2) }}
 
   <div class="pf-wrap-narrow">
     <div class="pf-card pf-status">
-      <div class="pf-status-icon fail"><i class="fas fa-times"></i></div>
-      <h2>عذراً، لم تكتمل العملية</h2>
-      <p>
-        تم رفض العملية من قبل بوابة الدفع. يرجى التأكد من رصيد البطاقة أو المحاولة بوسيلة دفع أخرى.
-        تم تسجيل هذا الحدث للمتابعة الفنية.
-      </p>
-      <a href="/pricing" class="pf-btn pf-btn-outline">العودة واختيار خطة أخرى</a>
-      <p class="pf-footer-links" style="margin-top:16px">
-        <a href="/payments/checkout">إعادة محاولة الدفع</a>
-      </p>
+      <div class="pf-status-icon fail"><i class="fas fa-exclamation"></i></div>
+      <h1>تعذر إرسال طلب التفعيل</h1>
+      <p>لم يتم حفظ الطلب. تحقق من اتصال الإنترنت، وتأكد من اختيار وصل واضح بصيغة PNG أو JPG أو PDF، ثم حاول مرة أخرى.</p>
+
+      <details class="pf-help-details" style="text-align:right">
+        <summary><i class="fas fa-circle-question"></i> هل أحتاج إلى إعادة التحويل؟</summary>
+        <div><span>لا تُعد التحويل إذا كانت العملية تمت في زين كاش؛ أعد فقط رفع الوصل.</span></div>
+      </details>
+
+      <a href="/payments/checkout" class="pf-btn pf-btn-primary pf-btn-block"><i class="fas fa-rotate-right"></i> إعادة رفع الوصل</a>
+      <p class="pf-footer-links">استمرت المشكلة؟ <a href="/landing#contact">تواصل مع الدعم</a></p>
     </div>
   </div>
 </div>

@@ -1,3 +1,22 @@
+#sfMainImage[hidden], #sfMainPlaceholder[hidden] { display: none !important; }
+.sf-color-picker { border: 0; padding: 0; margin: 20px 0; min-width: 0; }
+.sf-color-picker legend { font-weight: 700; margin-bottom: 12px; font-size: 14px; color: var(--text); }
+.sf-color-picker legend span { font-weight: 400; color: var(--muted); margin-inline-start: 8px; }
+.sf-color-options { display: flex; flex-wrap: wrap; gap: 10px; }
+.sf-color-option { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); color: var(--text); cursor: pointer; font: inherit; font-size: 13px; text-align: start; transition: border-color .15s, box-shadow .15s; }
+.sf-color-option img, .sf-color-no-photo { width: 44px; height: 44px; object-fit: contain; border-radius: 8px; }
+.sf-color-no-photo { display: grid; place-items: center; background: var(--surface-soft); color: var(--muted); font-size: 20px; }
+.sf-color-option small { display: block; color: var(--muted); font-size: 11px; }
+.sf-color-option:hover, .sf-color-option[aria-pressed="true"] { border-color: var(--brand); box-shadow: 0 0 0 1px var(--brand); }
+.sf-color-option:focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
+.sf-option-axes { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin: 14px 0; }
+.sf-option-axes label { display: grid; gap: 8px; font-size: 13px; font-weight: 600; }
+.sf-option-axes select { width: 100%; min-height: 44px; padding: 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--text); font: inherit; }
+.sf-option-help { position: relative; display: inline-block; font-size: 12px; margin: 8px 0; }
+.sf-option-help summary { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; color: var(--brand); border: 1px solid var(--line); cursor: pointer; font-weight: bold; }
+.sf-option-help p { max-width: 340px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); line-height: 1.8; }
+[data-sf-option-status] { font-size: 13px; color: var(--muted); }
+.sf-color-option[hidden] { display: none; }
 :root {
   --brand: #2563eb;
   --shipping: #059669;
@@ -1109,3 +1128,5 @@ body.store-card-overlay .sf-product-media { aspect-ratio: 1 / 1; }
   }
   .sf-status { text-align: right; }
 }
+
+[data-sf-color-picker].is-attention { outline: 2px solid var(--brand, #7a1631); outline-offset: 4px; border-radius: 10px; }

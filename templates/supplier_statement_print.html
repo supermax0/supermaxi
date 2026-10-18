@@ -77,6 +77,12 @@ th,td{
         <h2>{{ _('supplier_statement_page_title') }}</h2>
         <p>{{ _('supplier_statement_label_name') }}: <strong>{{ supplier.name }}</strong></p>
         <p>{{ _('supplier_statement_label_phone') }}: {{ supplier.phone or "-" }}</p>
+        {% if supplier.phone2 %}
+        <p>{{ _('suppliers_field_phone2') }}: {{ supplier.phone2 }}</p>
+        {% endif %}
+        {% if supplier.address %}
+        <p>{{ _('suppliers_field_address') }}: {{ supplier.address }}</p>
+        {% endif %}
     </div>
     <div>
         <p>{{ _('supplier_statement_label_date') }}: {{ today.strftime("%Y-%m-%d") }}</p>
@@ -87,6 +93,7 @@ th,td{
 <table>
     <tr>
         <th>رقم الفاتورة</th>
+        <th>رقم فاتورة الشراء</th>
         <th>الأصناف</th>
         <th>{{ _('supplier_statement_col_total') }}</th>
         <th>المدفوع</th>
@@ -96,15 +103,21 @@ th,td{
     {% for inv in purchase_invoices|default([]) %}
     <tr>
         <td>{{ inv.invoice_no }}</td>
+        <td>{{ inv.supplier_invoice_no or '—' }}</td>
         <td>{{ inv.item_count }} — {{ inv.products_label }}</td>
         <td>{{ "{:,}".format(inv.grand_total) }}</td>
-        <td>{{ "{:,}".format(inv.paid_total) }}</td>
+        <td>
+            {{ "{:,}".format(inv.paid_total) }}
+            {% if inv.later_paid_total %}
+            <small>(دفعات لاحقة: {{ "{:,}".format(inv.later_paid_total) }})</small>
+            {% endif %}
+        </td>
         <td>{{ "{:,}".format(inv.remaining_total) }}</td>
         <td>{{ inv.purchase_date }}</td>
     </tr>
     {% else %}
     <tr>
-        <td colspan="6">{{ _('supplier_statement_no_purchases_short') }}</td>
+        <td colspan="7">{{ _('supplier_statement_no_purchases_short') }}</td>
     </tr>
     {% endfor %}
 </table>
@@ -135,14 +148,32 @@ th,td{
 <table>
     <tr>
         <th>{{ _('supplier_statement_col_date') }}</th>
+        <th>{{ _('supplier_payment_document_number') }}</th>
+        <th>المبلغ السابق</th>
         <th>{{ _('supplier_statement_amount') }}</th>
+        <th>المتبقي</th>
+        <th>رقم فاتورة الشراء</th>
         <th>{{ _('supplier_statement_note_label') }}</th>
     </tr>
-    {% for pay in payments %}
+    {% for pay in payment_rows|default([]) %}
     <tr>
-        <td>{{ pay.created_at.strftime("%Y-%m-%d") }}</td>
-        <td>{{ pay.amount }}</td>
+        <td>{{ pay.created_at.strftime("%Y-%m-%d") if pay.created_at else "-" }}</td>
+        <td>{{ pay.document_number or "-" }}</td>
+        <td>{{ "{:,}".format(pay.balance_before) }}</td>
+        <td>{{ "{:,}".format(pay.amount) }}</td>
+        <td>{{ "{:,}".format(pay.balance_after) }}</td>
+        <td>
+            {% if pay.invoice_labels %}
+                {{ pay.invoice_labels|join("، ") }}
+            {% else %}
+                —
+            {% endif %}
+        </td>
         <td>{{ pay.note or "-" }}</td>
+    </tr>
+    {% else %}
+    <tr>
+        <td colspan="7">{{ _('supplier_statement_no_payments') }}</td>
     </tr>
     {% endfor %}
 </table>

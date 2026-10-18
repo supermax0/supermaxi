@@ -5,9 +5,11 @@ class Supplier(db.Model):
     __tablename__ = "supplier"
 
     id = db.Column(db.Integer, primary_key=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey("branch.id"), nullable=True, index=True)
 
     name = db.Column(db.String(150), nullable=False)
     phone = db.Column(db.String(50))
+    phone2 = db.Column(db.String(50))
     address = db.Column(db.String(255))
 
     opening_balance = db.Column(db.Integer, default=0)

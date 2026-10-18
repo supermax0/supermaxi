@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from flask import Blueprint, jsonify, render_template, request
+from flask import Blueprint, jsonify, render_template, request, session
 from sqlalchemy import or_
 
 from extensions import db
@@ -42,6 +42,8 @@ CATEGORY_LABELS = {
     "publisher": "النشر",
     "workspace": "مساحة العمل",
     "social": "السوشيال",
+    "wholesale": "تجارة الجملة",
+    "food": "المواد الغذائية",
     "auth": "المصادقة",
     "system": "النظام",
 }
@@ -65,7 +67,7 @@ def activity_list_api():
     page = max(1, request.args.get("page", 1, type=int) or 1)
     per_page = min(100, max(10, request.args.get("per_page", 50, type=int) or 50))
 
-    q = _apply_activity_filters(ActivityLog.query)
+    q = _apply_activity_scope(_apply_activity_filters(ActivityLog.query))
 
     category = (request.args.get("category") or "").strip()
     if category:
@@ -126,12 +128,29 @@ def _apply_activity_filters(q):
     return q
 
 
+def _apply_activity_scope(q):
+    """Keep the activity page aligned with the active business module."""
+    business_type = (session.get("business_type") or "").strip()
+    if business_type == "wholesale":
+        # Older wholesale entries were recorded as ``system`` because the
+        # automatic category resolver did not know the wholesale URL space.
+        # Scope by path as well as category so those entries remain visible,
+        # while unrelated general-business activity is never exposed here.
+        q = q.filter(
+            or_(
+                ActivityLog.category == "wholesale",
+                ActivityLog.request_path.ilike("/wholesale%"),
+            )
+        )
+    return q
+
+
 @activity_bp.route("/api/categories")
 @permission_required("view_activity")
 def activity_categories_api():
     from sqlalchemy import func
 
-    q = _apply_activity_filters(ActivityLog.query)
+    q = _apply_activity_scope(_apply_activity_filters(ActivityLog.query))
     rows = (
         q.with_entities(ActivityLog.category, func.count(ActivityLog.id))
         .group_by(ActivityLog.category)
@@ -158,13 +177,14 @@ def activity_stats_api():
     from sqlalchemy import func
 
     today_start = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
-    total = ActivityLog.query.count()
-    today = ActivityLog.query.filter(ActivityLog.created_at >= today_start).count()
-    logins_today = ActivityLog.query.filter(
+    scoped = _apply_activity_scope(ActivityLog.query)
+    total = scoped.count()
+    today = scoped.filter(ActivityLog.created_at >= today_start).count()
+    logins_today = scoped.filter(
         ActivityLog.created_at >= today_start,
         ActivityLog.action == "login",
     ).count()
-    mutations_today = ActivityLog.query.filter(
+    mutations_today = scoped.filter(
         ActivityLog.created_at >= today_start,
         ActivityLog.action.in_(("create", "update", "delete")),
     ).count()

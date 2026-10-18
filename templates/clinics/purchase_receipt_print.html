@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <title>سند استلام {{ receipt.receipt_number }}</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: "IBM Plex Sans Arabic", Tahoma, sans-serif; margin: 24px; color: #15282c; font-size: 13px; }
+    h1 { margin: 0 0 4px; font-size: 20px; }
+    .meta { color: #6d8085; margin-bottom: 18px; font-size: 12px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+    .box { border: 1px solid #dfe7ea; border-radius: 8px; padding: 12px; }
+    .box b { display: block; margin-bottom: 6px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+    th, td { border: 1px solid #e1e8eb; padding: 8px; text-align: right; }
+    th { background: #f7f9fa; font-size: 11px; }
+    .totals { margin-top: 16px; width: 320px; margin-inline-start: auto; }
+    .totals div { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #e1e8eb; }
+    .totals .grand { font-weight: 800; font-size: 15px; border-bottom: 0; padding-top: 8px; }
+    @media print { body { margin: 12mm; } button { display: none; } }
+  </style>
+</head>
+<body>
+  <button onclick="window.print()" style="margin-bottom:12px;padding:8px 14px;cursor:pointer">طباعة</button>
+  <h1>سند استلام مواد (GRN)</h1>
+  <div class="meta">{{ receipt.receipt_number }} — {{ receipt.received_at[:16].replace('T', ' ') }}</div>
+  <div class="grid">
+    <div class="box"><b>فاتورة الشراء</b>{{ receipt.purchase_number }}<br>فاتورة المورد: {{ receipt.supplier_invoice_no or '—' }}</div>
+    <div class="box"><b>المورد</b>{{ receipt.supplier_name }}<br>المخزن: {{ receipt.warehouse_name or '—' }}<br>بواسطة: {{ receipt.received_by_name or '—' }}</div>
+  </div>
+  <table>
+    <thead><tr><th>الصنف</th><th>الكمية</th><th>الدفعة</th><th>الصلاحية</th><th>التكلفة</th><th>الإجمالي</th></tr></thead>
+    <tbody>
+      {% for item in receipt.items %}
+      <tr>
+        <td>{{ item.item_name }}</td>
+        <td>{{ item.quantity }}</td>
+        <td>{{ item.batch_number or '—' }}</td>
+        <td>{{ item.expiry_date or '—' }}</td>
+        <td>{{ "{:,}".format(item.unit_cost) }} د.ع</td>
+        <td>{{ "{:,}".format(item.line_total) }} د.ع</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div class="totals">
+    <div class="grand"><span>قيمة الاستلام</span><span>{{ "{:,}".format(receipt.total_value) }} د.ع</span></div>
+  </div>
+  {% if receipt.notes %}<p style="margin-top:18px"><b>ملاحظات:</b> {{ receipt.notes }}</p>{% endif %}
+</body>
+</html>

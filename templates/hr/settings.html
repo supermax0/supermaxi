@@ -1,0 +1,98 @@
+{% extends "hr/layout.html" %}
+{% block hr_title %}إعدادات HR{% endblock %}
+{% block hr_content %}
+<section class="hr-page-heading"><div><span class="hr-eyebrow dark">تهيئة النظام</span><h1>الأقسام وسياسات العمل</h1><p>حدد ساعات الدوام والاستحقاقات وهيكل الشركة وإعدادات البريد.</p></div><button class="hr-btn hr-btn-primary" type="button" data-hr-dialog-open="department-modal"><i class="fa-solid fa-building-circle-arrow-right"></i> إضافة قسم</button></section>
+<section class="hr-settings-grid">
+  <article class="hr-card"><div class="hr-card-head"><div><span class="hr-card-kicker">سياسة الشركة</span><h2>إعدادات الدوام والإجازات</h2></div></div><form method="post" class="hr-form-grid"><input type="hidden" name="form_section" value="policy"><label><span>بداية الدوام</span><input type="time" name="work_start" value="{{ settings.work_start.strftime('%H:%M') if settings.work_start else '' }}"></label><label><span>نهاية الدوام</span><input type="time" name="work_end" value="{{ settings.work_end.strftime('%H:%M') if settings.work_end else '' }}"></label><label><span>دقائق السماح</span><input type="number" min="0" max="240" name="grace_minutes" value="{{ settings.grace_minutes }}"></label><label><span>الإجازة السنوية الافتراضية</span><input type="number" min="0" name="annual_leave_days" value="{{ settings.annual_leave_days }}"></label><label><span>مدة التجربة (شهر)</span><input type="number" min="0" max="24" name="probation_months" value="{{ settings.probation_months }}"></label><label><span>رمز العملة</span><input name="currency_label" value="{{ settings.currency_label }}"></label><fieldset class="hr-full hr-weekdays"><legend>أيام العطلة الأسبوعية</legend>{% set off = settings.weekly_off_days.split(',') %}{% for key,label in [('0','الاثنين'),('1','الثلاثاء'),('2','الأربعاء'),('3','الخميس'),('4','الجمعة'),('5','السبت'),('6','الأحد')] %}<label><input type="checkbox" name="weekly_off_days" value="{{ key }}" {% if key in off %}checked{% endif %}><span>{{ label }}</span></label>{% endfor %}</fieldset><label class="hr-full"><span>ملاحظات سياسة الحضور</span><textarea name="attendance_notes" rows="4">{{ settings.attendance_notes or '' }}</textarea></label><div class="hr-form-actions hr-full"><button class="hr-btn hr-btn-primary"><i class="fa-solid fa-floppy-disk"></i> حفظ الإعدادات</button></div></form></article>
+  <article class="hr-card"><div class="hr-card-head"><div><span class="hr-card-kicker">الهيكل التنظيمي</span><h2>الأقسام</h2></div><button class="hr-icon-btn" type="button" title="إضافة قسم" data-hr-dialog-open="department-modal"><i class="fa-solid fa-plus"></i></button></div><div class="hr-department-cards">{% for dept in departments %}<article style="--dept-color:{{ dept.color }}"><span class="hr-dept-symbol"><i class="fa-solid fa-building-user"></i></span><div><strong>{{ dept.name }}</strong><small>{{ dept.code or 'بدون رمز' }} · {{ dept.profiles|length }} موظف</small><em>{{ dept.manager.name if dept.manager else 'لم يحدد مدير القسم' }}</em></div><form method="post" action="{{ url_for('hr.toggle_department', department_id=dept.id) }}"><button class="hr-icon-btn {{ 'danger' if dept.is_active else 'save' }}" title="{{ 'تعطيل' if dept.is_active else 'تفعيل' }}"><i class="fa-solid {{ 'fa-pause' if dept.is_active else 'fa-play' }}"></i></button></form></article>{% else %}<div class="hr-empty compact"><p>ابدأ بإضافة أول قسم</p></div>{% endfor %}</div></article>
+</section>
+
+<section class="hr-card hr-form-card" id="payroll-settings" style="margin-top:16px">
+  <div class="hr-card-head"><div><span class="hr-card-kicker">الرواتب</span><h2>طريقة صرف الراتب</h2></div><span class="hr-status approved">{{ payout_methods.get(payout_method, payout_method) }}</span></div>
+  <p class="hr-modal-note" style="margin-top:0"><i class="fa-solid fa-wallet"></i> اختر كيف يتم سداد الرواتب من صفحة المسير. الحسابات تُستخدم من خزن الشركة الحالية.</p>
+  <form method="post" class="hr-form-grid" id="hr-payroll-settings-form">
+    <input type="hidden" name="form_section" value="payroll">
+    <label class="hr-full"><span>طريقة الصرف الافتراضية</span>
+      <select name="salary_payout_method" id="salary_payout_method">
+        {% for key, label in payout_methods.items() %}
+        <option value="{{ key }}" {% if payout_method == key %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label data-method-field="direct"><span>حساب الصندوق (صرف مباشر)</span>
+      <select name="payroll_cash_account_id">
+        <option value="">الحساب الافتراضي</option>
+        {% for account in treasury_accounts %}
+        <option value="{{ account.id }}" {% if settings.payroll_cash_account_id == account.id %}selected{% endif %}>{{ account.name }} ({{ 'صندوق' if account.account_type == 'cash' else 'بنك' }})</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label data-method-field="salary_fund"><span>حساب المصدر (للتحويل لصندوق الرواتب)</span>
+      <select name="payroll_source_account_id">
+        <option value="">اختر الحساب</option>
+        {% for account in treasury_accounts %}
+        <option value="{{ account.id }}" {% if settings.payroll_source_account_id == account.id %}selected{% endif %}>{{ account.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label data-method-field="salary_fund"><span>صندوق الرواتب</span>
+      <select name="payroll_fund_account_id">
+        <option value="">اختر الصندوق</option>
+        {% for account in treasury_accounts %}
+        <option value="{{ account.id }}" {% if settings.payroll_fund_account_id == account.id %}selected{% endif %}>{{ account.name }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label data-method-field="bank"><span>حساب التحويل البنكي</span>
+      <select name="payroll_bank_account_id">
+        <option value="">اختر البنك</option>
+        {% for account in treasury_accounts %}
+        <option value="{{ account.id }}" {% if settings.payroll_bank_account_id == account.id %}selected{% endif %}>{{ account.name }} ({{ 'صندوق' if account.account_type == 'cash' else 'بنك' }})</option>
+        {% endfor %}
+      </select>
+    </label>
+    <div class="hr-full hr-method-help" id="payroll-method-help"></div>
+    <div class="hr-form-actions hr-full"><button class="hr-btn hr-btn-primary"><i class="fa-solid fa-floppy-disk"></i> حفظ طريقة الصرف</button></div>
+  </form>
+</section>
+
+<section class="hr-card hr-form-card" style="margin-top:16px">
+  <div class="hr-card-head"><div><span class="hr-card-kicker">التواصل</span><h2>إعدادات البريد الإلكتروني</h2></div><span class="hr-status {{ 'approved' if settings.email_enabled else 'rejected' }}">{{ 'مفعّل' if settings.email_enabled else 'متوقف' }}</span></div>
+  <p class="hr-modal-note" style="margin-top:0"><i class="fa-solid fa-envelope-circle-check"></i> اضبط SMTP هنا لإرسال رسائل للموظفين من ملفاتهم. إن تركت الحقول فارغة يُستخدم بريد المنصة العام إن وُجد.</p>
+  <form method="post" class="hr-form-grid">
+    <input type="hidden" name="form_section" value="email">
+    <label class="hr-switch hr-full"><input type="checkbox" name="email_enabled" value="1" {% if settings.email_enabled %}checked{% endif %}><i></i><span>تفعيل إرسال البريد للموظفين</span></label>
+    <label><span>اسم المُرسِل الظاهر</span><input name="email_sender_name" value="{{ settings.email_sender_name or '' }}" placeholder="قسم الموارد البشرية"></label>
+    <label><span>موضوع الرسالة الافتراضي</span><input name="email_default_subject" value="{{ settings.email_default_subject or '' }}" placeholder="رسالة من الموارد البشرية"></label>
+    <label><span>خادم SMTP</span><input name="smtp_host" value="{{ settings.smtp_host or '' }}" placeholder="smtp.gmail.com" dir="ltr"></label>
+    <label><span>المنفذ</span><input type="number" min="1" max="65535" name="smtp_port" value="{{ settings.smtp_port or 587 }}" dir="ltr"></label>
+    <label><span>اسم المستخدم</span><input name="smtp_user" value="{{ settings.smtp_user or '' }}" autocomplete="off" dir="ltr"></label>
+    <label><span>كلمة المرور</span><input type="password" name="smtp_password" value="" placeholder="{{ '••••••••' if settings.smtp_password else 'أدخل كلمة المرور' }}" autocomplete="new-password" dir="ltr"></label>
+    <label class="hr-full"><span>عنوان المرسل (From)</span><input name="smtp_from" value="{{ settings.smtp_from or '' }}" placeholder="hr@company.com" dir="ltr"></label>
+    <div class="hr-form-actions hr-full"><button class="hr-btn hr-btn-primary"><i class="fa-solid fa-floppy-disk"></i> حفظ إعدادات البريد</button></div>
+  </form>
+</section>
+
+<dialog class="hr-modal" id="department-modal" aria-labelledby="department-modal-title"><div class="hr-modal-panel"><header class="hr-modal-head"><div><span class="hr-modal-kicker">الهيكل التنظيمي</span><h2 id="department-modal-title">إضافة قسم جديد</h2></div><button class="hr-modal-close" type="button" data-hr-dialog-close="department-modal" aria-label="إغلاق"><i class="fa-solid fa-xmark"></i></button></header><p class="hr-modal-note"><i class="fa-solid fa-sitemap"></i> أضف القسم أولًا ثم اسند إليه الموظفين من ملفاتهم الوظيفية.</p><form method="post" action="{{ url_for('hr.add_department') }}" class="hr-form-grid"><label><span>اسم القسم *</span><input name="name" required placeholder="مثل: المالية"></label><label><span>الرمز</span><input name="code" placeholder="FIN"></label><label><span>مدير القسم</span><select name="manager_id"><option value="">غير محدد</option>{% for employee in employees %}<option value="{{ employee.id }}">{{ employee.name }}</option>{% endfor %}</select></label><label><span>لون القسم</span><input type="color" name="color" value="#4f46e5"></label><label class="hr-full"><span>الوصف</span><input name="description"></label><div class="hr-form-actions hr-full"><button class="hr-btn hr-btn-primary"><i class="fa-solid fa-plus"></i> إضافة القسم</button></div></form></div></dialog>
+<script>
+(function () {
+  var select = document.getElementById('salary_payout_method');
+  var help = document.getElementById('payroll-method-help');
+  if (!select) return;
+  var tips = {
+    direct: 'يُصرف صافي الراتب مباشرة كمصروف من حساب الصندوق المحدد.',
+    salary_fund: 'أولاً خصّص مبلغ المسير إلى صندوق الرواتب، ثم اصرف لكل موظف من ذلك الصندوق.',
+    bank: 'يُسجّل الصرف كتحويل بنكي/سحب من حساب البنك المحدد للموظف.'
+  };
+  function syncMethodFields() {
+    var method = select.value;
+    document.querySelectorAll('[data-method-field]').forEach(function (el) {
+      el.style.display = el.getAttribute('data-method-field') === method ? '' : 'none';
+    });
+    if (help) help.innerHTML = '<p class="hr-modal-note" style="margin:0"><i class="fa-solid fa-circle-info"></i> ' + (tips[method] || '') + '</p>';
+  }
+  select.addEventListener('change', syncMethodFields);
+  syncMethodFields();
+})();
+</script>
+{% endblock %}

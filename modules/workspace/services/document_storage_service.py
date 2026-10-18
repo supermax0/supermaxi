@@ -20,6 +20,26 @@ from modules.workspace.services.file_validation_service import FileValidationErr
 
 class DocumentStorageService:
     @staticmethod
+    def _viewer_documents(docs: List[WorkspaceDocument]) -> List[dict]:
+        items = []
+        seen = set()
+        for item in docs:
+            identity = item.sha256 or item.storage_path or item.id
+            if identity in seen:
+                continue
+            seen.add(identity)
+            items.append({
+                "documentId": item.id,
+                "fileName": item.original_filename,
+                "mimeType": item.mime_type,
+                "previewUrl": item.preview_url(),
+                "fileSize": item.file_size,
+                "pageCount": item.page_count,
+                "status": item.status,
+            })
+        return items
+
+    @staticmethod
     def _upload_root() -> str:
         folder = current_app.config.get("WORKSPACE_UPLOAD_FOLDER", "static/uploads/workspace")
         if os.path.isabs(folder):
@@ -76,6 +96,19 @@ class DocumentStorageService:
         file_storage.stream.seek(0)
 
         safe_name, mime_type = validate_upload(filename, file_storage.mimetype, file_size)
+        sha256 = DocumentStorageService._sha256_stream(file_storage.stream)
+        file_storage.stream.seek(0)
+        existing = (
+            WorkspaceDocument.query.filter_by(
+                session_id=session.id,
+                sha256=sha256,
+            )
+            .filter(WorkspaceDocument.status != "deleted")
+            .order_by(WorkspaceDocument.created_at.asc())
+            .first()
+        )
+        if existing:
+            return existing
 
         event_bus.emit_event(
             session.id,
@@ -122,7 +155,6 @@ class DocumentStorageService:
 
         file_storage.save(abs_path)
 
-        sha256 = DocumentStorageService._sha256_file(abs_path)
         rel_path = os.path.join(rel_dir, stored_name).replace("\\", "/")
 
         doc.stored_filename = stored_name
@@ -147,6 +179,15 @@ class DocumentStorageService:
         return h.hexdigest()
 
     @staticmethod
+    def _sha256_stream(stream) -> str:
+        h = hashlib.sha256()
+        stream.seek(0)
+        for chunk in iter(lambda: stream.read(8192), b""):
+            h.update(chunk)
+        stream.seek(0)
+        return h.hexdigest()
+
+    @staticmethod
     def _link_document_to_session(
         session: WorkspaceSession,
         doc: WorkspaceDocument,
@@ -162,6 +203,9 @@ class DocumentStorageService:
         session.set_metadata(meta)
 
         windows = session.get_windows()
+        viewer_documents = DocumentStorageService._viewer_documents(
+            DocumentStorageService.list_session_documents(session.id)
+        )
         for w in windows:
             if w.get("type") == "document_viewer":
                 w["status"] = "ready"
@@ -175,6 +219,8 @@ class DocumentStorageService:
                     "status": "preview_ready",
                     "scan_active": False,
                     "scan_progress": 0,
+                    "documents": viewer_documents,
+                    "documentCount": len(viewer_documents),
                 }
         session.set_windows(windows)
 
@@ -301,6 +347,17 @@ class DocumentStorageService:
         from modules.workspace.services.document_intelligence.document_intelligence_service import (
             DocumentIntelligenceService,
         )
+        from modules.workspace.services.courier_settlement.courier_readonly_analysis_service import (
+            CourierReadonlyAnalysisService,
+        )
+
+        courier = CourierReadonlyAnalysisService.get_latest_for_session(session.id)
+        if courier:
+            CourierReadonlyAnalysisService.reconcile_legacy_manual_exclusions(
+                courier,
+                session=session,
+                user_id=courier.user_id,
+            )
 
         data = session.to_dict()
         docs = DocumentStorageService.list_session_documents(session.id)
@@ -308,19 +365,44 @@ class DocumentStorageService:
             DocumentIntelligenceService.enrich_document_dict(d.to_dict()) for d in docs
         ]
         active_id = (session.get_metadata() or {}).get("active_document_id")
+        viewer_documents = DocumentStorageService._viewer_documents(docs)
+        active = next((d for d in docs if d.id == active_id), None)
+        active_viewer = None
+        if active:
+            active_identity = active.sha256 or active.storage_path or active.id
+            representative = next(
+                (
+                    item
+                    for item in docs
+                    if (item.sha256 or item.storage_path or item.id)
+                    == active_identity
+                ),
+                active,
+            )
+            active_viewer = {
+                "documentId": representative.id,
+                "fileName": representative.original_filename,
+                "mimeType": representative.mime_type,
+                "previewUrl": representative.preview_url(),
+                "fileSize": representative.file_size,
+                "pageCount": representative.page_count,
+                "status": representative.status,
+            }
+        for window in data.get("windows") or []:
+            if window.get("type") != "document_viewer":
+                continue
+            props = window.setdefault("props", {})
+            props["documents"] = viewer_documents
+            props["documentCount"] = len(viewer_documents)
+            if active_viewer:
+                props.update(active_viewer)
         if active_id:
-            active = next((d for d in docs if d.id == active_id), None)
             if active:
                 data["active_document"] = DocumentIntelligenceService.enrich_document_dict(
                     active.to_dict()
                 )
         results = DocumentIntelligenceService.list_session_results(session.id)
         data["intelligence_results"] = [r.to_dict() for r in results]
-        from modules.workspace.services.courier_settlement.courier_readonly_analysis_service import (
-            CourierReadonlyAnalysisService,
-        )
-
-        courier = CourierReadonlyAnalysisService.get_latest_for_session(session.id)
         if courier:
             data["courier_analysis"] = courier.to_dict()
         return data

@@ -1,0 +1,63 @@
+{% extends 'superadmin/leads/_base.html' %}
+{% from 'superadmin/leads/_macros.html' import status_badge %}
+{% set page_title = 'إعدادات العملاء المحتملين' %}
+{% set page_subtitle = 'إدارة الأنشطة وحالات مسار المبيعات وتقييم العملاء' %}
+{% block leads_content %}
+<section class="lc-card">
+    <header class="lc-card-header">
+        <div><h2><i class="fas fa-tags lc-card-icon"></i> الأنشطة</h2><p>أنواع الأعمال التي تُصنّف تحتها العملاء</p></div>
+        <a href="{{ url_for('superadmin_leads.activities_page') }}" class="lc-link-btn">عرض الكروت</a>
+    </header>
+    <div class="lc-card-body" style="padding:0;">
+        <div class="lc-table-wrap" style="border:none;box-shadow:none;border-radius:0;">
+            <table class="lc-table">
+                <thead><tr><th>الاسم</th><th>المعرّف</th><th>نشط</th><th></th></tr></thead>
+                <tbody>
+                    {% for a in activities %}
+                    <tr>
+                        <td><strong>{{ a.name_ar }}</strong><small>{{ a.name }}</small></td>
+                        <td><code>{{ a.slug }}</code></td>
+                        <td>{% if a.is_active %}<span class="lc-badge lc-badge-muted">نعم</span>{% else %}<span class="lc-badge">لا</span>{% endif %}</td>
+                        <td>
+                            <form method="post" style="display:inline">
+                                <input type="hidden" name="action" value="toggle_activity">
+                                <input type="hidden" name="activity_id" value="{{ a.id }}">
+                                <button type="submit" class="lc-link-btn">تبديل</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <form method="post" class="lc-form-inline">
+            <input type="hidden" name="action" value="add_activity">
+            <label>الاسم (EN)<input name="name" required placeholder="clothing"></label>
+            <label>الاسم (AR)<input name="name_ar" required placeholder="محلات الملابس"></label>
+            <label>المعرّف<input name="slug" required placeholder="clothing"></label>
+            <button type="submit" class="sa-btn sa-btn-primary"><i class="fas fa-plus"></i> إضافة نشاط</button>
+        </form>
+    </div>
+</section>
+
+<section class="lc-card">
+    <header class="lc-card-header"><div><h2><i class="fas fa-list-check lc-card-icon"></i> حالات العملاء</h2></div></header>
+    <div class="lc-card-body">
+        <ul class="lc-status-list">
+            {% for s in statuses %}
+            <li>{{ status_badge(s.code, s.label_ar) }} <span style="color:var(--lc-muted);font-size:0.8rem;">{{ s.code }}</span></li>
+            {% endfor %}
+        </ul>
+    </div>
+</section>
+
+<section class="lc-card">
+    <header class="lc-card-header"><div><h2><i class="fas fa-star lc-card-icon"></i> تقييم العملاء</h2><p>إعادة حساب درجات جميع العملاء</p></div></header>
+    <div class="lc-card-body">
+        <form method="post">
+            <input type="hidden" name="action" value="refresh_scores">
+            <button type="submit" class="sa-btn sa-btn-secondary"><i class="fas fa-rotate"></i> تحديث التقييمات</button>
+        </form>
+    </div>
+</section>
+{% endblock %}

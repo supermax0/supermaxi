@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, session, send_file, current_app
+from flask import Blueprint, render_template, request, jsonify, session, send_file, current_app, g
 from extensions import db
 from models.message import Message
 from models.employee import Employee
@@ -15,8 +15,39 @@ from utils.permission_checks import guard_permission
 messages_bp = Blueprint("messages", __name__, url_prefix="/messages")
 
 
+def _agent_chat_contacts():
+    return Employee.query.filter_by(is_active=True, role="admin").all()
+
+
 @messages_bp.before_request
 def _messages_permission_guard():
+    if session.get("agent_portal"):
+        if not session.get("agent_id"):
+            return jsonify({"error": "جلسة المندوب غير صالحة"}), 403
+        from models.delivery_agent import DeliveryAgent
+        from utils.agent_employee_link import bind_agent_messaging_session
+
+        agent = DeliveryAgent.query.get(session["agent_id"])
+        tenant_slug = session.get("agent_tenant_slug")
+        if not agent or not tenant_slug or not bind_agent_messaging_session(session, agent, tenant_slug):
+            return jsonify({"error": "جلسة المندوب غير صالحة"}), 403
+        g.agent_chat_contact_ids = {person.id for person in _agent_chat_contacts()
+                                    if person.id != session["user_id"]}
+        allowed_endpoints = {"messages.messages", "messages.get_conversations",
+                             "messages.get_messages", "messages.send_message", "messages.unread_count"}
+        if request.endpoint not in allowed_endpoints:
+            return jsonify({"error": "هذه الميزة غير متاحة من بوابة المندوب"}), 403
+        recipient = (request.view_args or {}).get("other_user_id")
+        if request.endpoint == "messages.send_message":
+            data = request.get_json(silent=True) if request.is_json else request.form
+            recipient = (data or {}).get("receiver_id")
+        if request.endpoint in {"messages.get_messages", "messages.send_message"}:
+            try:
+                permitted = int(recipient) in g.agent_chat_contact_ids
+            except (ValueError, TypeError):
+                permitted = False
+            if not permitted:
+                return jsonify({"error": "المراسلة متاحة مع الإدارة فقط"}), 403
     if request.endpoint == "messages.unread_count":
         return None
     if "user_id" not in session:
@@ -317,6 +348,14 @@ def unread_count():
     
     current_user_id = session["user_id"]
     
+    if hasattr(g, "agent_chat_contact_ids"):
+        count = Message.query.filter(
+            Message.receiver_id == current_user_id,
+            Message.sender_id.in_(g.agent_chat_contact_ids),
+            Message.is_read == False,
+        ).count()
+        return jsonify({"unread_count": count, "private_count": count, "channel_count": 0})
+
     private_count = Message.query.filter(
         Message.receiver_id == current_user_id,
         Message.is_read == False
@@ -485,6 +524,8 @@ def get_conversations():
     for msg in all_messages:
         other_user_id = msg.receiver_id if msg.sender_id == current_user_id else msg.sender_id
         
+        if hasattr(g, "agent_chat_contact_ids") and other_user_id not in g.agent_chat_contact_ids:
+            continue
         if other_user_id not in seen_users:
             seen_users.add(other_user_id)
             other_user = msg.receiver if msg.sender_id == current_user_id else msg.sender

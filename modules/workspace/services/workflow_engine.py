@@ -77,7 +77,10 @@ class WorkflowEngine:
         if not session:
             raise WorkflowNotFoundError("الجلسة غير موجودة")
 
-        if session.status in ("running", "waiting_user", "waiting_approval"):
+        # A waiting_user workflow may be replaced when the user explicitly
+        # chooses another workflow from the selector. Keep running and
+        # approval-gated workflows protected from concurrent restarts.
+        if session.status in ("running", "waiting_approval"):
             raise WorkflowInvalidStateError("الجلسة قيد تشغيل workflow بالفعل")
 
         recipe = WorkflowRegistry.get_recipe(workflow_type)
@@ -434,6 +437,37 @@ class WorkflowEngine:
             CourierReadonlyAnalysisService.analyze(
                 session.id, document_id=doc_id, user_id=user_id, tenant_slug=tenant_slug
             )
+            return
+
+        if handler == "return_analysis.run_readonly":
+            from modules.workspace.services.return_statement_service import ReturnStatementService
+
+            doc_id = (step.get("handler_params") or {}).get("document_id")
+            meta = session.get_metadata() or {}
+            doc_id = doc_id or meta.get("active_document_id")
+            ReturnStatementService.analyze(
+                session.id,
+                document_id=doc_id,
+                user_id=user_id,
+                tenant_slug=tenant_slug,
+            )
+            return
+
+        if handler == "purchase_analysis.run":
+            from modules.workspace.services.purchase_invoice_service import PurchaseInvoiceService
+
+            meta = session.get_metadata() or {}
+            PurchaseInvoiceService.analyze(
+                session,
+                document_id=(step.get("handler_params") or {}).get("document_id") or meta.get("active_document_id"),
+                user_id=user_id,
+            )
+            return
+
+        if handler == "inventory_forensics.open":
+            from modules.workspace.services.inventory_forensics_service import InventoryForensicsService
+
+            InventoryForensicsService.open_window(session)
             return
 
         raise WorkflowInvalidStateError(f"معالج غير معروف: {handler}")

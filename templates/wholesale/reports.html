@@ -1,0 +1,46 @@
+{% extends "wholesale/base.html" %}
+{% block title %}تقارير الجملة{% endblock %}
+{% block page_title %}تقارير الجملة{% endblock %}
+
+{% block ws_content %}
+<div class="ws-ops">
+  <header class="ws-page-head">
+    <div class="ws-page-head__identity">
+      <span class="ws-page-head__icon"><i class="fa fa-chart-pie"></i></span>
+      <div>
+        <span class="ws-page-kicker">تجارة الجملة</span>
+        <h1>التقارير</h1>
+        <p>ملخص سريع لمبيعات ومشتريات ومخازن الجملة</p>
+      </div>
+    </div>
+    <div class="ws-page-head__actions">
+      <button type="button" class="ws-btn" id="repRefresh"><i class="fa fa-rotate"></i> تحديث</button>
+      <a class="ws-btn primary" href="/wholesale/ops"><i class="fa fa-layer-group"></i> العمليات</a>
+    </div>
+  </header>
+  <div class="ws-metric-grid" id="repCards">
+    <div class="ws-metric"><span>جاري التحميل</span><strong>…</strong></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(async function(){
+  const money = n => Number(n||0).toLocaleString('en-US');
+  async function load() {
+    const r = await (await fetch('/api/wholesale/reports/summary')).json();
+    const d = r.data || {};
+    repCards.innerHTML = [
+      ['عدد المبيعات', d.sales_count, 'فاتورة'],
+      ['إجمالي المبيعات', money(d.sales_total), 'IQD'],
+      ['عدد المشتريات', d.purchases_count, 'فاتورة'],
+      ['إجمالي المشتريات', money(d.purchases_total), 'IQD'],
+      ['عدد المخازن', d.warehouses, 'مخزن'],
+    ].map(([l,v,u]) => `<div class="ws-metric"><span>${l}</span><strong>${v ?? 0}</strong><small style="color:#94a3b8;font-size:11px;font-weight:700">${u||''}</small></div>`).join('');
+  }
+  repRefresh.onclick = load;
+  await load();
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>عقد {{ contract.contract_number }}</title>
+  <style>
+    :root{--navy:#08213f;--green:#078a64;--gold:#c89b35;--muted:#617187;--line:#d8e0e8;--soft:#f5f8fa;--green-soft:#eef9f5}
+    *{box-sizing:border-box}
+    html,body{margin:0;background:#e9eef2;color:#10243d;font-family:Tahoma,"Segoe UI",Arial,sans-serif}
+    body{font-size:10.5px;line-height:1.5}
+    .print-button{position:fixed;z-index:20;top:20px;left:20px;padding:10px 17px;border:0;border-radius:8px;color:#fff;background:var(--green);box-shadow:0 8px 24px rgba(7,138,100,.25);font:700 12px Tahoma;cursor:pointer}
+    .sheet{position:relative;width:210mm;min-height:297mm;margin:9mm auto;padding:9mm 11mm 12mm;background:#fff;box-shadow:0 15px 45px rgba(8,33,63,.13)}
+    .top-rule{height:4px;margin:-9mm -11mm 6mm;background:linear-gradient(90deg,var(--gold) 0 18%,var(--green) 18% 48%,var(--navy) 48%)}
+    .head{display:grid;grid-template-columns:1.25fr .8fr;align-items:center;gap:14px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+    .brand{display:flex;align-items:center;gap:9px}
+    .brand img,.brand-mark{width:44px;height:44px;object-fit:contain}
+    .brand-mark{display:grid;place-items:center;border-radius:10px;color:#fff;background:var(--navy);font-size:20px;font-weight:900}
+    .brand h1{margin:0;color:var(--navy);font-size:20px;line-height:1.2}
+    .brand p{margin:3px 0 0;color:var(--muted);font-size:8px}
+    .meta{text-align:left}
+    .meta span{display:inline-block;padding:3px 10px;border:1px solid #cce9df;border-radius:99px;color:var(--green);background:var(--green-soft);font-size:8px;font-weight:800}
+    .meta strong{display:block;margin-top:4px;color:var(--navy);font-size:16px;direction:ltr}
+    .meta small{display:block;color:var(--muted);font-size:8px}
+    .title{padding:8px 0 7px;text-align:center}
+    .title h2{margin:0;color:var(--navy);font-size:23px}
+    .title p{margin:2px 0;color:var(--muted);font-size:8.5px}
+    .status{display:inline-block;padding:2px 9px;border-radius:99px;color:var(--green);background:var(--green-soft);font-size:8px;font-weight:800}
+    .parties{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+    .party{padding:9px 11px;border:1px solid var(--line);border-radius:8px}
+    .party h3{display:flex;justify-content:space-between;margin:0 0 5px;padding-bottom:4px;border-bottom:1px solid var(--line);color:var(--navy);font-size:11.5px}
+    .party h3 span{color:var(--green);font-size:8px}
+    .fields{display:grid;grid-template-columns:1fr 1fr;gap:2px 9px}
+    .field.full{grid-column:1/-1}
+    .field label{display:block;color:var(--muted);font-size:7.5px}
+    .field strong{display:block;min-height:15px;font-size:9.3px;overflow-wrap:anywhere}
+    .ltr{direction:ltr;unicode-bidi:isolate}
+    .blank{display:inline-block;min-width:75px;border-bottom:1px dotted #91a0b0;color:transparent}
+    .section-title{display:flex;align-items:center;gap:6px;margin:9px 0 5px;color:var(--navy);font-size:12px}
+    .section-title::before{content:"";width:4px;height:14px;border-radius:2px;background:var(--green)}
+    .summary{display:grid;grid-template-columns:repeat(6,1fr);gap:4px}
+    .summary div{padding:6px 7px;border:1px solid var(--line);border-radius:7px}
+    .summary .featured{color:#fff;background:var(--navy);border-color:var(--navy)}
+    .summary label{display:block;color:var(--muted);font-size:6.8px}
+    .summary .featured label{color:#c9d4e0}
+    .summary strong{display:block;margin-top:2px;font-size:9.4px;white-space:nowrap}
+    .iqd{direction:rtl;unicode-bidi:isolate;white-space:nowrap}
+    table{width:100%;border-collapse:collapse;table-layout:fixed;font-size:8.2px}
+    th,td{padding:4px 5px;text-align:right;vertical-align:middle;border-bottom:1px solid var(--line);overflow-wrap:anywhere}
+    th{color:#40536a;background:#eaf0f4;font-size:7.4px;font-weight:800}
+    tbody tr:nth-child(even){background:#fbfcfd}
+    .center{text-align:center}
+    .schedule td{padding-top:3px;padding-bottom:3px}
+    .schedule-status{display:inline-block;padding:1px 7px;border-radius:99px;color:#455a70;background:#edf1f5;font-size:6.7px;font-weight:700}
+    .schedule-status.paid{color:#087453;background:#e8f7f1}
+    .schedule-status.overdue{color:#b42332;background:#fff0f1}
+    .contract-bottom{display:grid;grid-template-columns:1.72fr .65fr;gap:8px;margin-top:10px;align-items:stretch}
+    .terms{padding:9px 10px;border:1px solid #cfd9e3;border-radius:9px;background:linear-gradient(145deg,#f8fafc,#f1f5f8)}
+    .terms h2{display:flex;align-items:center;gap:7px;margin:0 0 7px;color:var(--navy);font-size:12px}
+    .terms h2::before{content:"";width:4px;height:15px;border-radius:2px;background:var(--gold)}
+    .terms ol{counter-reset:term;display:grid;grid-template-columns:1fr 1fr;gap:5px 7px;margin:0;padding:0;list-style:none;color:#344a61;font-size:7.7px;line-height:1.5}
+    .terms li{counter-increment:term;position:relative;min-height:47px;padding:7px 31px 7px 8px;border:1px solid #dce4eb;border-radius:7px;background:#fff;text-align:right}
+    .terms li::before{content:counter(term);position:absolute;top:7px;right:7px;width:17px;height:17px;display:grid;place-items:center;border-radius:50%;color:#fff;background:var(--green);font-size:7px;font-weight:800}
+    .terms li strong{display:block;margin-bottom:2px;color:var(--navy);font-size:8.2px}
+    .terms li span{display:block}
+    .store-terms{margin-top:6px;padding:6px 8px;border:1px solid #ead9ae;border-radius:6px;background:#fffaf0;color:#5b4a27;font-size:7.5px;white-space:pre-line}
+    .store-terms strong{color:#765514}
+    .legal-note{margin-top:5px;color:#6a7788;font-size:6.5px;line-height:1.45}
+    .signatures{display:grid;grid-template-rows:1fr 1fr;gap:5px}
+    .signature{display:flex;flex-direction:column;justify-content:space-between;padding:9px;border:1px solid var(--line);border-radius:8px;background:#fbfcfd;text-align:center}
+    .signature strong{color:var(--navy);font-size:9px}
+    .signature-space{height:42px}
+    .signature-line{padding-top:5px;border-top:1px solid #66788d;color:var(--muted);font-size:7px}
+    .footer{position:absolute;right:11mm;bottom:4mm;left:11mm;display:flex;justify-content:space-between;padding-top:4px;border-top:1px solid var(--line);color:#78889a;font-size:6px}
+    @page{size:A4;margin:0}
+    @media print{html,body{background:#fff}.sheet{margin:0;box-shadow:none}.print-button{display:none!important}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+    @media screen and (max-width:600px){.sheet{width:100%;min-height:auto;margin:0;padding:18px 12px 45px}.top-rule{margin:-18px -12px 15px}.head,.parties,.contract-bottom{grid-template-columns:1fr}.summary{grid-template-columns:repeat(2,1fr)}.terms ol{grid-template-columns:1fr}.print-button{position:sticky;top:8px;margin:8px}}
+  </style>
+</head>
+<body>
+  <button class="print-button" type="button" onclick="window.print()">طباعة / حفظ PDF</button>
+  <main class="sheet">
+    <div class="top-rule"></div>
+    <header class="head">
+      <div class="brand">
+        {% if settings and settings.logo_path %}<img src="{{ url_for('static', filename=settings.logo_path) }}" alt="شعار المتجر">{% else %}<span class="brand-mark">F</span>{% endif %}
+        <div><h1>{{ settings.store_name if settings else 'متجر الأقساط' }}</h1><p>{{ settings.address if settings and settings.address else 'عنوان الطرف الأول يثبت عند التوقيع' }}{% if settings and settings.contact_phone %} - {{ settings.contact_phone }}{% endif %}</p></div>
+      </div>
+      <div class="meta"><span>عقد بيع بالتقسيط</span><strong>{{ contract.contract_number }}</strong><small>تاريخ التحرير: {{ contract.created_at.strftime('%Y-%m-%d') }} | الحالة: {{ contract_status_label }}</small></div>
+    </header>
+
+    <section class="title"><h2>عقد بيع وشراء بالتقسيط</h2><p>تعد البيانات المالية وجدول الاستحقاقات والشروط أدناه أجزاءً متكاملة من هذا العقد.</p><span class="status">نسخة صادرة: {{ issued_at.strftime('%Y-%m-%d %H:%M') }}</span></section>
+
+    <section class="parties">
+      <article class="party">
+        <h3>الطرف الأول - البائع <span>المجهز</span></h3>
+        <div class="fields">
+          <div class="field full"><label>الاسم التجاري</label><strong>{{ settings.store_name if settings else 'المتجر' }}</strong></div>
+          <div class="field"><label>الهاتف</label><strong class="ltr">{{ settings.contact_phone if settings and settings.contact_phone else '—' }}</strong></div>
+          <div class="field"><label>واتساب</label><strong class="ltr">{{ settings.whatsapp if settings and settings.whatsapp else '—' }}</strong></div>
+          <div class="field full"><label>العنوان / ممثل الطرف الأول</label><strong>{{ settings.address if settings and settings.address else '—' }} - <span class="blank">ــــــــــــــــ</span></strong></div>
+        </div>
+      </article>
+      <article class="party">
+        <h3>الطرف الثاني - المشتري <span>المستهلك</span></h3>
+        <div class="fields">
+          <div class="field full"><label>الاسم الرباعي</label><strong>{{ contract.customer.name }}</strong></div>
+          <div class="field"><label>الهاتف الأساسي</label><strong class="ltr">{{ contract.customer.phone }}</strong></div>
+          <div class="field"><label>الهاتف الثاني</label><strong class="ltr">{{ contract.application.phone2 or contract.customer.phone2 or '—' }}</strong></div>
+          <div class="field full"><label>العنوان / جهة العمل / البطاقة الوطنية</label><strong>{{ contract.application.city or contract.customer.city or '' }}{% if contract.application.area %} / {{ contract.application.area }}{% endif %} - {{ contract.application.address or contract.customer.address or '—' }} | {{ contract.application.employer or '—' }} | <span class="blank">ــــــــــــ</span></strong></div>
+        </div>
+      </article>
+    </section>
+
+    <h2 class="section-title">الإفصاح المالي</h2>
+    <section class="summary">
+      <div><label>السعر النقدي</label><strong class="iqd">{{ cash_total|toLocaleString }} د.ع</strong></div>
+      <div><label>فرق التقسيط</label><strong class="iqd">{{ financing_cost|toLocaleString }} د.ع</strong></div>
+      <div class="featured"><label>إجمالي العقد</label><strong class="iqd">{{ contract.total_amount|toLocaleString }} د.ع</strong></div>
+      <div><label>الدفعة الأولى</label><strong class="iqd">{{ contract.down_payment|toLocaleString }} د.ع</strong></div>
+      <div><label>المسدّد / المتبقي</label><strong class="iqd">{{ contract.paid_amount|toLocaleString }} / {{ contract.remaining_amount|toLocaleString }} د.ع</strong></div>
+      <div><label>عدد الأقساط / أول استحقاق</label><strong>{{ contract.number_of_installments }}{% if contract.first_due_date %} / {{ contract.first_due_date.strftime('%Y-%m-%d') }}{% endif %}</strong></div>
+    </section>
+
+    <h2 class="section-title">المبيع المشمول بالعقد</h2>
+    <table>
+      <thead><tr><th style="width:38%">وصف المبيع</th><th style="width:13%">الرمز</th><th class="center" style="width:9%">الكمية</th><th class="center" style="width:10%">المدة</th><th style="width:15%">النقدي</th><th style="width:15%">التقسيط</th></tr></thead>
+      <tbody>{% for item in contract.items %}<tr><td>{{ item.product_name }}</td><td class="ltr">{{ item.sku or '—' }}</td><td class="center">{{ item.quantity }}</td><td class="center">{{ item.months }} شهر</td><td class="iqd">{{ item.cash_price|toLocaleString }}</td><td class="iqd">{{ item.installment_total|toLocaleString }}</td></tr>{% endfor %}</tbody>
+    </table>
+
+    <h2 class="section-title">جدول الاستحقاقات</h2>
+    <table class="schedule">
+      <thead><tr><th class="center" style="width:7%">#</th><th style="width:25%">تاريخ الاستحقاق</th><th style="width:23%">قيمة القسط</th><th style="width:20%">المسدّد</th><th style="width:25%">الحالة</th></tr></thead>
+      <tbody>{% for row in contract.schedules %}<tr><td class="center">{{ row.sequence }}</td><td class="ltr">{{ row.due_date.strftime('%Y-%m-%d') }}</td><td class="iqd">{{ row.amount|toLocaleString }} د.ع</td><td class="iqd">{{ row.paid_amount|toLocaleString }} د.ع</td><td><span class="schedule-status {% if row.status == 'paid' %}paid{% elif row.status == 'overdue' %}overdue{% endif %}">{{ schedule_status_labels.get(row.status, row.status) }}</span></td></tr>{% endfor %}</tbody>
+    </table>
+
+    <section class="contract-bottom">
+      <article class="terms">
+        <h2>الشروط والأحكام</h2>
+        <ol>
+          <li><strong>الإقرار المالي والسداد</strong><span>يقر المشتري باطلاعه على المبيع والسعرين والدفعة الأولى وجدول السداد، ويلتزم بالأقساط في مواعيدها مقابل إيصال معتمد.</span></li>
+          <li><strong>التسليم والضمان</strong><span>يلتزم البائع بتسليم المبيع بالمواصفات المثبتة، وتبقى حقوق الفحص والضمان والمطابقة المقررة قانوناً محفوظة للمشتري.</span></li>
+          <li><strong>التأخر عن السداد</strong><span>يوجه إشعار للمشتري وتطبق مهلة السماح{% if settings and settings.grace_days %} ({{ settings.grace_days }} أيام){% endif %}، ثم يجوز اتخاذ الإجراءات القانونية دون رسوم غير متفق عليها أو غير جائزة قانوناً.</span></li>
+          <li><strong>السداد المبكر والإلغاء</strong><span>{% if settings and settings.allow_advance_payment %}يجوز السداد المبكر وفق كشف تسوية يصدره البائع.{% else %}تكون التسوية المبكرة باتفاق خطي يحدد الرصيد المستحق.{% endif %} وتخضع طلبات الإلغاء والاستبدال للضمان والقانون.</span></li>
+          <li><strong>الإشعارات والمنازعات</strong><span>تعتمد بيانات الاتصال المثبتة للإشعارات، وأي تعديل يكون مكتوباً. وتسوى المنازعات ودياً، وإلا فللمحاكم العراقية المختصة الولاية.</span></li>
+          <li><strong>القانون والنسخ</strong><span>لا يفسر أي بند على أنه إسقاط لحق آمر للمستهلك، ويخضع العقد للقانون العراقي، ويقر الطرفان بقراءته وتسلم كل منهما نسخة منه.</span></li>
+        </ol>
+        {% if settings and settings.terms %}<div class="store-terms"><strong>شروط المتجر الإضافية:</strong> {{ settings.terms }}</div>{% endif %}
+        <div class="legal-note">المرجعية: القانون المدني العراقي رقم 40 لسنة 1951، وقانون حماية المستهلك رقم 1 لسنة 2010، وقانون التوقيع الإلكتروني والمعاملات الإلكترونية رقم 78 لسنة 2012، كلٌ في نطاق انطباقه.</div>
+      </article>
+      <section class="signatures">
+        <div class="signature"><strong>الطرف الأول / البائع</strong><div class="signature-space"></div><div class="signature-line">الاسم والصفة والتوقيع والختم - التاريخ</div></div>
+        <div class="signature"><strong>الطرف الثاني / المشتري</strong><div class="signature-space"></div><div class="signature-line">الاسم والتوقيع وبصمة الإبهام - التاريخ</div></div>
+      </section>
+    </section>
+
+    <footer class="footer"><span>{{ contract.contract_number }}</span><span>صفحة 1 من 1 - عقد بيع بالتقسيط</span><span>صادر من نظام Finora</span></footer>
+  </main>
+</body>
+</html>

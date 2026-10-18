@@ -37,7 +37,7 @@ body {% if print_mode %}{ background: #fff; }{% endif %}
     <thead><tr><th>التاريخ</th><th>المبلغ</th><th>الحالة</th></tr></thead>
     <tbody>
       {% for p in saving.payments %}
-      <tr><td>{{ p.payment_date }}</td><td>{{ "{:,}".format(p.amount) }}</td><td>{{ p.status_label() }}</td></tr>
+      <tr><td>{{ p.payment_date }}</td><td>{{ "{:,}".format(p.effective_amount) }}</td><td>{{ p.status_label() }}</td></tr>
       {% endfor %}
     </tbody>
   </table>

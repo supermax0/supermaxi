@@ -1,0 +1,337 @@
+{% extends "base.html" %}
+{% block page_title %}مراقبة صفحات الفيسبوك{% endblock %}
+{% block content %}
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="{{ url_for('static', filename='facebook_monitor/monitor.css') }}?v=39">
+<style>
+  html, body {
+    width: 100% !important;
+    max-width: 100% !important;
+    overflow-x: clip !important;
+    background: #f4f5f7 !important;
+  }
+  .app {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-height: 100dvh;
+    margin: 0 !important;
+    overflow-x: clip !important;
+    background: #f4f5f7 !important;
+  }
+  .sidebar, .topbar, .sidebar-close-btn, #finoraAiFab, #finoraAiPanel,
+  .app.sidebar-open::before { display: none !important; }
+  .content, .sidebar ~ .content, main.page-main {
+    margin: 0 !important;
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    background: #f4f5f7 !important;
+  }
+  table { min-width: 0 !important; }
+  @media (max-width: 860px) {
+    #fm-col-messages { display: block !important; }
+  }
+</style>
+
+<div class="fm-app">
+  <header class="fm-header">
+    <a class="fm-brand" href="/facebook-monitor">
+      <span class="fm-brand-mark">f</span>
+      <span>
+        <h1>مراقبة صفحات الفيسبوك</h1>
+        <p>مراقبة الرسائل والطلبات والأداء</p>
+      </span>
+    </a>
+    <div class="fm-stats" id="fm-stats"></div>
+    <div class="fm-tools">
+      <span class="fm-live"><b></b> مباشر</span>
+      <select id="fm-range" class="fm-select">
+        <option value="last_30" selected>آخر 30 يوم</option>
+        <option value="today">اليوم</option>
+        <option value="yesterday">أمس</option>
+        <option value="last_7">آخر 7 أيام</option>
+        <option value="this_month">هذا الشهر</option>
+        <option value="all">الكل</option>
+        <option value="custom">فترة مخصصة</option>
+      </select>
+      <span id="fm-custom" hidden>
+        <input id="fm-from" class="fm-select" type="date">
+        <input id="fm-to" class="fm-select" type="date">
+      </span>
+      <button type="button" class="fm-icon-btn" id="fm-open-settings" title="الإعدادات" aria-label="الإعدادات">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4"/></svg>
+      </button>
+      <a class="fm-icon-btn" href="/" title="الرجوع للنظام" aria-label="الرجوع للنظام">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg>
+      </a>
+      <span class="fm-user" title="{{ viewer.name }}">{{ viewer.name[:1] }}</span>
+    </div>
+  </header>
+
+  <div id="fm-banner" class="fm-banner"></div>
+  <div id="fm-filter-bar" class="fm-filters-bar"><span></span><button type="button" id="fm-clear-bar">مسح الفلتر</button></div>
+
+  <div class="fm-tabs">
+    <button type="button" class="active" data-tab="#fm-col-messages">الرسائل</button>
+    <button type="button" data-tab="#fm-col-pages">الصفحات</button>
+    <button type="button" data-tab="#fm-col-people">الموظفون</button>
+    <button type="button" data-tab="#fm-col-ads">الإعلانات</button>
+  </div>
+
+  <div class="fm-layout">
+    <section class="fm-panel fm-col" id="fm-col-pages">
+      <div class="fm-panel-head">
+        <div>
+          <h2>قوة الصفحات</h2>
+          <p>الأقوى أولاً حسب الطلبات والتحويل</p>
+        </div>
+      </div>
+      <div id="fm-pages"></div>
+    </section>
+
+    <section class="fm-panel fm-col active" id="fm-col-messages">
+      <div class="fm-panel-head">
+        <div>
+          <h2>الرسائل</h2>
+          <p id="fm-message-count">—</p>
+        </div>
+        <button type="button" class="fm-text-btn" id="fm-show-all">مسح الفلاتر</button>
+      </div>
+      <div class="fm-search-row">
+        <input id="fm-search" class="fm-search" type="search" placeholder="بحث بالاسم أو الرسالة...">
+      </div>
+      <div class="fm-filter-row">
+        <select id="fm-page-filter" class="fm-select slim"></select>
+        <select id="fm-employee-filter" class="fm-select slim"></select>
+        <select id="fm-ad-filter" class="fm-select slim"></select>
+        <select id="fm-status-filter" class="fm-select slim">
+          <option value="ALL">الحالة</option>
+          <option value="NEW">جديد</option>
+          <option value="WAITING_REPLY">بانتظار الرد</option>
+          <option value="LATE">متأخر</option>
+          <option value="ANSWERED">تم الرد</option>
+          <option value="ORDER_CREATED">تحول لطلب</option>
+        </select>
+        <select id="fm-time-filter" class="fm-select slim">
+          <option value="">الوقت</option>
+          <option value="15">آخر 15 دقيقة</option>
+          <option value="60">آخر ساعة</option>
+          <option value="180">آخر 3 ساعات</option>
+        </select>
+      </div>
+      <div class="fm-fb-cap" id="fm-fb-cap">
+        <div class="fm-fb-cap-top">
+          <strong>جلب المحادثات من فيسبوك</strong>
+          <span id="fm-fb-cap-label">0 / 25</span>
+        </div>
+        <div class="fm-fb-cap-track" aria-hidden="true"><i id="fm-fb-cap-fill"></i></div>
+        <div class="fm-fb-cap-edit">
+          <label>الحد
+            <input id="fm-fb-pull-limit" type="number" min="8" max="50" value="25">
+          </label>
+          <button type="button" class="fm-primary" id="fm-fb-pull">جلب الآن</button>
+        </div>
+        <p id="fm-fb-cap-note" class="fm-set-hint"></p>
+      </div>
+      <div class="fm-chips" id="fm-chips"></div>
+      <div id="fm-messages"><div class="fm-empty">جاري تحميل الرسائل…</div></div>
+      <button type="button" id="fm-more" class="fm-more" hidden>تحميل المزيد</button>
+    </section>
+
+    <div class="fm-side">
+      <section class="fm-panel fm-col" id="fm-col-people">
+        <div class="fm-panel-head">
+          <div>
+            <h2>الموظفون</h2>
+            <p id="fm-emp-sub">—</p>
+          </div>
+          <button type="button" class="fm-text-btn" id="fm-show-all-emp">عرض الكل</button>
+          <select id="fm-sort" class="fm-select slim">
+            <option value="default">المتصلون أولاً</option>
+            <option value="orders">الأكثر طلبات</option>
+            <option value="returns">الأقل راجع</option>
+            <option value="speed">الأسرع رد</option>
+            <option value="sales">الأعلى مبيعات</option>
+          </select>
+        </div>
+        <div id="fm-employees"></div>
+      </section>
+      <section class="fm-panel fm-col" id="fm-col-ads">
+        <div class="fm-panel-head">
+          <div>
+            <h2>الإعلانات النشطة</h2>
+            <p id="fm-ad-sub">—</p>
+          </div>
+          <button type="button" class="fm-text-btn" id="fm-show-all-ads">عرض الكل</button>
+        </div>
+        <div id="fm-ads"></div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div id="fm-drawer-back" class="fm-drawer-back"></div>
+<aside id="fm-drawer" class="fm-drawer" hidden>
+  <button type="button" class="fm-text-btn" id="fm-drawer-close">إغلاق</button>
+  <div id="fm-drawer-body"></div>
+  <button type="button" class="fm-primary" id="fm-filter-employee">تصفية الصفحة حسب هذا الموظف</button>
+</aside>
+<div id="fm-settings-back" class="fm-drawer-back"></div>
+<section id="fm-settings" class="fm-modal fm-settings" hidden>
+  <header class="fm-set-head">
+    <div>
+      <h3>الإعدادات</h3>
+      <p id="fm-set-lead">فعّل الصفحة، ثم اختر من يستقبل رسائلها</p>
+    </div>
+    <button type="button" class="fm-set-close" id="fm-settings-close">إغلاق</button>
+  </header>
+  <nav class="fm-set-tabs" role="tablist" aria-label="أقسام الإعدادات">
+    <button type="button" class="is-on" role="tab" aria-selected="true" data-set-tab="routing">التوزيع</button>
+    <button type="button" role="tab" aria-selected="false" data-set-tab="pages">الصفحات</button>
+    <button type="button" role="tab" aria-selected="false" data-set-tab="ads">الإعلانات</button>
+  </nav>
+  <p id="fm-settings-status" class="fm-set-status" hidden></p>
+  <p id="fm-settings-error" class="fm-form-error" hidden></p>
+  <form id="fm-settings-form" class="fm-form" autocomplete="off" onsubmit="return false">
+    <div class="fm-set-panel" data-set-panel="routing">
+      <div class="fm-set-scroll">
+        <label class="fm-route-search">
+          <input id="fm-route-q" type="search" placeholder="ابحث عن موظف أو صفحة" autocomplete="off">
+        </label>
+        <p id="fm-route-empty" class="fm-set-hint" hidden>ماكو نتيجة بهالاسم</p>
+        <div id="fm-routing" class="fm-routing"></div>
+      </div>
+      <div class="fm-set-bar">
+        <p>الحد: أقصى محادثات. المهلة: دقائق قبل نقل الرسالة لموظف ثاني.</p>
+        <button type="button" class="fm-primary" id="fm-routing-save">حفظ التوزيع</button>
+      </div>
+    </div>
+
+    <div class="fm-set-panel" data-set-panel="pages" hidden>
+      <div class="fm-set-scroll">
+      <article class="fm-hook">
+        <div class="fm-hook-top">
+          <strong>الربط الدائم</strong>
+          <span id="fm-hook-state">انسخ الرابط والرمز إلى Meta</span>
+        </div>
+        <p class="fm-set-hint">من صفحة Messenger API → Webhooks الصق الحقلين واضغط Verify and save، بعدها اشترك حقل messages لكل صفحة.</p>
+        <label>Callback URL
+          <div class="fm-copy-row">
+            <input id="fm-hook-url" readonly>
+            <button type="button" class="fm-primary fm-ghost" id="fm-copy-url">نسخ</button>
+          </div>
+        </label>
+        <label>Verify token
+          <div class="fm-copy-row">
+            <input id="fm-hook-token" readonly>
+            <button type="button" class="fm-primary fm-ghost" id="fm-copy-token">نسخ</button>
+          </div>
+        </label>
+      </article>
+      <label>معرّف التطبيق
+        <input id="fm-app-id" name="fb_app_id" autocomplete="off" placeholder="App ID">
+      </label>
+      <label>سر التطبيق
+        <input id="fm-app-secret" name="fb_app_secret" type="text" spellcheck="false" autocomplete="off" placeholder="الصق App Secret">
+      </label>
+      <p class="fm-set-hint">كل صفحة إلها رمزها. حفظ رمز صفحة ما يلمس الصفحات الثانية. App ID واحد للتطبيق، والرموز تحت كل صفحة.</p>
+      <div id="fm-page-apis" class="fm-page-apis"></div>
+      <article class="fm-page-api is-add">
+        <strong>إضافة صفحة جديدة</strong>
+        <label>رقم الصفحة (اختياري إذا فيسبوك واقف)
+          <input id="fm-new-page-id" autocomplete="off" placeholder="Page ID">
+        </label>
+        <label>رمز الصفحة الجديدة
+          <input id="fm-new-page-token" type="text" spellcheck="false" autocomplete="off" placeholder="الصق Page Token من Messenger API">
+        </label>
+        <button type="button" class="fm-primary" id="fm-new-page-save">حفظ رمز الصفحة الجديدة</button>
+      </article>
+      <details class="fm-set-more">
+        <summary>جلب كل الصفحات برمز مستخدم</summary>
+        <label>رمز المستخدم
+          <input id="fm-user-token" name="fb_user_token" type="text" spellcheck="false" autocomplete="off" placeholder="الصق User Token">
+        </label>
+        <div class="fm-set-foot">
+          <button type="button" class="fm-primary fm-ghost" id="fm-settings-save">حفظ التطبيق</button>
+          <button type="button" class="fm-primary" id="fm-settings-connect">جلب الصفحات</button>
+        </div>
+      </details>
+      <div id="fm-api-list" class="fm-set-list" hidden></div>
+      <div id="fm-settings-pages" class="fm-set-list"></div>
+      </div>
+    </div>
+
+    <div class="fm-set-panel" data-set-panel="ads" hidden>
+      <div class="fm-set-scroll">
+      <p class="fm-set-hint">تطبيق Marketing API منفصل. لا يستبدل تطبيق الصفحات.</p>
+      <label>معرّف تطبيق الإعلانات
+        <input id="fm-ads-app-id" autocomplete="off" placeholder="App ID">
+      </label>
+      <label>سر تطبيق الإعلانات
+        <input id="fm-ads-secret" type="text" spellcheck="false" autocomplete="off" placeholder="الصق App Secret">
+      </label>
+      <label>رمز تطبيق الإعلانات
+        <input id="fm-ads-token" type="text" spellcheck="false" autocomplete="off" placeholder="الصق User Token بصلاحية ads_read">
+      </label>
+      <label>حساب الإعلان
+        <input id="fm-ads-account" autocomplete="off" placeholder="act_1234567890">
+      </label>
+      <div id="fm-ads-accounts" class="fm-set-list"></div>
+      </div>
+      <div class="fm-set-bar">
+        <p>تطبيق الإعلانات منفصل عن صفحات الرسائل.</p>
+        <button type="button" class="fm-primary" id="fm-ads-connect">حفظ وربط الإعلانات</button>
+      </div>
+    </div>
+  </form>
+</section>
+<div id="fm-toast" class="fm-toast" hidden role="status" aria-live="polite">
+  <span class="fm-toast-mark" aria-hidden="true"></span>
+  <span id="fm-toast-text"></span>
+</div>
+
+<div id="fm-chat-back" class="fm-chat-back" hidden></div>
+<section id="fm-chat" class="fm-chat" hidden aria-label="محادثة فيسبوك">
+  <header class="fm-chat-head">
+    <button type="button" class="fm-chat-back-btn" id="fm-chat-close" aria-label="رجوع">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+    <div class="fm-chat-identity">
+      <span class="fm-avatar round" id="fm-chat-avatar">ف</span>
+      <div class="fm-chat-titles">
+        <h2 id="fm-chat-name">محادثة</h2>
+        <p id="fm-chat-page">—</p>
+      </div>
+    </div>
+    <div class="fm-transfer">
+      <button type="button" class="fm-chat-transfer" id="fm-transfer-open">تحويل</button>
+      <div class="fm-transfer-pop" id="fm-transfer-pop" hidden></div>
+    </div>
+    <span class="fm-chat-status" id="fm-chat-meta">—</span>
+  </header>
+
+  <div class="fm-chat-stream" id="fm-chat-stream"></div>
+
+  <footer class="fm-chat-foot">
+    <p class="fm-chat-error" id="fm-chat-error" hidden></p>
+    <form class="fm-chat-composer" id="fm-chat-form">
+      <input type="file" id="fm-chat-file" accept="image/*,video/*,audio/*,.pdf" hidden>
+      <button type="button" class="fm-chat-attach" id="fm-chat-attach" title="إرفاق وسائط" aria-label="إرفاق وسائط">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+      </button>
+      <div class="fm-chat-field">
+        <textarea id="fm-chat-input" rows="1" placeholder="اكتب ردك للعميل…" maxlength="2000"></textarea>
+        <div class="fm-chat-preview" id="fm-chat-preview" hidden></div>
+      </div>
+      <button type="submit" class="fm-chat-send" id="fm-chat-send" aria-label="إرسال الرد">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9l20-7z"/></svg>
+      </button>
+    </form>
+  </footer>
+</section>
+
+<script src="{{ url_for('static', filename='facebook_monitor/monitor.js') }}?v=42"></script>
+{% endblock %}

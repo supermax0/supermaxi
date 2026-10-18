@@ -23,7 +23,9 @@ def _read_version_json() -> dict[str, Any]:
     if not path.is_file():
         return {}
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        # utf-8-sig strips a Windows BOM if present; a BOM makes json.loads fail
+        # and the settings/bootstrap pages silently fall back to stale defaults.
+        data = json.loads(path.read_text(encoding="utf-8-sig"))
     except (OSError, json.JSONDecodeError, TypeError, ValueError):
         return {}
     return data if isinstance(data, dict) else {}

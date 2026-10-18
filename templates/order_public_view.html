@@ -85,7 +85,7 @@
           {% for item in items %}
           <tr>
             <td>{{ loop.index }}</td>
-            <td>{{ item.product_name or '—' }}</td>
+            <td>{{ item.display_name or '—' }}</td>
             <td>{{ item.quantity }}</td>
             <td>{{ "{:,.0f}".format(item.price) }} د.ع</td>
             <td>{{ "{:,.0f}".format(item.total) }} د.ع</td>

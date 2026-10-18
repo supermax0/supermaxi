@@ -7,6 +7,7 @@ class DeliveryAgent(db.Model):
     __tablename__ = "delivery_agent"
 
     id = db.Column(db.Integer, primary_key=True)
+    branch_id = db.Column(db.Integer, db.ForeignKey("branch.id"), nullable=True, index=True)
     name = db.Column(db.String(100), nullable=False)
     shipping_company_id = db.Column(db.Integer, db.ForeignKey("shipping_company.id"), nullable=True)
     phone = db.Column(db.String(20), nullable=True)

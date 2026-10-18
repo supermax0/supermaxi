@@ -478,6 +478,11 @@
               );
             }
           }
+          if (fresh.length && typeof window.finoraSpeakNewOrder === "function") {
+            fresh.forEach(function (order) {
+              window.finoraSpeakNewOrder(order);
+            });
+          }
           lastOrderId = data.last_order_id;
           document.dispatchEvent(new CustomEvent("finora:new-orders", { detail: data }));
         }

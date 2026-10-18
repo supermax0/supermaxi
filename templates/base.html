@@ -1,14 +1,19 @@
 {% from 'partials/_help_macros.html' import help_icon %}
 <!DOCTYPE html>
-<html lang="{{ current_lang }}" dir="{% if current_lang in ['ar', 'ku'] %}rtl{% else %}ltr{% endif %}">
+<html lang="{{ current_lang or 'ar' }}" dir="{% if (current_lang or 'ar') in ['ar', 'ku'] %}rtl{% else %}ltr{% endif %}">
 
 <head>
   <meta charset="UTF-8">
+  {# Phase 8A privacy hardening: the authenticated clinic app never loads Google Ads / remarketing. Marketing
+     pages, the public site and login (none of which set is_clinics_business) keep the tag. #}
+  {% if not is_clinics_business %}{% include "_google_tag.html" %}{% endif %}
   <title>{% block title %}Finora{% endblock %}</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <link rel="stylesheet" href="/static/css/assistant-layout.css?v=20261003a">
+  <script src="/static/js/assistant-layout.js?v=20261003a" defer></script>
   <script src="/static/js/no-zoom.js"></script>
-  <script src="/static/js/print-utils.js"></script>
-  <script src="/static/js/message-notify.js"></script>
+  <script src="/static/js/print-utils.js?v=20260826-no-login-print"></script>
+  {% if not is_hr_management and not is_clinics_business %}<script src="/static/js/message-notify.js"></script>{% endif %}
   <meta name="format-detection" content="telephone=no">
   <meta name="description" content="Finora - نظام محاسبة متكامل لإدارة المبيعات والمخزون">
   <meta name="theme-color" content="#0a0f1c">
@@ -45,20 +50,28 @@
     })();
   </script>
 
-  <!-- Fonts & Icons -->
+  {% if not is_clinics_business %}
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  {% endif %}
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
+  {% if not is_clinics_business %}
   <!-- DataTables CSS -->
   <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
   <link rel="stylesheet" href="https://cdn.datatables.net/responsive/2.5.0/css/responsive.dataTables.min.css">
+  {% endif %}
 
   <!-- Global Enhancements -->
+  {% if not is_clinics_business %}
   <link rel="stylesheet" href="/static/css/enhancements.css">
   <link rel="stylesheet" href="/static/css/global-improvements.css">
-  <link rel="stylesheet" href="/static/css/mobile-responsive.css">
+  {% endif %}
+  <link rel="stylesheet" href="/static/css/mobile-responsive.css?v=clinics-ws-footer-20260908c">
+  {% if session.get('user_id') and session.get('tenant_slug') %}
+  <link rel="stylesheet" href="/static/css/finora-ai.css?v=20261003-layout">
+  {% endif %}
 
   <style>
     /* ======================================================
@@ -519,6 +532,43 @@
       align-items: center;
       gap: 16px;
       font-size: 14px;
+    }
+
+    .user-box-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+
+    .user-box-action-btn {
+      width: 52px;
+      height: 52px;
+      flex: 0 0 52px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      border-radius: 14px;
+      border: 1px solid var(--border-light);
+      font-size: 17px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease, transform 0.18s ease;
+    }
+
+    .user-box-pos-btn {
+      color: #fff;
+      border-color: rgba(37, 99, 235, 0.72);
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      box-shadow: 0 8px 18px rgba(37, 99, 235, 0.24);
+    }
+
+    .user-box-pos-btn:hover {
+      color: #fff;
+      border-color: #1d4ed8;
+      background: linear-gradient(135deg, #1d4ed8, #1e40af);
+      transform: translateY(-1px);
     }
 
     .user-info {
@@ -1765,23 +1815,27 @@
       }
 
       .topbar {
-        padding: 12px 14px;
+        padding: 10px 12px;
+        padding-top: max(10px, env(safe-area-inset-top, 0px));
         display: grid;
-        grid-template-columns: 1fr auto;
+        grid-template-columns: auto minmax(0, 1fr);
         grid-auto-rows: auto;
         align-items: center;
-        gap: 10px;
+        gap: 8px;
       }
 
       .topbar-left {
         min-width: 0;
         grid-column: 1 / 2;
+        flex-shrink: 0;
       }
 
       .topbar-actions {
         grid-column: 2 / 3;
-        justify-self: end;
-        align-self: start;
+        justify-self: stretch;
+        align-self: center;
+        min-width: 0;
+        max-width: 100%;
       }
 
       .theme-toggle-btn {
@@ -2176,10 +2230,18 @@
     }
 
   </style>
+  {% if not is_clinics_business %}
   <link rel="stylesheet" href="/static/css/design-refresh.css?v=20261004-scroll">
+  <link rel="stylesheet" href="/static/css/theme-dark.css?v=20260826-all">
+  {% endif %}
+  {% if not is_clinics_business %}
   <link rel="stylesheet" href="/static/css/finora-theme.css?v=20261018a">
+  {% endif %}
   <link rel="stylesheet" href="/static/css/help-system.css">
-  <link rel="stylesheet" href="/static/css/saas-admin.css">
+  {% if not is_clinics_business %}
+  <link rel="stylesheet" href="/static/css/saas-admin.css?v=20260826-dark">
+  {% endif %}
+  {% block head %}{% endblock %}
 </head>
 
 {% set is_payment_flow = request.path.startswith('/payment')
@@ -2196,12 +2258,27 @@ or request.path.startswith('/superadmin') %}
     {# اعتبر مسار /superadmin أيضاً كمسار خارجي عن لوحة الشركة حتى لا تظهر القائمة الجانبية معها #}
     {% set is_admin = session.get("role") == "admin" or (current_employee and current_employee.role == "admin") %}
     {% set is_agent_portal = session.get('agent_portal') and session.get('agent_id') %}
-    {% if session.get("user_id") and not is_payment_flow and not is_agent_portal %}
-    <aside class="sidebar" id="sidebar">
+    {% set _navigation_flags = system_settings.get_ui_flags() if system_settings else {} %}
+    {% set organized_nav_enabled = not (is_hr_management or is_clinics_business or is_beauty_center or is_food_business or is_wholesale)
+      and request.args.get('navigation') != 'classic'
+      and (_navigation_flags.get('navigation_v2', False) == true or (is_admin and request.args.get('navigation') == 'organized')) %}
+    {% if session.get("user_id") and not is_payment_flow and not is_agent_portal and not request.path.startswith('/food') and not request.path.startswith('/wholesale') %}
+    <aside class="sidebar{% if organized_nav_enabled %} sidebar--organized{% endif %}" id="sidebar">
       <div class="sidebar-mobile-header">
         <div class="brand">
+          {% if organized_nav_enabled %}
+          <span class="sidebar-brand-emblem">
+            <span aria-hidden="true">{{ (platform_app_name or 'F')[0] }}</span>
+            <img src="{{ platform_logo_url }}" alt="{{ platform_app_name }}" class="brand-logo">
+          </span>
+          <span class="sidebar-brand-copy">
+            <span class="brand-text">{{ platform_app_name }}</span>
+            <span class="sidebar-brand-caption">{{ 'Business workspace' if current_lang == 'en' else 'مساحة إدارة الأعمال' }}</span>
+          </span>
+          {% else %}
           <img src="{{ platform_logo_url }}" alt="{{ platform_app_name }}" class="brand-logo">
           <span class="brand-text">{{ platform_app_name }}</span>
+          {% endif %}
         </div>
         <div class="sidebar-header-end">
           <button type="button" class="sidebar-hide-desktop-btn" onclick="collapseDesktopSidebar()"
@@ -2213,12 +2290,63 @@ or request.path.startswith('/superadmin') %}
         </div>
       </div>
 
-      <nav class="menu">
+      <nav class="menu"{% if organized_nav_enabled %} aria-label="{{ 'Main navigation' if current_lang == 'en' else 'التنقل الرئيسي' }}" data-organized-navigation data-nav-language="{{ current_lang or 'ar' }}" data-nav-storage-key="{{ session.get('tenant_slug', '') }}:{{ session.get('user_id', '') }}"{% endif %}>
+        {% set _guarded_navigation %}
+        {% if is_admin or (current_employee and can_use_employee_desk) %}
+        <a href="/employee-desk" class="{% if request.path.startswith('/employee-desk') %}active{% endif %}">
+          <i class="fa fa-headset"></i> مكتب الموظف
+        </a>
+        {% endif %}
+        {% if is_clinics_business and business_allows('clinics') %}
+        <div class="menu-group open">
+          <button type="button"
+            class="menu-group-header {% if request.path.startswith('/clinics') %}active{% endif %}"
+            onclick="this.parentElement.classList.toggle('open')">
+            <i class="fa fa-stethoscope"></i>
+            <span>عيادات Finora</span>
+            <i class="fa fa-chevron-down menu-group-chevron"></i>
+          </button>
+          <div class="menu-group-body">
+            {% if business_allows('clinics_dashboard') %}<a href="/clinics/" class="{% if request.path == '/clinics/' or request.path == '/clinics' %}active{% endif %}"><i class="fa fa-house-medical"></i> لوحة العيادة</a>{% endif %}
+            {% if business_allows('clinics_reception') %}<a href="/clinics/reception" class="{% if request.path.startswith('/clinics/reception') %}active{% endif %}"><i class="fa fa-desktop"></i> الاستقبال</a>{% endif %}
+            {% if business_allows('clinics_appointments') %}<a href="/clinics/appointments" class="{% if request.path.startswith('/clinics/appointments') %}active{% endif %}"><i class="fa fa-calendar-check"></i> المواعيد</a>{% endif %}
+            {% if business_allows('clinics_patients') %}<a href="/clinics/patients" class="{% if request.path.startswith('/clinics/patients') %}active{% endif %}"><i class="fa fa-user-injured"></i> المرضى</a>{% endif %}
+            {% if business_allows('clinics_visits') %}<a href="/clinics/visits" class="{% if request.path.startswith('/clinics/visits') or request.path.startswith('/clinics/doctor') %}active{% endif %}"><i class="fa fa-notes-medical"></i> الزيارات</a>{% endif %}
+            {% if business_allows('clinics_clinical') %}<a href="/clinics/labs" class="{% if request.path.startswith('/clinics/labs') %}active{% endif %}"><i class="fa fa-flask"></i> التحاليل</a>{% endif %}
+            {% if business_allows('clinics_inventory') %}<a href="/clinics/inventory" class="{% if request.path.startswith('/clinics/inventory') %}active{% endif %}"><i class="fa fa-boxes-stacked"></i> المخزون</a>{% endif %}
+            {% if business_allows('clinics_billing') %}<a href="/clinics/billing" class="{% if request.path.startswith('/clinics/billing') %}active{% endif %}"><i class="fa fa-file-invoice-dollar"></i> المالية</a>{% endif %}
+            {% if business_allows('clinics_reports') %}<a href="/clinics/reports" class="{% if request.path.startswith('/clinics/reports') %}active{% endif %}"><i class="fa fa-chart-column"></i> التقارير</a>{% endif %}
+            {% if business_allows('clinics_settings') %}<a href="/clinics/settings" class="{% if request.path.startswith('/clinics/settings') %}active{% endif %}"><i class="fa fa-sliders"></i> الإعدادات</a>{% endif %}
+          </div>
+        </div>
+        {% endif %}
+        {% if not is_hr_management and not is_clinics_business %}
+        {% if is_food_business and business_allows('food') %}
+        <a href="/food/" class="{% if request.path == '/food/' or request.path == '/food' %}active{% endif %}"><i class="fa fa-chart-line"></i> الرئيسية</a>
+        <a href="/food/cashier" class="{% if request.path.startswith('/food/cashier') %}active{% endif %}"><i class="fa fa-cash-register"></i> الكاشير</a>
+        <a href="/orders" class="{% if request.path.startswith('/orders') %}active{% endif %}"><i class="fa fa-receipt"></i> جميع الطلبات</a>
+        <a href="/food/purchases" class="{% if request.path.startswith('/food/purchases') %}active{% endif %}"><i class="fa fa-cart-plus"></i> المشتريات</a>
+        <a href="/food/inventory" class="{% if request.path.startswith('/food/inventory') %}active{% endif %}"><i class="fa fa-warehouse"></i> المخزن</a>
+        <a href="/food/products" class="{% if request.path.startswith('/food/products') %}active{% endif %}"><i class="fa fa-box-open"></i> المنتجات</a>
+        <a href="/food/customers" class="{% if request.path.startswith('/food/customers') %}active{% endif %}"><i class="fa fa-users"></i> العملاء</a>
+        <a href="/food/suppliers" class="{% if request.path.startswith('/food/suppliers') %}active{% endif %}"><i class="fa fa-truck-field"></i> الموردون</a>
+        <a href="/food/finance" class="{% if request.path.startswith('/food/finance') %}active{% endif %}"><i class="fa fa-money-bill-transfer"></i> الحركات المالية</a>
+        <a href="/food/reports" class="{% if request.path.startswith('/food/reports') %}active{% endif %}"><i class="fa fa-chart-pie"></i> التقارير</a>
+        <a href="/food/settings" class="{% if request.path.startswith('/food/settings') %}active{% endif %}"><i class="fa fa-sliders"></i> الإعدادات</a>
+        {% endif %}
         {% if (is_admin or (current_employee and can_view_dashboard)) and business_allows('dashboard') %}
         <a href="/"><i class="fa fa-chart-line"></i> {{ _('dashboard') }}</a>
         {% endif %}
-        {% if is_admin and business_allows('executive_dashboard') %}
+        {% if (is_admin or can_use_notes) and business_allows('notes') and not is_starter_business %}
+        <a href="/notes/" class="{% if request.path.startswith('/notes') %}active{% endif %}">
+          <i class="fa fa-book-open"></i> دفتر الملاحظات
+        </a>
+        {% endif %}
+        {% if is_admin and business_allows('executive_dashboard') and not is_starter_business %}
         <a href="/executive-dashboard" class="{% if request.path.startswith('/executive-dashboard') %}active{% endif %}"><i class="fa fa-crown"></i> لوحة المدير التنفيذي</a>
+        {% endif %}
+        {% if is_admin and not is_starter_business %}
+        <a href="/facebook-monitor" class="{% if request.path.startswith('/facebook-monitor') %}active{% endif %}"><i class="fa fa-facebook"></i> مراقبة صفحات الفيسبوك</a>
         {% endif %}
         {% if is_beauty_center and business_allows('beauty') %}
         <a href="/beauty" class="{% if request.path == '/beauty/' or request.path == '/beauty' %}active{% endif %}"><i class="fa fa-spa"></i> مركز التجميل</a>
@@ -2235,11 +2363,73 @@ or request.path.startswith('/superadmin') %}
         <a href="/beauty/alerts" class="{% if request.path.startswith('/beauty/alerts') %}active{% endif %}"><i class="fa fa-bell"></i> تنبيهات المركز</a>
         {% endif %}
         {% endif %}
+        {% if is_wholesale and business_allows('wholesale') and business_allows('wholesale_ops') %}
+        <a href="/wholesale/ops" class="{% if request.path.startswith('/wholesale') %}active{% endif %}"><i class="fa fa-boxes-packing"></i> تجارة الجملة</a>
+        {% endif %}
+        {% endif %}
+        {% if is_hr_management and business_allows('hr') and (is_admin or (current_employee and can_manage_employees)) %}
+        <div class="menu-group open">
+          <button type="button"
+            class="menu-group-header {% if request.path.startswith('/hr') %}active{% endif %}"
+            onclick="this.parentElement.classList.toggle('open')">
+            <i class="fa fa-people-group"></i>
+            الموارد البشرية
+            <span class="menu-group-header-icon"><i class="fa fa-chevron-down"></i></span>
+          </button>
+          <div class="menu-group-links">
+            {% if business_allows('hr_dashboard') %}<a href="/hr" class="{% if request.path == '/hr' or request.path == '/hr/' %}active{% endif %}"><i class="fa fa-chart-pie"></i> لوحة HR</a>{% endif %}
+            {% if business_allows('hr_employees') %}<a href="/hr/employees" class="{% if request.path.startswith('/hr/employees') %}active{% endif %}"><i class="fa fa-id-badge"></i> الموظفون</a>{% endif %}
+            {% if business_allows('hr_attendance') %}<a href="/hr/attendance" class="{% if request.path.startswith('/hr/attendance') %}active{% endif %}"><i class="fa fa-user-clock"></i> الحضور والانصراف</a>{% endif %}
+            {% if business_allows('hr_leaves') %}<a href="/hr/leaves" class="{% if request.path.startswith('/hr/leaves') %}active{% endif %}"><i class="fa fa-calendar-day"></i> الإجازات</a>{% endif %}
+            {% if business_allows('hr_payroll') %}<a href="/hr/payroll" class="{% if request.path.startswith('/hr/payroll') %}active{% endif %}"><i class="fa fa-money-check-dollar"></i> الرواتب</a>{% endif %}
+            {% if business_allows('hr_cash') %}<a href="/hr/cash" class="{% if request.path.startswith('/hr/cash') %}active{% endif %}"><i class="fa fa-vault"></i> الصندوق</a>{% endif %}
+            {% if business_allows('hr_reports') %}<a href="/hr/reports" class="{% if request.path.startswith('/hr/reports') %}active{% endif %}"><i class="fa fa-chart-column"></i> التقارير</a>{% endif %}
+            {% if business_allows('hr_settings') %}<a href="/hr/settings" class="{% if request.path.startswith('/hr/settings') %}active{% endif %}"><i class="fa fa-sliders"></i> الأقسام والإعدادات</a>{% endif %}
+          </div>
+        </div>
+        {% endif %}
+        {% if not is_hr_management and not is_clinics_business %}
+        {% if is_starter_business %}
+        {% if (is_admin or (current_employee and can_use_quick_sale)) and business_allows('quick_sale') %}
+        <a href="/quick-sale" class="{% if request.path.startswith('/quick-sale') %}active{% endif %}"><i class="fa fa-bolt"></i> بيع سريع</a>
+        {% endif %}
+        {% if (is_admin or (current_employee and can_see_orders)) and business_allows('orders') %}
+        <a href="/orders" class="{% if request.path.startswith('/orders') %}active{% endif %}"><i class="fa fa-receipt"></i> جميع الطلبات</a>
+        {% endif %}
+        {% if (is_admin or (current_employee and can_manage_inventory)) and business_allows('inventory') %}
+        <a href="/inventory" class="{% if request.path.startswith('/inventory') %}active{% endif %}"><i class="fa fa-box"></i> المنتجات والمخزون</a>
+        {% endif %}
+        {% if (is_admin or (current_employee and can_manage_inventory)) and business_allows('purchases') %}
+        <a href="/purchases" class="{% if request.path.startswith('/purchases') %}active{% endif %}"><i class="fa fa-shopping-cart"></i> المشتريات</a>
+        <a href="/purchases/lists" class="{% if request.path.startswith('/purchases/lists') %}active{% endif %}"><i class="fa fa-list-check"></i> قوائم الشراء</a>
+        {% endif %}
+        {% if (is_admin or (current_employee and can_manage_suppliers)) and business_allows('suppliers') %}
+        <a href="/suppliers" class="{% if request.path.startswith('/suppliers') %}active{% endif %}"><i class="fa fa-industry"></i> الموردين</a>
+        {% endif %}
+        {% if (is_admin or (current_employee and can_manage_customers)) and business_allows('customers') %}
+        <a href="/customers" class="{% if request.path.startswith('/customers') %}active{% endif %}"><i class="fa fa-users"></i> {{ _('customers') }}</a>
+        {% endif %}
+        {% if (is_admin or (current_employee and can_see_expenses)) and business_allows('expenses') %}
+        <a href="/expenses" class="{% if request.path.startswith('/expenses') %}active{% endif %}"><i class="fa fa-money-bill-wave"></i> {{ _('expenses') }}</a>
+        {% endif %}
+        {% if (is_admin or (current_employee and can_see_receipts)) and business_allows('receipts') %}
+        <a href="/receipts" class="{% if request.path.startswith('/receipts') %}active{% endif %}"><i class="fa fa-hand-holding-usd"></i> القبض والتسديدات</a>
+        {% endif %}
+        {% if (is_admin or (current_employee and can_see_accounts)) and business_allows('cash') %}
+        <a href="/cash" class="{% if request.path.startswith('/cash') or request.path.startswith('/accounts') %}active{% endif %}"><i class="fa fa-wallet"></i> الصندوق والحسابات</a>
+        {% endif %}
+        {% if (is_admin or (current_employee and can_see_reports)) and business_allows('reports') %}
+        <a href="/reports" class="{% if request.path.startswith('/reports') %}active{% endif %}"><i class="fa fa-chart-pie"></i> {{ _('reports') }}</a>
+        {% endif %}
+        {% if (is_admin or (current_employee and can_manage_settings)) and business_allows('settings') %}
+        <a href="/settings" class="{% if request.path.startswith('/settings') %}active{% endif %}"><i class="fa fa-cog"></i> {{ _('settings') }}</a>
+        {% endif %}
+        {% else %}
         {% set show_pos = is_admin or (current_employee and can_use_pos) %}
         {% if show_pos and business_allows('pos') %}
         <a href="/pos"><i class="fa fa-cash-register"></i> {{ _('dashboard_welcome_pos') }}</a>
         {% endif %}
-        {% if (is_admin or (current_employee and can_use_quick_sale)) and business_allows('pos') and business_allows('quick_sale') %}
+        {% if (is_admin or (current_employee and can_use_quick_sale)) and business_allows('quick_sale') %}
         <a href="/quick-sale" class="{% if request.path.startswith('/quick-sale') %}active{% endif %}"><i class="fa fa-bolt"></i> بيع سريع</a>
         {% endif %}
         {% if (is_admin or (current_employee and can_manage_inventory)) and business_allows('inventory') %}
@@ -2266,6 +2456,10 @@ or request.path.startswith('/superadmin') %}
               <i class="fa fa-list"></i> {{ _('inventory_movements_log') }}
             </a>
             {% endif %}
+            <a href="/inventory/products/duplicates"
+              class="{% if request.path.startswith('/inventory/products/duplicates') %}active{% endif %}">
+              <i class="fa fa-object-group"></i> دمج المنتجات المتكررة
+            </a>
             {% if business_allows('inventory_audit') %}
             <a href="/inventory/audit"
               class="{% if request.path.startswith('/inventory/audit') %}active{% endif %}">
@@ -2284,6 +2478,7 @@ or request.path.startswith('/superadmin') %}
         {% if (is_admin or (current_employee and can_manage_inventory)) and business_allows('purchases') %}
         {% if plan_has("purchases") %}
         <a href="/purchases"><i class="fa fa-shopping-cart"></i> {{ _('purchases') }}</a>
+        <a href="/purchases/lists"><i class="fa fa-list-check"></i> قوائم الشراء</a>
         {% else %}
         <a href="/upgrade" style="opacity:.55" title="{{ _('upgrade_plan') }}"><i class="fa fa-shopping-cart"></i>
           {{ _('purchases') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
@@ -2436,9 +2631,28 @@ or request.path.startswith('/superadmin') %}
           </div>
         </div>
         {% endif %}
+        {% if (is_admin or (current_employee and (current_employee.has_permission('view_installments') or current_employee.has_permission('installments.view')))) and business_allows('installments') %}
+        <div class="menu-group {% if request.path.startswith('/installments') %}open{% endif %}">
+          <button type="button" class="menu-group-header {% if request.path.startswith('/installments') %}active{% endif %}"
+            onclick="this.parentElement.classList.toggle('open')">
+            <i class="fa fa-calendar-check"></i> الأقساط
+            <span class="menu-group-header-icon"><i class="fa fa-chevron-down"></i></span>
+          </button>
+          <div class="menu-group-links">
+            {% if business_allows('installments_dashboard') %}<a href="/installments/"><i class="fa fa-gauge"></i> لوحة الأقساط</a>{% endif %}
+            {% if business_allows('installments_products') %}<a href="/installments/products"><i class="fa fa-box"></i> المنتجات</a>{% endif %}
+            {% if business_allows('installments_applications') %}<a href="/installments/applications"><i class="fa fa-file-signature"></i> الطلبات</a>{% endif %}
+            {% if business_allows('installments_contracts') %}<a href="/installments/contracts"><i class="fa fa-file-contract"></i> العقود والدفعات</a>{% endif %}
+            {% if business_allows('installments_overdue') %}<a href="/installments/overdue"><i class="fa fa-triangle-exclamation"></i> المتأخرات</a>{% endif %}
+            {% if business_allows('installments_reports') %}<a href="/installments/reports"><i class="fa fa-chart-line"></i> التقارير</a>{% endif %}
+            {% if business_allows('installments_settings') %}<a href="/installments/settings"><i class="fa fa-sliders"></i> الإعدادات</a>{% endif %}
+          </div>
+        </div>
+        {% endif %}
         {% if (is_admin or (current_employee and can_see_shipping)) and business_allows('shipping') %}
         {% if plan_has("shipping") %}
         <a href="/shipping"><i class="fa fa-truck"></i> {{ _('shipping') }}</a>
+        {% if business_allows('shipping_company_returns') %}<a href="/shipping/company-returns" class="{% if request.path.startswith('/shipping/company-returns') %}active{% endif %}"><i class="fa fa-rotate-left"></i> مرتجع شركة النقل</a>{% endif %}
         {% else %}
         <a href="/upgrade" style="opacity:.55" title="{{ _('upgrade_plan') }}"><i class="fa fa-truck"></i> {{
           _('shipping') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
@@ -2451,6 +2665,9 @@ or request.path.startswith('/superadmin') %}
         <a href="/upgrade" style="opacity:.55" title="{{ _('upgrade_plan') }}"><i class="fa fa-money-bill-wave"></i>
           {{ _('expenses') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
+        {% endif %}
+        {% if not is_food_business and (is_admin or (current_employee and can_see_receipts)) %}
+        <a href="/receipts" class="{% if request.path.startswith('/receipts') %}active{% endif %}"><i class="fa fa-hand-holding-usd"></i> القبض والتسديدات</a>
         {% endif %}
         {% if (is_admin or (current_employee and can_see_accounts)) and business_allows('cash') %}<a href="/cash"><i
             class="fa fa-money-bill-wave"></i> {{ _('cash_box') }}</a>{% endif %}
@@ -2465,6 +2682,7 @@ or request.path.startswith('/superadmin') %}
           _('accounts') }} <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i></a>
         {% endif %}
         {% endif %}
+        {% if can_see_finance_workflows %}<a href="/accounts/finance"><i class="fa fa-file-invoice-dollar"></i> القبض والصرف والسلف والقروض</a>{% endif %}
         {% if (is_admin or (current_employee and (can_see_fixed_assets or can_see_accounts))) and business_allows('fixed_assets') %}
         <a href="/assets/dashboard" class="{% if request.path.startswith('/assets') %}active{% endif %}"><i class="fa fa-building"></i> الأصول</a>
         {% endif %}
@@ -2475,7 +2693,7 @@ or request.path.startswith('/superadmin') %}
         {% if plan_has("reports_adv") %}
         <a href="/reports"><i class="fa fa-chart-pie"></i> {{ _('reports') }}</a>
         {% if business_allows('reports_daily') %}
-        <a href="/reports/daily" class="{% if request.path.startswith('/reports/daily') %}active{% endif %}"><i class="fa fa-clipboard-check"></i> تقرير اليوم</a>
+        <a href="/reports/daily" class="{% if request.path == '/reports/daily' %}active{% endif %}"><i class="fa fa-clipboard-check"></i> تقرير اليوم</a>
         {% endif %}
         {% if business_allows('reports_monitors') %}
         <a href="/reports/monitors" class="{% if request.path.startswith('/reports/monitors') %}active{% endif %}"><i class="fa fa-gauge-high"></i> مركز المراقبة</a>
@@ -2507,9 +2725,16 @@ or request.path.startswith('/superadmin') %}
         {% endif %}
         {% set can_use_ai_sales = is_admin or has_assigned_ai_sales_page or (current_employee and current_employee.has_permission('use_ai_sales')) %}
         {% if can_use_ai_sales and business_allows('ai_sales') %}
+        {% if plan_has("ai_sales") %}
         <a href="/ai-sales/inbox" class="{% if request.path.startswith('/ai-sales') %}active{% endif %}">
           <i class="fa fa-comments"></i> موظف المبيعات AI
         </a>
+        {% else %}
+        <a href="/upgrade" style="opacity:.55" title="{{ _('upgrade_plan') }}">
+          <i class="fa fa-comments"></i> موظف المبيعات AI
+          <i class="fa fa-lock" style="font-size:10px;color:#f59e0b"></i>
+        </a>
+        {% endif %}
         {% endif %}
         {% if is_admin and business_allows('permissions') %}
         {% if plan_has("rbac") %}
@@ -2551,14 +2776,27 @@ or request.path.startswith('/superadmin') %}
           <i class="fa fa-mobile-alt"></i> تطبيق الهاتف
         </a>
         {% endif %}
+        {% endif %}
+        {% endif %}
+        {% endset %}
+        {% if organized_nav_enabled %}
+          {{ organized_sidebar(_guarded_navigation, request.path, current_lang or 'ar') }}
+          <link rel="stylesheet" href="{{ url_for('static', filename='css/sidebar-navigation.css') }}?v=20261018-design1">
+        {% else %}
+          {{ _guarded_navigation }}
+        {% endif %}
       </nav>
 
+      {% if organized_nav_enabled %}<div class="sidebar-bottom">{% endif %}
       <!-- Plan Badge in Sidebar (admin only — billing is not relevant to staff) -->
-      {% if is_admin and current_plan %}
+      {% if not is_hr_management and is_admin and current_plan %}
       <div
+        {% if organized_nav_enabled %}class="sidebar-plan-card"{% endif %}
         style="margin:16px 12px 8px;padding:12px 14px;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);border-radius:14px;font-size:13px">
         <div style="font-weight:800;color:#a5b4fc;margin-bottom:4px">
+          {% if organized_nav_enabled %}<span class="sidebar-plan-dot" aria-hidden="true"></span>{% else %}
           {% if plan_key == 'basic' %}🟢{% elif plan_key == 'pro' %}🔵{% else %}🟣{% endif %}
+          {% endif %}
           {{ current_plan.name }}
         </div>
         {% if plan_key != 'enterprise' %}
@@ -2571,7 +2809,7 @@ or request.path.startswith('/superadmin') %}
       {% endif %}
 
       {% set _store_tslug = session.get('tenant_slug') or config.get('STOREFRONT_DEFAULT_TENANT_SLUG', '') %}
-      {% if _store_tslug and business_allows('storefront') %}
+      {% if not is_hr_management and _store_tslug and business_allows('storefront') %}
       <div class="sidebar-footer">
         <a href="{{ url_for('storefront.store_index', tenant_slug=_store_tslug) }}" target="_blank" rel="noopener"
           class="sidebar-store-link">
@@ -2580,6 +2818,7 @@ or request.path.startswith('/superadmin') %}
         </a>
       </div>
       {% endif %}
+      {% if organized_nav_enabled %}</div>{% endif %}
     </aside>
     {% endif %}
 
@@ -2587,7 +2826,7 @@ or request.path.startswith('/superadmin') %}
     <div class="content">
 
       <!-- ================= TOPBAR ================= -->
-      {% if not is_payment_flow %}
+      {% if not is_payment_flow and not request.path.startswith('/wholesale') and not is_clinics_business %}
       <header class="topbar">
         <div class="topbar-left">
           {% if is_agent_portal %}
@@ -2603,29 +2842,26 @@ or request.path.startswith('/superadmin') %}
 
         {% if not is_payment_flow %}
         <div class="topbar-actions">
-          {% if session.get("user_id") and branches %}
+          {% if not is_hr_management and session.get("user_id") and branches and independent_branches_enabled %}
           <div class="branch-picker-wrap" style="margin-inline-end:12px;">
             {% if can_switch_branch %}
-            <select id="globalBranchSelect" title="الفرع الحالي" style="padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text);min-width:140px;">
+            <label class="global-branch-control" title="الفرع الحالي">
+              <i class="fas fa-code-branch" aria-hidden="true"></i>
+            <select id="globalBranchSelect" aria-label="الفرع الحالي" style="padding:8px 12px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text);min-width:140px;">
               <option value="all" {% if view_all_branches %}selected{% endif %}>كل الفروع</option>
               {% for b in branches %}
               <option value="{{ b.id }}" {% if current_branch and current_branch.id == b.id and not view_all_branches %}selected{% endif %}>{{ b.name }}</option>
               {% endfor %}
             </select>
+            </label>
             {% elif current_branch %}
             <span style="font-size:13px;color:var(--text-muted);"><i class="fas fa-code-branch"></i> {{ current_branch.name }}</span>
             {% endif %}
           </div>
           {% endif %}
           {% block topbar_actions %}
-          {% if session.get("user_id") %}
+          {% if not is_hr_management and session.get("user_id") %}
           <div class="dashboard-top-quick-actions">
-            {% if show_pos and business_allows('pos') %}
-            <a href="/pos" class="dq-btn dq-btn--pos" title="{{ _('dashboard_pos') }}">
-              <i class="fas fa-cash-register"></i>
-              <span class="dq-label">{{ _('dashboard_pos') }}</span>
-            </a>
-            {% endif %}
             <button type="button" class="dq-btn dq-btn--search" onclick="FinoraTopbar.run('search')" title="{{ _('dashboard_search') }}">
               <i class="fas fa-search"></i>
               <span class="dq-label">{{ _('dashboard_search') }}</span>
@@ -2656,6 +2892,15 @@ or request.path.startswith('/superadmin') %}
             </div>
             <span id="headerUserName">{{ session.get("name") }}</span>
           </div>
+          {% block user_box_actions %}
+          {% if show_pos and business_allows('pos') %}
+          <div class="user-box-actions">
+            <a href="/pos" class="user-box-action-btn user-box-pos-btn" title="{{ _('dashboard_pos') }}" aria-label="{{ _('dashboard_pos') }}">
+              <i class="fas fa-cash-register" aria-hidden="true"></i>
+            </a>
+          </div>
+          {% endif %}
+          {% endblock %}
         </div>
         {% endif %}
         {% endif %}
@@ -2790,9 +3035,11 @@ or request.path.startswith('/superadmin') %}
     <div class="loading-spinner"></div>
   </div>
 
+  {% if not is_hr_management and not is_clinics_business %}
   <script src="{{ url_for('static', filename='js/notification-sound-presets.js') }}?v=20260722-sounds50"></script>
-  <script src="{{ url_for('static', filename='js/notification-sound.js') }}?v=20260722-sounds50"></script>
-  <script src="{{ url_for('static', filename='js/finora-notification-center.js') }}?v=20260721-notif-employee"></script>
+  <script src="{{ url_for('static', filename='js/notification-sound.js') }}?v=20260731-order-voice2"></script>
+  <script src="{{ url_for('static', filename='js/finora-notification-center.js') }}?v=20260731-order-voice2"></script>
+  {% endif %}
 
   <script>
     // ======================================================
@@ -3101,6 +3348,9 @@ or request.path.startswith('/superadmin') %}
         try { localStorage.setItem("theme", theme); } catch (e) { }
         var icon = btn.querySelector("i");
         if (icon) icon.className = theme === "light" ? "fa fa-sun" : "fa fa-moon";
+        try {
+          window.dispatchEvent(new CustomEvent("finora:themechange", { detail: { theme: theme } }));
+        } catch (e) { }
       }
 
       // init icon
@@ -3132,7 +3382,7 @@ or request.path.startswith('/superadmin') %}
     // ======================================================
     document.addEventListener("DOMContentLoaded", function () {
       const currentPath = window.location.pathname;
-      const menuLinks = document.querySelectorAll(".menu a");
+      const menuLinks = document.querySelectorAll(".menu:not([data-organized-navigation]) a");
 
       menuLinks.forEach(link => {
         const href = link.getAttribute("href");
@@ -3240,6 +3490,9 @@ or request.path.startswith('/superadmin') %}
       // Apply theme
       document.documentElement.setAttribute("data-theme", theme);
       localStorage.setItem("theme", theme);
+      try {
+        window.dispatchEvent(new CustomEvent("finora:themechange", { detail: { theme: theme } }));
+      } catch (e) { }
 
       // Sync with topbar toggle
       const btn = document.getElementById("themeToggleBtn");
@@ -3356,6 +3609,7 @@ or request.path.startswith('/superadmin') %}
         });
     };
 
+    {% if not is_hr_management and not is_clinics_business %}
     // ======================================================
     // UPDATE UNREAD MESSAGES COUNT + NOTIFY
     // ======================================================
@@ -3449,12 +3703,15 @@ or request.path.startswith('/superadmin') %}
       if (window.FinoraMsgNotify) window.FinoraMsgNotify.requestPermission();
       updateMessagesBadge();
     });
+    {% endif %}
   </script>
 
+  {% if not is_clinics_business %}
   <!-- jQuery & DataTables -->
   <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
   <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
   <script src="https://cdn.datatables.net/responsive/2.5.0/js/dataTables.responsive.min.js"></script>
+  {% endif %}
 
   <!-- Mini Assistant Widget - مخفي مؤقتاً -->
   {% if False and session.get('role') == 'admin' %}
@@ -3464,6 +3721,32 @@ or request.path.startswith('/superadmin') %}
   <script id="finora-help-fields" type="application/json">{{ help_fields_json|safe }}</script>
   <script src="/static/js/help-system.js" defer></script>
   {% block scripts %}{% endblock %}
+  {% if session.get('user_id') and session.get('tenant_slug') %}
+  <button class="finora-ai-fab" id="finoraAiFab" type="button" aria-label="فتح Finora AI" aria-controls="finoraAiPanel" aria-expanded="false">✦</button>
+  <aside class="finora-ai-panel" id="finoraAiPanel" aria-hidden="true" aria-label="Finora AI">
+    <header class="finora-ai-header">
+      <div><span class="finora-ai-mark">✦</span><strong>Finora AI</strong><small id="finoraAiMode" aria-live="polite">قراءة آمنة · جارٍ تحديد وضع الفهم</small></div>
+      <div class="finora-ai-header-actions">
+        <button type="button" id="finoraAiExpand" title="توسيع المحادثة" aria-label="توسيع المحادثة" aria-pressed="false"><i class="fa fa-expand"></i></button>
+        <button type="button" id="finoraAiHistory" title="المحادثات السابقة" aria-label="المحادثات السابقة"><i class="fa fa-clock-rotate-left"></i></button>
+        {% if session.get('role') == 'admin' %}<a href="/finora-ai/settings" title="إعدادات الذكاء الاصطناعي" aria-label="إعدادات الذكاء الاصطناعي" style="color:inherit;padding:5px"><i class="fa fa-gear"></i></a>{% endif %}
+        <button type="button" id="finoraAiNew" title="محادثة جديدة" aria-label="محادثة جديدة"><i class="fa fa-plus"></i></button>
+        <button type="button" id="finoraAiClose" title="إغلاق" aria-label="إغلاق"><i class="fa fa-times"></i></button>
+      </div>
+    </header>
+    <div class="finora-ai-history" id="finoraAiHistoryList" hidden></div>
+    <div class="finora-ai-messages" id="finoraAiMessages" aria-live="polite">
+      <div class="finora-ai-welcome"><span>✦</span><h3>مساعدك لفهم أعمالك</h3><p>اسأل عن بيانات FINORA، والجواب حسب صلاحياتك.</p><div class="finora-ai-prompts"><button type="button" data-ai-prompt="شنو آخر طلب؟">آخر طلب</button><button type="button" data-ai-prompt="شكد مبيعات اليوم؟">مبيعات اليوم</button><button type="button" data-ai-prompt="شنو المنتجات قليلة المخزون؟">المخزون المنخفض</button><button type="button" data-ai-prompt="شنو المصاريف؟">المصاريف</button></div></div>
+    </div>
+    <div class="finora-ai-status" id="finoraAiStatus" hidden></div>
+    <form class="finora-ai-composer" id="finoraAiForm">
+      <textarea id="finoraAiInput" rows="1" maxlength="4000" placeholder="اكتب سؤالك عن بيانات شركتك…" aria-label="رسالتك إلى Finora AI"></textarea>
+      <button type="button" class="finora-ai-stop" id="finoraAiStop" hidden aria-label="إيقاف"><i class="fa fa-stop"></i></button>
+      <button type="submit" class="finora-ai-send" id="finoraAiSend" aria-label="إرسال"><i class="fa fa-paper-plane"></i></button>
+    </form>
+  </aside>
+  <script src="/static/js/finora-ai.js?v=20261003-layout" defer></script>
+  {% endif %}
 
 
 
@@ -3626,6 +3909,9 @@ or request.path.startswith('/superadmin') %}
     })();
   </script>
 
+  {% if organized_nav_enabled|default(false) %}
+  <script src="{{ url_for('static', filename='js/sidebar-navigation.js') }}?v=20261018-design1" defer></script>
+  {% endif %}
 </body>
 
 </html>

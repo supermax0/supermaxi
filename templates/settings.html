@@ -65,6 +65,24 @@
       <h3>{{ _('settings_card_storefront_title') }}</h3>
       <p>{{ _('settings_card_storefront_desc') }}</p>
     </a>
+    <a href="/settings/facebook-routing" class="settings-hub-card" aria-label="توزيع رسائل فيسبوك">
+      <div class="settings-hub-card-head">
+        <div class="settings-hub-card-icon"><i class="fab fa-facebook-messenger"></i></div>
+        <span class="settings-hub-card-arrow"><i class="fas fa-arrow-left"></i></span>
+      </div>
+      <h3>توزيع رسائل فيسبوك</h3>
+      <p>فعّل الصفحات واختر الموظفين. كل محادثة تذهب لموظف واحد فقط.</p>
+    </a>
+    {% if is_admin %}
+    <a href="/settings/pos-api" class="settings-hub-card" aria-label="مفتاح API للمساعد">
+      <div class="settings-hub-card-head">
+        <div class="settings-hub-card-icon"><i class="fas fa-key"></i></div>
+        <span class="settings-hub-card-arrow"><i class="fas fa-arrow-left"></i></span>
+      </div>
+      <h3>مفتاح API للمساعد</h3>
+      <p>توليد توكن دائم للمساعد الصوتي للتحكم بالـ POS والطلبات.</p>
+    </a>
+    {% endif %}
   </div>
 
   <div class="settings-section-card settings-status-card" style="margin-top:14px;">
@@ -142,6 +160,23 @@
     </div>
     <div class="settings-hub-card is-download">
       <div class="settings-hub-card-head">
+        <div class="settings-hub-card-icon"><i class="fas fa-comments"></i></div>
+      </div>
+      <h3>{{ _('settings_employee_desk_apk_title') }}</h3>
+      <p>{{ _('settings_employee_desk_apk_desc') }}</p>
+      <div class="settings-hub-card-actions">
+        <a href="{{ app_downloads.employee_desk }}" class="settings-btn settings-btn-primary" target="_blank" rel="noopener">
+          <i class="fas fa-download"></i> {{ _('settings_download_apk') }}
+        </a>
+        {% if employee_desk_app_url %}
+        <a href="{{ employee_desk_app_url }}" class="settings-btn settings-btn-secondary" target="_blank" rel="noopener">
+          <i class="fas fa-external-link-alt"></i> {{ _('settings_employee_desk_open') }}
+        </a>
+        {% endif %}
+      </div>
+    </div>
+    <div class="settings-hub-card is-download">
+      <div class="settings-hub-card-head">
         <div class="settings-hub-card-icon"><i class="fas fa-truck"></i></div>
       </div>
       <h3>{{ _('settings_delivery_agent_apk_title') }}</h3>
@@ -155,6 +190,18 @@
           <i class="fas fa-external-link-alt"></i> {{ _('settings_delivery_agent_open_portal') }}
         </a>
         {% endif %}
+      </div>
+    </div>
+    <div class="settings-hub-card is-download">
+      <div class="settings-hub-card-head">
+        <div class="settings-hub-card-icon"><i class="fas fa-phone-alt"></i></div>
+      </div>
+      <h3>{{ _('settings_phone_apk_title') }}</h3>
+      <p>{{ _('settings_phone_apk_desc') }} — v{{ phone_app_version }} ({{ phone_app_build }})</p>
+      <div class="settings-hub-card-actions">
+        <a href="{{ app_downloads.phone }}" class="settings-btn settings-btn-primary" target="_blank" rel="noopener" download="finora-phone-v{{ phone_app_version }}.apk">
+          <i class="fas fa-download"></i> {{ _('settings_download_apk') }}
+        </a>
       </div>
     </div>
   </div>

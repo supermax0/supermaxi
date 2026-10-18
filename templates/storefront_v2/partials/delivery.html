@@ -1,0 +1,18 @@
+{# Delivery & preparation for the shopper's province — only facts: configured fee, real branch stock, a stated
+   delivery time when (and only when) the company configured one. #}
+<div class="sm-delivery" data-sm-delivery>
+  {% if not delivery_area %}
+  <p>اختر منطقة التوصيل لمعرفة الكلفة ومن أين يُجهَّز طلبك. <button type="button" class="sm-link" data-sm-area>تحديد المحافظة</button></p>
+  {% elif delivery_plan %}
+  <p><strong>التوصيل إلى {{ delivery_area }}</strong>{% if delivery_plan.fee is not none %}: {{ "{:,.0f}".format(delivery_plan.fee) }} د.ع{% endif %}
+    <button type="button" class="sm-link" data-sm-area>تغيير</button></p>
+  {% if delivery_plan.mode == 'single' %}
+  <p class="sm-muted">يُجهَّز كاملاً من {{ delivery_plan.branch.name }}{% if delivery_plan.branch.local %} — داخل محافظتك{% endif %}{% if delivery_plan.days %} · يصل خلال {{ delivery_plan.days }} يوم حسب سياسة التوصيل{% endif %}</p>
+  {% elif delivery_plan.mode == 'split' %}
+  <p class="sm-muted">لا يوجد فرع فيه كل القطع، فقد يُجهَّز الطلب من أكثر من فرع ويصل على دفعات.</p>
+  {% if delivery_plan.missing %}<p class="sm-stock is-order">بعض القطع غير متوفرة حالياً وستُؤكَّد معك.</p>{% endif %}
+  {% else %}
+  <p class="sm-stock is-order">غير متوفر حالياً في فروعنا — يُؤكَّد موعد التجهيز معك بعد الطلب.</p>
+  {% endif %}
+  {% endif %}
+</div>

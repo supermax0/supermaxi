@@ -6,14 +6,26 @@ from flask import current_app, g, jsonify, request, session
 from extensions import db
 from models.employee import Employee
 from utils.branch_migration import ensure_branch_schema, get_default_branch
+from utils.branch_mode import independent_branches_enabled
 
 
 def _is_admin(employee: Employee | None) -> bool:
-    if not employee:
-        return False
-    if employee.role == "admin":
+    return bool(employee and employee.role == "admin")
+
+
+def can_view_all_branches(employee: Employee | None) -> bool:
+    """The general admin, or anyone granted «عرض كل الفروع» (view_all_branches) — e.g. a general-manager role.
+    Viewing all branches is a READ scope; creating a record still needs one real branch."""
+    if _is_admin(employee):
         return True
-    return employee.has_permission("view_all_branches")
+    if employee is None or not employee.is_active:
+        return False
+    try:
+        from utils.permission_checks import employee_can
+
+        return bool(employee_can(employee, "view_all_branches"))
+    except Exception:
+        return False
 
 
 def init_branch_context() -> None:
@@ -21,6 +33,8 @@ def init_branch_context() -> None:
     g.branch = None
     g.view_all_branches = False
     g.branches = []
+    g.branch_scope_ready = False
+    g.independent_branches_enabled = independent_branches_enabled()
 
     if "user_id" not in session:
         return
@@ -35,7 +49,24 @@ def init_branch_context() -> None:
         g.branches = active_branches
 
         default_branch = get_default_branch()
-        admin = _is_admin(employee)
+        admin = can_view_all_branches(employee)
+
+        if not g.independent_branches_enabled:
+            # Shared mode does not isolate records by branch.  Keep the
+            # default branch as the internal write owner, but expose every
+            # active physical branch to pages that offer branch summaries,
+            # filters, stock views, and reports.  Limiting this list to the
+            # default branch was making the whole UI look as if only the main
+            # branch existed.
+            g.branches = active_branches
+            g.branch = default_branch
+            g.view_all_branches = False
+            session["view_all_branches"] = False
+            if default_branch:
+                session["branch_id"] = default_branch.id
+                if employee and not employee.branch_id:
+                    employee.branch_id = default_branch.id
+            return
 
         if admin:
             view_all = session.get("view_all_branches")
@@ -56,6 +87,18 @@ def init_branch_context() -> None:
             return
 
         branch_id = employee.branch_id if employee else None
+        if employee is not None:
+            # An employee may also work in extra assigned branches; the one he switched to is kept while it
+            # is still assigned, otherwise his home branch applies (exactly the previous behaviour).
+            from utils.branch_assignments import assigned_branch_ids
+
+            chosen = session.get("branch_id")
+            try:
+                chosen = int(chosen) if chosen is not None else None
+            except (TypeError, ValueError):
+                chosen = None
+            if chosen is not None and chosen in assigned_branch_ids(employee):
+                branch_id = chosen
         if branch_id:
             branch = Branch.query.filter_by(id=branch_id, is_active=True).first()
             if branch:
@@ -79,11 +122,23 @@ def init_branch_context() -> None:
         g.branch = None
         g.view_all_branches = False
         g.branches = []
+    finally:
+        g.branch_scope_ready = True
 
 
 def current_branch_id() -> int | None:
     branch = getattr(g, "branch", None)
     return branch.id if branch else None
+
+
+def init_public_default_branch() -> int | None:
+    """Lock storefront, mobile and webhook traffic to the default branch."""
+    g.branch_scope_ready = False
+    ensure_branch_schema()
+    branch = get_default_branch()
+    g.public_branch_id = int(branch.id) if branch else None
+    g.branch_scope_ready = True
+    return g.public_branch_id
 
 
 def resolve_branch_id(explicit_id: int | None = None) -> int | None:
@@ -95,8 +150,14 @@ def resolve_branch_id(explicit_id: int | None = None) -> int | None:
 def can_switch_branch() -> bool:
     if "user_id" not in session:
         return False
+    if not independent_branches_enabled():
+        return False
     employee = Employee.query.get(session.get("user_id"))
-    return _is_admin(employee)
+    if can_view_all_branches(employee):
+        return True
+    from utils.branch_assignments import assigned_branch_ids
+
+    return employee is not None and len(assigned_branch_ids(employee)) > 1
 
 
 def switch_branch_api():
@@ -108,6 +169,10 @@ def switch_branch_api():
     data = request.get_json(silent=True) or {}
     view_all = bool(data.get("view_all"))
     branch_id = data.get("branch_id")
+    switching_employee = Employee.query.get(flask_session.get("user_id"))
+
+    if view_all and not can_view_all_branches(switching_employee):
+        return jsonify({"ok": False, "error": "العرض المجمّع لكل الفروع للمدير العام أو من لديه صلاحية «عرض كل الفروع»"}), 403
 
     if view_all:
         flask_session["view_all_branches"] = True
@@ -120,6 +185,11 @@ def switch_branch_api():
     branch = Branch.query.filter_by(id=branch_id, is_active=True).first()
     if not branch:
         return jsonify({"ok": False, "error": "الفرع غير موجود"}), 404
+    if not can_view_all_branches(switching_employee):
+        from utils.branch_assignments import assigned_branch_ids
+
+        if int(branch.id) not in assigned_branch_ids(switching_employee):
+            return jsonify({"ok": False, "error": "هذا الفرع غير معيّن لك"}), 403
 
     flask_session["view_all_branches"] = False
     flask_session["branch_id"] = branch.id

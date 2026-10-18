@@ -1,5 +1,6 @@
-from flask import Flask, redirect, session, url_for, request, g, jsonify, render_template, flash, send_from_directory
+from flask import Flask, current_app, redirect, session, url_for, request, g, jsonify, render_template, flash, send_from_directory
 from flask_login import current_user
+import click
 print("=== FINORA APP STARTING - V1.1 (i18n check) ===")
 from extensions import db
 # Models (Core)
@@ -45,6 +46,7 @@ from models.beauty_service import BeautyService
 from models.beauty_service_product import BeautyServiceProduct
 from models.beauty_appointment import BeautyAppointment
 from models.beauty_session_note import BeautySessionNote
+from models.note import Note, NoteRevision
 
 # Routes
 from routes.index import index_bp
@@ -52,11 +54,14 @@ from routes.payments import payments_bp
 from routes.pos import pos_bp
 from routes.employees import employees_bp
 from routes.payroll import payroll_bp
+from modules.hr import hr_bp as hr_desktop_bp, public_bp as hr_recruit_public_bp
 from routes.inventory import inventory_bp
 from routes.branch_api import branch_api_bp
 from routes.delivery_fee_api import delivery_fee_api_bp
 from routes.stock_transfers import stock_transfers_bp
 from routes.purchases import purchases_bp
+from routes.purchase_lists import purchase_lists_bp
+from routes.product_dedup import product_dedup_bp
 from routes.inventory_ledger import inventory_ledger_bp
 from routes.media_library import media_library_bp
 from routes.cash import cash_bp
@@ -65,6 +70,7 @@ from routes.customer_credit import customer_credit_bp
 from routes.orders import orders_bp
 from routes.shipping import shipping_bp
 from routes.reports import reports_bp
+from routes.daily_closing import daily_closing_bp
 from routes.suppliers import suppliers_bp
 from routes.expenses import expenses_bp
 from routes.accounts import accounts_bp
@@ -79,10 +85,14 @@ from routes.agents import agents_bp
 from routes.delivery_agent import delivery_agent_bp
 from routes.pages import pages_bp
 from routes.activity import activity_bp
+from routes.notes import notes_bp
 from routes.invoice_store import invoice_store_bp
 from routes.storefront import storefront_bp
+from modules.installments import init_installments
+from modules.order_installment_lifecycle import init_order_installment_lifecycle
 from routes.quick_sale import quick_sale_bp
 from routes.beauty import beauty_bp
+from routes.hr import hr_bp
 from routes.maintenance import maintenance_bp
 from routes.fixed_assets import fixed_assets_bp
 from routes.rotating_savings import rotating_savings_bp, rotating_savings_bp_alias
@@ -93,11 +103,15 @@ from telegram_bot import telegram_bp
 from api_workflows import workflow_api
 from models.ai_agent import AgentWorkflow, AgentExecution
 from social_ai.workflow_engine import execute_workflow
+from utils.starter_business import DEFAULT_FEATURES as STARTER_BUSINESS_DEFAULT_FEATURES
+from utils.starter_business import allows as starter_business_allows
+from utils.starter_business import feature_for_path as _starter_business_feature_for_path
 
 # =====================================
 # App Setup
 # =====================================
 import os
+import sqlite3
 try:
     import importlib.util
     if importlib.util.find_spec("dotenv"):
@@ -110,10 +124,14 @@ _env = (os.environ.get("FLASK_ENV") or "development").lower()
 app = Flask(__name__)
 app.config.from_object(ProductionConfig if _env == "production" else DevelopmentConfig)
 
+from utils.sidebar_navigation import organized_sidebar
+app.jinja_env.globals["organized_sidebar"] = organized_sidebar
+
 # =====================================
 # i18n / Multi-language Setup
 # =====================================
 import json
+from utils.invoice_text_format import format_invoice_text
 import os
 
 def load_translations():
@@ -184,6 +202,10 @@ def warranty_label(value):
         return f"{years * 12} شهر"
     return value or "12 شهر"
 
+@app.template_filter("invoice_rich_text")
+def invoice_rich_text(value):
+    return format_invoice_text(value)
+
 app.config["UPLOAD_FOLDER"] = "static/uploads/messages"
 # حد رفع الملفات (للرسائل، النشر التلقائي صورة/فيديو حتى 500 ميجا)
 app.config["MAX_CONTENT_LENGTH"] = 500 * 1024 * 1024  # 500MB
@@ -199,6 +221,9 @@ else:
     app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 
 db.init_app(app)
+from utils.branch_orm_scope import install_branch_orm_scope
+
+install_branch_orm_scope()
 
 try:
     from flask_migrate import Migrate
@@ -215,6 +240,7 @@ with app.app_context():
     from models.core.tenant import Tenant
     from models.core.payment_request import PaymentRequest
     from models.core.global_setting import GlobalSetting
+    from models.core.feature import TenantFeature, FeatureAuditLog  # noqa: F401
     from models.core.landing_visit import LandingVisit
     from models.core.landing_content import (  # noqa: F401
         LandingCTA,
@@ -237,6 +263,11 @@ with app.app_context():
     from models.beauty_service_product import BeautyServiceProduct  # noqa: F401
     from models.beauty_appointment import BeautyAppointment  # noqa: F401
     from models.beauty_session_note import BeautySessionNote  # noqa: F401
+    # Employee.default_warehouse_id references this table.  Register it before
+    # create_all so a brand-new core/tenant database can resolve the FK graph.
+    from modules.wholesale.models.warehouse import Warehouse  # noqa: F401
+    from models.note import Note, NoteRevision  # noqa: F401
+    from modules.employee_desk.models import EmployeeQuickReply  # noqa: F401
     from models.customer_credit import CustomerCreditPlan, CustomerInstallment, CustomerCreditPayment  # noqa: F401
     from models.rotating_savings import (  # noqa: F401
         RotatingSaving,
@@ -246,6 +277,8 @@ with app.app_context():
         RotatingSavingSettings,
     )
     from models.activity_log import ActivityLog  # noqa: F401
+    from models.purchase_list import PurchaseList, PurchaseListItem  # noqa: F401
+    from models.receipt import Receipt, ReceiptAllocation  # noqa: F401
     from models.ai_assistant_control import (  # noqa: F401
         AIActionItem,
         AIActionPlan,
@@ -259,6 +292,25 @@ with app.app_context():
     from models.investment_proposal import InvestmentProposal  # noqa: F401
     from models.core.platform_announcement import PlatformAnnouncement  # noqa: F401
     from models.core.announcement_send_log import AnnouncementSendLog  # noqa: F401
+    from models.core.leads.models import (  # noqa: F401
+        BusinessActivity,
+        BusinessLead,
+        BusinessLeadPhone,
+        LeadAuditLog,
+        LeadAutomationRule,
+        LeadDiscoveryRun,
+        LeadDuplicateCandidate,
+        LeadFollowUp,
+        LeadImportBatch,
+        LeadImportRow,
+        LeadInteraction,
+        LeadMergeLog,
+        LeadNote,
+        LeadSavedView,
+        LeadScore,
+        LeadSourceRecord,
+        LeadStatusConfig,
+    )
 
     # Gunicorn imports the app in multiple workers. Serialize PostgreSQL DDL so
     # a newly added model cannot make workers race while creating the same table.
@@ -321,12 +373,30 @@ with app.app_context():
         print(f"Treasury schema note: {e}")
 
     try:
+        from services.leads_crm.schema import ensure_leads_crm_schema
+        from services.leads_crm.seed import seed_leads_crm_defaults
+
+        ensure_leads_crm_schema()
+        seed_leads_crm_defaults()
+    except Exception as e:
+        db.session.rollback()
+        print(f"Leads CRM schema note: {e}")
+
+    try:
         import sqlite3
         from extensions_tenant import get_tenant_engine
         from utils.payroll_schema import ensure_payroll_schema
 
         tenants_dir = os.path.join(app.root_path, "tenants")
-        if os.path.isdir(tenants_dir):
+        # Tenant schemas are upgraded lazily when that company is opened.
+        # Sweeping every SQLite file here made startup grow with the entire
+        # archive (including test/backup databases) and could block for
+        # minutes on WAL locks.  Operations can explicitly opt into the bulk
+        # sweep during a maintenance window.
+        if (
+            os.environ.get("RUN_STARTUP_TENANT_MIGRATIONS") == "1"
+            and os.path.isdir(tenants_dir)
+        ):
             for db_name in sorted(os.listdir(tenants_dir)):
                 if not db_name.endswith(".db"):
                     continue
@@ -343,12 +413,21 @@ with app.app_context():
         from sqlalchemy import inspect, text
 
         inspector = inspect(db.engine)
-        if "tenants" in inspector.get_table_names():
-            tenant_cols = {col["name"] for col in inspector.get_columns("tenants")}
-            if "business_type" not in tenant_cols:
-                db.session.execute(text("ALTER TABLE tenants ADD COLUMN business_type VARCHAR(50) DEFAULT 'general'"))
-                db.session.commit()
-                print("Added business_type column to core tenants table.")
+        for tenant_table in ("tenants", "tenant"):
+            if tenant_table not in inspector.get_table_names():
+                continue
+            tenant_cols = {col["name"] for col in inspector.get_columns(tenant_table)}
+            additions = {
+                "business_type": "VARCHAR(50) DEFAULT 'general'",
+                "feature_overrides_json": "TEXT",
+            }
+            for column_name, definition in additions.items():
+                if column_name not in tenant_cols:
+                    db.session.execute(text(
+                        f'ALTER TABLE "{tenant_table}" ADD COLUMN "{column_name}" {definition}'
+                    ))
+            db.session.commit()
+            print(f"Ensured business columns on core {tenant_table} table.")
     except Exception as e:
         db.session.rollback()
         print(f"Migration note (core tenant business_type): {e}")
@@ -358,7 +437,10 @@ with app.app_context():
         from extensions_tenant import get_tenant_engine
 
         tenants_dir = os.path.join(app.root_path, "tenants")
-        if os.path.isdir(tenants_dir):
+        if (
+            os.environ.get("RUN_STARTUP_TENANT_MIGRATIONS") == "1"
+            and os.path.isdir(tenants_dir)
+        ):
             for db_name in sorted(os.listdir(tenants_dir)):
                 if not db_name.endswith(".db"):
                     continue
@@ -367,6 +449,8 @@ with app.app_context():
                 try:
                     engine = get_tenant_engine(tenant_slug)
                     db.Model.metadata.create_all(engine)
+                    from utils.inventory_audit_trail import ensure_inventory_audit_schema_on_engine
+                    ensure_inventory_audit_schema_on_engine(engine)
                     conn = sqlite3.connect(db_path)
                     cur = conn.cursor()
                     cur.execute("SELECT name FROM sqlite_master WHERE type='table'")
@@ -409,6 +493,10 @@ with app.app_context():
                         if "opening_balance" not in supplier_cols:
                             cur.execute(
                                 "ALTER TABLE supplier ADD COLUMN opening_balance INTEGER DEFAULT 0"
+                            )
+                        if "phone2" not in supplier_cols:
+                            cur.execute(
+                                "ALTER TABLE supplier ADD COLUMN phone2 VARCHAR(50)"
                             )
                     if "shipping_company" in existing_tables:
                         cur.execute("PRAGMA table_info(shipping_company)")
@@ -535,7 +623,11 @@ with app.app_context():
     try:
         from utils.order_stock_policy import initialize_registered_tenant_policies
 
-        policy_init = initialize_registered_tenant_policies()
+        policy_init = (
+            initialize_registered_tenant_policies()
+            if os.environ.get("RUN_STARTUP_TENANT_MIGRATIONS") == "1"
+            else {"tenants": {}, "errors": {}}
+        )
         for tenant_slug, result in policy_init["tenants"].items():
             if result.get("migrated"):
                 print(
@@ -650,7 +742,10 @@ with app.app_context():
         import sqlite3
 
         tenants_dir = os.path.join(app.root_path, "tenants")
-        if os.path.isdir(tenants_dir):
+        if (
+            os.environ.get("RUN_STARTUP_TENANT_MIGRATIONS") == "1"
+            and os.path.isdir(tenants_dir)
+        ):
             for db_name in sorted(os.listdir(tenants_dir)):
                 if not db_name.endswith(".db"):
                     continue
@@ -737,6 +832,8 @@ with app.app_context():
                 db.session.execute(text("ALTER TABLE shipping_company ADD COLUMN password VARCHAR(200)"))
             if 'opening_balance' not in shipping_columns:
                 db.session.execute(text("ALTER TABLE shipping_company ADD COLUMN opening_balance INTEGER DEFAULT 0"))
+            if 'branch_id' not in shipping_columns:
+                db.session.execute(text("ALTER TABLE shipping_company ADD COLUMN branch_id INTEGER"))
             # إنشاء tokens للشركات الموجودة
             companies = ShippingCompany.query.all()
             for company in companies:
@@ -760,6 +857,7 @@ with app.app_context():
                 conn.execute(text("""
                     CREATE TABLE shipping_report (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        branch_id INTEGER,
                         report_number VARCHAR(50) NOT NULL UNIQUE,
                         shipping_company_id INTEGER,
                         shipping_company_name VARCHAR(150) NOT NULL,
@@ -783,6 +881,9 @@ with app.app_context():
                 db.session.execute(text("ALTER TABLE shipping_report ADD COLUMN is_executed BOOLEAN DEFAULT 0"))
             if 'order_status_selections' not in shipping_report_columns:
                 db.session.execute(text("ALTER TABLE shipping_report ADD COLUMN order_status_selections TEXT"))
+            if 'branch_id' not in shipping_report_columns:
+                db.session.execute(text("ALTER TABLE shipping_report ADD COLUMN branch_id INTEGER"))
+            db.session.commit()
             # السماح بـ NULL في shipping_company_id (كشوف المندوبين بدون شركة نقل)
             sr_cols = {col['name']: col for col in inspector.get_columns('shipping_report')}
             if 'shipping_company_id' in sr_cols and not sr_cols['shipping_company_id'].get('nullable', True):
@@ -796,6 +897,7 @@ with app.app_context():
                         conn.execute(text("""
                             CREATE TABLE shipping_report_new (
                                 id INTEGER PRIMARY KEY AUTOINCREMENT,
+                                branch_id INTEGER,
                                 report_number VARCHAR(50) NOT NULL UNIQUE,
                                 shipping_company_id INTEGER,
                                 shipping_company_name VARCHAR(150) NOT NULL,
@@ -812,7 +914,7 @@ with app.app_context():
                         """))
                         conn.execute(text("""
                             INSERT INTO shipping_report_new
-                            SELECT id, report_number, shipping_company_id, shipping_company_name,
+                            SELECT id, branch_id, report_number, shipping_company_id, shipping_company_name,
                                    orders_data, total_amount, orders_count, notes, created_at,
                                    created_by, is_executed, order_status_selections
                             FROM shipping_report
@@ -1059,6 +1161,8 @@ with app.app_context():
                 db.session.execute(text("ALTER TABLE page ADD COLUMN visible_to_cashier BOOLEAN DEFAULT 1"))
             if 'visible_to_admin' not in page_columns:
                 db.session.execute(text("ALTER TABLE page ADD COLUMN visible_to_admin BOOLEAN DEFAULT 1"))
+            if 'facebook_page_id' not in page_columns:
+                db.session.execute(text("ALTER TABLE page ADD COLUMN facebook_page_id VARCHAR(128)"))
             db.session.commit()
             print("Added visibility columns to page table.")
     except Exception as e:
@@ -1226,6 +1330,7 @@ with app.app_context():
         from flask import g
         from sqlalchemy import inspect as sa_inspect
         from models.core.subscription_plan import SubscriptionPlan
+        from utils.plan_limits import PLAN_DEFINITIONS, resolve_plan_features
 
         inspector = sa_inspect(db.engine)
         if "subscription_plans" in inspector.get_table_names():
@@ -1243,7 +1348,11 @@ with app.app_context():
                         max_users=3,
                         max_orders_monthly=500,
                     )
-                    fp.set_features({"inventory": True, "ai_assistant": False})
+                    fp.set_features(
+                        resolve_plan_features(
+                            "free", PLAN_DEFINITIONS["free"]["features"]
+                        )
+                    )
                     db.session.add(fp)
                     db.session.commit()
                     print("Seeded subscription_plans: free (0 IQD)")
@@ -1372,9 +1481,14 @@ def inject_global_data():
         "can_see_reports": False,
         "can_manage_inventory": False,
         "can_see_expenses": False,
+        "can_see_receipts": False,
+        "can_create_receipts": False,
+        "can_print_receipts": False,
+        "can_cancel_receipts": False,
         "can_manage_suppliers": False,
         "can_manage_customers": False,
         "can_see_accounts": False,
+        "can_see_finance_workflows": False,
         "can_see_financial": False,
         "can_see_fixed_assets": False,
         "can_manage_fixed_assets": False,
@@ -1393,10 +1507,15 @@ def inject_global_data():
         "can_manage_pages": False,
         "can_edit_price": False,
         "can_manage_orders": False,
+        "can_pay_orders": False,
+        "can_return_orders": False,
+        "can_delete_orders": False,
         "can_manage_shipping": False,
         "can_manage_settings": False,
         "can_view_dashboard": False,
         "can_view_activity": False,
+        "can_use_notes": False,
+        "can_use_employee_desk": False,
         "has_assigned_ai_sales_page": False,
         "_": lambda x: x,
         "current_lang": "ar"
@@ -1471,9 +1590,14 @@ def inject_global_data():
             "can_see_reports": employee_can(employee, "view_reports"),
             "can_manage_inventory": employee_can(employee, "manage_inventory"),
             "can_see_expenses": employee_can(employee, "view_expenses"),
+            "can_see_receipts": employee_can(employee, "view_receipts"),
+            "can_create_receipts": employee_can(employee, "create_receipts"),
+            "can_print_receipts": employee_can(employee, "print_receipts"),
+            "can_cancel_receipts": employee_can(employee, "cancel_receipts"),
             "can_manage_suppliers": employee_can(employee, "manage_suppliers"),
             "can_manage_customers": employee_can(employee, "manage_customers"),
             "can_see_accounts": employee_can(employee, "view_accounts"),
+            "can_see_finance_workflows": employee_can(employee, "finance.view"),
             "can_see_financial": employee_can(employee, "view_financial"),
             "can_see_fixed_assets": employee_can(employee, "view_fixed_assets"),
             "can_manage_fixed_assets": employee_can(employee, "manage_fixed_assets"),
@@ -1492,10 +1616,15 @@ def inject_global_data():
             "can_manage_pages": employee_can(employee, "manage_pages"),
             "can_edit_price": employee_can(employee, "edit_price"),
             "can_manage_orders": employee_can(employee, "manage_orders"),
+            "can_pay_orders": employee_can(employee, "pay_orders"),
+            "can_return_orders": employee_can(employee, "return_orders"),
+            "can_delete_orders": employee_can(employee, "delete_orders"),
             "can_manage_shipping": employee_can(employee, "manage_shipping"),
             "can_manage_settings": employee_can(employee, "manage_settings"),
             "can_view_dashboard": employee_can(employee, "view_dashboard"),
             "can_view_activity": employee_can(employee, "view_activity"),
+            "can_use_notes": employee_can(employee, "use_notes"),
+            "can_use_employee_desk": employee_can(employee, "use_employee_desk"),
             "has_assigned_ai_sales_page": has_assigned_ai_sales_page,
             "_": translate,
             "current_lang": final_lang,
@@ -1511,8 +1640,139 @@ def inject_global_data():
 # =====================================
 # Login Guard (قبل أي صفحة)
 # =====================================
+def _local_workspace_request() -> bool:
+    """Return True only for the studio's loopback-only local workspace."""
+    if (os.environ.get("FINORA_LOCAL_WORKSPACE") or "").strip().lower() not in (
+        "1", "true", "yes", "on"
+    ):
+        return False
+    remote = (request.remote_addr or "").strip().lower()
+    return remote in {"127.0.0.1", "::1", "localhost"}
+
+
+def _ensure_local_workspace_session() -> bool:
+    """Create a local admin session without weakening production authentication."""
+    if not _local_workspace_request() or request.path.startswith(("/superadmin", "/super-admin")):
+        return False
+    if session.get("user_id") and session.get("tenant_slug"):
+        g.tenant = session.get("tenant_slug")
+        session["local_workspace"] = True
+        return True
+
+    requested_slug = (os.environ.get("FINORA_LOCAL_TENANT") or "alnoor").strip().lower()
+    candidates = [requested_slug] if requested_slug else []
+    # Resolve from Core DB when the preferred local tenant was not provisioned.
+    try:
+        previous_tenant = getattr(g, "tenant", None)
+        g.tenant = None
+        core_rows = Tenant.query.filter_by(is_active=True).order_by(Tenant.id).all()
+        g.tenant = previous_tenant
+        candidates.extend(row.slug for row in core_rows if row.slug not in candidates)
+    except Exception:
+        db.session.rollback()
+
+    for tenant_slug in candidates:
+        if not tenant_slug:
+            continue
+        try:
+            g.tenant = tenant_slug
+            # Read only the small identity set with sqlite directly.  Some
+            # older local tenant files miss newer optional columns, so an ORM
+            # SELECT of the whole Employee model would fail before the normal
+            # schema guards get a chance to upgrade them.
+            tenant_db = os.path.join(current_app.root_path, "tenants", f"{tenant_slug}.db")
+            with sqlite3.connect(tenant_db) as local_conn:
+                identity = local_conn.execute(
+                    "SELECT id, name, username, role, tenant_id, language "
+                    "FROM employee WHERE is_active = 1 "
+                    "ORDER BY CASE WHEN role = 'admin' THEN 0 ELSE 1 END, id LIMIT 1"
+                ).fetchone()
+            employee = identity
+        except Exception:
+            db.session.rollback()
+            employee = None
+        if not employee:
+            continue
+
+        session.clear()
+        session.permanent = True
+        session["local_workspace"] = True
+        session["tenant_slug"] = tenant_slug
+        session["user_id"] = employee[0]
+        session["name"] = employee[1] or "Developer"
+        session["user_name"] = employee[2] or "admin"
+        session["role"] = employee[3] or "admin"
+        session["tenant_id"] = employee[4]
+        session["business_type"] = "general"
+        session["language"] = employee[5] or "ar"
+        session["plan_key"] = "enterprise"
+        g.tenant = tenant_slug
+        app.logger.info("Local workspace auto-login enabled for tenant=%s user=%s", tenant_slug, employee[0])
+        return True
+    return False
+
+
+def _hr_activity_allows_path(path):
+    """Keep HR tenants inside the dedicated HR workspace."""
+    clean_path = str(path or "/")
+    return (
+        clean_path == "/hr"
+        or clean_path.startswith("/hr/")
+        or clean_path.startswith("/api/v1/desktop/auth/")
+        or clean_path.startswith("/api/v1/desktop/snapshots")
+        or clean_path.startswith("/static/")
+        or clean_path == "/logout"
+        or clean_path == "/account/change-password"
+        or clean_path.startswith("/employees/profile/")
+    )
+
+
+def _clinics_activity_allows_path(path):
+    """Keep Clinics tenants inside the dedicated medical workspace."""
+    clean_path = str(path or "/")
+    return (
+        clean_path == "/clinics"
+        or clean_path.startswith("/clinics/")
+        or clean_path.startswith("/c/")
+        or clean_path.startswith("/book/")
+        or clean_path.startswith("/static/")
+        or clean_path.startswith("/api/clinic/ai-tutor/")
+        or clean_path == "/api/features/me"
+        or clean_path == "/logout"
+        or clean_path == "/account/change-password"
+        or clean_path.startswith("/employees/profile/")
+        or clean_path.startswith("/settings")
+        or clean_path.startswith("/permissions")
+        or clean_path.startswith("/employees")
+    )
+
+
+def _path_is_open(path: str, open_routes) -> bool:
+    """Public-path test with SEGMENT boundaries. A bare ``startswith("/c")`` once exempted every path that merely
+    began with «/c» (customers, cash, clinics …) from the login gate; an entry now matches itself and its
+    sub-paths only, unless it is written as a prefix (ends with «/»)."""
+    if path == "/":
+        return True
+    for entry in open_routes:
+        if entry == "/":
+            continue
+        if entry.endswith("/"):
+            if path.startswith(entry):
+                return True
+        elif path == entry or path.startswith(entry + "/"):
+            return True
+    return False
+
+
 @app.before_request
 def require_login():
+    # Public recruitment resolves and verifies its tenant independently of staff sessions.
+    if request.endpoint in ("hr_recruit_public.public_form", "hr_recruit_public.public_submit"):
+        return None
+    # Machine clients are authenticated by the MCP backend guard.
+    if (request.path == "/mcp" or request.path.startswith("/mcp/")) and (request.headers.get("Authorization") or not session.get("user_id")):
+        return None
+    local_workspace = _ensure_local_workspace_session()
     # Flask يحمّل الجلسة بـ permanent=False؛ أي تعديل لاحق يحوّل الكوكي لجلسة متصفح
     if session.get("user_id") or session.get("is_superadmin") or session.get("agent_id"):
         session.permanent = True
@@ -1555,6 +1815,7 @@ def require_login():
         "/payments",
         "/payments/failed",
         "/payments/mock-gateway",
+        "/payment_failed",
         "/payments/simulate",
         "/upgrade",
         "/superadmin",
@@ -1569,15 +1830,29 @@ def require_login():
         "/api/landing-chat",  # مساعد الذكاء الاصطناعي لصفحة الهبوط
         "/telegram",  # بوت تيليجرام: webhook و setup و test — بدون تسجيل (ليستقبل التحديثات من Telegram)
         "/delivery-agent",  # بوابة مندوب التوصيل
+        "/employee-desk/login",
+        "/employee-desk/logout",
+        "/employee-desk/manifest.webmanifest",
+        "/employee-desk/sw.js",
         "/store",
         "/shop",  # المتجر العام للزبائن — بدون تسجيل دخول
+        "/book",  # حجز مواعيد العيادات العام
+        "/c",  # بوابة المريض العامة للعيادة
+        "/api/public/clinics",  # API عامة محدودة لبوابة المريض
+        "/installment-store",  # متجر الأقساط العام — عزل المستأجر داخل الـ blueprint
         "/orders/p/o",  # تفاصيل طلب عامة (QR) — موقّعة، بدون تسجيل
         "/orders/invoice-video",  # بث فيديو الطلب للعامة — رمز موقّع
         "/webhook",  # WhatsApp Cloud API webhook verification/receive
+        "/webhooks/facebook",  # Permanent Messenger webhook (Meta verify + inbound)
         "/api/v1/ai-sales/webhooks/",  # Finora Sales AI public WhatsApp callbacks
         "/ai-sales/public/media/",  # Signed AI Sales media fetched by Meta
         "/webhook-ui",  # صفحة اختبار webhook
         "/api/mobile/v1/",  # Social Commerce mobile API (OTP/JWT — own auth)
+        "/api/phone/v1/",  # Finora Phone staff companion API (Bearer — own auth)
+        "/api/v1/pos/",  # POS machine API (Bearer — own auth)
+        "/api/v1/store",  # Store catalog API (Bearer sk_ — own auth)
+        "/api/v1/finora-core/",  # FINORA CORE desktop API (Bearer — own auth, modules/finora_core/auth.py)
+        "/api/v1/desktop/",  # FINORA Management Desktop sign-in/session probe (own JSON guard, modules/desktop_api)
     ]
 
     agent_allowed_paths = ("/delivery-agent", "/messages", "/static")
@@ -1658,8 +1933,79 @@ def require_login():
 
     current_employee_for_request = sync_staff_session_from_db()
 
+    # نشاط الموارد البشرية مساحة مستقلة. حتى الروابط العامة أو الروابط
+    # المحفوظة سابقاً لا تفتح صفحات البيع والمخزون والحسابات لهذا النشاط.
+    if session.get("user_id"):
+        active_business_type = (session.get("business_type") or "").strip()
+        tenant_slug = (session.get("tenant_slug") or "").strip()
+        if tenant_slug:
+            previous_tenant = getattr(g, "tenant", None)
+            try:
+                g.tenant = None
+                from models.core.tenant import Tenant as CoreTenant
+
+                core_tenant = CoreTenant.query.filter_by(slug=tenant_slug).first()
+                if core_tenant:
+                    active_business_type = (
+                        getattr(core_tenant, "business_type", None) or "general"
+                    )
+                    session["business_type"] = active_business_type
+            except Exception:
+                db.session.rollback()
+            finally:
+                g.tenant = previous_tenant
+
+        if active_business_type == "hr_management" and not _hr_activity_allows_path(request.path):
+            if request.path.startswith("/api/") or request.is_json:
+                return jsonify({
+                    "success": False,
+                    "error": "هذا النشاط مخصص لإدارة الموارد البشرية فقط",
+                }), 403
+            return redirect("/hr/")
+
+        if active_business_type == "clinics" and not _clinics_activity_allows_path(request.path):
+            if request.path.startswith("/api/") or request.is_json:
+                return jsonify({
+                    "success": False,
+                    "error": "هذا النشاط مخصص لإدارة العيادات والمراكز الطبية فقط",
+                }), 403
+            return redirect("/clinics/")
+
+        if active_business_type == "starter_business":
+            feature = _starter_business_feature_for_path(request.path)
+            if feature:
+                try:
+                    from models.tenant import Tenant as TenantModel
+                    from utils.plan_limits import get_plan
+                    from utils.tenant_feature_flags import normalize_feature_overrides
+
+                    tenant_row = TenantModel.query.first()
+                    plan_key = getattr(tenant_row, "plan_key", None) or session.get("plan_key") or "basic"
+                    plan_features = get_plan(plan_key).get("features", {})
+                    overrides = normalize_feature_overrides(
+                        getattr(tenant_row, "feature_overrides_json", None) if tenant_row else None
+                    )
+                    allowed = starter_business_allows(
+                        feature,
+                        plan_features=plan_features,
+                        feature_overrides=overrides,
+                    )
+                except Exception:
+                    allowed = feature in STARTER_BUSINESS_DEFAULT_FEATURES
+                if not allowed:
+                    if request.path.startswith("/api/") or request.is_json:
+                        return jsonify({"success": False, "error": "هذه الميزة غير مفعلة لهذا النشاط"}), 403
+                    return redirect("/")
+
     def deny_current_path():
-        if request.path.startswith("/api/") or request.is_json:
+        if request.path.startswith(("/api/", "/notes/api", "/reports/api/")) or request.is_json:
+            return jsonify({"success": False, "error": "غير مصرح"}), 403
+        # Data clients (desktop app, the web's own XHR calls) must get a 403, not a page redirect: the desktop
+        # treats a redirect as "session ended" and signed limited users (cashiers) out.
+        accept = (request.headers.get("Accept") or "").lower()
+        if (request.headers.get("X-Requested-With") or "").lower() == "xmlhttprequest" or (
+            "application/json" in accept and "text/html" not in accept
+        ):
             return jsonify({"success": False, "error": "غير مصرح"}), 403
         return redirect("/pos")
 
@@ -1689,9 +2035,12 @@ def require_login():
             ("/orders/returned", ("view_orders", "view_orders_returned")),
             ("/orders/cancelled", ("view_orders", "view_orders_returned")),
             ("/orders", "view_orders"),
+            ("/shipping/company-returns", "return_orders"),
             ("/shipping", "view_shipping"),
             ("/expenses", "view_expenses"),
             ("/cash", "view_accounts"),
+            ("/accounts/finance", "finance.view"),
+            ("/api/finance", "finance.view"),
             ("/accounts", "view_accounts"),
             ("/assets", ("view_fixed_assets", "view_accounts")),
             ("/finance/rotating-savings", ("view_rotating_savings", "view_accounts")),
@@ -1704,8 +2053,18 @@ def require_login():
             ("/payroll", "manage_employees"),
             ("/settings", "manage_settings"),
             ("/activity", "view_activity"),
+            ("/notes", "use_notes"),
+            ("/employee-desk", "use_employee_desk"),
+            ("/api/employee-desk", "use_employee_desk"),
         ]
         for prefix, required in rules:
+            if path.startswith((
+                "/employee-desk/login",
+                "/employee-desk/logout",
+                "/employee-desk/manifest",
+                "/employee-desk/sw",
+            )):
+                break
             if not path.startswith(prefix):
                 continue
             if isinstance(required, tuple):
@@ -1725,7 +2084,7 @@ def require_login():
         return denied_by_page_permission
 
     # السماح للمسارات المفتوحة: "/" تطابق تامة، الباقي يبدأ بـ المسار
-    if request.path == "/" or any(request.path.startswith(p) for p in open_routes if p != "/"):
+    if _path_is_open(request.path, open_routes):
         # لوحة التحكم "/" معفاة من require_login لكن تحتاج g.tenant للجلسات النشطة
         if "user_id" in session:
             tenant_slug = session.get("tenant_slug")
@@ -1752,6 +2111,17 @@ def require_login():
         # API يجب أن يعيد JSON بدل redirect HTML
         if publisher_api_path:
             return jsonify({"success": False, "message": "Unauthorized"}), 401
+        # Print iframe embeds must not receive the full login page (was getting printed).
+        if (request.args.get("finora_embed") or "").strip() == "1":
+            return (
+                "<!doctype html><html lang='ar' dir='rtl'><head><meta charset='utf-8'>"
+                "<title>انتهت الجلسة</title></head><body>"
+                "<p data-finora-print-blocked='session'>"
+                "انتهت الجلسة. أعد تسجيل الدخول ثم اطبع مرة أخرى."
+                "</p></body></html>",
+                401,
+                {"Content-Type": "text/html; charset=utf-8"},
+            )
         return redirect("/login")
 
     # جلسة بوابة المندوب: السماح بالمراسلة وبوابة المندوب فقط.
@@ -1777,7 +2147,7 @@ def require_login():
             core_tenant = CoreTenant.query.filter_by(slug=tenant_slug).first()
             g.tenant = tenant_slug  # Restore
             
-            if not core_tenant or not core_tenant.is_subscription_valid():
+            if not local_workspace and (not core_tenant or not core_tenant.is_subscription_valid()):
                 # إنهاء الجلسة وإرجاعه لصفحة الخطط إذا انتهى الاشتراك
                 session.clear()
                 return redirect("/pricing")
@@ -1785,6 +2155,22 @@ def require_login():
     except Exception as e:
         print(f"Error checking tenant subscription: {e}")
         pass
+
+    # One authoritative branch context for every authenticated tenant page/API.
+    # Individual blueprints may still call it defensively; the operation is
+    # idempotent and always reuses the current request/session.
+    if (
+        session.get("user_id")
+        and session.get("tenant_slug")
+        and not (request.path or "").startswith(("/superadmin", "/super-admin"))
+    ):
+        try:
+            from utils.branch_context import init_branch_context
+
+            init_branch_context()
+        except Exception:
+            db.session.rollback()
+            app.logger.exception("global branch context initialization failed")
 
 
 
@@ -1809,6 +2195,36 @@ def inject_system_settings():
 
 
 @app.context_processor
+def inject_branch_scope_context():
+    if request.path.startswith("/superadmin") or not session.get("user_id"):
+        return {
+            "branches": [],
+            "current_branch": None,
+            "current_branch_id": None,
+            "view_all_branches": False,
+            "can_switch_branch": False,
+            "branch_scope_label": "",
+        }
+    try:
+        from utils.branch_context import init_branch_context
+        from utils.branch_scope import branch_context_payload
+
+        if not hasattr(g, "branches"):
+            init_branch_context()
+        return branch_context_payload()
+    except Exception:
+        db.session.rollback()
+        return {
+            "branches": [],
+            "current_branch": None,
+            "current_branch_id": None,
+            "view_all_branches": False,
+            "can_switch_branch": False,
+            "branch_scope_label": "",
+        }
+
+
+@app.context_processor
 def inject_platform_branding():
     """شعار واسم المنصة من إعدادات السوبر أدمن (Core DB)."""
     try:
@@ -1829,11 +2245,17 @@ def inject_platform_branding():
 def inject_business_context():
     """Expose the active company's business type to all tenant templates."""
     business_type = session.get("business_type") or "general"
+    active_plan_key = session.get("plan_key") or "basic"
     feature_overrides = {}
     if request.path.startswith("/superadmin"):
         return {
             "business_type": "general",
             "is_beauty_center": False,
+            "is_wholesale": False,
+            "is_food_business": False,
+            "is_hr_management": False,
+            "is_starter_business": False,
+            "is_clinics_business": False,
             "business_allows": lambda module: True,
         }
     try:
@@ -1863,6 +2285,9 @@ def inject_business_context():
                 g.tenant = tenant_slug
                 try:
                     tenant_row = TenantModel.query.first()
+                    if tenant_row and getattr(tenant_row, "plan_key", None):
+                        active_plan_key = tenant_row.plan_key
+                        session["plan_key"] = active_plan_key
                     feature_overrides = normalize_feature_overrides(
                         getattr(tenant_row, "feature_overrides_json", None) if tenant_row else None
                     )
@@ -1874,14 +2299,33 @@ def inject_business_context():
         business_type = session.get("business_type") or "general"
         feature_overrides = {}
 
+    try:
+        from utils.plan_limits import get_plan
+
+        plan_features = get_plan(active_plan_key).get("features", {})
+    except Exception:
+        # عند تعذر قاعدة Core لا نغلق صفحات كانت تعمل سابقاً.
+        plan_features = {}
+
     def business_allows(module):
         module = str(module or "")
+        # الخطة هي السقف العام. إعداد الشركة يستطيع إخفاء ميزة إضافياً، لكنه
+        # لا يتجاوز ميزة أوقفها المدير من الخطة نفسها.
+        if module in plan_features and not bool(plan_features[module]):
+            return False
         if module in feature_overrides:
             return bool(feature_overrides[module])
+        if module == "shipping_company_returns":
+            return False
+        if module == "trade_in_sales":
+            # الميزة حساسة ومعطلة افتراضياً، لكن تفعيلها صراحةً داخل الخطة
+            # يجب أن ينعكس على الشركة مثل بقية الميزات.
+            return bool(plan_features.get(module, False))
         if business_type == "beauty_center":
             allowed_for_beauty = {
                 "dashboard",
                 "executive_dashboard",
+                "notes",
                 "beauty",
                 "beauty_appointments",
                 "beauty_services",
@@ -1907,6 +2351,14 @@ def inject_business_context():
                 "employee_page_warnings",
                 "payroll",
                 "employee_roles",
+                "installments",
+                "installments_dashboard",
+                "installments_products",
+                "installments_applications",
+                "installments_contracts",
+                "installments_overdue",
+                "installments_reports",
+                "installments_settings",
                 "reports",
                 "reports_daily",
                 "reports_monitors",
@@ -1925,11 +2377,126 @@ def inject_business_context():
                 "storefront",
             }
             return module in allowed_for_beauty
+        if business_type == "wholesale":
+            allowed_for_wholesale = {
+                "dashboard",
+                "notes",
+                "wholesale",
+                "wholesale_ops",
+                "wholesale_sales",
+                "wholesale_purchases",
+                "wholesale_receipts",
+                "wholesale_payments",
+                "wholesale_customers",
+                "wholesale_suppliers",
+                "wholesale_products",
+                "wholesale_warehouses",
+                "wholesale_transfers",
+                "wholesale_accounts",
+                "wholesale_statement",
+                "wholesale_expenses",
+                "wholesale_reports",
+                "wholesale_settings",
+                "inventory",
+                "inventory_products",
+                "inventory_add_product",
+                "inventory_audit",
+                "inventory_ledger",
+                "inventory_reports",
+                "purchases",
+                "suppliers",
+                "supplier_statement",
+                "stock_transfers",
+                "customers",
+                "customer_blacklist",
+                "customer_provinces",
+                "customer_credit",
+                "expenses",
+                "cash",
+                "accounts",
+                "employees",
+                "employee_roles",
+                "payroll",
+                "installments",
+                "installments_dashboard",
+                "installments_products",
+                "installments_applications",
+                "installments_contracts",
+                "installments_overdue",
+                "installments_reports",
+                "installments_settings",
+                "reports",
+                "reports_daily",
+                "reports_financial",
+                "reports_sales",
+                "reports_profit",
+                "settings",
+                "settings_system",
+                "settings_invoice",
+                "settings_appearance",
+                "settings_branches",
+                "settings_database_repair",
+                "permissions",
+                "messages",
+                "activity",
+            }
+            return module in allowed_for_wholesale
+        if business_type == "food_wholesale_retail":
+            allowed_for_food = {
+                "food",
+                "food_dashboard",
+                "food_cashier",
+                "food_orders",
+                "food_products",
+                "food_purchases",
+                "food_inventory",
+                "food_parties",
+                "food_finance",
+                "food_reports",
+                "food_settings",
+            }
+            return module in allowed_for_food
+        if business_type == "hr_management":
+            allowed_for_hr = {
+                "hr",
+                "hr_dashboard",
+                "hr_employees",
+                "hr_attendance",
+                "hr_leaves",
+                "hr_payroll",
+                "hr_cash",
+                "hr_reports",
+                "hr_settings",
+            }
+            return module in allowed_for_hr
+        if business_type == "clinics":
+            allowed_for_clinics = {
+                "clinics",
+                "clinics_dashboard",
+                "clinics_reception",
+                "clinics_appointments",
+                "clinics_patients",
+                "clinics_visits",
+                "clinics_clinical",
+                "clinics_billing",
+                "clinics_inventory",
+                "clinics_admin",
+                "clinics_reports",
+                "clinics_settings",
+            }
+            return module in allowed_for_clinics
+        if business_type == "starter_business":
+            return module in STARTER_BUSINESS_DEFAULT_FEATURES
         return True
 
     return {
         "business_type": business_type,
         "is_beauty_center": business_type == "beauty_center",
+        "is_wholesale": business_type == "wholesale",
+        "is_food_business": business_type == "food_wholesale_retail",
+        "is_hr_management": business_type == "hr_management",
+        "is_starter_business": business_type == "starter_business",
+        "is_clinics_business": business_type == "clinics",
         "business_allows": business_allows,
         "tenant_feature_overrides": feature_overrides,
     }
@@ -2051,15 +2618,25 @@ app.register_blueprint(payments_bp)
 app.register_blueprint(ai_bp, url_prefix="/ai")
 app.register_blueprint(social_ai_bp, url_prefix="/social-ai")
 app.register_blueprint(workflow_api)
+try:
+    from modules.finora_ai import init_finora_ai
+    init_finora_ai(app)
+    print("Finora AI + MCP Phase 1 loaded.")
+except Exception as _finora_ai_ex:
+    print(f"Finora AI + MCP load warning: {_finora_ai_ex}")
 
 app.register_blueprint(pos_bp)
 app.register_blueprint(employees_bp, url_prefix="/employees")
 app.register_blueprint(payroll_bp, url_prefix="/payroll")
+app.register_blueprint(hr_desktop_bp)
+app.register_blueprint(hr_recruit_public_bp)
 app.register_blueprint(inventory_bp, url_prefix="/inventory")
 app.register_blueprint(stock_transfers_bp)
 app.register_blueprint(branch_api_bp)
 app.register_blueprint(delivery_fee_api_bp)
 app.register_blueprint(purchases_bp, url_prefix="/purchases")
+app.register_blueprint(purchase_lists_bp)
+app.register_blueprint(product_dedup_bp)
 app.register_blueprint(maintenance_bp)
 app.register_blueprint(fixed_assets_bp)
 app.register_blueprint(rotating_savings_bp)
@@ -2072,6 +2649,9 @@ app.register_blueprint(customer_credit_bp)
 app.register_blueprint(orders_bp, url_prefix="/orders")
 app.register_blueprint(shipping_bp, url_prefix="/shipping")
 app.register_blueprint(reports_bp, url_prefix="/reports")
+from modules.reports_api import init_reports_api
+init_reports_api(app)
+app.register_blueprint(daily_closing_bp)
 app.register_blueprint(suppliers_bp, url_prefix="/suppliers")
 app.register_blueprint(expenses_bp, url_prefix="/expenses")
 app.register_blueprint(accounts_bp)
@@ -2084,6 +2664,7 @@ app.register_blueprint(agents_bp)
 app.register_blueprint(delivery_agent_bp)
 app.register_blueprint(pages_bp)
 app.register_blueprint(activity_bp, url_prefix="/activity")
+app.register_blueprint(notes_bp)
 app.register_blueprint(landing_bp)
 from routes.permissions import permissions_bp
 app.register_blueprint(permissions_bp, url_prefix="/admin/permissions")
@@ -2091,11 +2672,38 @@ app.register_blueprint(permissions_bp, url_prefix="/admin/permissions")
 from routes.superadmin import superadmin_bp
 app.register_blueprint(superadmin_bp)
 
+from routes.superadmin_leads import superadmin_leads_bp
+app.register_blueprint(superadmin_leads_bp)
+
+from routes.superadmin_features import superadmin_features_bp
+app.register_blueprint(superadmin_features_bp)
+
+from routes.features_api import features_api_bp
+app.register_blueprint(features_api_bp)
+
+from modules.ai_tutor.routes import ai_tutor_bp
+app.register_blueprint(ai_tutor_bp)
+
+from routes.superadmin_ai_tutor import superadmin_ai_tutor_bp
+app.register_blueprint(superadmin_ai_tutor_bp)
+
 from routes.admin import admin_bp
 app.register_blueprint(admin_bp)
 
 app.register_blueprint(invoice_store_bp)
 app.register_blueprint(storefront_bp)
+from modules.catalog.routes import catalog_admin_bp
+app.register_blueprint(catalog_admin_bp)
+from modules.pricing.routes import pricing_bp
+app.register_blueprint(pricing_bp)
+from modules.search.routes import search_admin_bp
+app.register_blueprint(search_admin_bp)
+from modules.recommendations.routes import recommendations_bp
+app.register_blueprint(recommendations_bp)
+from modules.store_analytics.routes import store_analytics_bp
+app.register_blueprint(store_analytics_bp)
+init_installments(app)
+init_order_installment_lifecycle(app)
 
 @app.route("/store")
 @app.route("/store/")
@@ -2104,9 +2712,46 @@ def store_root_alias():
 
 app.register_blueprint(quick_sale_bp)
 app.register_blueprint(beauty_bp)
+app.register_blueprint(hr_bp)
+try:
+    from modules.wholesale import init_wholesale
+
+    init_wholesale(app)
+    print("Wholesale module loaded.")
+except Exception as _ws_ex:
+    print(f"Wholesale module load warning: {_ws_ex}")
+try:
+    from modules.food import init_food_workspace
+
+    init_food_workspace(app)
+    print("Food workspace loaded.")
+except Exception as _food_ex:
+    print(f"Food workspace load warning: {_food_ex}")
+try:
+    from modules.clinics import init_clinics
+
+    init_clinics(app)
+    print("Clinics workspace loaded.")
+except Exception as _clinics_ex:
+    print(f"Clinics workspace load warning: {_clinics_ex}")
+try:
+    from modules.receipts import init_receipts
+
+    init_receipts(app)
+    print("Receipts module loaded.")
+except Exception as _receipts_init_err:
+    print(f"Receipts module init skipped: {_receipts_init_err}")
+from modules.finance import init_finance
+init_finance(app)
 app.register_blueprint(whatsapp_webhook_bp)
 app.register_blueprint(ai_sales_bp)
 app.register_blueprint(ai_sales_webhook_bp)
+from modules.facebook_monitor import facebook_monitor_bp
+app.register_blueprint(facebook_monitor_bp)
+from modules.employee_desk import employee_desk_bp
+app.register_blueprint(employee_desk_bp)
+from modules.facebook_routing import facebook_routing_bp
+app.register_blueprint(facebook_routing_bp)
 app.register_blueprint(telegram_bp)
 
 # ── Publisher (Facebook Publishing Platform) ──────────────────────────────
@@ -2134,6 +2779,109 @@ try:
     print("Mobile app API loaded.")
 except Exception as _mobile_ex:
     print(f"Mobile app API load warning: {_mobile_ex}")
+
+# ── Finora Phone staff companion API (Phase 1) ──────────────────────────
+try:
+    from modules.phone_app import init_phone_app
+    init_phone_app(app)
+    print("Phone app API loaded.")
+except Exception as _phone_ex:
+    print(f"Phone app API load warning: {_phone_ex}")
+
+# ── POS machine API (voice Core) ──────────────────────────────────────
+try:
+    from modules.pos_api import init_pos_api
+    init_pos_api(app)
+    print("POS machine API loaded.")
+except Exception as _pos_api_ex:
+    print(f"POS machine API load warning: {_pos_api_ex}")
+try:
+    from modules.desktop_api import init_desktop_api
+
+    init_desktop_api(app)
+except Exception as _desktop_api_ex:
+    print(f"Desktop management API load warning: {_desktop_api_ex}")
+
+try:
+    from modules.finora_core import init_finora_core
+    init_finora_core(app)
+    print("FINORA CORE API loaded.")
+except Exception as _finora_core_ex:
+    print(f"FINORA CORE API load warning: {_finora_core_ex}")
+
+try:
+    from modules.store_api import init_store_api
+    init_store_api(app)
+    print("Store catalog API loaded.")
+except Exception as _store_api_ex:
+    print(f"Store catalog API load warning: {_store_api_ex}")
+
+
+@app.cli.command("phone-db")
+@click.argument("action", type=click.Choice(["upgrade", "upgrade-all", "downgrade", "current"]))
+@click.option("--tenant", default=None, help="Tenant slug (required except upgrade-all)")
+@click.option("--to", "to_version", default=0, type=int, help="Target version for downgrade")
+def phone_db_command(action, tenant, to_version):
+    """Upgrade/downgrade Finora Phone schema on tenant DBs.
+
+    Examples:
+      flask phone-db upgrade --tenant acme
+      flask phone-db upgrade-all
+      flask phone-db current --tenant acme
+      flask phone-db downgrade --tenant acme --to 1
+    """
+    import click
+    from flask import g
+    from modules.phone_app import migrations as phone_mig
+    from extensions_tenant import is_valid_tenant_slug, get_tenant_db_path
+
+    def _upgrade_one(slug: str) -> int:
+        if not is_valid_tenant_slug(slug):
+            raise click.ClickException(f"Invalid tenant slug: {slug}")
+        path = get_tenant_db_path(slug)
+        if not os.path.exists(path):
+            raise click.ClickException(f"Tenant DB not found: {path}")
+        g.tenant = slug
+        return phone_mig.upgrade()
+
+    with app.app_context():
+        if action == "upgrade-all":
+            tenants_dir = os.path.join(app.root_path, "tenants")
+            if not os.path.isdir(tenants_dir):
+                raise click.ClickException(f"Tenants dir missing: {tenants_dir}")
+            count = 0
+            for name in sorted(os.listdir(tenants_dir)):
+                if not name.endswith(".db"):
+                    continue
+                slug = name[:-3]
+                try:
+                    v = _upgrade_one(slug)
+                    click.echo(f"{slug}: upgraded to v{v}")
+                    count += 1
+                except Exception as exc:
+                    click.echo(f"{slug}: FAILED {exc}", err=True)
+            click.echo(f"Done. {count} tenants processed.")
+            return
+
+        if not tenant:
+            raise click.ClickException("--tenant is required for this action")
+
+        if not is_valid_tenant_slug(tenant):
+            raise click.ClickException(f"Invalid tenant slug: {tenant}")
+        path = get_tenant_db_path(tenant)
+        if not os.path.exists(path):
+            raise click.ClickException(f"Tenant DB not found: {path}")
+        g.tenant = tenant
+
+        if action == "upgrade":
+            v = phone_mig.upgrade()
+            click.echo(f"{tenant}: upgraded to v{v}")
+        elif action == "downgrade":
+            v = phone_mig.downgrade(to_version)
+            click.echo(f"{tenant}: downgraded to v{v}")
+        elif action == "current":
+            v = phone_mig.get_schema_version()
+            click.echo(f"{tenant}: phone schema v{v} (target {phone_mig.TARGET_VERSION})")
 
 
 @app.cli.command("seed_landing_page")
@@ -2204,6 +2952,10 @@ def add_headers(response):
     response.headers["X-XSS-Protection"] = "1; mode=block"
     if app.config.get("SESSION_COOKIE_SECURE"):
         response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+    # A versioned static file (``…css?v=20261017``) never changes under the same URL — a new version gets a new
+    # ``v`` — so browsers keep it for a year instead of re-checking every 5 minutes (repeat visits load instantly).
+    if request.endpoint == "static" and request.args.get("v") and response.status_code == 200:
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
     return response
 
 from utils.activity_middleware import register_activity_middleware
@@ -2260,6 +3012,39 @@ def _start_social_ai_scheduler():
         pass
 
 _start_social_ai_scheduler()
+
+# =====================================
+# Scheduled Expense Posting (time-of-day)
+# =====================================
+def _start_expense_posting_scheduler():
+    """خصم المصاريف المجدولة بساعة محددة كل دقيقة لكل المستأجرين."""
+    import os
+    import sys
+
+    if os.environ.get("SERVER_SOFTWARE", "").startswith("gunicorn/") or "gunicorn" in (sys.argv[0] or ""):
+        return
+    if os.environ.get("WERKZEUG_RUN_MAIN") == "false":
+        return
+
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore[import-untyped]
+        from apscheduler.triggers.interval import IntervalTrigger  # type: ignore[import-untyped]
+        from routes.expenses import run_scheduled_expense_posting_for_all_tenants
+
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(
+            lambda: run_scheduled_expense_posting_for_all_tenants(app),
+            IntervalTrigger(minutes=1),
+            id="expense_timed_posting",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.start()
+    except Exception:
+        pass
+
+_start_expense_posting_scheduler()
 
 # =====================================
 # Weekly Announcement Scheduler
@@ -2594,6 +3379,132 @@ def _start_watchdog_persist_scheduler():
 
 _start_watchdog_persist_scheduler()
 
+# =====================================
+# Leads Discovery Scheduler
+# =====================================
+def _start_leads_discovery_scheduler():
+    """Run one daily public-map discovery pass for Super Admin leads."""
+    import os
+
+    if os.environ.get("LEADS_DISCOVERY_SCHEDULER_ENABLED", "1") in {"0", "false", "False"}:
+        return
+
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore[import-untyped]
+        from apscheduler.triggers.cron import CronTrigger  # type: ignore[import-untyped]
+        from services.leads_crm.discovery_service import acquire_scheduler_lock, run_scheduled_lead_discovery
+
+        if not acquire_scheduler_lock():
+            try:
+                app.logger.info("Leads discovery scheduler lock not acquired")
+            except Exception:
+                pass
+            return
+
+        def _run_daily_discovery():
+            with app.app_context():
+                try:
+                    limit = int(os.environ.get("LEADS_DISCOVERY_DAILY_LIMIT", "100") or "100")
+                except ValueError:
+                    limit = 100
+                try:
+                    run_scheduled_lead_discovery(limit=max(1, min(limit, 100)))
+                except Exception:
+                    db.session.rollback()
+                    try:
+                        app.logger.exception("leads discovery scheduler failed")
+                    except Exception:
+                        pass
+
+        try:
+            hour = int(os.environ.get("LEADS_DISCOVERY_HOUR", "5") or "5")
+        except ValueError:
+            hour = 5
+        hour = max(0, min(hour, 23))
+
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(
+            _run_daily_discovery,
+            CronTrigger(hour=hour, minute=15),
+            id="leads_daily_discovery",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.start()
+    except Exception:
+        pass
+
+
+_start_leads_discovery_scheduler()
+
+
+def _start_order_installment_lifecycle_scheduler():
+    """Auto-settle due installment-order lifecycles every 5 minutes."""
+    import os
+
+    if os.environ.get("ORDER_INSTALLMENT_SCHEDULER_ENABLED", "1") in {"0", "false", "False"}:
+        return
+    try:
+        from apscheduler.schedulers.background import BackgroundScheduler  # type: ignore[import-untyped]
+        from apscheduler.triggers.interval import IntervalTrigger  # type: ignore[import-untyped]
+
+        def _run_order_installment_auto_settle():
+            with app.app_context():
+                try:
+                    from flask import g
+                    from models.core.tenant import Tenant as CoreTenant
+                    from modules.order_installment_lifecycle.service import process_due_lifecycles
+
+                    old_tenant = getattr(g, "tenant", None)
+                    g.tenant = None
+                    try:
+                        tenants = CoreTenant.query.filter_by(is_active=True).all()
+                    except Exception:
+                        tenants = []
+                    finally:
+                        g.tenant = old_tenant
+
+                    for tenant in tenants:
+                        tenant_slug = getattr(tenant, "slug", None)
+                        if not tenant_slug:
+                            continue
+                        g.tenant = tenant_slug
+                        try:
+                            process_due_lifecycles(limit=100)
+                        except Exception:
+                            db.session.rollback()
+                            try:
+                                app.logger.exception(
+                                    "order installment auto-settle failed for tenant %s",
+                                    tenant_slug,
+                                )
+                            except Exception:
+                                pass
+                        finally:
+                            g.tenant = None
+                except Exception:
+                    try:
+                        app.logger.exception("order installment auto-settle scheduler failed")
+                    except Exception:
+                        pass
+
+        scheduler = BackgroundScheduler()
+        scheduler.add_job(
+            _run_order_installment_auto_settle,
+            IntervalTrigger(minutes=5),
+            id="order_installment_auto_settle",
+            replace_existing=True,
+            max_instances=1,
+            coalesce=True,
+        )
+        scheduler.start()
+    except Exception:
+        pass
+
+
+_start_order_installment_lifecycle_scheduler()
+
 # Favicon for browser tabs (/favicon.ico)
 @app.route("/favicon.ico")
 def favicon():
@@ -2628,6 +3539,13 @@ def robots_txt():
             "Disallow: /pos/",
             "Disallow: /delivery-agent",
             "Disallow: /webhook",
+            # store pages that are per-visitor or endless filter combinations (each store has its own sitemap.xml)
+            "Disallow: /shop/*/api/",
+            "Disallow: /shop/*/cart",
+            "Disallow: /shop/*/checkout",
+            "Disallow: /shop/*/account",
+            "Disallow: /shop/*/compare",
+            "Disallow: /shop/*/personalization",
             "",
             "Sitemap: https://www.finora.company/sitemap.xml",
             "",

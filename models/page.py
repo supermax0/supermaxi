@@ -16,6 +16,7 @@ class Page(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     visible_to_cashier = db.Column(db.Boolean, default=True)  # مرئي للكاشير
     visible_to_admin = db.Column(db.Boolean, default=True)  # مرئي للأدمن
+    facebook_page_id = db.Column(db.String(128), nullable=True, index=True)
     
     # علاقة many-to-many مع الموظفين
     employees = db.relationship(

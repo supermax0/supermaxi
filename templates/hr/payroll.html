@@ -1,0 +1,169 @@
+{% extends "hr/layout.html" %}
+{% block hr_title %}رواتب HR{% endblock %}
+{% block hr_content %}
+<section class="hr-page-heading">
+  <div>
+    <span class="hr-eyebrow dark">المسير الشهري</span>
+    <h1>الرواتب والصرف</h1>
+    <p>احسب الصافي، اصرف الرواتب، واطبع مستند الراتب.</p>
+  </div>
+  <div class="hr-hero-actions" style="position:static">
+    <a class="hr-btn hr-btn-light" style="background:#ecfdf3;color:#027a48;border:1px solid #abefc6" href="{{ url_for('hr.cash') }}"><i class="fa-solid fa-vault"></i> الصندوق</a>
+    <button class="hr-btn hr-btn-primary" type="button" data-hr-dialog-open="payroll-adjustment-modal"><i class="fa-solid fa-circle-plus"></i> بدل أو استقطاع</button>
+  </div>
+</section>
+
+<div class="hr-period-filter">
+  <form method="get" class="hr-period-filter-fields">
+    <label>السنة<input type="number" name="year" value="{{ year }}" min="2000" max="2100"></label>
+    <label>الشهر<select name="month">{% for i in range(1,13) %}<option value="{{ i }}" {% if i == month %}selected{% endif %}>{{ i }}</option>{% endfor %}</select></label>
+    <button class="hr-btn hr-btn-dark">عرض المسير</button>
+  </form>
+  <form method="post" action="{{ url_for('hr.pay_all_salaries') }}" onsubmit="return confirm('صرف كل الرواتب غير المسددة لهذا الشهر؟')">
+    <input type="hidden" name="period_year" value="{{ year }}">
+    <input type="hidden" name="period_month" value="{{ month }}">
+    <button class="hr-btn hr-btn-primary" type="submit" {% if unpaid_total <= 0 %}disabled{% endif %}><i class="fa-solid fa-money-bill-transfer"></i> صرف الكل</button>
+  </form>
+</div>
+
+<section class="hr-kpis">
+  <article class="hr-kpi"><span class="hr-kpi-icon indigo"><i class="fa-solid fa-coins"></i></span><div><small>الأساسي</small><strong>{{ "{:,}".format(total_basic) }}</strong><em>{{ settings.currency_label or 'د.ع' }}</em></div></article>
+  <article class="hr-kpi"><span class="hr-kpi-icon green"><i class="fa-solid fa-circle-plus"></i></span><div><small>البدلات</small><strong>{{ "{:,}".format(total_allowances) }}</strong><em>{{ settings.currency_label or 'د.ع' }}</em></div></article>
+  <article class="hr-kpi"><span class="hr-kpi-icon rose"><i class="fa-solid fa-circle-minus"></i></span><div><small>الاستقطاعات</small><strong>{{ "{:,}".format(total_deductions) }}</strong><em>{{ settings.currency_label or 'د.ع' }}</em></div></article>
+  <article class="hr-kpi emphasis"><span class="hr-kpi-icon violet"><i class="fa-solid fa-sack-dollar"></i></span><div><small>صافي المسير</small><strong>{{ "{:,}".format(total_net) }}</strong><em>مصروف {{ "{:,}".format(total_paid) }}</em></div></article>
+</section>
+
+<section class="hr-card hr-table-card">
+  <div class="hr-card-head"><div><span class="hr-card-kicker">مسير {{ month }}/{{ year }}</span><h2>صرف رواتب الموظفين</h2></div></div>
+  <div class="hr-table-wrap">
+    <table class="hr-table">
+      <thead>
+        <tr>
+          <th>الموظف</th>
+          <th>الأساسي</th>
+          <th>البدلات</th>
+          <th>الاستقطاعات</th>
+          <th>الصافي</th>
+          <th>الحالة</th>
+          <th>التفاصيل</th>
+          <th>إجراء</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td>
+            <div class="hr-person">
+              <span class="hr-avatar">{{ row.employee.name[:1] }}</span>
+              <div>
+                <strong>{{ row.employee.name }}</strong>
+                <small>{{ row.employee.hr_profile.job_title if row.employee.hr_profile else 'موظف' }}</small>
+              </div>
+            </div>
+          </td>
+          <td>{{ "{:,}".format(row.employee.salary or 0) }}</td>
+          <td class="hr-positive">+ {{ "{:,}".format(row.adjustments.allowance) }}</td>
+          <td class="hr-negative">- {{ "{:,}".format(row.adjustments.deduction) }}</td>
+          <td><strong>{{ "{:,}".format(row.net) }}</strong></td>
+          <td>
+            {% if row.is_paid %}
+            <span class="hr-status approved">مصروف</span>
+            {% elif row.net > 0 %}
+            <span class="hr-status pending">بانتظار الصرف</span>
+            {% else %}
+            <span class="hr-status rejected">بدون صافي</span>
+            {% endif %}
+          </td>
+          <td>
+            <details class="hr-details">
+              <summary>{{ row.adjustments['items']|length }} تعديل</summary>
+              <div>
+                {% for item in row.adjustments['items'] %}
+                <p>
+                  <span>{{ item.title }}</span>
+                  <strong class="{{ 'hr-negative' if item.adjustment_type == 'deduction' else 'hr-positive' }}">{{ '-' if item.adjustment_type == 'deduction' else '+' }}{{ "{:,}".format(item.amount) }}</strong>
+                  <form method="post" action="{{ url_for('hr.delete_adjustment', adjustment_id=item.id) }}" onsubmit="return confirm('حذف التعديل؟')"><button><i class="fa-solid fa-trash"></i></button></form>
+                </p>
+                {% else %}
+                <small>لا توجد تعديلات</small>
+                {% endfor %}
+              </div>
+            </details>
+          </td>
+          <td>
+            <div class="hr-row-actions">
+              {% if row.is_paid and row.payment %}
+              <a class="hr-btn hr-btn-dark" href="{{ url_for('hr.salary_voucher', payment_id=row.payment.id) }}" target="_blank"><i class="fa-solid fa-print"></i> مستند</a>
+              {% elif row.net > 0 %}
+              <form method="post" action="{{ url_for('hr.pay_salary') }}" onsubmit="return confirm('صرف صافي راتب {{ row.employee.name }} بمبلغ {{ "{:,}".format(row.net) }}؟')">
+                <input type="hidden" name="employee_id" value="{{ row.employee.id }}">
+                <input type="hidden" name="period_year" value="{{ year }}">
+                <input type="hidden" name="period_month" value="{{ month }}">
+                <button class="hr-btn hr-btn-primary" type="submit"><i class="fa-solid fa-hand-holding-dollar"></i> صرف</button>
+              </form>
+              {% else %}
+              <span class="hr-muted-dash">—</span>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8"><div class="hr-empty"><p>لا يوجد موظفون نشطون</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="hr-card hr-table-card" style="margin-top:16px">
+  <div class="hr-card-head"><div><span class="hr-card-kicker">سجل الصرف</span><h2>مستندات رواتب {{ month }}/{{ year }}</h2></div></div>
+  <div class="hr-table-wrap">
+    <table class="hr-table">
+      <thead>
+        <tr>
+          <th>رقم المستند</th>
+          <th>الموظف</th>
+          <th>المبلغ</th>
+          <th>الطريقة</th>
+          <th>التاريخ</th>
+          <th>طباعة</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in payment_rows %}
+        <tr>
+          <td><span class="hr-code">{{ row.payment.voucher_code or ('#' ~ row.payment.id) }}</span></td>
+          <td>{{ row.employee.name if row.employee else ('موظف #' ~ row.payment.payee_id) }}</td>
+          <td><strong>{{ "{:,}".format(row.payment.amount or 0) }}</strong></td>
+          <td>{{ row.method_label }}</td>
+          <td>{{ row.payment.paid_at.strftime('%Y-%m-%d %H:%M') if row.payment.paid_at else '—' }}</td>
+          <td><a class="hr-btn hr-btn-dark" href="{{ url_for('hr.salary_voucher', payment_id=row.payment.id) }}" target="_blank"><i class="fa-solid fa-print"></i> طباعة</a></td>
+        </tr>
+        {% else %}
+        <tr><td colspan="6"><div class="hr-empty compact"><p>لا توجد عمليات صرف لهذا الشهر بعد</p></div></td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<dialog class="hr-modal" id="payroll-adjustment-modal" aria-labelledby="payroll-adjustment-title">
+  <div class="hr-modal-panel">
+    <header class="hr-modal-head">
+      <div><span class="hr-modal-kicker">تعديل المسير</span><h2 id="payroll-adjustment-title">إضافة بدل أو استقطاع</h2></div>
+      <button class="hr-modal-close" type="button" data-hr-dialog-close="payroll-adjustment-modal" aria-label="إغلاق"><i class="fa-solid fa-xmark"></i></button>
+    </header>
+    <p class="hr-modal-note"><i class="fa-solid fa-calculator"></i> سيظهر التعديل فورًا في صافي مسير {{ month }}/{{ year }}.</p>
+    <form method="post" class="hr-form-grid">
+      <input type="hidden" name="period_year" value="{{ year }}">
+      <input type="hidden" name="period_month" value="{{ month }}">
+      <label><span>الموظف</span><select name="employee_id" required>{% for employee in employees %}<option value="{{ employee.id }}">{{ employee.name }}</option>{% endfor %}</select></label>
+      <label><span>النوع</span><select name="adjustment_type"><option value="allowance">بدل / مكافأة</option><option value="deduction">استقطاع</option></select></label>
+      <label><span>العنوان</span><input name="title" required placeholder="بدل نقل، مكافأة، تأخير..."></label>
+      <label><span>المبلغ</span><input type="number" name="amount" min="1" required></label>
+      <label class="hr-full"><span>ملاحظات</span><textarea name="notes" rows="2"></textarea></label>
+      <div class="hr-form-actions hr-full"><button class="hr-btn hr-btn-primary"><i class="fa-solid fa-plus"></i> إضافة إلى المسير</button></div>
+    </form>
+  </div>
+</dialog>
+{% endblock %}

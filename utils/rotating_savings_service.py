@@ -39,13 +39,15 @@ RS_GL = {
     "OWNER_CURRENT": "3103",
 }
 
-_RS_GL_ENSURED_BINDS: set[str] = set()
+_RS_GL_ENSURED_BINDS: set[tuple[str, str, int]] = set()
 
 
-def _rs_bind_key() -> str:
-    if has_request_context():
-        return getattr(g, "tenant", None) or "__core__"
-    return "__core__"
+def _rs_bind_key() -> tuple[str, str, int]:
+    slug = (getattr(g, "tenant", None) or "__core__") if has_request_context() else "__core__"
+    engine = db.session.get_bind()
+    # A tenant engine can be replaced after a restore, and isolated apps have
+    # distinct databases. A slug alone must never suppress their GL bootstrap.
+    return str(slug), str(engine.url), id(engine)
 
 
 class RotatingSavingError(Exception):
@@ -57,6 +59,36 @@ def _safe_int(value, default=0):
         return int(float(value or 0))
     except (TypeError, ValueError):
         return default
+
+
+def _validated_prior_payment_values(data, monthly: int, months: int) -> tuple[int, int]:
+    """Validate historical installments before multiplying count by amount.
+
+    The form contains two adjacent numeric fields.  Accidentally entering a
+    money value in the count field previously produced totals in the trillions
+    (for example 10,000,000 installments × 1,000,000 IQD).  Historical paid
+    installments cannot exceed the association's scheduled number of months.
+    """
+    count = _safe_int(data.get("prior_payments_count"))
+    if count < 0:
+        raise RotatingSavingError("عدد الدفعات السابقة لا يمكن أن يكون سالباً")
+    if count > int(months or 0):
+        raise RotatingSavingError(
+            f"عدد الدفعات السابقة ({count:,}) لا يمكن أن يتجاوز عدد أشهر الجمعية ({int(months):,})"
+        )
+
+    raw_amount = data.get("prior_payment_amount")
+    amount_per = monthly if raw_amount in (None, "") else _safe_int(raw_amount)
+    if count and amount_per <= 0:
+        raise RotatingSavingError("مبلغ كل دفعة سابقة يجب أن يكون أكبر من صفر")
+
+    prior_total = count * amount_per
+    scheduled_total = int(monthly or 0) * int(months or 0)
+    if prior_total > scheduled_total:
+        raise RotatingSavingError(
+            f"مجموع الدفعات السابقة ({prior_total:,} د.ع) أكبر من إجمالي الجمعية ({scheduled_total:,} د.ع)"
+        )
+    return count, amount_per
 
 
 def _parse_date(value):
@@ -361,12 +393,12 @@ def build_saving_from_form(data, user_id=None) -> RotatingSaving:
     db.session.add(saving)
     db.session.flush()
 
-    prior_count = _safe_int(data.get("prior_payments_count"))
+    prior_count, prior_amount = _validated_prior_payment_values(data, monthly, months)
     if prior_count > 0:
         _create_prior_payments(
             saving,
             count=prior_count,
-            amount_per=_safe_int(data.get("prior_payment_amount"), monthly),
+            amount_per=prior_amount,
             first_date=_parse_date(data.get("prior_first_date")) or start,
             payment_method=(data.get("prior_payment_method") or saving.default_payment_method),
             treasury_id=_safe_int(data.get("prior_treasury_account_id")) or saving.default_treasury_account_id,
@@ -1180,7 +1212,7 @@ def export_statement_rows(saving: RotatingSaving):
         rows.append({
             "النوع": "دفعة",
             "التاريخ": str(p.payment_date),
-            "المبلغ": p.amount,
+            "المبلغ": p.effective_amount,
             "الحالة": p.status_label(),
             "ملاحظات": p.notes or "",
         })

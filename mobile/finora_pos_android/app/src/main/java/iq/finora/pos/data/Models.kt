@@ -2,12 +2,22 @@ package iq.finora.pos.data
 
 import com.google.gson.annotations.SerializedName
 
+data class ProductColorRow(
+    val name: String,
+    val qty: Int = 0,
+    val quantity: Int? = null
+)
+
 data class ProductRow(
     val id: Long,
     val name: String,
     @SerializedName("sale_price") val salePrice: Double,
     val quantity: Int,
-    @SerializedName("image_url") val imageUrl: String? = ""
+    @SerializedName("image_url") val imageUrl: String? = "",
+    @SerializedName("has_colors") val hasColors: Boolean = false,
+    val colors: List<ProductColorRow> = emptyList(),
+    @SerializedName("exchange_sale_price") val exchangeSalePrice: Double? = null,
+    @SerializedName("has_exchange_sale") val hasExchangeSale: Boolean = false
 )
 
 data class AllProductsResponse(
@@ -22,7 +32,11 @@ data class SearchProductItem(
     val price: Double,
     val quantity: Int,
     @SerializedName("image_url") val imageUrl: String? = "",
-    @SerializedName("is_barcode") val isBarcode: Boolean = false
+    @SerializedName("is_barcode") val isBarcode: Boolean = false,
+    @SerializedName("has_colors") val hasColors: Boolean = false,
+    val colors: List<ProductColorRow> = emptyList(),
+    @SerializedName("exchange_sale_price") val exchangeSalePrice: Double? = null,
+    @SerializedName("has_exchange_sale") val hasExchangeSale: Boolean = false
 )
 
 data class CustomerRow(
@@ -39,7 +53,9 @@ data class CustomerRow(
 data class CreateOrderItem(
     @SerializedName("product_id") val productId: Long,
     val qty: Int,
-    val price: Double?
+    val price: Double?,
+    val color: String? = null,
+    @SerializedName("sale_mode") val saleMode: String = "normal"
 )
 
 data class CreateOrderRequest(

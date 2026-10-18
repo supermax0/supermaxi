@@ -11,11 +11,32 @@
 {% endblock %}
 
 {% block content %}
-{% from "partials/fd_icons.html" import icon %}
-<link rel="stylesheet" href="/static/css/finora-ui.css?v=20261018e">
+<script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
+<div class="cash-page">
 
-<style>
-  /* ================= Notification bell + panel (kept from the old page) ================= */
+  <style>
+    /* ================= CSS Variables ================= */
+    :root {
+      --cash-primary: var(--primary);
+      --cash-success: var(--success);
+      --cash-danger: var(--danger);
+      --cash-warning: var(--warning);
+    }
+
+    /* ================= Main Container — full viewport ================= */
+    body:has(.cash-page) main.page-main {
+      padding: 0;
+      max-width: none;
+      width: 100%;
+      min-width: 0;
+      overflow-x: clip;
+    }
+
+    body:has(.cash-page) .content {
+      min-width: 0;
+      overflow-x: clip;
+    }
+
     body.cash-notif-open {
       overflow: hidden;
     }
@@ -483,6 +504,708 @@
       }
     }
 
+    /* ================= Hero Layout ================= */
+    .cash-hero {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: clamp(10px, 1.5vw, 16px);
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+    }
+
+    @media (min-width: 768px) {
+      .cash-hero {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .cash-balance-card {
+        grid-column: 1 / -1;
+      }
+
+      .cash-hero-stats {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: clamp(10px, 1.5vw, 16px);
+      }
+    }
+
+    @media (min-width: 1100px) {
+      .cash-hero {
+        grid-template-columns: 1.4fr repeat(3, minmax(0, 1fr));
+        align-items: stretch;
+      }
+
+      .cash-balance-card {
+        grid-column: auto;
+        grid-row: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .cash-hero-stats {
+        display: contents;
+      }
+
+      .cash-hero-stats .cash-stat {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+    }
+
+    /* ================= Body Grid (form + history) ================= */
+    .cash-body-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: clamp(12px, 2vw, 20px);
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+    }
+
+    .cash-side-stack,
+    .cash-history-card {
+      min-width: 0;
+      max-width: 100%;
+    }
+
+    @media (min-width: 1024px) {
+      .cash-body-grid {
+        grid-template-columns: minmax(280px, 380px) minmax(0, 1fr);
+        align-items: stretch;
+      }
+
+      .cash-history-card {
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .cash-history-card .cash-section-header {
+        flex-shrink: 0;
+      }
+
+      .cash-history-card .cash-table-wrap {
+        flex: 1 1 auto;
+        height: min(560px, calc(100dvh - 300px)) !important;
+        min-height: 360px;
+        max-height: 560px;
+      }
+    }
+
+    @media (min-width: 1024px) and (max-width: 1280px) {
+      .cash-body-grid {
+        grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
+      }
+    }
+
+    /* ================= Cards ================= */
+    .cash-card {
+      background: var(--card, linear-gradient(145deg, rgba(17, 24, 39, 0.9), rgba(11, 18, 32, 0.9)));
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+      border-radius: clamp(14px, 2vw, 18px);
+      padding: clamp(16px, 2.5vw, 24px);
+      backdrop-filter: blur(10px);
+      transition: box-shadow 0.25s ease, border-color 0.25s ease;
+      position: relative;
+      overflow: hidden;
+      width: 100%;
+    }
+
+    .cash-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 4px;
+      height: 100%;
+      background: linear-gradient(180deg, #10b981, #3b82f6);
+      border-radius: 0 clamp(14px, 2vw, 18px) clamp(14px, 2vw, 18px) 0;
+      opacity: 0.85;
+    }
+
+    @media (hover: hover) {
+      .cash-card:hover {
+        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+        border-color: rgba(59, 130, 246, 0.2);
+      }
+    }
+
+    .cash-card--compact {
+      padding: clamp(14px, 2vw, 18px);
+    }
+
+    .cash-card--flush {
+      margin-bottom: 0;
+    }
+
+    /* ================= Cash Balance Card ================= */
+    .cash-balance-card {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.18), rgba(5, 150, 105, 0.08));
+      border: 1px solid rgba(16, 185, 129, 0.28);
+      text-align: center;
+      padding: clamp(20px, 4vw, 36px);
+    }
+
+    .cash-balance-label {
+      color: var(--text-muted, #94a3b8);
+      font-size: clamp(14px, 2vw, 17px);
+      font-weight: 600;
+      margin-bottom: 10px;
+      display: block;
+    }
+
+    .cash-balance-value {
+      font-size: clamp(28px, 5vw, 44px);
+      font-weight: 800;
+      color: var(--cash-success);
+      background: linear-gradient(135deg, #10b981, #059669);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+      line-height: 1.15;
+      word-break: break-word;
+    }
+
+    .cash-balance-subtitle {
+      color: var(--text-muted, #64748b);
+      font-size: clamp(12px, 1.8vw, 14px);
+    }
+
+    .cash-balance-subtitle a {
+      color: var(--primary, #3b82f6);
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    .cash-balance-subtitle a:hover {
+      text-decoration: underline;
+    }
+
+    /* ================= Stats ================= */
+    .cash-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr));
+      gap: clamp(10px, 1.5vw, 14px);
+      width: 100%;
+    }
+
+    .cash-stat {
+      background: var(--card, linear-gradient(145deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.7)));
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+      border-radius: clamp(12px, 2vw, 16px);
+      padding: clamp(14px, 2vw, 18px);
+      text-align: center;
+      transition: box-shadow 0.2s ease;
+      min-width: 0;
+    }
+
+    a.cash-stat {
+      display: block;
+      color: inherit;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    .cash-stat.is-selected {
+      border-color: var(--primary, #3b82f6);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.13), 0 10px 24px rgba(37, 99, 235, 0.11);
+    }
+
+    .cash-stat-hint {
+      display: block;
+      margin-top: 7px;
+      color: var(--primary, #3b82f6);
+      font-size: 10px;
+      font-weight: 700;
+    }
+
+    @media (hover: hover) {
+      .cash-stat:hover {
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+      }
+    }
+
+    .cash-stat-label {
+      color: var(--text-muted, #94a3b8);
+      font-size: clamp(11px, 1.6vw, 13px);
+      margin-bottom: 6px;
+      font-weight: 500;
+      line-height: 1.35;
+    }
+
+    .cash-stat-value {
+      font-size: clamp(18px, 3vw, 26px);
+      font-weight: 700;
+      color: var(--text, #f1f5f9);
+      word-break: break-word;
+      line-height: 1.2;
+    }
+
+    .cash-stat-value.in {
+      color: var(--cash-success);
+    }
+
+    .cash-stat-value.out {
+      color: var(--cash-danger);
+    }
+
+    /* ================= Forms ================= */
+    .cash-side-stack {
+      display: flex;
+      flex-direction: column;
+      gap: clamp(12px, 2vw, 16px);
+      width: 100%;
+    }
+
+    .cash-form {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: clamp(12px, 2vw, 16px);
+      margin-top: 4px;
+      width: 100%;
+    }
+
+    @media (min-width: 640px) {
+      .cash-form {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .cash-form .cash-field--full,
+      .cash-form .cash-form-submit {
+        grid-column: 1 / -1;
+      }
+    }
+
+    .cash-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .cash-field-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted, #94a3b8);
+    }
+
+    .cash-form input,
+    .cash-form select,
+    .cash-form textarea {
+      width: 100%;
+      padding: clamp(12px, 2vw, 14px) clamp(14px, 2vw, 16px);
+      border-radius: 12px;
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+      background: var(--surface, rgba(15, 23, 42, 0.5));
+      color: var(--text, #f1f5f9);
+      font-size: clamp(14px, 2vw, 15px);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      font-family: inherit;
+    }
+
+    .cash-form input:focus,
+    .cash-form select:focus,
+    .cash-form textarea:focus {
+      outline: none;
+      border-color: var(--cash-primary);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
+    }
+
+    .cash-form textarea {
+      resize: vertical;
+      min-height: 72px;
+    }
+
+    .cash-form-submit {
+      margin-top: 4px;
+    }
+
+    .cash-form-submit .btn-premium,
+    .cash-form-submit .cash-btn {
+      width: 100%;
+      min-height: 48px;
+      font-size: 15px;
+    }
+
+    .cash-btn {
+      padding: 12px 20px;
+      border-radius: 12px;
+      border: none;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      min-height: 44px;
+    }
+
+    .cash-btn-primary {
+      background: linear-gradient(135deg, #10b981, #059669);
+      color: white;
+      box-shadow: 0 4px 14px rgba(16, 185, 129, 0.25);
+    }
+
+    .cash-btn--block {
+      width: 100%;
+    }
+
+    @media (hover: hover) {
+      .cash-btn-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.35);
+      }
+    }
+
+    /* ================= Tables / AG Grid ================= */
+    .cash-table-wrap {
+      position: relative;
+      overflow: hidden;
+      margin-top: 12px;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      border-radius: 12px;
+      border: 1px solid var(--border, rgba(255, 255, 255, 0.08));
+      contain: inline-size;
+    }
+
+    .cash-table-wrap .ag-theme-finora,
+    .cash-table-wrap #cashTable {
+      width: 100% !important;
+      max-width: 100%;
+      min-width: 0;
+    }
+
+    .cash-history-card {
+      overflow: hidden;
+    }
+
+    .cash-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .cash-table th {
+      background: rgba(30, 41, 59, 0.7);
+      padding: 18px;
+      text-align: right;
+      color: #cbd5e1;
+      font-weight: 600;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      white-space: nowrap;
+    }
+
+    .cash-table td {
+      padding: 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      color: #e2e8f0;
+      transition: all 0.2s ease;
+    }
+
+    .cash-table tr {
+      transition: all 0.3s ease;
+    }
+
+    .cash-table tr:hover {
+      background: rgba(59, 130, 246, 0.05);
+    }
+
+    .cash-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    /* AG Grid Custom Styles for Cash */
+    .ag-theme-quartz-dark .ag-row {
+      cursor: pointer;
+    }
+
+    .ag-theme-quartz-dark .ag-header-cell-label {
+      justify-content: flex-end;
+    }
+
+    .ag-theme-quartz-dark .ag-cell {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+    }
+
+    .cash-movement-grid-in {
+      color: var(--cash-success);
+      font-weight: 700;
+    }
+
+    .cash-movement-grid-out {
+      color: var(--cash-danger);
+      font-weight: 700;
+    }
+
+    /* ================= Movement Types ================= */
+    .cash-movement-type {
+      display: inline-block;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .cash-movement-type.in {
+      background: rgba(16, 185, 129, 0.2);
+      color: #10b981;
+    }
+
+    .cash-movement-type.out {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+    }
+
+    /* ================= Cards View (Mobile) ================= */
+    .cash-cards-view {
+      display: none;
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .cash-movement-card {
+      background: linear-gradient(145deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.7));
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 16px;
+      padding: 20px;
+      transition: all 0.3s ease;
+    }
+
+    .cash-movement-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    }
+
+    .cash-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .cash-card-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #f1f5f9;
+    }
+
+    .cash-card-date {
+      font-size: 13px;
+      color: #94a3b8;
+    }
+
+    .cash-card-body {
+      display: grid;
+      gap: 12px;
+    }
+
+    .cash-card-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .cash-card-label {
+      color: #94a3b8;
+      font-size: 13px;
+    }
+
+    .cash-card-value {
+      color: #f1f5f9;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    /* ================= Section Headers ================= */
+    .cash-section-header {
+      color: var(--text, #f1f5f9);
+      font-size: clamp(16px, 2.5vw, 19px);
+      font-weight: 700;
+      margin: 0 0 clamp(14px, 2vw, 18px);
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border, rgba(255, 255, 255, 0.1));
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .cash-section-header .cash-section-sub {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-muted, #64748b);
+      margin-inline-start: auto;
+    }
+
+    /* ================= Responsive ================= */
+    @media (max-width: 767px) {
+      .cash-hero-stats {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .cash-hero-stats .cash-stat:last-child {
+        grid-column: 1 / -1;
+      }
+
+      .cash-card::before {
+        width: 3px;
+      }
+
+      .cash-table-wrap {
+        display: none;
+      }
+
+      .cash-cards-view {
+        display: grid;
+      }
+
+      .cash-movement-card {
+        padding: 16px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .cash-page {
+        padding: 10px;
+        gap: 10px;
+      }
+
+      .cash-hero-stats {
+        grid-template-columns: 1fr;
+      }
+
+      .cash-hero-stats .cash-stat:last-child {
+        grid-column: auto;
+      }
+    }
+
+    @media (min-width: 768px) and (max-width: 1023px) {
+      .cash-table-wrap {
+        height: min(480px, 55dvh) !important;
+        min-height: 320px;
+      }
+    }
+
+    @media (min-width: 769px) {
+      .cash-cards-view {
+        display: none !important;
+      }
+
+      .cash-table-wrap {
+        display: block !important;
+      }
+    }
+
+    /* ================= Light Mode Fixes ================= */
+    :root[data-theme="light"] .cash-card {
+      background: rgba(255, 255, 255, 0.92);
+      border-color: rgba(2, 6, 23, 0.08);
+      box-shadow: 0 16px 34px rgba(2, 6, 23, 0.08);
+    }
+
+    :root[data-theme="light"] .cash-balance-card {
+      background: rgba(16, 185, 129, 0.10);
+      border-color: rgba(16, 185, 129, 0.22);
+    }
+
+    :root[data-theme="light"] .cash-balance-label {
+      color: rgba(15, 23, 42, 0.70);
+    }
+
+    :root[data-theme="light"] .cash-balance-value {
+      background: none;
+      -webkit-background-clip: initial;
+      background-clip: initial;
+      -webkit-text-fill-color: currentColor;
+      color: #0f172a;
+    }
+
+    :root[data-theme="light"] .cash-balance-subtitle {
+      color: rgba(15, 23, 42, 0.60);
+    }
+
+    :root[data-theme="light"] .cash-stat {
+      background: rgba(255, 255, 255, 0.92);
+      border-color: rgba(2, 6, 23, 0.08);
+    }
+
+    :root[data-theme="light"] .cash-stat-label {
+      color: rgba(15, 23, 42, 0.60);
+    }
+
+    :root[data-theme="light"] .cash-stat-value {
+      color: #0f172a;
+    }
+
+    :root[data-theme="light"] .cash-form input,
+    :root[data-theme="light"] .cash-form select,
+    :root[data-theme="light"] .cash-form textarea {
+      background: #fff;
+      border-color: rgba(2, 6, 23, 0.12);
+      color: #0f172a;
+    }
+
+    :root[data-theme="light"] .cash-field-label {
+      color: rgba(15, 23, 42, 0.62);
+    }
+
+    :root[data-theme="light"] .cash-table-wrap {
+      border-color: rgba(2, 6, 23, 0.08);
+    }
+
+    :root[data-theme="light"] .cash-section-header {
+      color: #0f172a;
+      border-bottom-color: rgba(2, 6, 23, 0.10);
+    }
+
+    :root[data-theme="light"] .cash-table th {
+      background: rgba(241, 245, 249, 0.96);
+      color: rgba(15, 23, 42, 0.80);
+      border-bottom-color: rgba(2, 6, 23, 0.10);
+    }
+
+    :root[data-theme="light"] .cash-table td {
+      color: #0f172a;
+      border-bottom-color: rgba(2, 6, 23, 0.08);
+    }
+
+    :root[data-theme="light"] .cash-table tr:hover {
+      background: rgba(37, 99, 235, 0.05);
+    }
+
+    :root[data-theme="light"] .cash-movement-card {
+      background: rgba(255, 255, 255, 0.92);
+      border-color: rgba(2, 6, 23, 0.08);
+    }
+
+    :root[data-theme="light"] .cash-card-title,
+    :root[data-theme="light"] .cash-card-value {
+      color: #0f172a;
+    }
+
+    :root[data-theme="light"] .cash-card-label,
+    :root[data-theme="light"] .cash-card-date {
+      color: rgba(15, 23, 42, 0.60);
+    }
+
     :root[data-theme="light"] .cash-notif-panel {
       background: #fff;
       border-color: rgba(2, 6, 23, 0.1);
@@ -533,845 +1256,401 @@
       background: rgba(2, 6, 23, 0.03);
       border-color: rgba(2, 6, 23, 0.08);
     }
+  </style>
 
-  /* ================= Cash page (Finora desktop) ================= */
-  #fdPage .cash-banks {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
-    padding: 12px 16px;
-    border: 1px solid var(--fd-border);
-    border-radius: var(--fd-radius);
-    background: var(--fd-surface);
-    box-shadow: var(--fd-shadow);
-  }
+  {% with messages = get_flashed_messages(with_categories=true) %}
+  <script type="application/json" id="cashFlashData">{{ messages | tojson }}</script>
+  {% endwith %}
 
-  #fdPage .cash-banks-title {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-weight: 700;
-    color: var(--fd-text-2);
-    white-space: nowrap;
-  }
-
-  #fdPage .cash-banks-list {
-    display: flex;
-    gap: 8px;
-    flex: 1 1 auto;
-    min-width: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-
-  #fdPage .cash-banks-list::-webkit-scrollbar { display: none; }
-
-  #fdPage .cash-bank {
-    display: inline-flex;
-    align-items: baseline;
-    gap: 8px;
-    flex: 0 0 auto;
-    padding: 6px 12px;
-    border-radius: 10px;
-    background: var(--fd-soft);
-    font-size: 14px;
-    white-space: nowrap;
-  }
-
-  #fdPage .cash-bank b { font-weight: 800; }
-  #fdPage .cash-bank--total { background: var(--fd-green-soft); color: var(--fd-green); }
-
-  #fdPage .fd-kpi:has([data-help]) { position: relative; }
-  #fdPage .fd-kpi [data-help] { position: absolute; top: 8px; inset-inline-end: 10px; line-height: 0; }
-  #fdPage .fd-section-title .finora-help { margin-inline-start: 4px; }
-
-  #fdPage .cash-amount-in { color: #16a34a; font-weight: 800; }
-  #fdPage .cash-amount-out { color: #dc2626; font-weight: 800; }
-
-  #fdPage .cash-reason {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-  }
-
-  #fdPage .cash-reason small {
-    font-weight: 500;
-    color: var(--fd-muted);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    max-width: 420px;
-  }
-
-  #fdPage .cash-time { display: block; font-size: 12px; color: var(--fd-faint); }
-
-  /* Movement type: two big choices instead of a select */
-  #fdPage .cash-type-seg {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 10px;
-  }
-
-  #fdPage .cash-type-opt {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 14px;
-    border: 1.5px solid var(--fd-border-strong);
-    border-radius: 12px;
-    background: var(--fd-surface);
-    cursor: pointer;
-    font-weight: 700;
-  }
-
-  #fdPage .cash-type-opt input {
-    position: absolute;
-    opacity: 0;
-    pointer-events: none;
-  }
-
-  #fdPage .cash-type-opt small {
-    display: block;
-    font-weight: 500;
-    font-size: 12px;
-    color: var(--fd-muted);
-  }
-
-  #fdPage .cash-type-dot {
-    flex: 0 0 auto;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    font-size: 20px;
-    font-weight: 800;
-  }
-
-  #fdPage .cash-type-opt--in .cash-type-dot { background: #e8f8ef; color: #16a34a; }
-  #fdPage .cash-type-opt--out .cash-type-dot { background: #fdecee; color: #dc2626; }
-  #fdPage .cash-type-opt--in:has(input:checked) { border-color: #16a34a; background: #f3fcf6; }
-  #fdPage .cash-type-opt--out:has(input:checked) { border-color: #dc2626; background: #fff6f7; }
-  #fdPage .cash-type-opt:has(input:focus-visible) { outline: 2px solid var(--fd-purple); outline-offset: 2px; }
-
-  #fdPage .cash-preview {
-    font-weight: 600;
-    font-size: 14px;
-  }
-
-  #fdPage .cash-preview b[dir] { font-weight: 800; }
-
-  #fdPage .cash-print-head { display: none; }
-
-  @media (max-width: 860px) {
-    #fdPage .cash-banks { padding: 10px 12px; }
-    #fdPage .cash-banks-title span { display: none; }
-    #fdPage .cash-reason small { max-width: 60vw; }
-  }
-
-  @media print {
-    body:has(#fdPage) .topbar,
-    body:has(#fdPage) .sidebar,
-    #fdPage .fd-subnav,
-    #fdPage .fd-kpis,
-    #fdPage .cash-banks,
-    #fdPage .fd-detail,
-    #fdPage .fd-drawer,
-    #fdPage .fd-col-actions { display: none !important; }
-    #fdPage .cash-print-head { display: block; margin-bottom: 8px; }
-    #fdPage .cash-print-head h2 { margin: 0 0 4px; font-size: 20px; }
-    #fdPage .cash-print-head p { margin: 0; font-size: 13px; color: #444; }
-    #fdPage .fd-table-scroll { overflow: visible !important; max-height: none !important; }
-    #fdPage .fd-table-card { box-shadow: none !important; border: 0 !important; }
-  }
-</style>
-
-{% with messages = get_flashed_messages(with_categories=true) %}
-<script type="application/json" id="cashFlashData">{{ messages | tojson }}</script>
-{% endwith %}
-
-<!-- Notification Panel (bound by FinoraNotificationCenter, prefix "cash") -->
-<div class="cash-notif-overlay" id="cashNotifOverlay"></div>
-<div class="cash-notif-panel" id="cashNotifPanel" role="dialog" aria-modal="true" aria-label="الإشعارات">
-  <div class="cash-notif-drag-handle" aria-hidden="true"></div>
-  <div class="cash-notif-panel-header">
-    <div class="cash-notif-head-top">
-      <div class="cash-notif-panel-title">
-        <span class="cash-notif-title-icon"><i class="fas fa-bell"></i></span>
-        <div>
-          <span class="cash-notif-title-text">الإشعارات</span>
-          <span class="cash-notif-title-sub" id="cashNotifSubtitle">لا توجد إشعارات جديدة</span>
+  <!-- Notification Panel -->
+  <div class="cash-notif-overlay" id="cashNotifOverlay"></div>
+  <div class="cash-notif-panel" id="cashNotifPanel" role="dialog" aria-modal="true" aria-label="الإشعارات">
+    <div class="cash-notif-drag-handle" aria-hidden="true"></div>
+    <div class="cash-notif-panel-header">
+      <div class="cash-notif-head-top">
+        <div class="cash-notif-panel-title">
+          <span class="cash-notif-title-icon"><i class="fas fa-bell"></i></span>
+          <div>
+            <span class="cash-notif-title-text">الإشعارات</span>
+            <span class="cash-notif-title-sub" id="cashNotifSubtitle">لا توجد إشعارات جديدة</span>
+          </div>
         </div>
+        <button type="button" class="cash-notif-close-btn" id="cashNotifClose" aria-label="إغلاق">
+          <i class="fas fa-xmark"></i>
+        </button>
       </div>
-      <button type="button" class="cash-notif-close-btn" id="cashNotifClose" aria-label="إغلاق">
-        <i class="fas fa-xmark"></i>
+    </div>
+    <div class="cash-notif-toolbar">
+      <button type="button" class="cash-notif-tool-btn" id="cashNotifMarkRead" disabled>
+        <i class="fas fa-check-double"></i>
+        <span>تعليم كمقروء</span>
+      </button>
+      <button type="button" class="cash-notif-tool-btn cash-notif-tool-btn--danger" id="cashNotifClear" disabled>
+        <i class="fas fa-trash-can"></i>
+        <span>مسح الكل</span>
       </button>
     </div>
+    <div class="cash-notif-list" id="cashNotifList"></div>
   </div>
-  <div class="cash-notif-toolbar">
-    <button type="button" class="cash-notif-tool-btn" id="cashNotifMarkRead" disabled>
-      <i class="fas fa-check-double"></i>
-      <span>تعليم كمقروء</span>
-    </button>
-    <button type="button" class="cash-notif-tool-btn cash-notif-tool-btn--danger" id="cashNotifClear" disabled>
-      <i class="fas fa-trash-can"></i>
-      <span>مسح الكل</span>
-    </button>
-  </div>
-  <div class="cash-notif-list" id="cashNotifList"></div>
-</div>
 
-<div class="fd cash-page" id="fdPage">
+  <!-- ================= Hero: Balance + Stats ================= -->
+  <div class="cash-hero">
+    <div class="cash-card cash-balance-card">
+      <span class="cash-balance-label">💰 {{ _('cash_balance_title') }}<span data-help="cash.balance"></span></span>
+      <div class="cash-balance-value">{{ "{:,.0f}".format(cash_balance) }} {{ _('cash_currency_iqd') }}</div>
+      <span class="cash-balance-subtitle">{{ _('cash_balance_subtitle') }} · <a href="/accounts">{{ _('treasury_manage_link') }}</a></span>
+    </div>
 
-  <header class="fd-header no-print">
-    <div class="fd-header-main">
-      <span class="fd-header-icon" style="color: var(--fd-purple);">{{ icon('wallet', 26) }}</span>
-      <div class="fd-header-text">
-        <h1 class="fd-title">الصندوق</h1>
-        <p class="fd-subtitle">{{ _('cash_balance_subtitle') }}</p>
+    <div class="cash-hero-stats">
+      <div class="cash-stat">
+        <div class="cash-stat-label">{{ _('cash_stat_total_in') }}</div>
+        <div class="cash-stat-value in">{{ "{:,.0f}".format(cash_summary.total_in) }} {{ _('cash_currency_iqd') }}</div>
+      </div>
+      <div class="cash-stat">
+        <div class="cash-stat-label">{{ _('cash_stat_total_out') }}</div>
+        <div class="cash-stat-value out">{{ "{:,.0f}".format(cash_summary.total_out) }} {{ _('cash_currency_iqd') }}</div>
+      </div>
+      <div class="cash-stat">
+        <div class="cash-stat-label">{{ _('cash_stat_movements_count') }}</div>
+        <div class="cash-stat-value">{{ cash_summary.movements_count }}</div>
       </div>
     </div>
-  </header>
-
-  <nav class="fd-subnav no-print" aria-label="المالية">
-    <a class="fd-subnav-link active" href="{{ url_for('cash.cash') }}">الصندوق</a>
-    <a class="fd-subnav-link" href="/accounts">الحسابات والبنوك</a>
-    <a class="fd-subnav-link" href="/expenses">{{ _('expenses') }}</a>
-  </nav>
-
-  <div class="fd-kpis no-print">
-    <div class="fd-kpi fd-kpi--purple">
-      <span class="fd-kpi-text">
-        <span class="fd-kpi-label">{{ _('cash_balance_title') }}<span data-help="cash.balance"></span></span>
-        <span><span class="fd-kpi-value fd-kpi-value--money">{{ "{:,.0f}".format(cash_balance) }}</span><span class="fd-kpi-unit">{{ _('cash_currency_iqd') }}</span></span>
-      </span>
-      <span class="fd-kpi-icon">{{ icon('wallet', 28) }}</span>
-    </div>
-    <button type="button" class="fd-kpi fd-kpi--green" data-cash-type="cash_in">
-      <span class="fd-kpi-text">
-        <span class="fd-kpi-label">{{ _('cash_stat_total_in') }}</span>
-        <span><span class="fd-kpi-value fd-kpi-value--money">{{ "{:,.0f}".format(cash_summary.total_in) }}</span><span class="fd-kpi-unit">{{ _('cash_currency_iqd') }}</span></span>
-      </span>
-      <span class="fd-kpi-icon">{{ icon('download', 28) }}</span>
-    </button>
-    <button type="button" class="fd-kpi fd-kpi--red" data-cash-type="cash_out">
-      <span class="fd-kpi-text">
-        <span class="fd-kpi-label">{{ _('cash_stat_total_out') }}</span>
-        <span><span class="fd-kpi-value fd-kpi-value--money">{{ "{:,.0f}".format(cash_summary.total_out) }}</span><span class="fd-kpi-unit">{{ _('cash_currency_iqd') }}</span></span>
-      </span>
-      <span class="fd-kpi-icon">{{ icon('upload', 28) }}</span>
-    </button>
-    <button type="button" class="fd-kpi fd-kpi--amber active" data-cash-type="">
-      <span class="fd-kpi-text">
-        <span class="fd-kpi-label">{{ _('cash_stat_movements_count') }}</span>
-        <span><span class="fd-kpi-value">{{ "{:,}".format(cash_summary.movements_count) }}</span><span class="fd-kpi-unit">حركة</span></span>
-      </span>
-      <span class="fd-kpi-icon">{{ icon('receipt', 28) }}</span>
-    </button>
   </div>
 
   {% if bank_balances|default([]) %}
-  <div class="cash-banks no-print">
-    <span class="cash-banks-title">{{ icon('layers', 18) }}<span>{{ _('treasury_banks_summary') }}</span></span>
-    <div class="cash-banks-list">
+  <div class="cash-card cash-card--compact">
+    <h3 class="cash-section-header">
+      <span>🏦</span>
+      <span>{{ _('treasury_banks_summary') }}</span>
+    </h3>
+    <div class="cash-stats">
       {% for item in bank_balances %}
-      <span class="cash-bank">{{ item.account.name }} <b dir="ltr">{{ "{:,.0f}".format(item.balance) }} {{ _('cash_currency_iqd') }}</b></span>
+      <a class="cash-stat{% if selected_treasury_account and selected_treasury_account.id == item.account.id %} is-selected{% endif %}" href="{{ url_for('cash.cash', treasury_account_id=item.account.id) }}">
+        <div class="cash-stat-label">{{ item.account.name }}</div>
+        <div class="cash-stat-value">{{ "{:,.0f}".format(item.balance) }} {{ _('cash_currency_iqd') }}</div>
+        <span class="cash-stat-hint"><i class="fas fa-list"></i> عرض حركات الحساب</span>
+      </a>
       {% endfor %}
-      <span class="cash-bank cash-bank--total">{{ _('treasury_total_liquidity') }} <b dir="ltr">{{ "{:,.0f}".format(total_liquidity|default(0)) }} {{ _('cash_currency_iqd') }}</b></span>
+      <div class="cash-stat">
+        <div class="cash-stat-label">{{ _('treasury_total_liquidity') }}</div>
+        <div class="cash-stat-value in">{{ "{:,.0f}".format(total_liquidity|default(0)) }} {{ _('cash_currency_iqd') }}</div>
+      </div>
     </div>
-    <a class="fd-link-btn" href="/accounts">{{ _('treasury_manage_link') }}</a>
   </div>
   {% endif %}
 
-  <div class="cash-print-head">
-    <h2>{{ _('cash_history_title') }}</h2>
-    <p>{{ _('cash_balance_title') }}: <b dir="ltr">{{ "{:,.0f}".format(cash_balance) }} {{ _('cash_currency_iqd') }}</b> · <span id="cashPrintInfo"></span></p>
-  </div>
+  <div class="cash-body-grid">
+    <div class="cash-side-stack">
+      <div class="cash-card">
+        <h3 class="cash-section-header">
+          <span>➕</span>
+          <span>{{ _('cash_add_title') }}</span>
+        </h3>
 
-  <div class="fd-toolbar no-print">
-    <div class="fd-chips" id="cashChips" role="tablist" aria-label="نوع الحركة">
-      <button type="button" class="fd-chip active" data-cash-type="">الكل<span class="fd-chip-count" data-count=""></span></button>
-      <button type="button" class="fd-chip" data-cash-type="cash_in">{{ _('cash_type_in') }}<span class="fd-chip-count" data-count="cash_in"></span></button>
-      <button type="button" class="fd-chip" data-cash-type="cash_out">{{ _('cash_type_out') }}<span class="fd-chip-count" data-count="cash_out"></span></button>
-    </div>
+        <form method="post" class="cash-form" id="cashTransactionForm" onsubmit="return validateCashForm(event)">
+          <input type="hidden" name="form_type" value="cash_transaction">
 
-    <div class="fd-pop-wrap fd-tool--filter">
-      <button type="button" class="fd-btn" data-fd-pop="cashFiltersPop" aria-expanded="false" aria-controls="cashFiltersPop">
-        {{ icon('filter', 18) }}
-        <span class="fd-btn-label">تصفية</span>
-        <span class="fd-count-badge" id="cashFilterCount" hidden></span>
-        <span class="fd-chevron">{{ icon('chevron', 16) }}</span>
-      </button>
-      <div class="fd-pop fd-pop--start fd-filter-pop" id="cashFiltersPop" role="dialog" aria-label="تصفية" hidden>
-        <div class="fd-form-grid">
-          <label class="fd-field"><span>من تاريخ</span><input type="date" id="filterDateFrom"></label>
-          <label class="fd-field"><span>إلى تاريخ</span><input type="date" id="filterDateTo"></label>
-          <label class="fd-field"><span>أقل مبلغ</span><input type="number" id="filterAmountMin" min="0" step="any" inputmode="decimal" placeholder="0"></label>
-          <label class="fd-field"><span>أعلى مبلغ</span><input type="number" id="filterAmountMax" min="0" step="any" inputmode="decimal"></label>
-          <label class="fd-field"><span>المصدر</span>
-            <select id="filterSource">
-              <option value="">الكل</option>
-              <option value="sales">مبيعات / تحصيل</option>
-              <option value="manual">حركة صندوق يدوية</option>
-              <option value="supplier">دفع مورد</option>
-              <option value="shipping">شركة نقل</option>
-              <option value="expense">مصروف</option>
-              <option value="transfer">تحويل بين الحسابات</option>
-              <option value="other">أخرى</option>
+          <div class="cash-field">
+            <label class="cash-field-label" for="transaction_type">نوع الحركة</label>
+            <select name="transaction_type" id="transaction_type" required data-help="cash.income">
+              <option value="cash_in">💰 {{ _('cash_type_in') }}</option>
+              <option value="cash_out">💸 {{ _('cash_type_out') }}</option>
             </select>
-          </label>
-          <label class="fd-field"><span>السبب</span>
-            <select id="filterReason"><option value="">الكل</option></select>
-          </label>
-        </div>
-        <div class="fd-pop-foot fd-pop-foot--split">
-          <button type="button" class="fd-link-btn" onclick="clearCashFilters()">مسح التصفية</button>
-          <button type="button" class="fd-btn fd-btn--accent fd-btn--apply" data-fd-pop-close>تطبيق</button>
-        </div>
+          </div>
+
+          <div class="cash-field">
+            <label class="cash-field-label" for="amount">{{ _('cash_field_amount_placeholder') }}</label>
+            <input name="amount" type="number" id="amount" placeholder="0" required min="1" inputmode="numeric">
+          </div>
+
+          <div class="cash-field cash-field--full">
+            <label class="cash-field-label" for="reason">{{ _('cash_field_reason_placeholder') }}</label>
+            <input name="reason" id="reason" placeholder="{{ _('cash_field_reason_placeholder') }}" required>
+          </div>
+
+          <div class="cash-field cash-field--full">
+            <label class="cash-field-label" for="note">{{ _('cash_field_note_placeholder') }}</label>
+            <textarea name="note" id="note" placeholder="{{ _('cash_field_note_placeholder') }}"></textarea>
+          </div>
+
+          <div class="cash-form-submit">
+            <button type="submit" class="btn-premium">
+              <span>✅</span>
+              <span>{{ _('cash_save_button') }}</span>
+            </button>
+          </div>
+        </form>
       </div>
     </div>
 
-    <label class="fd-search fd-tool--search">
-      {{ icon('search', 18) }}
-      <input type="search" id="cashSearch" autocomplete="off" placeholder="ابحث بالسبب أو الوصف أو رقم الفاتورة...">
-    </label>
+    <div class="cash-card cash-history-card">
+      <h3 class="cash-section-header">
+        <span>📋</span>
+        <span>{% if selected_treasury_account %}حركات {{ selected_treasury_account.name }}{% else %}{{ _('cash_history_title') }}{% endif %}</span>
+        <span class="cash-section-sub">{{ cash_summary.movements_count }} حركة</span>
+        {% if selected_treasury_account %}<a href="{{ url_for('cash.cash') }}" class="cash-section-sub" style="color:var(--primary);text-decoration:none"><i class="fas fa-arrow-rotate-left"></i> سجل الصندوق</a>{% endif %}
+      </h3>
 
-    <div class="fd-tools-row">
-      <button type="button" class="fd-btn fd-btn--primary" onclick="openCashDrawer()">
-        {{ icon('wallet', 18) }}
-        <span class="fd-btn-label">{{ _('cash_add_title') }}</span>
-      </button>
-      <div class="fd-pop-wrap">
-        <button type="button" class="fd-btn fd-btn--icon" data-fd-pop="cashMorePop" aria-expanded="false" aria-controls="cashMorePop" title="المزيد" aria-label="المزيد">{{ icon('dots', 20) }}</button>
-        <div class="fd-pop fd-pop--end fd-menu" id="cashMorePop" role="menu" hidden>
-          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="openCashDrawer('cash_in')">{{ icon('download') }}<span>قبض نقدي</span></button>
-          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="openCashDrawer('cash_out')">{{ icon('upload') }}<span>صرف نقدي</span></button>
-          <div class="fd-menu-sep" role="separator"></div>
-          <a class="fd-menu-item" role="menuitem" href="/accounts">{{ icon('layers') }}<span>{{ _('treasury_manage_link') }}</span></a>
-          <a class="fd-menu-item" role="menuitem" href="/expenses">{{ icon('receipt') }}<span>{{ _('expenses') }}</span></a>
-          <div class="fd-menu-sep" role="separator"></div>
-          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="printCashLog()">{{ icon('print') }}<span>طباعة السجل</span></button>
-          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="exportCashCsv()">{{ icon('download') }}<span>تصدير CSV</span></button>
+      <div class="cash-table-wrap">
+        {% if cash_summary.undated_collection_balance|default(0) %}
+        <p role="note" style="padding:10px 16px;line-height:1.8">
+          دليل تحصيل قديم غير مؤرخ: <strong>{{ "{:,.0f}".format(cash_summary.undated_collection_balance) }} {{ _('cash_currency_iqd') }}</strong>.
+          محتسب في الرصيد الحالي؛ إجمالي الحركات المؤرخة وأرصدتها لا يشمل هذا الدليل.
+        </p>
+        {% endif %}
+        <div id="cashTable" class="ag-theme-finora" style="height: 100%; width: 100%;"></div>
+      </div>
+
+    <!-- ================= CASH DATA (JSON) ================= -->
+    <script type="application/json" id="cashData">
+  [
+    {% for m in movements|reverse %}
+    {
+      "date": "{{ m.date }}",
+      "type": "{{ m.type }}",
+      "type_label": "{% if m.type == 'cash_in' %}{{ _('cash_type_in') }}{% else %}{{ _('cash_type_out') }}{% endif %}",
+      "reason": {{ m.reason|tojson }},
+      "amount": {{ m.amount|int }},
+      "balance_after": {{ m.balance_after|int }},
+      "description": {{ m.description|tojson if m.description else '""' }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]
+  </script>
+
+    <!-- Mobile Cards View -->
+    <div class="cash-cards-view" id="cashMovementsCards">
+      {% if movements %}
+      {% for m in movements|reverse %}
+      <div class="cash-movement-card">
+        <div class="cash-card-header">
+          <div class="cash-card-title">{{ m.reason }}</div>
+          <div class="cash-card-date">{{ m.date }}</div>
+        </div>
+        <div class="cash-card-body">
+          <div class="cash-card-row">
+              <span class="cash-card-label">{{ _('cash_mobile_label_type') }}</span>
+              <span class="cash-movement-type {{ m.type }}">
+                {{ _('cash_type_in') if m.type == 'cash_in' else _('cash_type_out') }}
+              </span>
+          </div>
+          <div class="cash-card-row">
+              <span class="cash-card-label">{{ _('cash_mobile_label_amount') }}</span>
+            <span class="cash-card-value"
+              style="color:{% if m.type == 'cash_in' %}var(--cash-success){% else %}var(--cash-danger){% endif %};font-size:18px;">
+                {% if m.type == 'cash_in' %}+{% else %}-{% endif %}{{ "{:,.0f}".format(m.amount) }} {{ _('cash_currency_iqd') }}
+            </span>
+          </div>
+          <div class="cash-card-row">
+              <span class="cash-card-label">{{ _('cash_mobile_label_balance_after') }}</span>
+              <span class="cash-card-value" style="font-size:18px;">{{ "{:,.0f}".format(m.balance_after) }} {{ _('cash_currency_iqd') }}</span>
+          </div>
+          <div class="cash-card-row">
+              <span class="cash-card-label">{{ _('cash_mobile_label_description') }}</span>
+            <span class="cash-card-value" style="font-size:12px;color:#94a3b8;">{{ m.description }}</span>
+          </div>
         </div>
       </div>
+      {% endfor %}
+      {% else %}
+      <div style="text-align:center;padding:40px;color:#64748b;">
+        {{ _('cash_empty_state') }}
+      </div>
+      {% endif %}
+    </div>
     </div>
   </div>
 
-  <section class="fd-table-card">
-    <div class="fd-table-scroll">
-      <table class="fd-table" id="cashTable">
-        <thead>
-          <tr>
-            <th>{{ _('cash_col_date') }}</th>
-            <th>{{ _('cash_col_type') }}</th>
-            <th>{{ _('cash_col_reason') }}</th>
-            <th>{{ _('cash_col_amount') }}</th>
-            <th class="fd-col-opt2">{{ _('cash_col_balance_after') }}</th>
-            <th class="fd-col-opt2">المصدر</th>
-            <th class="fd-col-actions"></th>
-          </tr>
-        </thead>
-        <tbody id="cashBody">
-          <tr><td colspan="7" class="fd-empty">جاري التحميل...</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
+  <script>
+    // ==================== AG Grid Initialization ====================
+    let gridApi;
 
-  <footer class="fd-footer no-print">
-    <div class="fd-footer-info">
-      <select id="cashPageSize" aria-label="عدد الحركات في الصفحة">
-        <option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
-      </select>
-      <span class="fd-range" id="cashRange"></span>
-      <span class="fd-totals" id="cashTotals"></span>
-    </div>
-    <nav class="fd-pager" id="cashPager" aria-label="الصفحات"></nav>
-  </footer>
+    function initAgGrid() {
+      const cashDataElement = document.getElementById("cashData");
+      if (!cashDataElement) return;
 
-  <!-- Detail panel -->
-  <aside class="fd-detail" id="cashDetail" aria-label="تفاصيل الحركة" hidden>
-    <div class="fd-detail-head">
-      <div class="fd-detail-titles">
-        <h3 class="fd-detail-title" id="cashDetailTitle"></h3>
-        <p class="fd-detail-sub" id="cashDetailSub"></p>
-      </div>
-      <button type="button" class="fd-close-btn" onclick="closeCashDetail()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
-    </div>
-    <div class="fd-detail-body" id="cashDetailBody"></div>
-  </aside>
-
-  <!-- Drawer: add cash movement (posts the same form as before) -->
-  <div class="fd-drawer" id="cashDrawer" hidden>
-    <form class="fd-drawer-panel" id="cashTransactionForm" method="post" action="{{ url_for('cash.cash') }}" role="dialog" aria-modal="true" aria-labelledby="cashDrawerTitle" novalidate>
-      <input type="hidden" name="form_type" value="cash_transaction">
-      <div class="fd-drawer-head">
-        <span class="fd-drawer-icon">{{ icon('wallet', 24) }}</span>
-        <div class="fd-drawer-titles">
-          <h2 class="fd-drawer-title" id="cashDrawerTitle">{{ _('cash_add_title') }}</h2>
-          <p class="fd-drawer-hint">Ctrl+S للحفظ · Esc للإغلاق</p>
-        </div>
-        <button type="button" class="fd-close-btn" onclick="closeCashDrawer()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
-      </div>
-      <div class="fd-drawer-body">
-        <div class="fd-form-error" id="cfError" role="alert" hidden></div>
-        <section class="fd-section">
-          <div class="fd-section-head"><span class="fd-section-title">{{ icon('receipt', 18) }}نوع الحركة<span data-help="cash.income"></span></span></div>
-          <div class="cash-type-seg" role="radiogroup" aria-label="نوع الحركة">
-            <label class="cash-type-opt cash-type-opt--in">
-              <input type="radio" name="transaction_type" value="cash_in" id="transaction_type" checked>
-              <span class="cash-type-dot" aria-hidden="true">+</span>
-              <span>{{ _('cash_type_in') }}<small>يزيد رصيد الصندوق</small></span>
-            </label>
-            <label class="cash-type-opt cash-type-opt--out">
-              <input type="radio" name="transaction_type" value="cash_out" id="transaction_type_out">
-              <span class="cash-type-dot" aria-hidden="true">−</span>
-              <span>{{ _('cash_type_out') }}<small>ينقص رصيد الصندوق</small></span>
-            </label>
-          </div>
-        </section>
-        <section class="fd-section">
-          <div class="fd-section-head"><span class="fd-section-title">{{ icon('wallet', 18) }}بيانات الحركة</span></div>
-          <label class="fd-field"><span>{{ _('cash_field_amount_placeholder') }} <b class="fd-req">*</b></span>
-            <input name="amount" type="number" id="amount" placeholder="0" required min="1" step="1" inputmode="numeric">
-          </label>
-          <label class="fd-field"><span>السبب <b class="fd-req">*</b></span>
-            <input name="reason" id="reason" placeholder="{{ _('cash_field_reason_placeholder') }}" required autocomplete="off">
-          </label>
-          <label class="fd-field"><span>{{ _('cash_field_note_placeholder') }}</span>
-            <textarea name="note" id="note" rows="3" placeholder="{{ _('cash_field_note_placeholder') }}"></textarea>
-          </label>
-          <div class="fd-stock-line cash-preview" id="cashPreview">
-            <span>الرصيد بعد الحركة</span>
-            <b dir="ltr" id="cashPreviewValue">{{ "{:,.0f}".format(cash_balance) }} {{ _('cash_currency_iqd') }}</b>
-          </div>
-        </section>
-      </div>
-      <div class="fd-drawer-foot">
-        <button type="submit" class="fd-btn fd-btn--primary" id="cfSave">{{ icon('check-circle', 18) }}<span>{{ _('cash_save_button') }}</span></button>
-        <button type="button" class="fd-btn" onclick="closeCashDrawer()">إلغاء</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- ================= CASH DATA (JSON) ================= -->
-<script type="application/json" id="cashData">[
-  {% for m in log_movements|default(movements)|reverse %}
-  {"i": {{ loop.index0 }}, "date": {{ (m.date|string)|tojson }},
-   "time": {{ (m.datetime.strftime('%H:%M') if m.datetime and m.datetime.strftime('%H:%M') != '00:00' else '')|tojson }},
-   "type": {{ m.type|tojson }}, "reason": {{ (m.reason or '')|tojson }},
-   "amount": {{ m.amount|int }}, "balance_after": {{ m.balance_after|int }},
-   "ref_type": {{ (m.reference_type or '')|tojson }}, "ref_id": {{ m.reference_id|int if m.reference_id else 'null' }},
-   "description": {{ (m.description or '')|tojson }}}{% if not loop.last %},{% endif %}
-  {% endfor %}
-]</script>
-
-<script src="/static/js/finora-ui.js?v=20261018c"></script>
-<script>
-  const F = window.FinoraUI;
-  const byId = id => document.getElementById(id);
-  const CASH_PAGE_SIZES = [10, 25, 50, 100];
-  const CASH_PAGE_SIZE_KEY = "cash_page_size";
-  const CASH_BALANCE = {{ cash_balance|int }};
-  const CASH_TOTAL_COUNT = {{ cash_summary.movements_count|int }};
-  const CUR = {{ _('cash_currency_iqd')|tojson }};
-  const TYPE_LABEL = { cash_in: {{ _('cash_type_in')|tojson }}, cash_out: {{ _('cash_type_out')|tojson }} };
-  const SOURCE_LABEL = {
-    sales: "مبيعات / تحصيل", manual: "حركة صندوق يدوية", supplier: "دفع مورد", shipping: "شركة نقل",
-    expense: "مصروف", transfer: "تحويل بين الحسابات", other: "أخرى"
-  };
-  const SOURCE_PILL = { sales: "blue", manual: "purple", supplier: "amber", shipping: "sky", expense: "red", transfer: "gray", other: "gray" };
-  let cashData = [];
-  let cashType = "";
-  let cashPage = 0;
-  let cashDetailId = null;
-  let cashPrintAll = false;
-
-  const filterIds = ["filterDateFrom", "filterDateTo", "filterAmountMin", "filterAmountMax", "filterSource", "filterReason"];
-
-  function cashPageSize() {
-    if (cashPrintAll) return Number.MAX_SAFE_INTEGER;
-    try {
-      const saved = parseInt(localStorage.getItem(CASH_PAGE_SIZE_KEY), 10);
-      if (CASH_PAGE_SIZES.includes(saved)) return saved;
-    } catch (e) { /* storage unavailable */ }
-    return 25;
-  }
-
-  function sourceOf(m) {
-    const r = m.reason || "", d = m.description || "";
-    if (m.ref_type === "invoice" || m.ref_type === "invoice_payment_ledger") return "sales";
-    if (m.ref_type === "supplier_payment") return "supplier";
-    if (m.ref_type === "shipping_payment") return "shipping";
-    if (r.startsWith("تحويل")) return "transfer";
-    if (r === "مصروف" || r.includes("مصروف")) return "expense";
-    if (d.startsWith("صندوق -") || r === "قبض (صندوق)") return "manual";
-    return "other";
-  }
-
-  function invoiceIdOf(m) {
-    if (m.ref_type === "invoice") return m.ref_id;
-    const hit = /فاتورة\s*#(\d+)/.exec(m.description || "");
-    return hit ? Number(hit[1]) : null;
-  }
-
-  function supplierIdOf(m) {
-    const hit = /دفع مورد\s*#(\d+)/.exec(m.description || "");
-    return hit ? Number(hit[1]) : null;
-  }
-
-  function filteredCash() {
-    const q = byId("cashSearch").value.trim().toLowerCase();
-    const from = byId("filterDateFrom").value;
-    const to = byId("filterDateTo").value;
-    const min = parseFloat(byId("filterAmountMin").value);
-    const max = parseFloat(byId("filterAmountMax").value);
-    const source = byId("filterSource").value;
-    const reason = byId("filterReason").value;
-    return cashData.filter(m => {
-      if (cashType && m.type !== cashType) return false;
-      if (q && !((m.reason + " " + m.description + " " + m.amount).toLowerCase().includes(q))) return false;
-      if (from && m.date < from) return false;
-      if (to && m.date > to) return false;
-      if (!isNaN(min) && m.amount < min) return false;
-      if (!isNaN(max) && m.amount > max) return false;
-      if (source && m.source !== source) return false;
-      if (reason && m.reason !== reason) return false;
-      return true;
-    });
-  }
-
-  function syncCashUi() {
-    const counts = { "": cashData.length, cash_in: 0, cash_out: 0 };
-    cashData.forEach(m => { counts[m.type] = (counts[m.type] || 0) + 1; });
-    document.querySelectorAll("#cashChips [data-count]").forEach(el => {
-      el.textContent = F.num(counts[el.getAttribute("data-count")] || 0);
-    });
-    document.querySelectorAll("#fdPage [data-cash-type]").forEach(el => {
-      el.classList.toggle("active", (el.getAttribute("data-cash-type") || "") === cashType);
-    });
-    const active = filterIds.filter(id => byId(id).value).length;
-    const badge = byId("cashFilterCount");
-    badge.hidden = active === 0;
-    badge.textContent = String(active);
-  }
-
-  const typePill = m => `<span class="fd-pill fd-pill--${m.type === "cash_in" ? "green" : "red"}">${F.esc(TYPE_LABEL[m.type] || m.type)}</span>`;
-  const sourcePill = m => `<span class="fd-pill fd-pill--${SOURCE_PILL[m.source] || "gray"}">${F.esc(SOURCE_LABEL[m.source] || "—")}</span>`;
-  const signedAmount = m => `<b class="${m.type === "cash_in" ? "cash-amount-in" : "cash-amount-out"}" dir="ltr">${m.type === "cash_in" ? "+" : "−"}${F.num(m.amount)} ${F.esc(CUR)}</b>`;
-
-  function renderCash() {
-    F.closeRowMenu();
-    syncCashUi();
-    const rows = filteredCash();
-    const size = cashPageSize();
-    const pages = Math.max(1, Math.ceil(rows.length / size));
-    cashPage = Math.min(cashPage, pages - 1);
-    const pageRows = rows.slice(cashPage * size, (cashPage + 1) * size);
-
-    let tin = 0, tout = 0;
-    rows.forEach(m => { if (m.type === "cash_in") tin += m.amount; else tout += m.amount; });
-    byId("cashTotals").innerHTML = rows.length
-      ? `قبض <b class="cash-amount-in" dir="ltr">${F.num(tin)}</b> · صرف <b class="cash-amount-out" dir="ltr">${F.num(tout)}</b>`
-      : "";
-    const from = rows.length ? cashPage * size + 1 : 0;
-    const shownOf = CASH_TOTAL_COUNT > cashData.length ? ` (آخر ${F.num(cashData.length)} من ${F.num(CASH_TOTAL_COUNT)})` : "";
-    byId("cashRange").innerHTML = "عرض " + F.num(from) + "–" + F.num(Math.min(rows.length, (cashPage + 1) * size)) + " من <b>" + F.num(rows.length) + "</b> حركة" + shownOf;
-    byId("cashPager").innerHTML = F.pagerHtml(cashPage, pages, "data-cash-page");
-    byId("cashPrintInfo").textContent = F.num(rows.length) + " حركة · قبض " + F.num(tin) + " · صرف " + F.num(tout) + " · " + new Date().toLocaleString("ar-IQ");
-
-    const tbody = byId("cashBody");
-    if (!pageRows.length) {
-      tbody.innerHTML = '<tr><td colspan="7" class="fd-empty">' + (cashData.length ? "لا توجد حركات مطابقة." : {{ _('cash_empty_state')|tojson }}) + "</td></tr>";
-      return;
-    }
-    tbody.innerHTML = pageRows.map(m => `
-      <tr data-cash-row="${m.i}" class="${m.i === cashDetailId ? "is-open" : ""}" style="cursor:pointer">
-        <td data-label="{{ _('cash_col_date') }}" class="fd-cell-muted"><span dir="ltr">${F.esc(m.date)}</span>${m.time ? `<span class="cash-time" dir="ltr">${F.esc(m.time)}</span>` : ""}</td>
-        <td data-label="{{ _('cash_col_type') }}">${typePill(m)}</td>
-        <td class="fd-td-title" data-label="{{ _('cash_col_reason') }}">
-          <span class="cash-reason"><b>${F.esc(m.reason || "—")}</b>${F.blank(m.description) ? "" : `<small title="${F.esc(m.description)}">${F.esc(m.description)}</small>`}</span>
-        </td>
-        <td data-label="{{ _('cash_col_amount') }}">${signedAmount(m)}</td>
-        <td data-label="{{ _('cash_col_balance_after') }}" class="fd-col-opt2"><b dir="ltr">${F.num(m.balance_after)}</b></td>
-        <td data-label="المصدر" class="fd-col-opt2">${sourcePill(m)}</td>
-        <td class="fd-col-actions">
-          <button type="button" class="fd-more-btn" data-fd-row-menu="${m.i}" aria-haspopup="menu" aria-label="إجراءات" title="إجراءات"></button>
-        </td>
-      </tr>`).join("");
-  }
-
-  function clearCashFilters() {
-    filterIds.forEach(id => { byId(id).value = ""; });
-    cashPage = 0;
-    renderCash();
-  }
-
-  // ---- Related pages for a movement ----
-  function relatedLinks(m) {
-    const links = [];
-    const inv = invoiceIdOf(m);
-    if (inv) links.push({ href: "/orders/invoice/" + inv, label: "فتح الفاتورة #" + inv });
-    const sup = m.source === "supplier" ? supplierIdOf(m) : null;
-    if (sup) links.push({ href: "/suppliers/" + sup, label: "فتح حساب المورد" });
-    if (m.source === "shipping") links.push({ href: "/shipping", label: "شركات النقل" });
-    if (m.source === "expense") links.push({ href: "/expenses", label: "{{ _('expenses') }}" });
-    if (m.source === "transfer") links.push({ href: "/accounts", label: {{ _('treasury_manage_link')|tojson }} });
-    return links;
-  }
-
-  // ---- Detail panel ----
-  const findMove = i => cashData.find(m => m.i === Number(i));
-  const kv = (key, value) => `<div class="fd-kv-row"><span class="fd-kv-key">${key}</span><span class="fd-kv-val">${value}</span></div>`;
-
-  function openCashDetail(i) {
-    const m = findMove(i);
-    if (!m) return;
-    cashDetailId = m.i;
-    byId("cashDetailTitle").textContent = m.reason || TYPE_LABEL[m.type];
-    byId("cashDetailSub").textContent = m.date + (m.time ? " · " + m.time : "");
-    const links = relatedLinks(m);
-    byId("cashDetailBody").innerHTML = `
-      <div class="fd-detail-status">${typePill(m)} ${sourcePill(m)}</div>
-      <div class="fd-kv">
-        ${kv("{{ _('cash_col_amount') }}", signedAmount(m))}
-        ${kv("{{ _('cash_col_balance_after') }}", `<b dir="ltr">${F.num(m.balance_after)} ${F.esc(CUR)}</b>`)}
-        ${kv("{{ _('cash_col_date') }}", `<span dir="ltr">${F.esc(m.date)}${m.time ? " " + F.esc(m.time) : ""}</span>`)}
-        ${kv("{{ _('cash_col_reason') }}", F.dash(m.reason))}
-        ${kv("المصدر", F.esc(SOURCE_LABEL[m.source] || "—"))}
-        ${m.ref_id ? kv("المرجع", `<span dir="ltr">#${F.esc(m.ref_id)}</span>`) : ""}
-      </div>
-      ${F.blank(m.description) ? "" : `<div class="fd-stock-line" style="font-weight:500;">${F.esc(m.description)}</div>`}
-      <div class="fd-detail-actions">
-        ${links.map(l => `<a class="fd-btn fd-btn--soft fd-btn--sm" href="${F.esc(l.href)}">${F.esc(l.label)}</a>`).join("")}
-        <button type="button" class="fd-btn fd-btn--sm" data-cash-new="${m.type}">حركة ${F.esc(TYPE_LABEL[m.type])} جديدة</button>
-      </div>`;
-    F.show(byId("cashDetail"));
-    document.querySelectorAll("#cashBody tr[data-cash-row]").forEach(tr => {
-      tr.classList.toggle("is-open", Number(tr.getAttribute("data-cash-row")) === m.i);
-    });
-  }
-
-  function closeCashDetail() {
-    cashDetailId = null;
-    F.hide(byId("cashDetail"));
-    document.querySelectorAll("#cashBody tr.is-open").forEach(tr => tr.classList.remove("is-open"));
-  }
-
-  // ---- Drawer ----
-  function selectedType() {
-    const r = document.querySelector('#cashTransactionForm input[name="transaction_type"]:checked');
-    return r ? r.value : "cash_in";
-  }
-
-  function updateCashPreview() {
-    const amount = Math.max(0, Number(byId("amount").value) || 0);
-    const after = selectedType() === "cash_in" ? CASH_BALANCE + amount : CASH_BALANCE - amount;
-    const el = byId("cashPreviewValue");
-    el.textContent = F.num(after) + " " + CUR;
-    el.style.color = after < 0 ? "#dc2626" : "";
-  }
-
-  function openCashDrawer(type) {
-    closeCashDetail();
-    F.closePop();
-    F.closeRowMenu();
-    byId("cfError").hidden = true;
-    const t = type || (cashType || "cash_in");
-    const radio = document.querySelector(`#cashTransactionForm input[name="transaction_type"][value="${t}"]`);
-    if (radio) radio.checked = true;
-    updateCashPreview();
-    F.show(byId("cashDrawer"));
-    setTimeout(() => byId("amount").focus(), 40);
-  }
-
-  function closeCashDrawer() { F.hide(byId("cashDrawer")); }
-
-  function cashFormError(msg, focusId) {
-    const err = byId("cfError");
-    err.textContent = msg;
-    err.hidden = false;
-    if (focusId) byId(focusId).focus();
-  }
-
-  // ================= Form Validation (same checks + impact confirm as before) =================
-  function validateCashForm(e) {
-    const form = e.currentTarget;
-    const reason = byId("reason").value.trim();
-    const amount = Number(byId("amount").value || 0);
-    const type = selectedType();
-    const note = byId("note").value.trim();
-
-    if (!amount || amount <= 0) {
-      e.preventDefault();
-      cashFormError({{ _('cash_err_amount_required')|tojson }}, "amount");
-      return false;
-    }
-    if (!reason) {
-      e.preventDefault();
-      cashFormError({{ _('cash_err_reason_required')|tojson }}, "reason");
-      return false;
-    }
-    byId("cfError").hidden = true;
-
-    if (form.dataset.confirmed === "1" || typeof window.finoraConfirmImpact !== "function") {
-      byId("cfSave").disabled = true;
-      return true;
-    }
-
-    e.preventDefault();
-    const isCashIn = type === "cash_in";
-    window.finoraConfirmImpact({
-      title: isCashIn ? "تأكيد قبض نقدي" : "تأكيد صرف نقدي",
-      message: `${reason} - ${amount.toLocaleString("ar-IQ")} ${CUR}`,
-      confirmText: isCashIn ? "تسجيل القبض" : "تسجيل الصرف",
-      danger: !isCashIn,
-      impact: [
-        isCashIn ? "يزيد رصيد الصندوق بعد حفظ الحركة." : "ينقص رصيد الصندوق بعد حفظ الحركة.",
-        "تظهر الحركة في سجل الصندوق مع الرصيد بعد التنفيذ.",
-        note ? `الملاحظة: ${note}` : "لا توجد ملاحظة إضافية لهذه الحركة."
-      ]
-    }).then(ok => {
-      if (!ok) return;
-      form.dataset.confirmed = "1";
-      form.requestSubmit();
-    });
-    return false;
-  }
-
-  // ---- Export / print ----
-  function exportCashCsv() {
-    const cell = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
-    const lines = [["التاريخ", "الوقت", "النوع", "السبب", "المبلغ", "الرصيد بعد الحركة", "المصدر", "الوصف"].map(cell).join(",")];
-    filteredCash().forEach(m => {
-      lines.push([m.date, m.time, TYPE_LABEL[m.type], m.reason, (m.type === "cash_in" ? "" : "-") + m.amount, m.balance_after, SOURCE_LABEL[m.source], m.description].map(cell).join(","));
-    });
-    const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(blob);
-    a.download = "cash-movements.csv";
-    a.click();
-    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  }
-
-  function printCashLog() {
-    cashPrintAll = true;
-    renderCash();
-    setTimeout(() => window.print(), 60);
-  }
-
-  window.addEventListener("afterprint", () => {
-    if (!cashPrintAll) return;
-    cashPrintAll = false;
-    renderCash();
-  });
-
-  function openCashMenu(trigger) {
-    const m = findMove(trigger.getAttribute("data-fd-row-menu"));
-    if (!m) return;
-    const items = [{ act: "view", label: "عرض التفاصيل" }];
-    relatedLinks(m).forEach(l => items.push({ href: l.href, label: l.label }));
-    items.push("sep", { act: "again", label: "حركة " + TYPE_LABEL[m.type] + " جديدة" });
-    F.rowMenu(trigger, items, act => {
-      if (act === "view") openCashDetail(m.i);
-      if (act === "again") openCashDrawer(m.type);
-    });
-  }
-
-  document.addEventListener("click", event => {
-    const t = event.target;
-    if (!t.closest) return;
-    const menu = t.closest("[data-fd-row-menu]");
-    if (menu) { openCashMenu(menu); return; }
-    const page = t.closest("[data-cash-page]");
-    if (page && !page.disabled) {
-      const v = page.getAttribute("data-cash-page");
-      cashPage = v === "prev" ? cashPage - 1 : v === "next" ? cashPage + 1 : parseInt(v, 10) || 0;
-      renderCash();
-      return;
-    }
-    const typeBtn = t.closest("#fdPage [data-cash-type]");
-    if (typeBtn) { cashType = typeBtn.getAttribute("data-cash-type") || ""; cashPage = 0; renderCash(); return; }
-    const again = t.closest("[data-cash-new]");
-    if (again) { openCashDrawer(again.getAttribute("data-cash-new")); return; }
-    const row = t.closest("tr[data-cash-row]");
-    if (row && !t.closest("a, button")) openCashDetail(row.getAttribute("data-cash-row"));
-  });
-
-  // ================= Cash Notifications =================
-  if (window.FinoraNotificationCenter) {
-    FinoraNotificationCenter.bindPanel({
-      prefix: "cash",
-      flashDataId: "cashFlashData",
-      positionPanel: function (els) {
-        if (!els.panel || !els.btn || window.innerWidth < 768) {
-          if (els.panel) {
-            els.panel.style.top = "";
-            els.panel.style.right = "";
-            els.panel.style.left = "";
-          }
-          return;
-        }
-        const rect = els.btn.getBoundingClientRect();
-        const panelWidth = Math.min(400, window.innerWidth - 24);
-        const gap = 10;
-        let top = rect.bottom + gap;
-        let right = window.innerWidth - rect.right;
-        if (top + 420 > window.innerHeight) top = Math.max(gap, rect.top - 420 - gap);
-        if (right + panelWidth > window.innerWidth - 12) right = window.innerWidth - panelWidth - 12;
-        if (right < 12) right = 12;
-        els.panel.style.top = top + "px";
-        els.panel.style.right = right + "px";
-        els.panel.style.left = "auto";
-      },
-    });
-  }
-
-  document.addEventListener("DOMContentLoaded", () => {
-    document.body.classList.remove("cash-notif-open");
-    try { cashData = JSON.parse(byId("cashData").textContent); } catch (e) { cashData = []; }
-    cashData.forEach(m => { m.source = sourceOf(m); });
-
-    // Reason filter options from the movements themselves
-    const reasons = [...new Set(cashData.map(m => m.reason).filter(Boolean))].sort((a, b) => a.localeCompare(b, "ar"));
-    byId("filterReason").insertAdjacentHTML("beforeend", reasons.map(r => `<option value="${F.esc(r)}">${F.esc(r)}</option>`).join(""));
-
-    // Show the result of the last submit as a toast too (the bell keeps the history)
-    try {
-      const flashes = JSON.parse(byId("cashFlashData").textContent || "[]");
-      flashes.forEach(([cat, msg]) => F.toast(msg, cat === "error" || cat === "danger" ? "error" : (cat || "success")));
-    } catch (e) { /* ignore */ }
-
-    const size = byId("cashPageSize");
-    size.value = String(cashPageSize());
-    size.addEventListener("change", () => {
-      try { localStorage.setItem(CASH_PAGE_SIZE_KEY, size.value); } catch (e) { /* storage unavailable */ }
-      cashPage = 0;
-      renderCash();
-    });
-    byId("cashSearch").addEventListener("input", () => { cashPage = 0; renderCash(); });
-    filterIds.forEach(id => byId(id).addEventListener(id.startsWith("filterAmount") ? "input" : "change", () => { cashPage = 0; renderCash(); }));
-    const form = byId("cashTransactionForm");
-    form.addEventListener("submit", validateCashForm);
-    form.addEventListener("input", updateCashPreview);
-    form.addEventListener("change", updateCashPreview);
-    byId("cashDrawer").addEventListener("click", e => { if (e.target === byId("cashDrawer")) closeCashDrawer(); });
-    document.addEventListener("keydown", e => {
-      if (!byId("cashDrawer").hidden && (e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
-        e.preventDefault();
-        form.requestSubmit();
+      let rowData = [];
+      try {
+        rowData = JSON.parse(cashDataElement.textContent.trim());
+      } catch (e) {
+        console.error("Error parsing cash data:", e);
+        return;
       }
-    });
-    renderCash();
-  });
 
-  window.addEventListener("beforeunload", function () {
-    document.body.classList.remove("cash-notif-open");
-  });
-</script>
+      const columnDefs = [
+        {
+          headerName: "{{ _('cash_col_date') }}",
+          field: "date",
+          width: 120,
+          cellRenderer: params => `<span style="color: #94a3b8;">${params.value}</span>`
+        },
+        {
+          headerName: "{{ _('cash_col_type') }}",
+          field: "type_label",
+          width: 100,
+          cellRenderer: params => `<span class="cash-movement-type ${params.data.type}">${params.value}</span>`
+        },
+        { headerName: "{{ _('cash_col_reason') }}", field: "reason", flex: 1.5, minWidth: 120 },
+        {
+          headerName: "{{ _('cash_col_amount') }}",
+          field: "amount",
+          flex: 1,
+          minWidth: 110,
+          type: 'numericColumn',
+          cellRenderer: params => {
+            const sign = params.data.type === 'cash_in' ? '+' : '-';
+            const cls = params.data.type === 'cash_in' ? 'cash-movement-grid-in' : 'cash-movement-grid-out';
+            return `<span class="${cls}">${sign}${params.value.toLocaleString()} {{ _('cash_currency_iqd') }}</span>`;
+          }
+        },
+        {
+          headerName: "{{ _('cash_col_balance_after') }}",
+          field: "balance_after",
+          flex: 1,
+          minWidth: 110,
+          type: 'numericColumn',
+          cellRenderer: params => `<strong>${params.value.toLocaleString()} {{ _('cash_currency_iqd') }}</strong>`
+        },
+        {
+          headerName: "{{ _('cash_col_description') }}",
+          field: "description",
+          flex: 1.2,
+          minWidth: 100,
+          cellStyle: { color: '#94a3b8', fontSize: '13px' }
+        }
+      ];
+
+      const gridOptions = {
+        columnDefs: columnDefs,
+        rowData: rowData,
+        rowHeight: 52,
+        headerHeight: 48,
+        pagination: true,
+        paginationPageSize: 50,
+        paginationPageSizeSelector: [20, 50, 100, 200, 500],
+        enableRtl: true,
+        animateRows: true,
+        defaultColDef: {
+          sortable: true,
+          filter: true,
+          resizable: true,
+          floatingFilter: false,
+          suppressSizeToFit: false,
+        },
+        onGridReady: (params) => {
+          gridApi = params.api;
+          resizeCashGrid();
+        }
+      };
+
+      const eGridDiv = document.querySelector('#cashTable');
+      agGrid.createGrid(eGridDiv, gridOptions);
+
+      if (typeof ResizeObserver !== "undefined") {
+        const wrap = eGridDiv.closest(".cash-table-wrap");
+        if (wrap) {
+          new ResizeObserver(() => resizeCashGrid()).observe(wrap);
+        }
+      }
+    }
+
+    // ================= Form Validation =================
+    function validateCashForm(e) {
+      const form = e.currentTarget;
+      const reason = document.getElementById('reason').value.trim();
+      const amount = Number(document.getElementById('amount').value || 0);
+      const type = document.getElementById('transaction_type').value;
+      const note = document.getElementById('note').value.trim();
+
+      if (!reason) {
+        e.preventDefault();
+        alert('{{ _('cash_err_reason_required') }}');
+        return false;
+      }
+
+      if (!amount || parseFloat(amount) <= 0) {
+        e.preventDefault();
+        alert('{{ _('cash_err_amount_required') }}');
+        return false;
+      }
+
+      if (form.dataset.confirmed === "1" || typeof window.finoraConfirmImpact !== "function") {
+        return true;
+      }
+
+      e.preventDefault();
+
+      const isCashIn = type === "cash_in";
+      window.finoraConfirmImpact({
+        title: isCashIn ? "تأكيد قبض نقدي" : "تأكيد صرف نقدي",
+        message: `${reason} - ${amount.toLocaleString("ar-IQ")} {{ _('cash_currency_iqd') }}`,
+        confirmText: isCashIn ? "تسجيل القبض" : "تسجيل الصرف",
+        danger: !isCashIn,
+        impact: [
+          isCashIn ? "يزيد رصيد الصندوق بعد حفظ الحركة." : "ينقص رصيد الصندوق بعد حفظ الحركة.",
+          "تظهر الحركة في سجل الصندوق مع الرصيد بعد التنفيذ.",
+          note ? `الملاحظة: ${note}` : "لا توجد ملاحظة إضافية لهذه الحركة."
+        ]
+      }).then((ok) => {
+        if (!ok) return;
+        form.dataset.confirmed = "1";
+        form.requestSubmit();
+      });
+
+      return false;
+    }
+
+    // ================= Cash Notifications =================
+    if (window.FinoraNotificationCenter) {
+      FinoraNotificationCenter.bindPanel({
+        prefix: "cash",
+        flashDataId: "cashFlashData",
+        positionPanel: function (els) {
+          if (!els.panel || !els.btn || window.innerWidth < 768) {
+            if (els.panel) {
+              els.panel.style.top = "";
+              els.panel.style.right = "";
+              els.panel.style.left = "";
+            }
+            return;
+          }
+          const rect = els.btn.getBoundingClientRect();
+          const panelWidth = Math.min(400, window.innerWidth - 24);
+          const gap = 10;
+          let top = rect.bottom + gap;
+          let right = window.innerWidth - rect.right;
+          if (top + 420 > window.innerHeight) top = Math.max(gap, rect.top - 420 - gap);
+          if (right + panelWidth > window.innerWidth - 12) right = window.innerWidth - panelWidth - 12;
+          if (right < 12) right = 12;
+          els.panel.style.top = top + "px";
+          els.panel.style.right = right + "px";
+          els.panel.style.left = "auto";
+        },
+      });
+    }
+
+    // ================= Initialize =================
+    function resizeCashGrid() {
+      if (!gridApi) return;
+      try {
+        if (typeof gridApi.sizeColumnsToFit === "function") {
+          gridApi.sizeColumnsToFit();
+        }
+      } catch (_) { /* ignore */ }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+      document.body.classList.remove("cash-notif-open");
+      if (document.getElementById('cashTable')) {
+        initAgGrid();
+      }
+      window.addEventListener("resize", resizeCashGrid, { passive: true });
+    });
+
+    window.addEventListener("beforeunload", function () {
+      document.body.classList.remove("cash-notif-open");
+    });
+  </script>
+
+</div>
 {% endblock %}

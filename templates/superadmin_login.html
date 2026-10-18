@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <script src="/static/js/no-zoom.js"></script>
     <title>تسجيل دخول سوبر أدمن — Finora</title>
-    <link rel="icon" type="image/png" href="{{ platform_logo_url }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='branding/finora-superadmin-mark.png', v='20260822') }}">
     <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/superadmin.css') }}">
@@ -31,17 +31,18 @@
             padding: 36px 32px;
         }
         .sa-login-icon {
-            width: 56px;
-            height: 56px;
-            border-radius: 14px;
-            background: linear-gradient(135deg, var(--primary), #4F46E5);
-            color: #fff;
+            width: 78px;
+            height: 78px;
+            border-radius: 20px;
+            background: #071a42;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
             margin: 0 auto 20px;
+            overflow: hidden;
+            box-shadow: 0 14px 34px rgba(18, 105, 255, 0.28);
         }
+        .sa-login-icon img { width: 94%; height: 94%; display: block; object-fit: contain; }
         .sa-login-card h1 {
             margin: 0 0 6px;
             text-align: center;
@@ -109,11 +110,11 @@
 </head>
 <body class="sa-body sa-login">
     <div class="sa-login-card">
-        <div class="sa-login-icon"><i class="fas fa-user-shield"></i></div>
+        <div class="sa-login-icon"><img src="{{ url_for('static', filename='branding/finora-superadmin-mark.png', v='20260822') }}" alt="شعار Finora Superadmin"></div>
         <h1>Finora Superadmin</h1>
         <p>سجّل الدخول للوصول إلى مركز التحكم المركزي</p>
 
-        {% with messages = get_flashed_messages() %}
+        {% with messages = get_flashed_messages(category_filter=["sa_login"]) %}
         {% if messages %}
         <div class="sa-login-error"><i class="fas fa-exclamation-circle"></i> {{ messages[0] }}</div>
         {% endif %}

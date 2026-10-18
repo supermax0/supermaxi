@@ -1,10 +1,11 @@
 from datetime import datetime
 import json
 
-from flask import g
+from flask import current_app, g
 from sqlalchemy import inspect, text
 
 from extensions import db
+from utils.landing_release import get_desktop_release
 from models.core.landing_content import (
     LandingAuditLog,
     LandingCTA,
@@ -341,7 +342,7 @@ def get_landing_payload(scope="published", include_hidden=False):
     ensure_landing_seed()
     cache_key = (scope, bool(include_hidden))
     if scope == "published" and not include_hidden and cache_key in _PAYLOAD_CACHE:
-        return _PAYLOAD_CACHE[cache_key]
+        return {**_PAYLOAD_CACHE[cache_key], "desktop_release": get_desktop_release(current_app.static_folder)}
     old_tenant = _core_guard()
     try:
         settings = LandingPageSettings.query.filter_by(scope=scope).first() or LandingPageSettings.query.filter_by(scope="published").first()
@@ -350,7 +351,8 @@ def get_landing_payload(scope="published", include_hidden=False):
         def visible(query):
             return query if include_hidden else query.filter_by(is_visible=True)
 
-        sections = visible(LandingSection.query.filter_by(scope=scope)).order_by(LandingSection.sort_order.asc(), LandingSection.id.asc()).all()
+        all_sections = LandingSection.query.filter_by(scope=scope).order_by(LandingSection.sort_order.asc(), LandingSection.id.asc()).all()
+        sections = [s for s in all_sections if include_hidden or s.is_visible]
         features = visible(LandingFeature.query.filter_by(scope=scope)).order_by(LandingFeature.sort_order.asc(), LandingFeature.id.asc()).all()
         modules = visible(LandingModule.query.filter_by(scope=scope)).order_by(LandingModule.sort_order.asc(), LandingModule.id.asc()).all()
         pricing = visible(LandingPricingPlan.query.filter_by(scope=scope)).order_by(LandingPricingPlan.sort_order.asc(), LandingPricingPlan.id.asc()).all()
@@ -358,7 +360,18 @@ def get_landing_payload(scope="published", include_hidden=False):
         testimonials = visible(LandingTestimonial.query.filter_by(scope=scope)).order_by(LandingTestimonial.sort_order.asc(), LandingTestimonial.id.asc()).all()
         ctas = visible(LandingCTA.query.filter_by(scope=scope)).order_by(LandingCTA.sort_order.asc(), LandingCTA.id.asc()).all()
         media = LandingMedia.query.filter_by(is_active=True).order_by(LandingMedia.id.desc()).all()
-        section_map = {s.section_key: s.to_dict() for s in sections}
+        from models.core.global_setting import GlobalSetting
+
+        free_plan_enabled = str(GlobalSetting.get_setting("FREE_PLAN_ENABLED", "1")).strip().lower() in {"1", "true", "yes", "on"}
+        try:
+            free_trial_days = max(1, min(365, int(GlobalSetting.get_setting("TRIAL_DAYS", "14"))))
+        except (TypeError, ValueError):
+            free_trial_days = 14
+        # Keep a visibility marker for template defaults, without exposing hidden content publicly.
+        section_map = {
+            s.section_key: s.to_dict() if include_hidden or s.is_visible else {"is_visible": False}
+            for s in all_sections
+        }
         payload = {
             "settings": settings.to_dict() if settings else {},
             "seo": seo.to_dict() if seo else {},
@@ -372,6 +385,9 @@ def get_landing_payload(scope="published", include_hidden=False):
             "ctas": [x.to_dict() for x in ctas],
             "media": [x.to_dict() for x in media],
             "scope": scope,
+            "free_plan_enabled": free_plan_enabled,
+            "free_trial_days": free_trial_days,
+            "desktop_release": get_desktop_release(current_app.static_folder),
         }
         if scope == "published" and not include_hidden:
             _PAYLOAD_CACHE[cache_key] = payload

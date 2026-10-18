@@ -1,0 +1,91 @@
+{% extends "settings_base.html" %}
+{% block title %}توزيع رسائل فيسبوك{% endblock %}
+{% block settings_content %}
+<style>
+  .fr-page { background:#fff; border:1px solid #e8e8eb; border-radius:16px; padding:16px 18px; margin-bottom:12px; }
+  .fr-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:12px; }
+  .fr-head h3 { margin:0; font-size:16px; }
+  .fr-head p { margin:2px 0 0; color:#71717a; font-size:12px; }
+  .fr-toggle { display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; }
+  .fr-staff { display:flex; flex-wrap:wrap; gap:8px; }
+  .fr-chip { display:flex; align-items:center; gap:8px; border:1px solid #e8e8eb; border-radius:999px; padding:7px 12px; background:#fafafa; font-size:13px; }
+  .fr-chip input { accent-color:#650016; }
+  .fr-save { border:0; background:#650016; color:#fff; border-radius:12px; min-height:40px; padding:0 16px; font:inherit; font-weight:700; cursor:pointer; }
+  .fr-note { color:#71717a; font-size:13px; line-height:1.7; margin:0 0 16px; }
+  .fr-empty { padding:28px; text-align:center; color:#71717a; }
+</style>
+
+<h1 style="margin:0 0 8px;font-size:22px;">توزيع رسائل فيسبوك</h1>
+<p class="fr-note">فعّل الصفحة، حدّد الموظفين. الرسالة الأولى تُسند لأقل موظف حملاً، والرسائل التالية تبقى معه. صفحة المراقبة تظل ترى الكل.</p>
+<div id="fr-list"><div class="fr-empty">جاري التحميل…</div></div>
+
+<script>
+(async () => {
+  const list = document.getElementById("fr-list");
+  const res = await fetch("/api/facebook-routing/config");
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) {
+    list.innerHTML = `<div class="fr-empty">${data.error || "غير مصرح"}</div>`;
+    return;
+  }
+  const people = data.employees || [];
+  const pages = data.pages || [];
+  if (!pages.length) {
+    list.innerHTML = `<div class="fr-empty">لا توجد صفحات فيسبوك مرتبطة بعد.</div>`;
+    return;
+  }
+  const selected = (page) => new Set((page.employees || []).filter((row) => row.enabled).map((row) => String(row.employee_id)));
+  list.innerHTML = pages.map((page, index) => `
+    <article class="fr-page" data-index="${index}">
+      <div class="fr-head">
+        <div>
+          <h3>${page.name}</h3>
+          <p>${page.waiting ? page.waiting + " محادثة بانتظار موظف" : "لا توجد محادثات معلّقة"}</p>
+        </div>
+        <label class="fr-toggle">
+          <input type="checkbox" class="fr-on" ${page.routing_enabled ? "checked" : ""}>
+          توزيع على الموظفين
+        </label>
+      </div>
+      <div class="fr-staff">
+        ${people.map((emp) => `
+          <label class="fr-chip">
+            <input type="checkbox" value="${emp.id}" class="fr-emp" ${selected(page).has(String(emp.id)) ? "checked" : ""}>
+            ${emp.name}
+            <small style="color:#a1a1aa">${emp.active}/${emp.max_active}</small>
+            <input type="number" class="fr-cap" min="1" max="80" value="${emp.max_active || 10}" style="width:56px;margin-inline-start:6px">
+          </label>
+        `).join("")}
+      </div>
+      <div style="margin-top:12px;text-align:left">
+        <button type="button" class="fr-save">حفظ</button>
+      </div>
+    </article>
+  `).join("");
+  list.querySelectorAll(".fr-page").forEach((card, index) => {
+    card.querySelector(".fr-save").addEventListener("click", async () => {
+      const page = pages[index];
+      const employees = [...card.querySelectorAll(".fr-emp")].map((box) => ({
+        employee_id: Number(box.value),
+        enabled: box.checked,
+        max_active: Number(box.closest(".fr-chip")?.querySelector(".fr-cap")?.value || 10),
+      }));
+      const response = await fetch("/api/facebook-routing/pages", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          page_id: page.page_id,
+          channel_id: page.channel_id,
+          routing_enabled: card.querySelector(".fr-on").checked,
+          default_max: page.default_max || 10,
+          employees,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      card.querySelector(".fr-save").textContent = payload.ok ? "تم الحفظ" : (payload.error || "فشل");
+      setTimeout(() => { card.querySelector(".fr-save").textContent = "حفظ"; }, 1600);
+    });
+  });
+})();
+</script>
+{% endblock %}
