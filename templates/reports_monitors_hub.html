@@ -4,643 +4,506 @@
 
 {% block page_title %}مركز المراقبة{% endblock %}
 
-
-
 {% block content %}
-
+{% from "partials/fd_icons.html" import icon %}
+<link rel="stylesheet" href="/static/css/finora-ui.css?v=20261018e">
 {% include "partials/monitor_shared_styles.html" %}
+<style>
+  /* Finora restyle of the monitor partials (scoped to this page) */
+  #fdPage .monitor-page { gap: 14px; }
+  #fdPage .mh-head-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  #fdPage .monitor-health {
+    height: 40px; padding: 0 16px; border: 1px solid #cbb8f5; border-radius: 999px;
+    background: var(--fd-purple-soft); color: var(--fd-purple); font-weight: 800;
+  }
+  #fdPage .monitor-last-update { color: var(--fd-muted); font-size: 13px; font-weight: 600; }
+  #fdPage .mh-toolbar { flex-wrap: wrap; }
+  #fdPage .mh-toolbar .fd-chips { flex: 1 1 auto; }
+  #fdPage a.fd-chip { text-decoration: none !important; }
+  #fdPage .mh-period { color: var(--fd-muted); font-weight: 600; font-size: 14px; }
+  #fdPage .mh-filter-pop { width: 520px; }
+  #fdPage .mh-filter-pop .fd-form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  #fdPage .monitor-summary { grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 14px; }
+  #fdPage .monitor-stat,
+  #fdPage .monitor-health-card {
+    position: relative; padding: 16px 20px; border: 1px solid var(--fd-border); border-radius: 18px;
+    background: linear-gradient(90deg, #ffffff 30%, #f5f1fe 100%); box-shadow: var(--fd-shadow);
+  }
+  #fdPage .monitor-stat span,
+  #fdPage .monitor-health-card span { color: var(--fd-text-2); font-size: 14px; font-weight: 600; }
+  #fdPage .monitor-stat strong { margin-top: 8px; font-size: 22px; font-weight: 800; color: var(--fd-text); font-variant-numeric: tabular-nums; }
+  #fdPage .monitor-stat small.up { color: #16a34a; }
+  #fdPage .monitor-stat small.down { color: #e11d48; }
+  #fdPage .monitor-overview-grid { gap: 14px; }
+  #fdPage .monitor-health-card { text-decoration: none !important; transition: box-shadow .15s ease; }
+  #fdPage .monitor-health-card:hover { box-shadow: 0 6px 18px rgba(16, 24, 40, 0.07); }
+  #fdPage .monitor-health-card strong { font-size: 30px; font-weight: 800; color: var(--fd-text); }
+  #fdPage .monitor-health-card small { color: var(--fd-muted); font-weight: 600; }
+  #fdPage .monitor-health-card.success { background: linear-gradient(90deg, #ffffff 30%, #eaf9f0 100%); border-color: var(--fd-border); }
+  #fdPage .monitor-health-card.warning { background: linear-gradient(90deg, #ffffff 30%, #fff6e4 100%); border-color: var(--fd-border); }
+  #fdPage .monitor-health-card.danger { background: linear-gradient(90deg, #ffffff 30%, #fdeef1 100%); border-color: var(--fd-border); }
+  #fdPage .monitor-health-card.success strong { color: #16a34a; }
+  #fdPage .monitor-health-card.warning strong { color: #d97706; }
+  #fdPage .monitor-health-card.danger strong { color: #e11d48; }
+
+  #fdPage .monitor-alerts { gap: 12px; }
+  #fdPage .monitor-alert {
+    display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; border: 1px solid var(--fd-border);
+    border-inline-start: 4px solid #b9a3f1; border-radius: 14px; background: var(--fd-surface); box-shadow: var(--fd-shadow);
+  }
+  #fdPage .monitor-alert.danger, #fdPage .monitor-alert.critical { border-inline-start-color: #e11d48; background: #fffafb; }
+  #fdPage .monitor-alert.warning { border-inline-start-color: #f59e0b; background: #fffdf7; }
+  #fdPage .monitor-alert strong { font-weight: 800; }
+  #fdPage .monitor-alert span { color: var(--fd-text-2); font-size: 14px; }
+
+  #fdPage .monitor-section {
+    border: 1px solid var(--fd-border); border-radius: var(--fd-radius); background: var(--fd-surface); box-shadow: var(--fd-shadow);
+  }
+  #fdPage .monitor-section-head { align-items: center; padding: 16px 20px; border-bottom: 1px solid var(--fd-border); }
+  #fdPage .monitor-section-head h2 { font-size: 17px; font-weight: 800; }
+  #fdPage .monitor-section-head p { color: var(--fd-muted); }
+  #fdPage .monitor-btn {
+    min-height: 40px; padding: 0 16px; border: 0; border-radius: 12px;
+    background: linear-gradient(135deg, #7b4be6 0%, #5f33c9 100%); color: #fff; font-weight: 800; text-decoration: none !important;
+  }
+  #fdPage .monitor-btn.secondary { border: 1px solid #cbb8f5; background: var(--fd-purple-soft); color: var(--fd-purple); }
+  #fdPage .monitor-btn.secondary:hover { background: #e7dcfc; }
+  #fdPage #monitorTabContent { display: flex; flex-direction: column; gap: 14px; }
+  #fdPage .monitor-chart-box { padding: 16px 20px; height: 320px; min-height: 0; position: relative; }
+
+  #fdPage .monitor-table { min-width: 680px; }
+  #fdPage .monitor-table th {
+    height: 52px; padding: 0 14px !important; border-bottom: 1px solid var(--fd-border) !important;
+    background: var(--fd-soft) !important; color: var(--fd-text-2) !important; font-size: 14px; font-weight: 700;
+  }
+  #fdPage .monitor-table th:hover { color: var(--fd-purple) !important; }
+  #fdPage .monitor-table td {
+    height: 58px; padding: 0 14px !important; border-bottom: 1px solid #eef0f4 !important;
+    background: transparent !important; color: var(--fd-text) !important; font-size: 15px;
+  }
+  #fdPage .monitor-table tbody tr:hover td { background: #fafaff !important; }
+  #fdPage .monitor-table td.monitor-empty { height: auto; padding: 36px 16px !important; color: var(--fd-muted) !important; text-align: center; }
+  #fdPage .monitor-badge { min-height: 26px; padding: 2px 12px; border: 0; font-weight: 700; }
+  #fdPage .monitor-badge.success { background: var(--fd-green-soft); color: var(--fd-green); }
+  #fdPage .monitor-badge.warning { background: #fff4dc; color: #b45309; }
+  #fdPage .monitor-badge.danger { background: #fdeef1; color: #be123c; }
+  #fdPage .monitor-link { color: var(--fd-purple); font-weight: 800; }
+  #fdPage .monitor-table-controls { padding: 14px 20px 10px; }
+  #fdPage .monitor-table-controls input {
+    max-width: 360px; height: 44px; min-height: 44px; border: 1px solid var(--fd-border-strong); border-radius: 12px;
+    background: var(--fd-surface); padding: 0 14px;
+  }
+  #fdPage .monitor-table-controls input:focus { outline: none; border-color: var(--fd-purple); box-shadow: 0 0 0 3px rgba(108, 63, 209, 0.12); }
+  #fdPage .monitor-table-pager { padding: 12px 20px 14px; }
+  #fdPage .monitor-table-pager button { height: 38px; border: 1px solid var(--fd-border-strong); border-radius: 10px; background: var(--fd-surface); font-weight: 700; }
+  #fdPage .status-bars, #fdPage .funnel-grid, #fdPage .monitor-saved-alerts { padding: 16px 20px; }
+  #fdPage .status-bar-track { height: 10px; border: 0; background: #eef0f4; }
+  #fdPage .status-bar-fill { background: linear-gradient(90deg, #7b4be6, #6c3fd1); }
+  #fdPage .funnel-step { padding: 16px; border: 1px solid var(--fd-border); border-radius: 14px; background: var(--fd-soft); }
+  #fdPage .funnel-step span { color: var(--fd-muted); font-weight: 700; font-size: 14px; }
+  #fdPage .funnel-step strong { margin-top: 6px; font-size: 26px; font-weight: 800; }
+  #fdPage .monitor-saved-alert { padding: 14px 16px; border: 1px solid var(--fd-border); border-radius: 14px; background: var(--fd-soft); }
+  #fdPage .monitor-saved-alert.unread { border-color: #f6d59a; background: #fffdf7; }
+  #fdPage .monitor-saved-alert p { margin: 6px 0 0; color: var(--fd-text-2); }
+  #fdPage .monitor-empty { color: var(--fd-muted); }
+  #fdPage .mh-print-title { display: none; }
+
+  @media (max-width: 860px) {
+    #fdPage .mh-head-tools { width: 100%; }
+    #fdPage .mh-filter-pop { width: auto; }
+    #fdPage .mh-filter-pop .fd-form-grid { grid-template-columns: 1fr 1fr; }
+    #fdPage .monitor-summary, #fdPage .monitor-overview-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    #fdPage .monitor-stat, #fdPage .monitor-health-card { padding: 12px 14px; }
+    #fdPage .monitor-stat strong { font-size: 18px; overflow-wrap: anywhere; }
+    #fdPage .monitor-section-head { padding: 14px; }
+    #fdPage .funnel-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #fdPage .status-bar-row { grid-template-columns: 96px 1fr 44px; }
+    #fdPage .monitor-chart-box { padding: 12px; height: 260px; }
+    #fdPage .monitor-table-controls input { max-width: none; }
+    #fdPage .mh-period, #fdPage #monitorManualRefresh .fd-btn-label { display: none; }
+    #fdPage .monitor-table { min-width: 520px; }
+    #fdPage #financialExpensesTable { min-width: 0; }
+  }
+  @media (max-width: 420px) {
+    #fdPage .mh-filter-pop .fd-form-grid { grid-template-columns: 1fr; }
+  }
+  @media print {
+    .sidebar, .topbar { display: none !important; }
+    #fdPage .no-print { display: none !important; }
+    #fdPage .mh-print-title { display: block; }
+    #fdPage .mh-print-title h2 { margin: 0 0 4px; font-size: 20px; }
+    #fdPage .mh-print-title p { margin: 0; color: #555; font-size: 13px; }
+    #fdPage .monitor-section, #fdPage .monitor-stat, #fdPage .monitor-alert { box-shadow: none; break-inside: avoid; }
+    #fdPage .monitor-table-controls, #fdPage .monitor-table-pager, #fdPage .monitor-btn { display: none !important; }
+  }
+</style>
+
+{% set tab_labels = {'overview': 'نظرة عامة', 'financial': 'مالي', 'operational': 'تشغيلي', 'performance': 'أداء'} %}
+{% set period_labels = {'today': 'اليوم', 'last_7_days': '7 أيام', 'last_30_days': '30 يوم', 'this_month': 'هذا الشهر', 'custom': 'مخصص'} %}
+{% set active_filters = (1 if filters.branch_id else 0) + (1 if filters.page_id else 0) + (1 if filters.employee_id else 0) %}
+<div class="fd monitors-page" id="fdPage">
+
+  <header class="fd-header no-print">
+    <div class="fd-header-main">
+      <span class="fd-header-icon" style="color: var(--fd-purple);">{{ icon('alert', 26) }}</span>
+      <div class="fd-header-text">
+        <h1 class="fd-title">مركز المراقبة</h1>
+        <p class="fd-subtitle">مراقبة مالية وتشغيلية وأداء البيجات والموظفين مع تنبيهات فورية</p>
+      </div>
+    </div>
+    <div class="mh-head-tools">
+      <span class="monitor-health" id="monitorHealthBadge">صحة: {{ tab_data.health_score or tab_data.summary.health_score }}/100</span>
+      <span class="monitor-last-update" id="monitorLastUpdate">آخر تحديث: الآن</span>
+    </div>
+  </header>
+
+  <div class="mh-print-title">
+    <h2>مركز المراقبة — {{ tab_labels.get(tab, tab) }}</h2>
+    <p>{{ date_from.strftime('%Y-%m-%d') }} — {{ date_to.strftime('%Y-%m-%d') }}</p>
+  </div>
+
+  <nav class="fd-subnav no-print" aria-label="التقارير">
+    <a class="fd-subnav-link" href="{{ url_for('reports.reports_dashboard') }}">التقارير</a>
+    <a class="fd-subnav-link" href="{{ url_for('reports.daily_report') }}">التقرير اليومي</a>
+    <a class="fd-subnav-link active" href="{{ url_for('reports.monitors_hub') }}">المراقبة</a>
+  </nav>
 
 <div class="monitor-page" id="monitorsHub"
      data-auto-refresh="{{ settings.auto_refresh_sec }}"
      data-tab="{{ tab }}"
      data-data-url="{{ url_for('reports.monitors_data_api') }}">
-  <div class="monitor-nav" aria-label="ألسنة المراقبة">
-    <a href="{{ hub_tab_urls.overview }}" class="{{ 'active' if tab == 'overview' else '' }}"><i class="fas fa-gauge-high"></i> نظرة عامة</a>
-    <a href="{{ hub_tab_urls.financial }}" class="{{ 'active' if tab == 'financial' else '' }}"><i class="fas fa-chart-line"></i> مالي</a>
-    <a href="{{ hub_tab_urls.operational }}" class="{{ 'active' if tab == 'operational' else '' }}"><i class="fas fa-truck"></i> تشغيلي</a>
-    <a href="{{ hub_tab_urls.performance }}" class="{{ 'active' if tab == 'performance' else '' }}"><i class="fas fa-user-clock"></i> أداء</a>
-    <a href="{{ url_for('reports.reports_dashboard') }}"><i class="fas fa-arrow-right"></i> التقارير</a>
-    <span class="monitor-health" id="monitorHealthBadge">صحة: {{ tab_data.health_score or tab_data.summary.health_score }}/100</span>
-    <span class="monitor-last-update" id="monitorLastUpdate">آخر تحديث: الآن</span>
-    <button type="button" class="monitor-btn secondary" id="monitorManualRefresh"><i class="fas fa-rotate"></i> تحديث</button>
-    <a class="monitor-btn secondary" href="{{ assistant_monitor_url }}"><i class="fas fa-robot"></i> حلل الوضع</a>
 
-    <button type="button" class="monitor-btn secondary" onclick="window.print()"><i class="fas fa-print"></i> طباعة</button>
+  <div class="fd-toolbar mh-toolbar no-print">
+    <div class="fd-chips" role="tablist" aria-label="ألسنة المراقبة">
+      <a href="{{ hub_tab_urls.overview }}" class="fd-chip {{ 'active' if tab == 'overview' else '' }}">نظرة عامة</a>
+      <a href="{{ hub_tab_urls.financial }}" class="fd-chip {{ 'active' if tab == 'financial' else '' }}">مالي</a>
+      <a href="{{ hub_tab_urls.operational }}" class="fd-chip {{ 'active' if tab == 'operational' else '' }}">تشغيلي</a>
+      <a href="{{ hub_tab_urls.performance }}" class="fd-chip {{ 'active' if tab == 'performance' else '' }}">أداء</a>
+    </div>
 
+    <div class="fd-tools-row">
+      <div class="fd-pop-wrap">
+        <button type="button" class="fd-btn" data-fd-pop="mhFilterPop" aria-expanded="false" aria-controls="mhFilterPop">
+          {{ icon('filter', 18) }}
+          <span class="fd-btn-label">{{ period_labels.get(period, 'الفترة') }}</span>
+          <span class="mh-period fd-col-opt2"><span dir="ltr">{{ date_from.strftime('%m/%d') }} – {{ date_to.strftime('%m/%d') }}</span></span>
+          {% if active_filters %}<span class="fd-count-badge">{{ active_filters }}</span>{% endif %}
+          <span class="fd-chevron">{{ icon('chevron', 16) }}</span>
+        </button>
+        <form class="fd-pop fd-pop--end fd-filter-pop mh-filter-pop monitor-toolbar-form" id="mhFilterPop" role="dialog" aria-label="الفترة والتصفية" method="get" action="{{ url_for('reports.monitors_hub') }}" hidden>
+          <input type="hidden" name="tab" value="{{ tab }}">
+          <div class="fd-form-grid">
+            <label class="fd-field fd-field--wide" for="period"><span>الفترة</span>
+              <select id="period" name="period" onchange="this.form.submit()">
+                <option value="today" {% if period == 'today' %}selected{% endif %}>اليوم</option>
+                <option value="last_7_days" {% if period == 'last_7_days' %}selected{% endif %}>7 أيام</option>
+                <option value="last_30_days" {% if period == 'last_30_days' %}selected{% endif %}>30 يوم</option>
+                <option value="this_month" {% if period == 'this_month' %}selected{% endif %}>هذا الشهر</option>
+                <option value="custom" {% if period == 'custom' %}selected{% endif %}>مخصص</option>
+              </select>
+            </label>
+            <label class="fd-field" for="date_from"><span>من</span>
+              <input id="date_from" type="date" name="date_from" value="{{ date_from.strftime('%Y-%m-%d') }}">
+            </label>
+            <label class="fd-field" for="date_to"><span>إلى</span>
+              <input id="date_to" type="date" name="date_to" value="{{ date_to.strftime('%Y-%m-%d') }}">
+            </label>
+            <label class="fd-field" for="branch_id"><span>الفرع</span>
+              <select id="branch_id" name="branch_id">
+                <option value="">كل الفروع</option>
+                {% for b in filter_options.branches %}
+                <option value="{{ b.id }}" {% if filters.branch_id == b.id %}selected{% endif %}>{{ b.name }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label class="fd-field" for="page_id"><span>البيج</span>
+              <select id="page_id" name="page_id">
+                <option value="">كل البيجات</option>
+                {% for p in filter_options.pages %}
+                <option value="{{ p.id }}" {% if filters.page_id == p.id %}selected{% endif %}>{{ p.name }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            <label class="fd-field" for="employee_id"><span>الموظف</span>
+              <select id="employee_id" name="employee_id">
+                <option value="">كل الموظفين</option>
+                {% for e in filter_options.employees %}
+                <option value="{{ e.id }}" {% if filters.employee_id == e.id %}selected{% endif %}>{{ e.name }}</option>
+                {% endfor %}
+              </select>
+            </label>
+            {% if tab == 'financial' %}
+            <label class="fd-field" for="overdue_min_days"><span>حد تأخير (يوم)</span>
+              <input id="overdue_min_days" type="number" min="1" name="overdue_min_days" value="{{ financial.overdue_min_days }}">
+            </label>
+            {% elif tab == 'operational' %}
+            <label class="fd-field" for="stuck_days"><span>شحن عالق (يوم)</span>
+              <input id="stuck_days" type="number" min="1" name="stuck_days" value="{{ operational.stuck_days }}">
+            </label>
+            {% elif tab == 'performance' %}
+            <label class="fd-field" for="min_orders"><span>حد ضعف الطلبات</span>
+              <input id="min_orders" type="number" min="0" name="min_orders" value="{{ performance.min_orders }}">
+            </label>
+            <label class="fd-field" for="min_sales"><span>حد ضعف المبيعات</span>
+              <input id="min_sales" type="number" min="0" step="1000" name="min_sales" value="{{ performance.min_sales }}">
+            </label>
+            {% endif %}
+          </div>
+          <div class="fd-pop-foot fd-pop-foot--split">
+            <a class="fd-link-btn" href="{{ url_for('reports.monitors_hub', tab=tab) }}">مسح التصفية</a>
+            <button class="fd-btn fd-btn--accent fd-btn--apply" type="submit">تطبيق</button>
+          </div>
+        </form>
+      </div>
+      <button type="button" class="fd-btn" id="monitorManualRefresh">{{ icon('trend', 18) }}<span class="fd-btn-label">تحديث</span></button>
+      <a class="fd-btn fd-btn--primary" href="{{ assistant_monitor_url }}">{{ icon('wand', 18) }}<span class="fd-btn-label">حلل الوضع</span></a>
+      <div class="fd-pop-wrap">
+        <button type="button" class="fd-btn fd-btn--icon" data-fd-pop="mhMorePop" aria-expanded="false" aria-controls="mhMorePop" title="المزيد" aria-label="المزيد">{{ icon('dots', 20) }}</button>
+        <div class="fd-pop fd-pop--end fd-menu" id="mhMorePop" role="menu" hidden>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="window.print()">{{ icon('print') }}<span>طباعة</span></button>
+          <a class="fd-menu-item" role="menuitem" href="{{ url_for('reports.reports_dashboard') }}">{{ icon('sheet') }}<span>التقارير</span></a>
+          <a class="fd-menu-item" role="menuitem" href="{{ url_for('reports.daily_report') }}">{{ icon('calendar') }}<span>التقرير اليومي</span></a>
+        </div>
+      </div>
+    </div>
   </div>
 
-
-
-  <form class="monitor-toolbar" method="get" action="{{ url_for('reports.monitors_hub') }}">
-
-    <input type="hidden" name="tab" value="{{ tab }}">
-
-    <div class="monitor-filter-grid">
-
-      <div class="monitor-field">
-
-        <label for="period">الفترة</label>
-
-        <select id="period" name="period" onchange="this.form.submit()">
-
-          <option value="today" {% if period == 'today' %}selected{% endif %}>اليوم</option>
-
-          <option value="last_7_days" {% if period == 'last_7_days' %}selected{% endif %}>7 أيام</option>
-
-          <option value="last_30_days" {% if period == 'last_30_days' %}selected{% endif %}>30 يوم</option>
-
-          <option value="this_month" {% if period == 'this_month' %}selected{% endif %}>هذا الشهر</option>
-
-          <option value="custom" {% if period == 'custom' %}selected{% endif %}>مخصص</option>
-
-        </select>
-
-      </div>
-
-      <div class="monitor-field">
-
-        <label for="date_from">من</label>
-
-        <input id="date_from" type="date" name="date_from" value="{{ date_from.strftime('%Y-%m-%d') }}">
-
-      </div>
-
-      <div class="monitor-field">
-
-        <label for="date_to">إلى</label>
-
-        <input id="date_to" type="date" name="date_to" value="{{ date_to.strftime('%Y-%m-%d') }}">
-
-      </div>
-
-      <div class="monitor-field">
-
-        <label for="branch_id">الفرع</label>
-
-        <select id="branch_id" name="branch_id">
-
-          <option value="">كل الفروع</option>
-
-          {% for b in filter_options.branches %}
-
-          <option value="{{ b.id }}" {% if filters.branch_id == b.id %}selected{% endif %}>{{ b.name }}</option>
-
-          {% endfor %}
-
-        </select>
-
-      </div>
-
-      <div class="monitor-field">
-
-        <label for="page_id">البيج</label>
-
-        <select id="page_id" name="page_id">
-
-          <option value="">كل البيجات</option>
-
-          {% for p in filter_options.pages %}
-
-          <option value="{{ p.id }}" {% if filters.page_id == p.id %}selected{% endif %}>{{ p.name }}</option>
-
-          {% endfor %}
-
-        </select>
-
-      </div>
-
-      <div class="monitor-field">
-
-        <label for="employee_id">الموظف</label>
-
-        <select id="employee_id" name="employee_id">
-
-          <option value="">كل الموظفين</option>
-
-          {% for e in filter_options.employees %}
-
-          <option value="{{ e.id }}" {% if filters.employee_id == e.id %}selected{% endif %}>{{ e.name }}</option>
-
-          {% endfor %}
-
-        </select>
-
-      </div>
-
-      {% if tab == 'financial' %}
-
-      <div class="monitor-field">
-
-        <label for="overdue_min_days">حد تأخير (يوم)</label>
-
-        <input id="overdue_min_days" type="number" min="1" name="overdue_min_days" value="{{ financial.overdue_min_days }}">
-
-      </div>
-
-      {% elif tab == 'operational' %}
-
-      <div class="monitor-field">
-
-        <label for="stuck_days">شحن عالق (يوم)</label>
-
-        <input id="stuck_days" type="number" min="1" name="stuck_days" value="{{ operational.stuck_days }}">
-
-      </div>
-
-      {% elif tab == 'performance' %}
-
-      <div class="monitor-field">
-
-        <label for="min_orders">حد ضعف الطلبات</label>
-
-        <input id="min_orders" type="number" min="0" name="min_orders" value="{{ performance.min_orders }}">
-
-      </div>
-
-      <div class="monitor-field">
-
-        <label for="min_sales">حد ضعف المبيعات</label>
-
-        <input id="min_sales" type="number" min="0" step="1000" name="min_sales" value="{{ performance.min_sales }}">
-
-      </div>
-
-      {% endif %}
-
-    </div>
-
-    <div class="monitor-actions">
-
-      <button class="monitor-btn" type="submit"><i class="fas fa-filter"></i> تطبيق</button>
-
-    </div>
-
-  </form>
-
-
-
   <div id="monitorTabContent">
-
     {% if tab == 'overview' %}
-
       {% include "partials/monitor_tab_overview.html" %}
-
     {% elif tab == 'financial' %}
-
       {% include "partials/monitor_tab_financial.html" %}
-
     {% elif tab == 'operational' %}
-
       {% include "partials/monitor_tab_operational.html" %}
-
     {% else %}
-
       {% include "partials/monitor_tab_performance.html" %}
-
     {% endif %}
-
   </div>
 
 </div>
-
-
+</div>
 
 {% include "partials/monitor_table_tools.html" %}
-
+<script src="/static/js/finora-ui.js?v=20261018c"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-
 <script>
-
 (function () {
-
   const hub = document.getElementById('monitorsHub');
-
   const refreshSec = parseInt(hub?.dataset.autoRefresh || '0', 10);
-
   const currentTab = hub?.dataset.tab || 'overview';
-
   let finChart = null;
-
   let opChart = null;
-
-
-
   function esc(s) {
-
     return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-
   }
-
-
-
   function fmtMoney(n) {
-
     return (parseInt(n, 10) || 0).toLocaleString('en-US') + ' د.ع';
-
   }
-
-
+  function chartOptions() {
+    const font = { family: getComputedStyle(document.getElementById('fdPage')).fontFamily, size: 12 };
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { position: 'top', align: 'end', rtl: true, labels: { font: font, color: '#3b4252', usePointStyle: true, boxWidth: 8 } },
+        tooltip: { rtl: true, titleFont: font, bodyFont: font }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: font, color: '#6b7280' } },
+        y: { beginAtZero: true, grid: { color: '#eef0f4' }, border: { display: false }, ticks: { font: font, color: '#6b7280' } }
+      }
+    };
+  }
 
   function updateLastRefresh() {
-
     const el = document.getElementById('monitorLastUpdate');
-
     if (el) el.textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar-IQ');
-
   }
-
-
-
   function initCharts() {
-
     if (window.__financialChartData && document.getElementById('financialMonitorChart')) {
-
       const d = window.__financialChartData;
-
       if (finChart) finChart.destroy();
-
       finChart = new Chart(document.getElementById('financialMonitorChart'), {
-
         type: 'line',
-
         data: {
-
           labels: d.labels || [],
-
           datasets: [
-
-            { label: 'إيرادات', data: d.revenue || [], borderColor: '#3b82f6', tension: 0.25 },
-
-            { label: 'مصاريف', data: d.expenses || [], borderColor: '#ef4444', tension: 0.25 }
-
+            { label: 'إيرادات', data: d.revenue || [], borderColor: '#6c3fd1', backgroundColor: 'rgba(108,63,209,.10)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0.3 },
+            { label: 'مصاريف', data: d.expenses || [], borderColor: '#e11d48', backgroundColor: 'rgba(225,29,72,.06)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0.3 }
           ]
-
         },
-
-        options: { responsive: true, maintainAspectRatio: false }
-
+        options: chartOptions()
       });
-
     }
-
     if (window.__operationalChartData && document.getElementById('operationalMonitorChart')) {
-
       const d = window.__operationalChartData;
-
       if (opChart) opChart.destroy();
-
       opChart = new Chart(document.getElementById('operationalMonitorChart'), {
-
         type: 'bar',
-
         data: {
-
           labels: d.labels || [],
-
           datasets: [
-
-            { label: 'جديد', data: d.new_orders || [], backgroundColor: '#3b82f6' },
-
-            { label: 'مُسلَّم', data: d.delivered || [], backgroundColor: '#10b981' }
-
+            { label: 'جديد', data: d.new_orders || [], backgroundColor: '#6c3fd1', borderRadius: 6, maxBarThickness: 22 },
+            { label: 'مُسلَّم', data: d.delivered || [], backgroundColor: '#16a34a', borderRadius: 6, maxBarThickness: 22 }
           ]
-
         },
-
-        options: { responsive: true, maintainAspectRatio: false }
-
+        options: chartOptions()
       });
-
     }
-
   }
-
-
-
   function updateChart(chart, canvasId, type, datasets, labels) {
-
     const canvas = document.getElementById(canvasId);
-
     if (!canvas || !labels) return;
-
     if (chart) chart.destroy();
-
     const cfg = {
-
       type: type,
-
       data: { labels: labels, datasets: datasets },
-
-      options: { responsive: true, maintainAspectRatio: false }
-
+      options: chartOptions()
     };
-
     return new Chart(canvas, cfg);
-
   }
-
-
-
   function renderSummaryStats(container, summary) {
-
     if (!container || !summary) return;
-
     container.querySelectorAll('.monitor-stat strong').forEach(function (el) {
-
       const label = el.previousElementSibling?.textContent || '';
-
       if (label.includes('صحة') && summary.health_score != null) el.textContent = summary.health_score + '/100';
-
     });
-
   }
-
-
-
   function renderAlerts(container, alerts) {
     if (!container) return;
-
     if (!alerts || !alerts.length) { container.innerHTML = ''; return; }
-
     container.innerHTML = alerts.map(function (a) {
-
       const title = a.title || a.name || 'تنبيه';
-
       const msg = a.message || a.note || '';
-
       const icon = a.icon || '⚠️';
-
       return '<div class="monitor-alert ' + esc(a.type || 'info') + '"><strong>' + esc(icon) + ' ' + esc(title) + '</strong><span>' + esc(msg) + '</span></div>';
-
     }).join('');
-
   }
-
-
-
   function reinitTable(tableId) {
     const table = document.getElementById(tableId);
     if (!table) return;
     const root = table.closest('.monitor-section') || table.parentElement;
     if (window.initMonitorTables) window.initMonitorTables(root, true);
   }
-
   function renderFinancialTables(tables) {
-
     const overdueBody = document.querySelector('#financialOverdueTable tbody');
-
     if (overdueBody && tables.overdue_orders) {
-
       overdueBody.innerHTML = tables.overdue_orders.length ? tables.overdue_orders.map(function (o) {
-
         return '<tr><td><strong>#' + esc(o.id) + '</strong></td><td>' + esc(o.customer) + '</td><td>' + esc(o.phone) + '</td><td>' + esc(o.status) + '</td><td>' + esc(o.days_overdue) + '</td><td><span class="monitor-badge ' + esc(o.severity_class) + '">' + esc(o.severity_label) + '</span></td><td><a class="monitor-link" href="' + esc(o.order_url) + '">فتح</a></td></tr>';
-
       }).join('') : '<tr><td colspan="7" class="monitor-empty">لا متأخرات ضمن العتبة.</td></tr>';
-
       reinitTable('financialOverdueTable');
-
     }
-
     const expBody = document.querySelector('#financialExpensesTable tbody');
-
     if (expBody && tables.top_expenses) {
-
       expBody.innerHTML = tables.top_expenses.length ? tables.top_expenses.map(function (r) {
-
         return '<tr><td>' + esc(r.category) + '</td><td>' + esc(r.amount_display || fmtMoney(r.amount)) + '</td></tr>';
-
       }).join('') : '<tr><td colspan="2" class="monitor-empty">لا مصاريف في الفترة.</td></tr>';
-
     }
-
   }
-
-
-
   function renderOperationalTables(tables) {
-
     const pendingBody = document.querySelector('#operationalPendingTable tbody');
-
     if (pendingBody && tables.pending_orders) {
-
       pendingBody.innerHTML = tables.pending_orders.length ? tables.pending_orders.map(function (o) {
-
         return '<tr><td><strong>#' + esc(o.id) + '</strong></td><td>' + esc(o.customer) + '</td><td>' + esc(o.employee) + '</td><td>' + esc(o.total_display) + '</td><td><span class="monitor-badge ' + esc(o.status_class) + '">' + esc(o.age_days) + '</span></td><td><a class="monitor-link" href="' + esc(o.order_url) + '">فتح</a></td></tr>';
-
       }).join('') : '<tr><td colspan="6" class="monitor-empty">لا طلبات معلقة.</td></tr>';
-
       reinitTable('operationalPendingTable');
-
     }
-
     const stuckBody = document.querySelector('#operationalStuckTable tbody');
-
     if (stuckBody && tables.stuck_shipping) {
-
       stuckBody.innerHTML = tables.stuck_shipping.length ? tables.stuck_shipping.map(function (o) {
-
         return '<tr><td><strong>#' + esc(o.id) + '</strong></td><td>' + esc(o.customer) + '</td><td>' + esc(o.employee) + '</td><td>' + esc(o.shipping_company) + '</td><td>' + esc(o.last_update_display) + '</td><td><span class="monitor-badge ' + esc(o.status_class) + '">' + esc(o.days_in_status) + '</span></td><td><a class="monitor-link" href="' + esc(o.order_url) + '">فتح</a></td></tr>';
-
       }).join('') : '<tr><td colspan="7" class="monitor-empty">لا شحن عالق.</td></tr>';
-
       reinitTable('operationalStuckTable');
-
     }
-
   }
-
-
-
   function renderOverview(data) {
-
     const ov = data.overview || {};
-
     Object.entries(ov.health_scores || {}).forEach(function (pair) {
-
       const el = document.querySelector('[data-overview-health="' + pair[0] + '"]');
-
       if (el) el.textContent = (pair[1].score || 0) + '/100';
-
     });
-
     Object.entries(ov.quick_stats || {}).forEach(function (pair) {
-
       const el = document.querySelector('[data-stat="' + pair[0] + '"]');
-
       if (el) el.textContent = pair[1];
-
     });
-
     const alertsBox = document.getElementById('overviewTopAlerts');
-
     if (alertsBox && ov.top_alerts) {
-
       alertsBox.innerHTML = ov.top_alerts.map(function (a) {
-
         return '<div class="monitor-alert ' + esc(a.type) + '"><strong>' + esc(a.icon || '⚠️') + ' ' + esc(a.title) + ' <small>(' + esc(a.source_label) + ')</small></strong><span>' + esc(a.message) + '</span></div>';
-
       }).join('');
-
     }
-
   }
-
-
-
   function renderSavedAlerts(alerts) {
-
     const box = document.getElementById('savedWatchdogAlerts');
-
     if (!box || !alerts) return;
-
     if (!alerts.length) {
-
       box.innerHTML = '<div class="monitor-empty">لا تنبيهات محفوظة حالياً.</div>';
-
       return;
-
     }
-
     box.innerHTML = alerts.map(function (a) {
-
       return '<div class="monitor-saved-alert ' + (a.is_read ? 'read' : 'unread') + '" data-alert-id="' + a.id + '"><div class="monitor-saved-alert-head"><strong>' + esc(a.title) + '</strong><span class="monitor-badge ' + (a.is_read ? 'success' : 'warning') + '">' + esc(a.created_display) + '</span></div><p>' + esc(a.message) + '</p><div class="monitor-saved-alert-actions">' +
-
         (a.is_read ? '' : '<button type="button" class="monitor-btn secondary" data-alert-read="' + a.id + '">قراءة</button>') +
-
         '<button type="button" class="monitor-btn secondary" data-alert-dismiss="' + a.id + '">تجاهل</button></div></div>';
-
     }).join('');
-
   }
-
-
-
   function applyLiveData(data) {
-
     const badge = document.getElementById('monitorHealthBadge');
-
     if (badge && data.health_score != null) badge.textContent = 'صحة: ' + data.health_score + '/100';
-
-
-
     if (currentTab === 'overview') renderOverview(data);
-
     if (currentTab === 'financial') {
-
       renderSummaryStats(document.querySelector('.monitor-summary'), data.summary);
-
       renderAlerts(document.querySelector('.monitor-alerts'), data.alerts);
-
       if (data.tables) renderFinancialTables(data.tables);
-
       if (data.chart) {
-
         window.__financialChartData = data.chart;
-
         finChart = updateChart(finChart, 'financialMonitorChart', 'line', [
-
-          { label: 'إيرادات', data: data.chart.revenue || [], borderColor: '#3b82f6', tension: 0.25 },
-
-          { label: 'مصاريف', data: data.chart.expenses || [], borderColor: '#ef4444', tension: 0.25 }
-
+          { label: 'إيرادات', data: data.chart.revenue || [], borderColor: '#6c3fd1', backgroundColor: 'rgba(108,63,209,.10)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0.3 },
+          { label: 'مصاريف', data: data.chart.expenses || [], borderColor: '#e11d48', backgroundColor: 'rgba(225,29,72,.06)', fill: true, borderWidth: 2, pointRadius: 2, tension: 0.3 }
         ], data.chart.labels || []);
-
       }
-
     }
-
     if (currentTab === 'operational') {
-
       renderSummaryStats(document.querySelector('.monitor-summary'), data.summary);
-
       renderAlerts(document.querySelector('.monitor-alerts'), data.alerts);
-
       if (data.tables) renderOperationalTables(data.tables);
-
       if (data.chart) {
-
         window.__operationalChartData = data.chart;
-
         opChart = updateChart(opChart, 'operationalMonitorChart', 'bar', [
-
-          { label: 'جديد', data: data.chart.new_orders || [], backgroundColor: '#3b82f6' },
-
-          { label: 'مُسلَّم', data: data.chart.delivered || [], backgroundColor: '#10b981' }
-
+          { label: 'جديد', data: data.chart.new_orders || [], backgroundColor: '#6c3fd1', borderRadius: 6, maxBarThickness: 22 },
+          { label: 'مُسلَّم', data: data.chart.delivered || [], backgroundColor: '#16a34a', borderRadius: 6, maxBarThickness: 22 }
         ], data.chart.labels || []);
-
       }
-
     }
-
     if (data.saved_alerts) renderSavedAlerts(data.saved_alerts);
-
     updateLastRefresh();
-
   }
-
-
-
   async function refreshMonitorData() {
-
     try {
-
       const base = hub?.dataset.dataUrl || '';
-
       const res = await fetch(base + window.location.search, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-
       if (!res.ok) return;
-
       const data = await res.json();
-
       applyLiveData(data);
-
     } catch (e) {}
-
   }
-
-
-
   document.getElementById('monitorManualRefresh')?.addEventListener('click', refreshMonitorData);
-
-
-
   document.getElementById('savedWatchdogAlerts')?.addEventListener('click', async function (e) {
-
     const readId = e.target.closest('[data-alert-read]')?.getAttribute('data-alert-read');
-
     const dismissId = e.target.closest('[data-alert-dismiss]')?.getAttribute('data-alert-dismiss');
-
     try {
-
       if (readId) {
-
         await fetch('/assistant/alerts/' + readId + '/read', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-
       }
-
       if (dismissId) {
-
         await fetch('/assistant/alerts/' + dismissId + '/dismiss', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-
       }
-
       if (readId || dismissId) refreshMonitorData();
-
     } catch (err) {}
-
   });
-
-
-
   initCharts();
-
   if (refreshSec > 0) setInterval(refreshMonitorData, refreshSec * 1000);
-
 })();
-
 </script>
-
 {% endblock %}
-
-
