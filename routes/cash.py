@@ -112,6 +112,8 @@ def cash():
     
     # آخر 50 حركة للعرض
     recent_movements = cash_movements[-50:] if cash_movements else []
+    # سجل أوسع لجدول الحركات (بحث/تصفية/صفحات في الواجهة)
+    log_movements = cash_movements[-1000:] if cash_movements else []
     
     bank_balances = [
         {"account": acc, "balance": calculate_treasury_balance(acc.id)}
@@ -125,6 +127,7 @@ def cash():
         cash_balance=cash_balance,
         cash_summary=cash_summary,
         movements=recent_movements,
+        log_movements=log_movements,
         bank_balances=bank_balances,
         total_liquidity=total_liquidity,
     )
