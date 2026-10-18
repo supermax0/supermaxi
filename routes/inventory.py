@@ -879,10 +879,15 @@ def inventory():
     company_branches = _company_branches_for_form()
     product_branch_map = _product_branch_map(products, company_branches)
     product_branch_stock_map = _product_branch_stock_map(products)
+    product_rows = [
+        _inventory_grid_row(p, stock_map, product_branch_map, product_branch_stock_map)
+        for p in products
+    ]
 
     return render_template(
         "inventory.html",
         products=products,
+        product_rows=product_rows,
         total_purchase=total_purchase,
         total_sale=total_sale,
         total_profit=total_profit,
@@ -901,6 +906,190 @@ def inventory():
         product_branch_map=product_branch_map,
         product_branch_stock_map=product_branch_stock_map,
     )
+
+
+def _inventory_grid_row(p, stock_map, branch_map, branch_stock_map) -> dict:
+    """صف المنتج في جدول المخزون (نفس الشكل للصفحة ولـ API الحفظ)."""
+    tenant_slug = session.get("tenant_slug") or current_app.config.get("STOREFRONT_DEFAULT_TENANT_SLUG", "")
+    branch_info = branch_map.get(p.id, {})
+    qty = stock_map.get(p.id, p.quantity or 0)
+    product_url = ""
+    if tenant_slug:
+        try:
+            product_url = url_for("storefront.product_detail", tenant_slug=tenant_slug, product_id=p.id)
+        except Exception:
+            product_url = ""
+    return {
+        "id": p.id,
+        "name": p.name,
+        "sku": p.sku or "---",
+        "barcode": p.barcode or "---",
+        "branch_id": branch_info.get("branch_id"),
+        "branch_name": branch_info.get("branch_name") or "—",
+        "branch_stocks": {str(k): v for k, v in (branch_stock_map.get(p.id, {}) or {}).items()},
+        "opening_stock": p.opening_stock or 0,
+        "quantity": qty,
+        "low_stock_threshold": p.low_stock_threshold if p.low_stock_threshold is not None else 5,
+        "active": bool(p.active),
+        "store_visible": bool(p.store_visible),
+        "product_url": product_url,
+        "description": p.description or "",
+        "image_url": p.image_url or "",
+        "meta_json": p.meta_json or "{}",
+        "buy_price": p.buy_price or 0,
+        "sale_price": p.sale_price or 0,
+        "inventory_value": (p.buy_price or 0) * qty,
+        "profit": (p.sale_price or 0) - (p.buy_price or 0),
+    }
+
+
+def _form_int(form, key: str, default: int = 0) -> int:
+    raw = str(form.get(key, "") or "").replace(",", "").strip()
+    if not raw:
+        return default
+    try:
+        return int(float(raw))
+    except (TypeError, ValueError):
+        raise ValueError(key)
+
+
+# ======================================
+# Product drawer API — إضافة/تعديل سريع (Finora desktop drawer)
+# Updates only the drawer fields; colors, media, specs and delivery
+# fees stay untouched (they are edited from the full /inventory/add page).
+# ======================================
+@inventory_bp.route("/api/product/save", methods=["POST"])
+def api_save_product():
+    if not check_permission("can_manage_inventory"):
+        return jsonify({"success": False, "error": "غير مصرح"}), 403
+
+    ensure_product_schema()
+    form = request.form
+    name = (form.get("name") or "").strip()
+    if not name:
+        return jsonify({"success": False, "error": "يرجى إدخال اسم المنتج.", "field": "name"}), 400
+
+    try:
+        buy_price = max(0, _form_int(form, "buy_price"))
+        sale_price = max(0, _form_int(form, "sale_price"))
+        low_stock_threshold = max(0, _form_int(form, "low_stock_threshold", 5))
+        opening_stock = max(0, _form_int(form, "opening_stock"))
+    except ValueError as exc:
+        return jsonify({"success": False, "error": "قيمة رقمية غير صحيحة.", "field": str(exc)}), 400
+
+    sku = (form.get("sku") or "").strip() or None
+    barcode = (form.get("barcode") or "").strip() or None
+    edit_raw = (form.get("product_id") or "").strip()
+    product = Product.query.get(int(edit_raw)) if edit_raw.isdigit() else None
+    if edit_raw and not product:
+        return jsonify({"success": False, "error": "المنتج غير موجود."}), 404
+
+    # Barcode / SKU must stay unique so scanning finds one product
+    for field, value, label in (("barcode", barcode, "الباركود"), ("sku", sku, "SKU")):
+        if not value:
+            continue
+        clash = Product.query.filter(getattr(Product, field) == value)
+        if product:
+            clash = clash.filter(Product.id != product.id)
+        other = clash.first()
+        if other:
+            return jsonify({
+                "success": False,
+                "error": f"{label} مستخدم للمنتج: {other.name}",
+                "field": field,
+            }), 400
+
+    image_url = _save_uploaded_product_image(request.files.get("product_image"))
+    meta = _load_product_meta(product) if product else {}
+    for key in ("category", "brand", "unit"):
+        if key in form:
+            value = (form.get(key) or "").strip()
+            if value:
+                meta[key] = value
+            else:
+                meta.pop(key, None)
+
+    if product:
+        before_product = snapshot_attrs(product, *PRODUCT_SNAPSHOT_FIELDS)
+        old_name = product.name
+        product.name = name
+        product.sku = sku
+        product.barcode = barcode
+        product.buy_price = buy_price
+        product.sale_price = sale_price
+        product.low_stock_threshold = low_stock_threshold
+        if "description" in form:
+            product.description = (form.get("description") or "").strip() or None
+        if image_url:
+            product.image_url = image_url
+        product.meta_json = json.dumps(meta, ensure_ascii=False) if meta else None
+        if name != old_name:
+            sync_product_name_to_order_items(product.id, name)
+        db.session.commit()
+        try:
+            log_mutation(
+                "update",
+                "inventory",
+                "product",
+                product.id,
+                before_product,
+                snapshot_attrs(product, *PRODUCT_SNAPSHOT_FIELDS),
+                f"تعديل منتج: {product.name}",
+            )
+        except Exception:
+            pass
+    else:
+        branch_id = _branch_id_for_product_stock(form)
+        if branch_id:
+            from models.branch import Branch
+
+            branch = Branch.query.filter_by(id=branch_id, is_active=True).first()
+            if branch:
+                meta["branch_id"] = branch.id
+                meta["branch_name"] = branch.name
+                meta["branch_note"] = branch.name
+        product = Product(
+            name=name,
+            sku=sku,
+            barcode=barcode,
+            buy_price=buy_price,
+            sale_price=sale_price,
+            shipping_cost=0,
+            marketing_cost=0,
+            opening_stock=opening_stock,
+            quantity=opening_stock,
+            active=True,
+            low_stock_threshold=low_stock_threshold,
+            description=(form.get("description") or "").strip() or None,
+            image_url=image_url,
+            meta_json=json.dumps(meta, ensure_ascii=False) if meta else None,
+        )
+        db.session.add(product)
+        db.session.flush()
+        if branch_id:
+            set_opening_branch_stock(branch_id, product.id, opening_stock)
+        db.session.commit()
+        try:
+            log_activity(
+                "create",
+                "inventory",
+                f"إضافة منتج: {product.name}",
+                entity_type="product",
+                entity_id=product.id,
+                payload={"product": snapshot_attrs(product, *PRODUCT_SNAPSHOT_FIELDS)},
+            )
+        except Exception:
+            pass
+
+    view_all = getattr(g, "view_all_branches", False)
+    stock_map = branch_stock_map(None if view_all else _inventory_branch_id())
+    row = _inventory_grid_row(
+        product,
+        stock_map,
+        _product_branch_map([product], _company_branches_for_form()),
+        _product_branch_stock_map([product]),
+    )
+    return jsonify({"success": True, "product": row})
 
 
 # ======================================
