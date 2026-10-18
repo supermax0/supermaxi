@@ -2015,8 +2015,17 @@
 
 #fdPage .fd-lines {
   width: 100%;
+  min-width: 0 !important;
+  table-layout: fixed;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: 13.5px;
+}
+
+#fdPage .fd-lines th:first-child,
+#fdPage .fd-lines td:first-child {
+  width: 40%;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 #fdPage .fd-lines th,
@@ -2167,64 +2176,7 @@
     border-radius: 20px 20px 0 0;
   }
 
-  /* Purchases table becomes cards */
-  #fdPage table.fd-table thead {
-    display: none;
-  }
 
-  #fdPage table.fd-table,
-  #fdPage table.fd-table tbody,
-  #fdPage table.fd-table tr,
-  #fdPage table.fd-table td {
-    display: block;
-    width: 100%;
-  }
-
-  #fdPage table.fd-table tbody tr {
-    position: relative;
-    padding: 12px 14px;
-    border-bottom: 1px solid #eef0f4;
-  }
-
-  #fdPage table.fd-table tbody td {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    height: auto;
-    padding: 4px 0 !important;
-    border: 0 !important;
-    white-space: normal;
-  }
-
-  #fdPage table.fd-table tbody td::before {
-    content: attr(data-label);
-    color: var(--fd-muted);
-    font-size: 13px;
-    font-weight: 600;
-  }
-
-  #fdPage table.fd-table tbody td.fd-col-actions {
-    position: absolute;
-    top: 10px;
-    inset-inline-end: 12px;
-    width: auto;
-    padding: 0 !important;
-  }
-
-  #fdPage table.fd-table tbody td.fd-col-actions::before,
-  #fdPage table.fd-table tbody td.fd-td-title::before {
-    content: none;
-  }
-
-  #fdPage table.fd-table tbody td.fd-td-title {
-    padding-inline-end: 56px !important;
-    font-size: 17px;
-  }
-
-  #fdPage table.fd-table tbody td.fd-empty::before {
-    content: none;
-  }
 }
 
 @media (max-width: 420px) {
@@ -2283,4 +2235,166 @@
 #fdPage .fd-detail-body > *,
 #fdPage .fd-drawer-body > * {
   flex-shrink: 0;
+}
+
+/* Row ⋯ menus anchored with JS (fixed, left/top set inline) */
+@media (min-width: 861px) {
+  #fdPage .fd-row-menu {
+    position: fixed;
+    right: auto;
+    inset-inline-start: auto;
+    inset-inline-end: auto;
+    z-index: 80;
+  }
+}
+
+/* Money KPIs hold long numbers */
+#fdPage .fd-kpi-value--money {
+  font-size: 25px;
+  white-space: nowrap;
+}
+
+#fdPage .fd-kpi-text {
+  flex: 1 1 auto;
+}
+
+#fdPage .fd-kpi-value {
+  white-space: nowrap;
+}
+
+/* Plain tables drop optional columns as the card narrows (sidebar, laptops) */
+#fdPage .fd-table-card {
+  container-type: inline-size;
+}
+
+@container (max-width: 1180px) {
+  #fdPage table.fd-table .fd-col-opt {
+    display: none;
+  }
+}
+
+@container (max-width: 980px) {
+  #fdPage table.fd-table .fd-col-opt2 {
+    display: none;
+  }
+}
+
+@media (max-width: 860px) {
+  #fdPage table.fd-table,
+  #fdPage table.fd-table tbody,
+  #fdPage table.fd-table tr,
+  #fdPage table.fd-table td {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* cards show every field again */
+  #fdPage table.fd-table tbody td.fd-col-opt,
+  #fdPage table.fd-table tbody td.fd-col-opt2 {
+    display: flex;
+  }
+
+  #fdPage table.fd-table tbody td {
+    font-size: 15px !important;
+  }
+
+  #fdPage .fd-kpi-value--money {
+    font-size: 19px;
+  }
+}
+
+/* Plain tables become cards when their card is narrow (phones, iPad + sidebar) */
+@container (max-width: 780px) {
+  #fdPage table.fd-table thead {
+    display: none;
+  }
+
+  #fdPage table.fd-table,
+  #fdPage table.fd-table tbody,
+  #fdPage table.fd-table tr,
+  #fdPage table.fd-table td {
+    display: block;
+    width: 100%;
+  }
+
+  #fdPage table.fd-table tbody tr {
+    position: relative;
+    padding: 12px 14px;
+    border-bottom: 1px solid #eef0f4;
+  }
+
+  #fdPage table.fd-table tbody td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    height: auto;
+    padding: 4px 0 !important;
+    border: 0 !important;
+    white-space: normal;
+  }
+
+  #fdPage table.fd-table tbody td::before {
+    content: attr(data-label);
+    color: var(--fd-muted);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  #fdPage table.fd-table tbody td.fd-col-actions {
+    position: absolute;
+    top: 10px;
+    inset-inline-end: 12px;
+    width: auto;
+    padding: 0 !important;
+  }
+
+  #fdPage table.fd-table tbody td.fd-col-actions::before,
+  #fdPage table.fd-table tbody td.fd-td-title::before {
+    content: none;
+  }
+
+  #fdPage table.fd-table tbody td.fd-td-title {
+    padding-inline-end: 56px !important;
+    font-size: 17px;
+  }
+
+  #fdPage table.fd-table tbody td.fd-empty::before {
+    content: none;
+  }
+
+  #fdPage table.fd-table,
+  #fdPage table.fd-table tbody,
+  #fdPage table.fd-table tr,
+  #fdPage table.fd-table td {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  /* cards show every field again */
+  #fdPage table.fd-table tbody td.fd-col-opt,
+  #fdPage table.fd-table tbody td.fd-col-opt2 {
+    display: flex;
+  }
+
+  #fdPage table.fd-table tbody td {
+    font-size: 15px !important;
+  }
+}
+
+/* Main action buttons never shrink; the chips scroll instead */
+#fdPage .fd-tools-row {
+  flex: 0 0 auto !important;
+}
+
+#fdPage .fd-tools-row > .fd-btn,
+#fdPage .fd-tools-row > .fd-pop-wrap {
+  flex-shrink: 0;
+}
+
+@media (max-width: 860px) {
+  #fdPage .fd-tools-row {
+    flex: 1 1 auto !important;
+    justify-content: flex-end;
+  }
 }
