@@ -1,0 +1,160 @@
+/* ======================================================
+   FINORA DESKTOP THEME — site-wide layer
+   Loaded after design-refresh.css so every page picks up the
+   Finora desktop look (purple accent, rounder controls, calmer
+   tables and cards). Pages rebuilt in the full desktop layout
+   (#ordersFd, #fdPage) keep their own, more specific styles.
+====================================================== */
+
+:root,
+:root[data-theme="dark"],
+:root[data-theme="light"] {
+  --bg-main: #f6f7fb;
+  --bg-page: #f6f7fb;
+  --bg: #f6f7fb;
+  --surface-soft: #f7f8fb;
+  --surface-hover: #f6f2ff;
+  --border: #e7e9ef;
+  --border-strong: #dcdfe7;
+  --border-light: #eef0f4;
+  --text-main: #1d2230;
+  --text-secondary: #3b4252;
+  --text-muted: #6b7280;
+  --primary: #6c3fd1;
+  --primary-hover: #5a31b8;
+  --primary-soft: #f1ecfd;
+  --primary-glow: rgba(108, 63, 209, 0.16);
+  --purple: #6c3fd1;
+  --purple-soft: #f1ecfd;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --radius-xl: 22px;
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.04);
+  --shadow-hover: 0 8px 24px rgba(16, 24, 40, 0.08);
+}
+
+/* ---------- Buttons ---------- */
+.page-main .btn-primary,
+.page-main .btn.primary,
+.page-main .settings-btn-primary,
+.page-main .modal-btn-primary {
+  border-color: transparent !important;
+  background: linear-gradient(135deg, #7b4be6 0%, #5f33c9 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 6px 16px rgba(108, 63, 209, 0.22) !important;
+}
+
+.page-main .btn-primary:hover,
+.page-main .btn.primary:hover,
+.page-main .settings-btn-primary:hover,
+.page-main .modal-btn-primary:hover {
+  background: linear-gradient(135deg, #6f40dd 0%, #532bb5 100%) !important;
+}
+
+.page-main .btn-secondary,
+.page-main .btn-ghost,
+.page-main .btn.secondary {
+  border: 1px solid var(--border-strong) !important;
+  background: #ffffff !important;
+  color: var(--text-main) !important;
+  box-shadow: none !important;
+}
+
+.page-main .btn-secondary:hover,
+.page-main .btn-ghost:hover,
+.page-main .btn.secondary:hover {
+  background: var(--surface-soft) !important;
+}
+
+.page-main .btn,
+.page-main .settings-btn {
+  font-weight: 700;
+}
+
+/* ---------- Fields ---------- */
+.page-main input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):focus,
+.page-main select:focus,
+.page-main textarea:focus {
+  outline: none !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(108, 63, 209, 0.12) !important;
+}
+
+.page-main input[type="checkbox"],
+.page-main input[type="radio"] {
+  accent-color: var(--primary);
+}
+
+/* ---------- Cards ---------- */
+.page-main .card,
+.page-main .stat-card,
+.page-main .premium-card,
+.page-main .settings-section-card,
+.page-main .beauty-card {
+  border-color: var(--border) !important;
+  border-radius: var(--radius-lg) !important;
+  box-shadow: var(--shadow-card) !important;
+}
+
+.page-main .card:hover,
+.page-main .stat-card:hover,
+.page-main .premium-card:hover {
+  transform: none !important;
+}
+
+/* ---------- Plain tables ---------- */
+.page-main table:not(.fd-table):not(.fd-lines) thead th {
+  padding-top: 14px;
+  padding-bottom: 14px;
+  background: var(--surface-soft) !important;
+  color: var(--text-secondary) !important;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.page-main table:not(.fd-table):not(.fd-lines) tbody td {
+  padding-top: 13px;
+  padding-bottom: 13px;
+  border-color: var(--border-light) !important;
+}
+
+.page-main table:not(.fd-table):not(.fd-lines) tbody tr:hover td {
+  background: #fafaff !important;
+}
+
+/* ---------- AG Grid tables (pages not yet rebuilt) ---------- */
+.page-main .ag-theme-quartz,
+.page-main .ag-theme-quartz-dark,
+.page-main .ag-theme-alpine,
+.page-main .ag-theme-alpine-dark,
+.page-main .ag-theme-finora {
+  --ag-background-color: #ffffff;
+  --ag-foreground-color: var(--text-main);
+  --ag-data-color: var(--text-main);
+  --ag-header-background-color: var(--surface-soft);
+  --ag-header-foreground-color: var(--text-secondary);
+  --ag-border-color: var(--border);
+  --ag-row-border-color: var(--border-light);
+  --ag-odd-row-background-color: #ffffff;
+  --ag-row-hover-color: #fafaff;
+  --ag-selected-row-background-color: #f6f2ff;
+  --ag-checkbox-checked-color: var(--primary);
+  --ag-input-focus-border-color: var(--primary);
+  --ag-range-selection-border-color: var(--primary);
+  --ag-wrapper-border-radius: 16px;
+  --ag-font-family: "Tajawal", "IBM Plex Sans Arabic", Tahoma, Arial, sans-serif;
+}
+
+/* ---------- Badges / pills ---------- */
+.page-main .badge,
+.page-main .status-badge {
+  border-radius: 999px !important;
+  font-weight: 700;
+}
+
+/* ---------- Modals ---------- */
+.modal .modal-box,
+.modal .modal-content,
+.vis-modal .vis-box {
+  border-radius: var(--radius-xl) !important;
+}

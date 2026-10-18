@@ -1,5 +1,6 @@
 /* Compatibility file restored for shared page improvements. */
 @import url("/static/css/design-refresh.css");
+@import url("/static/css/finora-theme.css");
 
 .empty-state,
 .dashboard-overdue-empty {
