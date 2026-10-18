@@ -7,7 +7,7 @@ from sqlalchemy import func, or_
 
 from extensions import db
 from models.daily_audit import DailyAudit
-from utils.business_time import business_date, business_datetime
+from utils.business_time import business_date, business_datetime, business_today
 from models.invoice import Invoice
 from models.order_item import OrderItem
 from models.product import Product
@@ -29,11 +29,11 @@ from utils.treasury_helpers import get_default_cash_account
 
 def parse_report_date(raw_value: str | None) -> date:
     if not raw_value:
-        return date.today()
+        return business_today()
     try:
         return datetime.strptime(raw_value, "%Y-%m-%d").date()
     except (TypeError, ValueError):
-        return date.today()
+        return business_today()
 
 
 def _int(value) -> int:

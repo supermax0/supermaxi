@@ -24,6 +24,7 @@ from models.product import Product
 from models.stock_movement import StockMovement
 from utils.branch_scope import active_branch_id, is_general_admin, resolve_write_branch_id, viewing_all_branches
 from utils.daily_closing_schema import ensure_daily_closing_schema
+from utils.business_time import business_today
 from utils.daily_closing_service import (
     audit,
     archive_snapshot_for_reopen,
@@ -343,7 +344,7 @@ def start():
             rows.append((branch_id, opening_cash))
         if {branch_id for branch_id, _ in rows} != set(active_by_id):
             return jsonify({"success": False, "error": "يجب إدخال رصيد الصندوق لكل الفروع المشتركة"}), 400
-        business_date = date.today()
+        business_date = business_today()
         raw_date = payload.get("business_date")
         if raw_date:
             try:
@@ -388,7 +389,7 @@ def start():
     ).filter(DailySession.status.in_(["open", "under_review"])).first()
     if existing:
         return jsonify({"success": False, "error": "توجد يومية مفتوحة لهذا الفرع", "session_id": existing.id}), 409
-    business_date = date.today()
+    business_date = business_today()
     raw_date = payload.get("business_date")
     if raw_date:
         try:

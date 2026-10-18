@@ -42,3 +42,9 @@ instead of selector text inside JavaScript, include the undated cash summary
 field, use the Baghdad business date, and model unambiguous legacy product
 copies across branches. These corrections do not relax permissions or change
 financial calculations.
+
+The review also found that daily report defaults used the server calendar even
+though transaction periods use Baghdad dates. Default report dates and new
+daily sessions now use `business_today()`. Explicit user-selected dates remain
+supported. Boundary and session-creation tests cover UTC 20:59, UTC 21:00 and the
+late evening; the affected report/integrity suite passed 29 checks.

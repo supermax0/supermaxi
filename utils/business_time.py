@@ -14,6 +14,10 @@ def business_date(value):
     return business_datetime(value).date() if isinstance(value, datetime) else value
 
 
+def business_today():
+    return business_datetime(datetime.utcnow()).date()
+
+
 def utc_period_filter(column, date_from=None, date_to=None):
     conditions = []
     if date_from is not None:
