@@ -3,695 +3,337 @@
 {% block page_title %}{{ _('accounts_page_title') }}{% endblock %}
 
 {% block content %}
+{% from "partials/fd_icons.html" import icon %}
+<link rel="stylesheet" href="/static/css/finora-ui.css?v=20261018e">
 <style>
-  .accounts-page {
+  #fdPage .acc-flash { display: flex; align-items: center; gap: 10px; }
+  #fdPage .acc-flash--success { background: var(--fd-green-soft); color: var(--fd-green); }
+  #fdPage .acc-flash--error { background: #fdecee; color: #b91c1c; }
+
+  #fdPage .acc-pl {
     display: flex;
     flex-direction: column;
-    gap: 14px;
-    max-width: 1280px;
-    margin: 0 auto;
+    align-items: stretch;
+    gap: 12px;
+    border: 1px solid var(--fd-border);
+    background: var(--fd-surface);
+    box-shadow: var(--fd-shadow);
   }
-
-  .acc-alert {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 14px 16px;
-    box-shadow: var(--shadow-card, 0 4px 14px rgba(16, 24, 40, 0.06));
-  }
-
-  .acc-alert--danger { border-color: rgba(239, 68, 68, 0.35); background: rgba(239, 68, 68, 0.06); }
-  .acc-alert--warning { border-color: rgba(245, 158, 11, 0.35); background: rgba(245, 158, 11, 0.06); }
-  .acc-alert--info { border-color: rgba(59, 130, 246, 0.35); background: rgba(59, 130, 246, 0.06); }
-
-  .acc-alert-head {
-    display: flex;
-    align-items: flex-start;
-    gap: 10px;
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--text-main);
-    line-height: 1.5;
-  }
-
-  .acc-alert-metrics {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px dashed var(--border);
-    font-size: 12px;
-  }
-
-  .acc-alert-metrics span { color: var(--text-secondary); display: block; margin-bottom: 2px; }
-  .acc-alert-metrics strong { color: var(--text-main); font-size: 13px; }
-
-  .acc-stats {
+  #fdPage .acc-pl--danger { border-color: #f5c2c9; background: #fff7f8; }
+  #fdPage .acc-pl--warning { border-color: #f6dca6; background: #fffaf0; }
+  #fdPage .acc-pl--info { border-color: #c9dcfb; background: #f6f9ff; }
+  #fdPage .acc-pl-msg { display: flex; align-items: flex-start; gap: 8px; font-size: 14px; line-height: 1.6; }
+  #fdPage .acc-pl--danger .acc-pl-msg { color: #b91c1c; }
+  #fdPage .acc-pl--warning .acc-pl-msg { color: #b45309; }
+  #fdPage .acc-pl--info .acc-pl-msg { color: #1d4ed8; }
+  #fdPage .acc-pl-msg svg { flex-shrink: 0; margin-top: 2px; }
+  #fdPage .acc-pl-metrics {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 10px;
   }
+  #fdPage .acc-pl-metric { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  #fdPage .acc-pl-metric span { color: var(--fd-muted); font-size: 12.5px; font-weight: 600; }
+  #fdPage .acc-pl-metric strong { font-size: 16px; font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  #fdPage .acc-pl-op { color: var(--fd-faint); font-weight: 700; }
+  #fdPage .acc-pos { color: #16a34a; }
+  #fdPage .acc-neg { color: #dc2626; }
 
-  .acc-stat {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 12px 14px;
-    box-shadow: var(--shadow-card, 0 4px 14px rgba(16, 24, 40, 0.05));
-    min-height: 96px;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-  }
+  #fdPage .acc-kpi-link { font-size: 12px; font-weight: 700; color: var(--fd-purple); text-decoration: none; margin-top: 2px; }
+  #fdPage .acc-kpi-link:hover { text-decoration: underline; }
 
-  .acc-stat-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-  }
-
-  .acc-stat-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    line-height: 1.35;
-  }
-
-  .acc-stat-icon {
-    width: 34px;
-    height: 34px;
-    border-radius: 10px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    flex-shrink: 0;
-  }
-
-  .acc-stat-icon--green { background: var(--success-soft, rgba(22, 163, 74, 0.12)); color: var(--success); }
-  .acc-stat-icon--red { background: var(--danger-soft, rgba(239, 68, 68, 0.12)); color: var(--danger); }
-  .acc-stat-icon--blue { background: var(--primary-soft, rgba(59, 130, 246, 0.12)); color: var(--primary); }
-  .acc-stat-icon--profit { background: rgba(16, 185, 129, 0.12); color: #059669; }
-
-  .acc-stat-value {
-    font-size: clamp(17px, 2.5vw, 22px);
-    font-weight: 800;
-    color: var(--text-main);
-    font-variant-numeric: tabular-nums;
-    margin-top: 8px;
-    line-height: 1.2;
-  }
-
-  .acc-stat-value--green { color: var(--success); }
-  .acc-stat-value--red { color: var(--danger); }
-  .acc-stat-value--blue { color: var(--primary); }
-
-  .acc-stat-note {
-    font-size: 11px;
-    color: var(--text-muted);
-    margin-top: 4px;
-  }
-
-  .acc-treasury-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 10px;
-  }
-
-  .acc-treasury-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 12px 14px;
-    box-shadow: var(--shadow-card, 0 4px 14px rgba(16, 24, 40, 0.05));
-  }
-
-  .acc-treasury-card--cash {
-    border-color: rgba(16, 185, 129, 0.35);
-  }
-
-  .acc-treasury-card--bank {
-    border-color: rgba(59, 130, 246, 0.35);
-  }
-
-  .acc-treasury-name {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--text-secondary);
-    margin-bottom: 6px;
-  }
-
-  .acc-treasury-value {
-    font-size: 18px;
-    font-weight: 800;
-    color: var(--text-main);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .acc-treasury-type {
-    font-size: 10px;
-    color: var(--text-muted);
-    margin-top: 4px;
-  }
-
-  .acc-side-stack {
+  #fdPage .acc-balances {
     display: flex;
     flex-direction: column;
     gap: 12px;
+    padding: 16px 18px;
+    background: var(--fd-surface);
+    border: 1px solid var(--fd-border);
+    border-radius: var(--fd-radius);
+    box-shadow: var(--fd-shadow);
   }
-
-  .acc-flash {
-    padding: 10px 14px;
-    border-radius: 10px;
-    font-size: 13px;
-    font-weight: 600;
-  }
-
-  .acc-flash--success {
-    background: rgba(22, 163, 74, 0.1);
-    border: 1px solid rgba(22, 163, 74, 0.3);
-    color: var(--success);
-  }
-
-  .acc-flash--error {
-    background: rgba(239, 68, 68, 0.1);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: var(--danger);
-  }
-
-  .acc-main-grid {
-    display: grid;
-    grid-template-columns: minmax(280px, 340px) minmax(0, 1fr);
-    gap: 12px;
-    align-items: start;
-  }
-
-  .acc-panel {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 14px 16px;
-    box-shadow: var(--shadow-card, 0 4px 14px rgba(16, 24, 40, 0.05));
-  }
-
-  .acc-panel-head {
+  #fdPage .acc-balances-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  #fdPage .acc-balances-total { color: var(--fd-muted); font-size: 13px; font-weight: 600; }
+  #fdPage .acc-balances-total b { color: var(--fd-text); font-size: 15px; }
+  #fdPage .acc-balances-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  #fdPage .acc-treasury-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px; }
+  #fdPage .acc-treasury {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 10px;
-    margin-bottom: 12px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid var(--border);
-  }
-
-  .acc-panel-head h3 {
-    margin: 0;
-    font-size: 15px;
-    font-weight: 800;
-    color: var(--text-main);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .acc-panel-head p {
-    margin: 4px 0 0;
-    font-size: 12px;
-    color: var(--text-secondary);
-    line-height: 1.5;
-  }
-
-  .acc-form-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-
-  .acc-field label {
-    display: block;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    margin-bottom: 4px;
-  }
-
-  .acc-field select,
-  .acc-field input {
-    width: 100%;
-    min-height: 42px;
-    padding: 0 12px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: var(--surface-soft, #f8fafc);
-    color: var(--text-main);
-    font: inherit;
-    font-size: 16px;
-  }
-
-  .acc-field select:focus,
-  .acc-field input:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
-  }
-
-  .acc-btn-save {
-    width: 100%;
-    min-height: 42px;
-    border: none;
-    border-radius: 10px;
-    background: var(--primary);
-    color: #fff;
-    font-weight: 700;
-    font-size: 14px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    margin-top: 4px;
-  }
-
-  .acc-btn-save:hover { filter: brightness(1.05); }
-
-  .acc-table-wrap {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .acc-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-  }
-
-  .acc-table th {
-    padding: 10px 8px;
-    text-align: center;
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--text-secondary);
-    border-bottom: 1px solid var(--border);
-    white-space: nowrap;
-  }
-
-  .acc-table td {
-    padding: 10px 8px;
-    text-align: center;
-    color: var(--text-main);
-    border-bottom: 1px solid var(--border);
-    vertical-align: middle;
-  }
-
-  .acc-table tbody tr:last-child td { border-bottom: none; }
-  .acc-table tbody tr:hover { background: var(--surface-hover, rgba(59, 130, 246, 0.04)); }
-
-  .acc-type {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-weight: 700;
-    font-size: 12px;
-    padding: 4px 10px;
-    border-radius: 999px;
-  }
-
-  .acc-type--deposit { background: rgba(22, 163, 74, 0.12); color: var(--success); }
-  .acc-type--withdraw { background: rgba(239, 68, 68, 0.12); color: var(--danger); }
-  .acc-type--expense { background: rgba(234, 88, 12, 0.12); color: #ea580c; }
-  .acc-type--expense_cancel { background: rgba(59, 130, 246, 0.12); color: #2563eb; }
-
-  .acc-amount { font-weight: 800; font-variant-numeric: tabular-nums; }
-  .acc-amount--green { color: var(--success); }
-  .acc-amount--red { color: var(--danger); }
-
-  .acc-status-pill {
-    display: inline-block;
-    padding: 3px 8px;
-    border-radius: 999px;
-    font-size: 11px;
-    font-weight: 700;
-    background: var(--primary-soft);
-    color: var(--primary);
-    margin: 2px;
-  }
-
-  .acc-status-pill.muted {
-    background: var(--surface-soft);
-    color: var(--text-secondary);
-  }
-
-  .acc-empty {
-    text-align: center;
-    padding: 28px 12px;
-    color: var(--text-muted);
-    font-size: 13px;
-  }
-
-  .acc-order-id {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    align-items: center;
-  }
-
-  .acc-order-id strong { font-size: 13px; }
-  .acc-order-id small { font-size: 11px; color: var(--text-muted); }
-
-  .acc-mobile-cards { display: none; }
-
-  .acc-tx-card,
-  .acc-impact-card {
-    border: 1px solid var(--border);
+    padding: 12px 14px;
+    border: 1px solid var(--fd-border);
     border-radius: 12px;
-    padding: 10px 12px;
-    margin-bottom: 8px;
-    background: var(--surface-soft, #f8fafc);
+    background: var(--fd-soft);
+    min-width: 0;
   }
+  #fdPage .acc-treasury-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  #fdPage .acc-treasury-name { font-weight: 700; font-size: 13.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #fdPage .acc-treasury-value { font-weight: 800; font-size: 17px; font-variant-numeric: tabular-nums; }
+  #fdPage .acc-treasury-icon { width: 38px; height: 38px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  #fdPage .acc-treasury--cash .acc-treasury-icon { background: #dcf5e6; color: #16a34a; }
+  #fdPage .acc-treasury--bank .acc-treasury-icon { background: #eaf2ff; color: #2563eb; }
+  #fdPage .acc-treasury-empty { grid-column: 1 / -1; color: var(--fd-muted); font-size: 13.5px; }
 
-  .acc-tx-card-top,
-  .acc-impact-card-top {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 8px;
-  }
-
-  .acc-tx-card-meta,
-  .acc-impact-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 6px 10px;
-    font-size: 12px;
-  }
-
-  .acc-tx-card-meta span,
-  .acc-impact-grid span {
-    color: var(--text-secondary);
-    display: block;
-    font-size: 10px;
-    margin-bottom: 2px;
-  }
-
-  .acc-tx-card-meta strong,
-  .acc-impact-grid strong {
-    color: var(--text-main);
-    font-variant-numeric: tabular-nums;
-  }
-
-  .acc-link-cash {
-    font-size: 11px;
-    color: var(--primary);
-    text-decoration: none;
-    font-weight: 700;
-  }
-
-  .acc-link-cash:hover { text-decoration: underline; }
+  #fdPage .acc-block-title { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+  #fdPage .acc-block-title h2 { margin: 0; font-size: 17px; font-weight: 800; display: inline-flex; align-items: center; gap: 8px; }
+  #fdPage .acc-block-title p { margin: 0; color: var(--fd-muted); font-size: 13px; }
+  #fdPage .acc-note-cell { max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #fdPage .acc-order-id small { display: block; color: var(--fd-muted); font-size: 11.5px; font-weight: 500; }
+  #fdPage .acc-type-hint { margin: 0; font-size: 13px; }
 
   @media (max-width: 900px) {
-    .acc-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .acc-main-grid { grid-template-columns: 1fr; }
+    #fdPage .acc-pl-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
-
-  @media (max-width: 640px) {
-    .accounts-page { gap: 10px; }
-    .acc-stat { min-height: 84px; padding: 10px 12px; }
-    .acc-stat-value { font-size: 16px; }
-    .acc-stat-icon { width: 30px; height: 30px; font-size: 12px; }
-    .acc-panel { padding: 12px; border-radius: 12px; }
-    .acc-alert-metrics { grid-template-columns: 1fr; }
-    .acc-table-wrap.acc-desktop-only { display: none; }
-    .acc-mobile-cards { display: block; }
+  @media (max-width: 600px) {
+    #fdPage .acc-balances { padding: 14px; }
+    #fdPage .acc-treasury-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    #fdPage .acc-treasury-value { font-size: 15px; }
+    #fdPage .acc-treasury-icon { display: none; }
+    #fdPage .acc-note-cell { max-width: none; white-space: normal; }
+    #fdPage .acc-pl-metric strong { font-size: 15px; }
   }
 </style>
 
-<div class="accounts-page">
+<div class="fd fin-accounts-page" id="fdPage">
+
+  <header class="fd-header no-print">
+    <div class="fd-header-main">
+      <span class="fd-header-icon" style="color: var(--fd-purple);">{{ icon('wallet', 26) }}</span>
+      <div class="fd-header-text">
+        <h1 class="fd-title">{{ _('accounts_page_title') }}</h1>
+        <p class="fd-subtitle">رأس المال، الأرباح، أرصدة الصندوق والبنوك وسجل الحركات المالية</p>
+      </div>
+    </div>
+  </header>
+
+  <nav class="fd-subnav no-print" aria-label="المالية">
+    <a class="fd-subnav-link active" href="{{ url_for('accounts.accounts') }}">{{ _('accounts') }}</a>
+    <a class="fd-subnav-link" href="/cash">الصندوق</a>
+    <a class="fd-subnav-link" href="/expenses">المصاريف</a>
+    <a class="fd-subnav-link" href="/payroll">الرواتب</a>
+  </nav>
 
   {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-      {% for category, message in messages %}
-      <div class="acc-flash acc-flash--{% if category == 'error' %}error{% else %}success{% endif %}">{{ message }}</div>
-      {% endfor %}
-    {% endif %}
+    {% for category, message in messages %}
+    <div class="fd-stock-line acc-flash acc-flash--{% if category == 'error' %}error{% else %}success{% endif %}" role="{% if category == 'error' %}alert{% else %}status{% endif %}">
+      {% if category == 'error' %}{{ icon('alert', 18) }}{% else %}{{ icon('check-circle', 18) }}{% endif %}<span>{{ message }}</span>
+    </div>
+    {% endfor %}
   {% endwith %}
 
-  {% if alert_message %}
-  <div class="acc-alert acc-alert--{{ alert_type or 'info' }}">
-    <div class="acc-alert-head">
-      <span>{% if alert_type == 'danger' %}🚨{% elif alert_type == 'warning' %}⚠️{% else %}💡{% endif %}</span>
-      <span>{{ alert_message }}</span>
-    </div>
-    <div class="acc-alert-metrics">
-      <div>
+  <!-- Profit & loss strip (always visible; tinted + message when the route raises an alert) -->
+  <section class="fd-stock-line acc-pl{% if alert_message %} acc-pl--{{ alert_type or 'info' }}{% endif %}" aria-label="ملخص الربح والخسارة">
+    {% if alert_message %}
+    <div class="acc-pl-msg">{{ icon('alert', 18) }}<span>{{ alert_message }}</span></div>
+    {% endif %}
+    <div class="acc-pl-metrics">
+      <div class="acc-pl-metric">
         <span>{{ _('accounts_alert_paid_sales') }}</span>
-        <strong>{{ "{:,.0f}".format(booked_sales|default(0)) }} {{ _('accounts_currency_iqd') }}</strong>
+        <strong dir="ltr">{{ "{:,.0f}".format(booked_sales|default(0)) }} {{ _('accounts_currency_iqd') }}</strong>
       </div>
-      <div>
+      <div class="acc-pl-metric">
         <span>{{ _('accounts_alert_gross_profit') }}</span>
-        <strong style="color:var(--success)">{{ "{:,.0f}".format(gross_profit|default(0)) }} {{ _('accounts_currency_iqd') }}</strong>
+        <strong dir="ltr" class="{% if (gross_profit|default(0)) < 0 %}acc-neg{% else %}acc-pos{% endif %}">{{ "{:,.0f}".format(gross_profit|default(0)) }} {{ _('accounts_currency_iqd') }}</strong>
       </div>
-      <div>
-        <span>{{ _('accounts_alert_total_expenses') }}</span>
-        <strong style="color:var(--danger)">{{ "{:,.0f}".format(total_expenses|default(0)) }} {{ _('accounts_currency_iqd') }}</strong>
+      <div class="acc-pl-metric">
+        <span><span class="acc-pl-op">−</span> {{ _('accounts_alert_total_expenses') }}</span>
+        <strong dir="ltr" class="acc-neg">{{ "{:,.0f}".format(total_expenses|default(0)) }} {{ _('accounts_currency_iqd') }}</strong>
       </div>
-      <div>
-        <span>{{ _('accounts_alert_net_profit') }}</span>
-        <strong style="color:{% if net_profit < 0 %}var(--danger){% else %}var(--success){% endif %}">
-          {{ "{:,.0f}".format(net_profit|default(0)) }} {{ _('accounts_currency_iqd') }}
-        </strong>
+      <div class="acc-pl-metric">
+        <span><span class="acc-pl-op">=</span> {{ _('accounts_alert_net_profit') }}</span>
+        <strong dir="ltr" class="{% if (net_profit|default(0)) < 0 %}acc-neg{% else %}acc-pos{% endif %}">{{ "{:,.0f}".format(net_profit|default(0)) }} {{ _('accounts_currency_iqd') }}</strong>
       </div>
     </div>
-  </div>
-  {% endif %}
+  </section>
 
-  <div class="acc-stats">
-    <div class="acc-stat">
-      <div class="acc-stat-top">
-        <span class="acc-stat-label">{{ _('accounts_stat_deposits') }}</span>
-        <span class="acc-stat-icon acc-stat-icon--green"><i class="fas fa-arrow-down"></i></span>
-      </div>
-      <div class="acc-stat-value acc-stat-value--green">{{ "{:,.0f}".format(total_deposit) }} <small style="font-size:11px;font-weight:600">{{ _('accounts_currency_iqd') }}</small></div>
-      <div class="acc-stat-note">مجموع إيداعات رأس المال منذ البداية (ليس رصيد الصندوق)</div>
+  <div class="fd-kpis no-print">
+    <button type="button" class="fd-kpi fd-kpi--green" data-acc-quick="owner_deposit" title="مجموع إيداعات رأس المال منذ البداية (ليس رصيد الصندوق)">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('accounts_stat_deposits') }}</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money">{{ "{:,.0f}".format(total_deposit) }}</span><span class="fd-kpi-unit">{{ _('accounts_currency_iqd') }}</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('download', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--red" data-acc-quick="owner_withdraw">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('accounts_stat_withdrawals') }}</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money">{{ "{:,.0f}".format(total_withdraw) }}</span><span class="fd-kpi-unit">{{ _('accounts_currency_iqd') }}</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('upload', 28) }}</span>
+    </button>
+    <div class="fd-kpi fd-kpi--purple">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('accounts_stat_balance') }}</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money">{{ "{:,.0f}".format(balance) }}</span><span class="fd-kpi-unit">{{ _('accounts_currency_iqd') }}</span></span>
+        <a href="/cash" class="acc-kpi-link">تفاصيل الصندوق ←</a>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('wallet', 28) }}</span>
     </div>
-    <div class="acc-stat">
-      <div class="acc-stat-top">
-        <span class="acc-stat-label">{{ _('accounts_stat_withdrawals') }}</span>
-        <span class="acc-stat-icon acc-stat-icon--red"><i class="fas fa-arrow-up"></i></span>
-      </div>
-      <div class="acc-stat-value acc-stat-value--red">{{ "{:,.0f}".format(total_withdraw) }} <small style="font-size:11px;font-weight:600">{{ _('accounts_currency_iqd') }}</small></div>
-    </div>
-    <div class="acc-stat">
-      <div class="acc-stat-top">
-        <span class="acc-stat-label">{{ _('accounts_stat_balance') }}</span>
-        <span class="acc-stat-icon acc-stat-icon--blue"><i class="fas fa-wallet"></i></span>
-      </div>
-      <div class="acc-stat-value acc-stat-value--blue">{{ "{:,.0f}".format(balance) }} <small style="font-size:11px;font-weight:600">{{ _('accounts_currency_iqd') }}</small></div>
-      <div class="acc-stat-note"><a href="/cash" class="acc-link-cash">النقد الفعلي الحالي — تفاصيل الصندوق ←</a></div>
-    </div>
-    <div class="acc-stat">
-      <div class="acc-stat-top">
-        <span class="acc-stat-label">{{ _('accounts_stat_net_profit') }}</span>
-        <span class="acc-stat-icon acc-stat-icon--profit"><i class="fas fa-chart-line"></i></span>
-      </div>
-      <div class="acc-stat-value acc-stat-value--green">{{ "{:,.0f}".format(net_profit) }} <small style="font-size:11px;font-weight:600">{{ _('accounts_currency_iqd') }}</small></div>
+    <div class="fd-kpi fd-kpi--amber">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('accounts_stat_net_profit') }}</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money{% if net_profit < 0 %} acc-neg{% endif %}" dir="ltr">{{ "{:,.0f}".format(net_profit) }}</span><span class="fd-kpi-unit">{{ _('accounts_currency_iqd') }}</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('trend', 28) }}</span>
     </div>
   </div>
 
-  <div class="acc-panel">
-    <div class="acc-panel-head">
-      <h3><i class="fas fa-university" style="color:var(--primary)"></i> {{ _('treasury_accounts_title') }}</h3>
-      <span style="font-size:12px;color:var(--text-secondary)">{{ _('treasury_total_liquidity') }}: <strong>{{ "{:,.0f}".format(total_liquidity|default(0)) }}</strong> {{ _('accounts_currency_iqd') }}</span>
+  <!-- Cash & bank balances -->
+  <section class="acc-balances" aria-labelledby="accBalancesTitle">
+    <div class="acc-balances-head">
+      <div>
+        <span class="fd-section-title" id="accBalancesTitle">{{ icon('layers', 18) }}{{ _('treasury_accounts_title') }}</span>
+        <div class="acc-balances-total">{{ _('treasury_total_liquidity') }}: <b dir="ltr">{{ "{:,.0f}".format(total_liquidity|default(0)) }}</b> {{ _('accounts_currency_iqd') }}</div>
+      </div>
+      <div class="acc-balances-actions no-print">
+        <button type="button" class="fd-btn fd-btn--soft fd-btn--sm" onclick="openAccDrawer('accTransferDrawer')">{{ icon('truck', 16) }}<span>{{ _('treasury_transfer') }}</span></button>
+        <button type="button" class="fd-btn fd-btn--sm" onclick="openAccDrawer('accBankDrawer')">{{ icon('package-plus', 16) }}<span>{{ _('add_bank') }}</span></button>
+      </div>
     </div>
     <div class="acc-treasury-grid">
+      {% set ns = namespace(shown=0) %}
       {% for item in treasury_balances|default([]) %}
       {% if not item.account.is_default or not item.account.is_cash %}
-      <div class="acc-treasury-card acc-treasury-card--{% if item.account.is_cash %}cash{% else %}bank{% endif %}">
-        <div class="acc-treasury-name">{{ item.account.name }}</div>
-        <div class="acc-treasury-value">{{ "{:,.0f}".format(item.balance) }} <small style="font-size:10px">{{ _('accounts_currency_iqd') }}</small></div>
-        <div class="acc-treasury-type">{% if item.account.is_cash %}{{ _('treasury_cash') }}{% else %}{{ _('treasury_bank') }}{% endif %}</div>
+      {% set ns.shown = ns.shown + 1 %}
+      <div class="acc-treasury acc-treasury--{% if item.account.is_cash %}cash{% else %}bank{% endif %}">
+        <div class="acc-treasury-text">
+          <span class="acc-treasury-name" title="{{ item.account.name }}">{{ item.account.name }}</span>
+          <span class="acc-treasury-value" dir="ltr">{{ "{:,.0f}".format(item.balance) }} <small class="fd-muted" style="font-size:11px;font-weight:600">{{ _('accounts_currency_iqd') }}</small></span>
+          <span class="fd-muted" style="font-size:11.5px">{% if item.account.is_cash %}{{ _('treasury_cash') }}{% else %}{{ _('treasury_bank') }}{% endif %}</span>
+        </div>
+        <span class="acc-treasury-icon">{% if item.account.is_cash %}{{ icon('wallet', 20) }}{% else %}{{ icon('layers', 20) }}{% endif %}</span>
       </div>
       {% endif %}
       {% endfor %}
+      {% if ns.shown == 0 %}
+      <div class="acc-treasury-empty">رصيد الصندوق الرئيسي يظهر في «{{ _('accounts_stat_balance') }}». أضف بنكاً لمتابعة رصيده هنا.</div>
+      {% endif %}
     </div>
+  </section>
+
+  <!-- Financial movements log -->
+  <div class="acc-block-title">
+    <h2>{{ icon('receipt', 20) }}{{ _('accounts_log_title') }}</h2>
   </div>
 
-  <div class="acc-main-grid">
-    <div class="acc-side-stack">
-      <div class="acc-panel">
-        <div class="acc-panel-head">
-          <h3><i class="fas fa-plus-circle" style="color:var(--primary)"></i> {{ _('accounts_add_title') }}</h3>
+  <div class="fd-toolbar no-print">
+    <div class="fd-pop-wrap fd-tool--filter">
+      <button type="button" class="fd-btn" data-fd-pop="accFiltersPop" aria-expanded="false" aria-controls="accFiltersPop">
+        {{ icon('filter', 18) }}
+        <span class="fd-btn-label">تصفية</span>
+        <span class="fd-count-badge" id="accFilterCount" hidden></span>
+        <span class="fd-chevron">{{ icon('chevron', 16) }}</span>
+      </button>
+      <div class="fd-pop fd-pop--start fd-filter-pop" id="accFiltersPop" role="dialog" aria-label="تصفية" hidden>
+        <div class="fd-form-grid">
+          <label class="fd-field"><span>من تاريخ</span><input type="date" id="accFilterFrom"></label>
+          <label class="fd-field"><span>إلى تاريخ</span><input type="date" id="accFilterTo"></label>
+          <label class="fd-field fd-field--wide"><span>{{ _('treasury_account_col') }}</span>
+            <select id="accFilterAccount">
+              <option value="">الكل</option>
+              {% for acc in treasury_choices|default([]) %}<option value="{{ acc.id }}">{{ acc.name }}</option>{% endfor %}
+            </select>
+          </label>
+          <label class="fd-field fd-field--wide"><span>المصدر</span>
+            <select id="accFilterSource">
+              <option value="">الكل</option>
+              <option value="owner">حركات المالك (رأس المال)</option>
+              <option value="auto">حركات آلية</option>
+            </select>
+          </label>
         </div>
-        <form method="post" id="accountsTransactionForm" class="acc-form-grid" onsubmit="return confirmAccountsTransaction(event)">
-          <div class="acc-field">
-            <label for="accTreasury">{{ _('pay_from_account') }}</label>
-            <select name="treasury_account_id" id="accTreasury" required>
-              {% for acc in treasury_choices|default([]) %}
-              <option value="{{ acc.id }}">{{ acc.name }}{% if acc.is_cash %} ({{ _('treasury_cash') }}){% else %} ({{ _('treasury_bank') }}){% endif %}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="acc-field">
-            <label for="accType">{{ _('accounts_col_type') }}<span data-help="accounts.journal"></span></label>
-            <select name="type" id="accType" required>
-              <option value="deposit">{{ _('accounts_type_deposit') }}</option>
-              <option value="withdraw">{{ _('accounts_type_withdraw') }}</option>
-            </select>
-          </div>
-          <div class="acc-field">
-            <label for="accAmount">{{ _('accounts_col_amount') }}<span data-help="accounts.balance"></span></label>
-            <input name="amount" id="accAmount" type="number" placeholder="{{ _('accounts_field_amount_placeholder') }}" required min="1" inputmode="numeric">
-          </div>
-          <div class="acc-field">
-            <label for="accNote">{{ _('accounts_col_note') }}</label>
-            <input name="note" id="accNote" placeholder="{{ _('accounts_field_note_placeholder') }}">
-          </div>
-          <button type="submit" class="acc-btn-save"><i class="fas fa-save"></i> {{ _('accounts_save_button') }}</button>
-        </form>
-      </div>
-
-      <div class="acc-panel">
-        <div class="acc-panel-head">
-          <h3><i class="fas fa-exchange-alt" style="color:var(--primary)"></i> {{ _('treasury_transfer') }}</h3>
+        <div class="fd-pop-foot fd-pop-foot--split">
+          <button type="button" class="fd-link-btn" onclick="clearAccFilters()">مسح التصفية</button>
+          <button type="button" class="fd-btn fd-btn--accent fd-btn--apply" data-fd-pop-close>تطبيق</button>
         </div>
-        <form method="post" action="{{ url_for('accounts.treasury_transfer') }}" class="acc-form-grid">
-          <div class="acc-field">
-            <label for="fromAccount">{{ _('treasury_from_account') }}</label>
-            <select name="from_account_id" id="fromAccount" required>
-              {% for acc in treasury_choices|default([]) %}
-              <option value="{{ acc.id }}">{{ acc.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="acc-field">
-            <label for="toAccount">{{ _('treasury_to_account') }}</label>
-            <select name="to_account_id" id="toAccount" required>
-              {% for acc in treasury_choices|default([]) %}
-              <option value="{{ acc.id }}">{{ acc.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="acc-field">
-            <label for="transferAmount">{{ _('accounts_col_amount') }}</label>
-            <input name="amount" id="transferAmount" type="number" min="1" required inputmode="numeric">
-          </div>
-          <div class="acc-field">
-            <label for="transferNote">{{ _('accounts_col_note') }}</label>
-            <input name="note" id="transferNote" placeholder="{{ _('accounts_field_note_placeholder') }}">
-          </div>
-          <button type="submit" class="acc-btn-save"><i class="fas fa-random"></i> {{ _('treasury_transfer_button') }}</button>
-        </form>
-      </div>
-
-      <div class="acc-panel">
-        <div class="acc-panel-head">
-          <h3><i class="fas fa-building-columns" style="color:var(--primary)"></i> {{ _('add_bank') }}</h3>
-        </div>
-        <form method="post" action="{{ url_for('accounts.add_bank') }}" class="acc-form-grid">
-          <div class="acc-field">
-            <label for="bankName">{{ _('treasury_bank_name') }}</label>
-            <input name="bank_name" id="bankName" placeholder="{{ _('treasury_bank_name_placeholder') }}" required>
-          </div>
-          <button type="submit" class="acc-btn-save"><i class="fas fa-plus"></i> {{ _('add_bank_button') }}</button>
-        </form>
       </div>
     </div>
 
-    <div class="acc-panel">
-      <div class="acc-panel-head">
-        <div>
-          <h3><i class="fas fa-list" style="color:var(--primary)"></i> {{ _('accounts_log_title') }}</h3>
+    <label class="fd-search fd-tool--search">
+      {{ icon('search', 18) }}
+      <input type="search" id="accSearch" autocomplete="off" placeholder="ابحث بالملاحظة أو الحساب أو المبلغ...">
+    </label>
+
+    <div class="fd-tools-row">
+      <button type="button" class="fd-btn fd-btn--primary" onclick="openAccDrawer('accTxDrawer')">
+        {{ icon('package-plus', 18) }}
+        <span class="fd-btn-label">{{ _('accounts_add_title') }}</span>
+      </button>
+      <div class="fd-pop-wrap">
+        <button type="button" class="fd-btn fd-btn--icon" data-fd-pop="accMorePop" aria-expanded="false" aria-controls="accMorePop" title="المزيد" aria-label="المزيد">{{ icon('dots', 20) }}</button>
+        <div class="fd-pop fd-pop--end fd-menu" id="accMorePop" role="menu" hidden>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="openAccDrawer('accTransferDrawer')">{{ icon('truck') }}<span>{{ _('treasury_transfer') }}</span></button>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="openAccDrawer('accBankDrawer')">{{ icon('layers') }}<span>{{ _('add_bank') }}</span></button>
+          <div class="fd-menu-sep" role="separator"></div>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="exportAccCsv()">{{ icon('download') }}<span>تصدير CSV</span></button>
+          <a class="fd-menu-item" role="menuitem" href="/cash">{{ icon('wallet') }}<span>الصندوق</span></a>
+          <a class="fd-menu-item" role="menuitem" href="/expenses">{{ icon('receipt') }}<span>المصاريف</span></a>
         </div>
-      </div>
-
-      <div class="acc-table-wrap acc-desktop-only">
-        <table class="acc-table">
-          <thead>
-            <tr>
-              <th>{{ _('accounts_col_type') }}</th>
-              <th>{{ _('treasury_account_col') }}</th>
-              <th>{{ _('accounts_col_amount') }}</th>
-              <th>{{ _('accounts_col_note') }}</th>
-              <th>{{ _('accounts_col_date') }}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% if transactions %}
-              {% for t in transactions %}
-              <tr>
-                <td>
-                  <span class="acc-type acc-type--{{ t.display_category() }}">
-                    {% if t.display_category() == "deposit" %}{{ _('accounts_type_deposit_short') }}
-                    {% elif t.display_category() == "expense" %}{{ _('accounts_type_expense_short') }}
-                    {% elif t.display_category() == "expense_cancel" %}{{ _('accounts_type_expense_cancel_short') }}
-                    {% else %}{{ _('accounts_type_withdraw_short') }}{% endif %}
-                  </span>
-                </td>
-                <td style="font-size:12px">{{ t.treasury_account.name if t.treasury_account else _('treasury_cash') }}</td>
-                <td class="acc-amount acc-amount--{% if t.display_category() in ['deposit', 'expense_cancel'] %}green{% else %}red{% endif %}">
-                  {{ "{:,.0f}".format(t.amount) }} {{ _('accounts_currency_iqd') }}
-                </td>
-                <td>{{ t.note or "—" }}</td>
-                <td style="font-size:12px;color:var(--text-secondary)">{{ t.created_at.strftime("%Y-%m-%d %H:%M") }}</td>
-              </tr>
-              {% endfor %}
-            {% else %}
-              <tr><td colspan="5" class="acc-empty">{{ _('accounts_empty_state') }}</td></tr>
-            {% endif %}
-          </tbody>
-        </table>
-      </div>
-
-      <div class="acc-mobile-cards">
-        {% if transactions %}
-          {% for t in transactions %}
-          <div class="acc-tx-card">
-            <div class="acc-tx-card-top">
-              <span class="acc-type acc-type--{{ t.display_category() }}">
-                {% if t.display_category() == "deposit" %}{{ _('accounts_type_deposit_short') }}
-                {% elif t.display_category() == "expense" %}{{ _('accounts_type_expense_short') }}
-                {% elif t.display_category() == "expense_cancel" %}{{ _('accounts_type_expense_cancel_short') }}
-                {% else %}{{ _('accounts_type_withdraw_short') }}{% endif %}
-              </span>
-              <span class="acc-amount acc-amount--{% if t.display_category() in ['deposit', 'expense_cancel'] %}green{% else %}red{% endif %}">
-                {{ "{:,.0f}".format(t.amount) }} {{ _('accounts_currency_iqd') }}
-              </span>
-            </div>
-            <div class="acc-tx-card-meta">
-              <div><span>{{ _('treasury_account_col') }}</span><strong>{{ t.treasury_account.name if t.treasury_account else _('treasury_cash') }}</strong></div>
-              <div><span>{{ _('accounts_col_note') }}</span><strong>{{ t.note or "—" }}</strong></div>
-              <div><span>{{ _('accounts_col_date') }}</span><strong>{{ t.created_at.strftime("%Y-%m-%d %H:%M") }}</strong></div>
-            </div>
-          </div>
-          {% endfor %}
-        {% else %}
-          <div class="acc-empty">{{ _('accounts_empty_state') }}</div>
-        {% endif %}
       </div>
     </div>
   </div>
 
-  <div class="acc-panel">
-    <div class="acc-panel-head">
-      <div>
-        <h3><i class="fas fa-receipt" style="color:var(--primary)"></i> الأثر المحاسبي للطلبات</h3>
-        <p>آخر الطلبات وكيف تظهر على المبيعات، تكلفة المخزون، الربح، والصندوق.</p>
-      </div>
+  <div class="fd-toolbar fd-toolbar--chips no-print">
+    <div class="fd-chips" id="accChips" role="tablist" aria-label="نوع الحركة">
+      <button type="button" class="fd-chip active" data-acc-cat="">الكل<span class="fd-chip-count" data-count=""></span></button>
+      <button type="button" class="fd-chip" data-acc-cat="deposit">{{ _('accounts_type_deposit_short') }}<span class="fd-chip-count" data-count="deposit"></span></button>
+      <button type="button" class="fd-chip" data-acc-cat="withdraw">{{ _('accounts_type_withdraw_short') }}<span class="fd-chip-count" data-count="withdraw"></span></button>
+      <button type="button" class="fd-chip" data-acc-cat="expense">{{ _('accounts_type_expense_short') }}<span class="fd-chip-count" data-count="expense"></span></button>
+      <button type="button" class="fd-chip" data-acc-cat="expense_cancel">{{ _('accounts_type_expense_cancel_short') }}<span class="fd-chip-count" data-count="expense_cancel"></span></button>
     </div>
 
-    <div class="acc-table-wrap acc-desktop-only">
-      <table class="acc-table">
+  </div>
+
+  <section class="fd-table-card">
+    <div class="fd-table-scroll">
+      <table class="fd-table" id="accTable">
+        <thead>
+          <tr>
+            <th>{{ _('accounts_col_type') }}</th>
+            <th>{{ _('accounts_col_amount') }}</th>
+            <th class="fd-col-opt2">{{ _('treasury_account_col') }}</th>
+            <th>{{ _('accounts_col_note') }}</th>
+            <th>{{ _('accounts_col_date') }}</th>
+            <th class="fd-col-actions"></th>
+          </tr>
+        </thead>
+        <tbody id="accBody">
+          <tr><td colspan="6" class="fd-empty">جاري التحميل...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="fd-footer no-print">
+    <div class="fd-footer-info">
+      <select id="accPageSize" aria-label="عدد الحركات في الصفحة">
+        <option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
+      </select>
+      <span class="fd-range" id="accRange"></span>
+      <span class="fd-totals" id="accTotals"></span>
+    </div>
+    <nav class="fd-pager" id="accPager" aria-label="الصفحات"></nav>
+  </footer>
+
+  <!-- Accounting impact of recent orders (read-only) -->
+  <div class="acc-block-title">
+    <h2>{{ icon('cart', 20) }}الأثر المحاسبي للطلبات</h2>
+    <p>آخر الطلبات وكيف تظهر على المبيعات، تكلفة المخزون، الربح، والصندوق.</p>
+  </div>
+  <section class="fd-table-card">
+    <div class="fd-table-scroll">
+      <table class="fd-table" id="accImpactTable">
         <thead>
           <tr>
             <th>الطلب</th>
-            <th>الزبون</th>
+            <th class="fd-col-opt2">الزبون</th>
             <th>قيمة البيع</th>
-            <th>تكلفة المخزون</th>
+            <th class="fd-col-opt">تكلفة المخزون</th>
             <th>الربح</th>
-            <th>دخل الصندوق</th>
-            <th>ذمم</th>
+            <th class="fd-col-opt2">دخل الصندوق</th>
+            <th class="fd-col-opt">ذمم</th>
             <th>الحالة</th>
           </tr>
         </thead>
@@ -699,63 +341,359 @@
           {% if order_accounting_impact %}
             {% for row in order_accounting_impact %}
             <tr>
-              <td>
-                <div class="acc-order-id">
-                  <strong>#{{ row.invoice_id }}</strong>
-                  <small>{{ row.created_at.strftime("%Y-%m-%d") if row.created_at else "" }}</small>
-                </div>
-              </td>
-              <td>{{ row.customer_name or "—" }}</td>
-              <td>{{ "{:,.0f}".format(row.sale_value) }}</td>
-              <td>{{ "{:,.0f}".format(row.stock_cost) }}</td>
-              <td class="acc-amount acc-amount--{% if row.gross_profit < 0 %}red{% else %}green{% endif %}">{{ "{:,.0f}".format(row.gross_profit) }}</td>
-              <td class="acc-amount acc-amount--green">{{ "{:,.0f}".format(row.paid_amount) }}</td>
-              <td>{{ "{:,.0f}".format(row.receivable_amount) }}</td>
-              <td>
-                <span class="acc-status-pill">{{ row.status or "—" }}</span>
-                <span class="acc-status-pill muted">{{ row.payment_status or "—" }}</span>
+              <td class="fd-td-title acc-order-id" data-label="الطلب"><b>#{{ row.invoice_id }}</b><small dir="ltr">{{ row.created_at.strftime("%Y-%m-%d") if row.created_at else "" }}</small></td>
+              <td class="fd-col-opt2{% if not row.customer_name %} fd-td-blank{% endif %}" data-label="الزبون">{{ row.customer_name or "—" }}</td>
+              <td class="fd-cell-amount" data-label="قيمة البيع"><span dir="ltr">{{ "{:,.0f}".format(row.sale_value) }}</span></td>
+              <td class="fd-col-opt fd-cell-muted" data-label="تكلفة المخزون"><span dir="ltr">{{ "{:,.0f}".format(row.stock_cost) }}</span></td>
+              <td data-label="الربح"><b dir="ltr" class="{% if row.gross_profit < 0 %}acc-neg{% else %}acc-pos{% endif %}">{{ "{:,.0f}".format(row.gross_profit) }}</b></td>
+              <td class="fd-col-opt2" data-label="دخل الصندوق"><span dir="ltr" class="acc-pos">{{ "{:,.0f}".format(row.paid_amount) }}</span></td>
+              <td class="fd-col-opt fd-cell-muted" data-label="ذمم"><span dir="ltr">{{ "{:,.0f}".format(row.receivable_amount) }}</span></td>
+              <td data-label="الحالة">
+                <span class="fd-pill fd-pill--purple">{{ row.status or "—" }}</span>
+                <span class="fd-pill fd-pill--gray">{{ row.payment_status or "—" }}</span>
               </td>
             </tr>
             {% endfor %}
           {% else %}
-            <tr><td colspan="8" class="acc-empty">لا توجد طلبات لعرض أثرها المحاسبي حالياً.</td></tr>
+            <tr><td colspan="8" class="fd-empty">لا توجد طلبات لعرض أثرها المحاسبي حالياً.</td></tr>
           {% endif %}
         </tbody>
       </table>
     </div>
+  </section>
 
-    <div class="acc-mobile-cards">
-      {% if order_accounting_impact %}
-        {% for row in order_accounting_impact %}
-        <div class="acc-impact-card">
-          <div class="acc-impact-card-top">
-            <div class="acc-order-id" style="align-items:flex-start">
-              <strong>#{{ row.invoice_id }}</strong>
-              <small>{{ row.created_at.strftime("%Y-%m-%d") if row.created_at else "" }} · {{ row.customer_name or "—" }}</small>
-            </div>
-            <div>
-              <span class="acc-status-pill">{{ row.status or "—" }}</span>
-            </div>
-          </div>
-          <div class="acc-impact-grid">
-            <div><span>قيمة البيع</span><strong>{{ "{:,.0f}".format(row.sale_value) }}</strong></div>
-            <div><span>تكلفة المخزون</span><strong>{{ "{:,.0f}".format(row.stock_cost) }}</strong></div>
-            <div><span>الربح</span><strong class="acc-amount acc-amount--{% if row.gross_profit < 0 %}red{% else %}green{% endif %}">{{ "{:,.0f}".format(row.gross_profit) }}</strong></div>
-            <div><span>دخل الصندوق</span><strong class="acc-amount acc-amount--green">{{ "{:,.0f}".format(row.paid_amount) }}</strong></div>
-            <div><span>ذمم</span><strong>{{ "{:,.0f}".format(row.receivable_amount) }}</strong></div>
-            <div><span>الدفع</span><strong>{{ row.payment_status or "—" }}</strong></div>
-          </div>
-        </div>
-        {% endfor %}
-      {% else %}
-        <div class="acc-empty">لا توجد طلبات لعرض أثرها المحاسبي حالياً.</div>
-      {% endif %}
+  <!-- Detail panel -->
+  <aside class="fd-detail" id="accDetail" aria-label="تفاصيل الحركة" hidden>
+    <div class="fd-detail-head">
+      <div class="fd-detail-titles">
+        <h3 class="fd-detail-title" id="accDetailTitle"></h3>
+        <p class="fd-detail-sub" id="accDetailSub"></p>
+      </div>
+      <button type="button" class="fd-close-btn" onclick="closeAccDetail()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
     </div>
+    <div class="fd-detail-body" id="accDetailBody"></div>
+  </aside>
+
+  <!-- Drawer: add financial movement (posts the same form as before) -->
+  <div class="fd-drawer" id="accTxDrawer" hidden>
+    <form class="fd-drawer-panel" method="post" action="{{ url_for('accounts.accounts') }}" id="accountsTransactionForm" onsubmit="return confirmAccountsTransaction(event)" role="dialog" aria-modal="true" aria-labelledby="accTxTitle">
+      <div class="fd-drawer-head">
+        <span class="fd-drawer-icon">{{ icon('wallet', 24) }}</span>
+        <div class="fd-drawer-titles">
+          <h2 class="fd-drawer-title" id="accTxTitle">{{ _('accounts_add_title') }}</h2>
+          <p class="fd-drawer-hint">Ctrl+S للحفظ · Esc للإغلاق</p>
+        </div>
+        <button type="button" class="fd-close-btn" onclick="closeAccDrawers()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+      </div>
+      <div class="fd-drawer-body">
+        <section class="fd-section">
+          <div class="fd-section-head"><span class="fd-section-title">{{ icon('receipt', 18) }}بيانات الحركة</span></div>
+          <label class="fd-field"><span>{{ _('pay_from_account') }} <b class="fd-req">*</b></span>
+            <select name="treasury_account_id" id="accTreasury" required>
+              {% for acc in treasury_choices|default([]) %}
+              <option value="{{ acc.id }}">{{ acc.name }}{% if acc.is_cash %} ({{ _('treasury_cash') }}){% else %} ({{ _('treasury_bank') }}){% endif %}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="fd-field"><span>{{ _('accounts_col_type') }} <b class="fd-req">*</b><span data-help="accounts.journal"></span></span>
+            <select name="type" id="accType" required>
+              <option value="deposit">{{ _('accounts_type_deposit') }}</option>
+              <option value="withdraw">{{ _('accounts_type_withdraw') }}</option>
+            </select>
+          </label>
+          <label class="fd-field"><span>{{ _('accounts_col_amount') }} (د.ع) <b class="fd-req">*</b><span data-help="accounts.balance"></span></span>
+            <input name="amount" id="accAmount" type="number" placeholder="{{ _('accounts_field_amount_placeholder') }}" required min="1" inputmode="numeric">
+          </label>
+          <label class="fd-field"><span>{{ _('accounts_col_note') }} <b class="fd-req">*</b></span>
+            <input name="note" id="accNote" required autocomplete="off" placeholder="سبب واضح للحركة (مطلوب)">
+          </label>
+          <p class="fd-muted acc-type-hint" id="accTypeHint"></p>
+        </section>
+      </div>
+      <div class="fd-drawer-foot">
+        <button type="submit" class="fd-btn fd-btn--primary">{{ icon('check-circle', 18) }}<span>{{ _('accounts_save_button') }}</span></button>
+        <button type="button" class="fd-btn" onclick="closeAccDrawers()">إلغاء</button>
+      </div>
+    </form>
   </div>
 
+  <!-- Drawer: transfer between treasury accounts -->
+  <div class="fd-drawer" id="accTransferDrawer" hidden>
+    <form class="fd-drawer-panel" method="post" action="{{ url_for('accounts.treasury_transfer') }}" id="accTransferForm" role="dialog" aria-modal="true" aria-labelledby="accTransferTitle">
+      <div class="fd-drawer-head">
+        <span class="fd-drawer-icon">{{ icon('truck', 24) }}</span>
+        <div class="fd-drawer-titles">
+          <h2 class="fd-drawer-title" id="accTransferTitle">{{ _('treasury_transfer') }}</h2>
+          <p class="fd-drawer-hint">Ctrl+S للحفظ · Esc للإغلاق</p>
+        </div>
+        <button type="button" class="fd-close-btn" onclick="closeAccDrawers()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+      </div>
+      <div class="fd-drawer-body">
+        <div class="fd-form-error" id="accTransferError" role="alert" hidden></div>
+        <section class="fd-section">
+          <div class="fd-grid-2">
+            <label class="fd-field"><span>{{ _('treasury_from_account') }} <b class="fd-req">*</b></span>
+              <select name="from_account_id" id="fromAccount" required>
+                {% for acc in treasury_choices|default([]) %}<option value="{{ acc.id }}">{{ acc.name }}</option>{% endfor %}
+              </select>
+            </label>
+            <label class="fd-field"><span>{{ _('treasury_to_account') }} <b class="fd-req">*</b></span>
+              <select name="to_account_id" id="toAccount" required>
+                {% for acc in treasury_choices|default([]) %}<option value="{{ acc.id }}">{{ acc.name }}</option>{% endfor %}
+              </select>
+            </label>
+          </div>
+          <label class="fd-field"><span>{{ _('accounts_col_amount') }} (د.ع) <b class="fd-req">*</b></span>
+            <input name="amount" id="transferAmount" type="number" min="1" required inputmode="numeric">
+          </label>
+          <label class="fd-field"><span>{{ _('accounts_col_note') }}</span>
+            <input name="note" id="transferNote" autocomplete="off" placeholder="{{ _('accounts_field_note_placeholder') }}">
+          </label>
+        </section>
+      </div>
+      <div class="fd-drawer-foot">
+        <button type="submit" class="fd-btn fd-btn--primary">{{ icon('check-circle', 18) }}<span>{{ _('treasury_transfer_button') }}</span></button>
+        <button type="button" class="fd-btn" onclick="closeAccDrawers()">إلغاء</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Drawer: add bank -->
+  <div class="fd-drawer" id="accBankDrawer" hidden>
+    <form class="fd-drawer-panel" method="post" action="{{ url_for('accounts.add_bank') }}" id="accBankForm" role="dialog" aria-modal="true" aria-labelledby="accBankTitle">
+      <div class="fd-drawer-head">
+        <span class="fd-drawer-icon">{{ icon('layers', 24) }}</span>
+        <div class="fd-drawer-titles">
+          <h2 class="fd-drawer-title" id="accBankTitle">{{ _('add_bank') }}</h2>
+          <p class="fd-drawer-hint">Ctrl+S للحفظ · Esc للإغلاق</p>
+        </div>
+        <button type="button" class="fd-close-btn" onclick="closeAccDrawers()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+      </div>
+      <div class="fd-drawer-body">
+        <section class="fd-section">
+          <label class="fd-field"><span>{{ _('treasury_bank_name') }} <b class="fd-req">*</b></span>
+            <input name="bank_name" id="bankName" required autocomplete="off" placeholder="{{ _('treasury_bank_name_placeholder') }}">
+          </label>
+        </section>
+      </div>
+      <div class="fd-drawer-foot">
+        <button type="submit" class="fd-btn fd-btn--primary">{{ icon('check-circle', 18) }}<span>{{ _('add_bank_button') }}</span></button>
+        <button type="button" class="fd-btn" onclick="closeAccDrawers()">إلغاء</button>
+      </div>
+    </form>
+  </div>
 </div>
 
+<script type="application/json" id="accountsData">[
+  {% for t in transactions %}{% set cat = t.display_category() %}
+  {"id": {{ t.id }}, "type": {{ (t.type or '')|tojson }}, "cat": {{ cat|tojson }},
+   "owner": {{ 'true' if (t.is_owner_deposit() or t.is_owner_withdrawal()) else 'false' }},
+   "amount": {{ t.amount or 0 }}, "note": {{ (t.note or '')|tojson }},
+   "account_id": {{ t.treasury_account_id or 'null' }},
+   "account": {{ (t.treasury_account.name if t.treasury_account else _('treasury_cash'))|tojson }},
+   "transfer_id": {{ t.treasury_transfer_id or 'null' }},
+   "date": {{ (t.created_at.strftime('%Y-%m-%d') if t.created_at else '')|tojson }},
+   "time": {{ (t.created_at.strftime('%H:%M') if t.created_at else '')|tojson }}}{% if not loop.last %},{% endif %}
+  {% endfor %}
+]</script>
+
+<script src="/static/js/finora-ui.js?v=20261018c"></script>
 <script>
+  const F = window.FinoraUI;
+  const byId = id => document.getElementById(id);
+  const ACC_PAGE_SIZES = [10, 25, 50, 100];
+  const ACC_PAGE_SIZE_KEY = "accounts_page_size";
+  const ACC_CURRENCY = {{ _('accounts_currency_iqd')|tojson }};
+  const ACC_CATS = {
+    deposit: { label: {{ _('accounts_type_deposit_short')|tojson }}, pill: "green", sign: 1 },
+    withdraw: { label: {{ _('accounts_type_withdraw_short')|tojson }}, pill: "red", sign: -1 },
+    expense: { label: {{ _('accounts_type_expense_short')|tojson }}, pill: "amber", sign: -1 },
+    expense_cancel: { label: {{ _('accounts_type_expense_cancel_short')|tojson }}, pill: "blue", sign: 1 }
+  };
+  const ACC_EMPTY = {{ _('accounts_empty_state')|tojson }};
+  let accData = [];
+  let accCat = "";
+  let accQuick = "";
+  let accPage = 0;
+  let accDetailId = null;
+  const accFilterIds = ["accFilterFrom", "accFilterTo", "accFilterAccount", "accFilterSource"];
+
+  const catOf = t => ACC_CATS[t.cat] || ACC_CATS.withdraw;
+  const accMoney = v => '<span dir="ltr">' + F.num(v) + " " + F.esc(ACC_CURRENCY) + "</span>";
+
+  function accPageSize() {
+    try {
+      const saved = parseInt(localStorage.getItem(ACC_PAGE_SIZE_KEY), 10);
+      if (ACC_PAGE_SIZES.includes(saved)) return saved;
+    } catch (e) { /* storage unavailable */ }
+    return 25;
+  }
+
+  function filteredAcc() {
+    const q = byId("accSearch").value.trim().toLowerCase();
+    const from = byId("accFilterFrom").value;
+    const to = byId("accFilterTo").value;
+    const account = byId("accFilterAccount").value;
+    const source = byId("accFilterSource").value;
+    return accData.filter(t => {
+      if (accCat && t.cat !== accCat) return false;
+      if (accQuick === "owner_deposit" && !(t.owner && t.type === "deposit")) return false;
+      if (accQuick === "owner_withdraw" && !(t.owner && t.type === "withdraw")) return false;
+      if (from && t.date < from) return false;
+      if (to && t.date > to) return false;
+      if (account && String(t.account_id || "") !== account) return false;
+      if (source === "owner" && !t.owner) return false;
+      if (source === "auto" && t.owner) return false;
+      if (q && !((t.note + " " + t.account + " " + t.amount + " " + catOf(t).label).toLowerCase().includes(q))) return false;
+      return true;
+    });
+  }
+
+  function syncAccUi() {
+    const counts = { "": accData.length };
+    accData.forEach(t => { counts[t.cat] = (counts[t.cat] || 0) + 1; });
+    document.querySelectorAll("#accChips [data-count]").forEach(el => {
+      el.textContent = F.num(counts[el.getAttribute("data-count")] || 0);
+    });
+    document.querySelectorAll("#accChips .fd-chip").forEach(chip => {
+      chip.classList.toggle("active", (chip.getAttribute("data-acc-cat") || "") === accCat);
+    });
+    document.querySelectorAll("#fdPage [data-acc-quick]").forEach(card => {
+      card.classList.toggle("active", card.getAttribute("data-acc-quick") === accQuick);
+    });
+    const active = accFilterIds.filter(id => byId(id).value).length;
+    const badge = byId("accFilterCount");
+    badge.hidden = active === 0;
+    badge.textContent = String(active);
+  }
+
+  function typePill(t) {
+    const c = catOf(t);
+    return `<span class="fd-pill fd-pill--${c.pill}">${F.esc(c.label)}</span>`;
+  }
+
+  function renderAcc() {
+    F.closeRowMenu();
+    syncAccUi();
+    const rows = filteredAcc();
+    const size = accPageSize();
+    const pages = Math.max(1, Math.ceil(rows.length / size));
+    accPage = Math.min(accPage, pages - 1);
+    const pageRows = rows.slice(accPage * size, (accPage + 1) * size);
+
+    let inSum = 0, outSum = 0;
+    rows.forEach(t => { if (catOf(t).sign > 0) inSum += t.amount; else outSum += t.amount; });
+    byId("accTotals").innerHTML = rows.length
+      ? `داخل <b class="acc-pos">${F.num(inSum)}</b> · خارج <b class="acc-neg">${F.num(outSum)}</b> ${F.esc(ACC_CURRENCY)}`
+      : "";
+    const from = rows.length ? accPage * size + 1 : 0;
+    byId("accRange").innerHTML = "عرض " + F.num(from) + "–" + F.num(Math.min(rows.length, (accPage + 1) * size)) + " من <b>" + F.num(rows.length) + "</b> حركة";
+    byId("accPager").innerHTML = F.pagerHtml(accPage, pages, "data-acc-page");
+
+    const tbody = byId("accBody");
+    if (!pageRows.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="fd-empty">' + (accData.length ? "لا توجد حركات مطابقة." : F.esc(ACC_EMPTY)) + "</td></tr>";
+      return;
+    }
+    tbody.innerHTML = pageRows.map(t => {
+      const c = catOf(t);
+      return `
+      <tr data-acc-row="${t.id}" class="${t.id === accDetailId ? "is-open" : ""}" style="cursor:pointer">
+        <td class="fd-td-title" data-label="{{ _('accounts_col_type') }}">${typePill(t)}</td>
+        <td data-label="{{ _('accounts_col_amount') }}"><b class="${c.sign > 0 ? "acc-pos" : "acc-neg"}">${accMoney(t.amount)}</b></td>
+        <td data-label="{{ _('treasury_account_col') }}" class="fd-col-opt2">${F.esc(t.account)}</td>
+        <td data-label="{{ _('accounts_col_note') }}" class="acc-note-cell${F.blank(t.note) ? " fd-td-blank" : ""}" title="${F.esc(t.note)}">${F.dash(t.note)}</td>
+        <td data-label="{{ _('accounts_col_date') }}" class="fd-cell-muted"><span dir="ltr">${F.esc(t.date)} ${F.esc(t.time)}</span></td>
+        <td class="fd-col-actions">
+          <button type="button" class="fd-more-btn" data-fd-row-menu="${t.id}" aria-haspopup="menu" aria-label="إجراءات" title="إجراءات"></button>
+        </td>
+      </tr>`;
+    }).join("");
+  }
+
+  // ---- Detail panel ----
+  const accKv = (key, value) => `<div class="fd-kv-row"><span class="fd-kv-key">${key}</span><span class="fd-kv-val">${value}</span></div>`;
+  const findAcc = id => accData.find(t => t.id === Number(id));
+
+  function openAccDetail(id) {
+    const t = findAcc(id);
+    if (!t) return;
+    accDetailId = t.id;
+    const c = catOf(t);
+    byId("accDetailTitle").textContent = c.label + " — " + F.num(t.amount) + " " + ACC_CURRENCY;
+    byId("accDetailSub").textContent = t.date + " " + t.time;
+    byId("accDetailBody").innerHTML = `
+      <div class="fd-detail-status">${typePill(t)} <span class="fd-pill fd-pill--${t.owner ? "purple" : "gray"}">${t.owner ? "حركة مالك (رأس المال)" : "حركة آلية"}</span></div>
+      <div class="fd-kv">
+        ${accKv("{{ _('accounts_col_type') }}", F.esc(c.label))}
+        ${accKv("{{ _('accounts_col_amount') }}", `<b class="${c.sign > 0 ? "acc-pos" : "acc-neg"}">${accMoney(t.amount)}</b>`)}
+        ${accKv("{{ _('treasury_account_col') }}", F.esc(t.account))}
+        ${accKv("{{ _('accounts_col_date') }}", `<span dir="ltr">${F.esc(t.date)} ${F.esc(t.time)}</span>`)}
+        ${accKv("الأثر على الصندوق", c.sign > 0 ? "يزيد الرصيد" : "ينقص الرصيد")}
+        ${t.transfer_id ? accKv("تحويل", "#" + F.num(t.transfer_id)) : ""}
+        ${accKv("رقم الحركة", "#" + F.num(t.id))}
+      </div>
+      ${F.blank(t.note) ? "" : `<div class="fd-stock-line" style="font-weight:500;">${F.esc(t.note)}</div>`}
+      <div class="fd-detail-actions">
+        <a class="fd-btn fd-btn--soft fd-btn--sm" href="/cash">الصندوق</a>
+        ${t.cat === "expense" || t.cat === "expense_cancel" ? '<a class="fd-btn fd-btn--sm" href="/expenses">المصاريف</a>' : ""}
+        <button type="button" class="fd-btn fd-btn--sm" data-acc-copy="${t.id}">نسخ الملاحظة</button>
+      </div>`;
+    F.show(byId("accDetail"));
+    document.querySelectorAll("#accBody tr[data-acc-row]").forEach(tr => {
+      tr.classList.toggle("is-open", Number(tr.getAttribute("data-acc-row")) === t.id);
+    });
+  }
+
+  function closeAccDetail() {
+    accDetailId = null;
+    F.hide(byId("accDetail"));
+    document.querySelectorAll("#accBody tr.is-open").forEach(tr => tr.classList.remove("is-open"));
+  }
+
+  function copyAccNote(id) {
+    const t = findAcc(id);
+    if (!t || !navigator.clipboard) return;
+    navigator.clipboard.writeText(t.note || "").then(() => F.toast("تم نسخ الملاحظة", "success")).catch(() => {});
+  }
+
+  // ---- Drawers ----
+  const ACC_DRAWERS = ["accTxDrawer", "accTransferDrawer", "accBankDrawer"];
+  const ACC_FIRST_FIELD = { accTxDrawer: "accAmount", accTransferDrawer: "transferAmount", accBankDrawer: "bankName" };
+
+  function openAccDrawer(id, preset) {
+    closeAccDetail();
+    F.closePop();
+    F.closeRowMenu();
+    closeAccDrawers();
+    if (id === "accTxDrawer") {
+      const form = byId("accountsTransactionForm");
+      form.reset();
+      delete form.dataset.confirmed;
+      if (preset && preset.type) byId("accType").value = preset.type;
+      if (preset && preset.account_id) byId("accTreasury").value = String(preset.account_id);
+      syncTypeHint();
+    }
+    if (id === "accTransferDrawer") {
+      byId("accTransferForm").reset();
+      byId("accTransferError").hidden = true;
+      const to = byId("toAccount");
+      if (to.options.length > 1 && to.value === byId("fromAccount").value) to.selectedIndex = 1;
+    }
+    if (id === "accBankDrawer") byId("accBankForm").reset();
+    F.show(byId(id));
+    setTimeout(() => { const el = byId(ACC_FIRST_FIELD[id]); if (el) el.focus(); }, 40);
+  }
+
+  function closeAccDrawers() { ACC_DRAWERS.forEach(id => F.hide(byId(id))); }
+
+  function syncTypeHint() {
+    const deposit = byId("accType").value === "deposit";
+    byId("accTypeHint").textContent = deposit
+      ? "الإيداع يزيد «إجمالي الإيداعات» و«الرصيد الحالي»، ولا يغير أرباح الطلبات."
+      : "السحب يزيد «إجمالي السحوبات» وينقص «الرصيد الحالي»، ولا يغير أرباح الطلبات.";
+  }
+
   function confirmAccountsTransaction(event) {
     const form = event.currentTarget;
     if (form.dataset.confirmed === "1") return true;
@@ -788,5 +726,112 @@
 
     return false;
   }
+
+  function checkTransfer(event) {
+    const err = byId("accTransferError");
+    if (byId("fromAccount").value === byId("toAccount").value) {
+      event.preventDefault();
+      err.textContent = "اختر حسابين مختلفين للتحويل.";
+      err.hidden = false;
+      return;
+    }
+    err.hidden = true;
+  }
+
+  // ---- Row menu / filters / export ----
+  function openAccMenu(trigger) {
+    const id = Number(trigger.getAttribute("data-fd-row-menu"));
+    const t = findAcc(id);
+    if (!t) return;
+    const items = [{ act: "view", label: "عرض التفاصيل" }];
+    if (!F.blank(t.note)) items.push({ act: "copy", label: "نسخ الملاحظة" });
+    items.push("sep",
+      { act: "deposit", label: "إيداع جديد في " + t.account },
+      { act: "withdraw", label: "سحب جديد من " + t.account },
+      "sep",
+      { href: "/cash", label: "فتح الصندوق" });
+    F.rowMenu(trigger, items, act => {
+      if (act === "view") openAccDetail(id);
+      if (act === "copy") copyAccNote(id);
+      if (act === "deposit" || act === "withdraw") openAccDrawer("accTxDrawer", { type: act, account_id: t.account_id });
+    });
+  }
+
+  function clearAccFilters() {
+    accFilterIds.forEach(id => { byId(id).value = ""; });
+    accPage = 0;
+    renderAcc();
+  }
+
+  function exportAccCsv() {
+    const cell = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+    const lines = [["النوع", "المبلغ", "الحساب", "الملاحظة", "التاريخ", "المصدر"].map(cell).join(",")];
+    filteredAcc().forEach(t => {
+      lines.push([catOf(t).label, t.amount, t.account, t.note, t.date + " " + t.time, t.owner ? "مالك" : "آلية"].map(cell).join(","));
+    });
+    const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "accounts-movements.csv";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  document.addEventListener("click", event => {
+    const t = event.target;
+    if (!t.closest) return;
+    const menu = t.closest("[data-fd-row-menu]");
+    if (menu) { openAccMenu(menu); return; }
+    const page = t.closest("[data-acc-page]");
+    if (page && !page.disabled) {
+      const v = page.getAttribute("data-acc-page");
+      accPage = v === "prev" ? accPage - 1 : v === "next" ? accPage + 1 : parseInt(v, 10) || 0;
+      renderAcc();
+      return;
+    }
+    const chip = t.closest("[data-acc-cat]");
+    if (chip) { accCat = chip.getAttribute("data-acc-cat") || ""; accQuick = ""; accPage = 0; renderAcc(); return; }
+    const quick = t.closest("[data-acc-quick]");
+    if (quick && !t.closest("a")) {
+      const v = quick.getAttribute("data-acc-quick");
+      accQuick = accQuick === v ? "" : v;
+      accCat = "";
+      accPage = 0;
+      renderAcc();
+      byId("accTable").scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    const copy = t.closest("[data-acc-copy]");
+    if (copy) { copyAccNote(copy.getAttribute("data-acc-copy")); return; }
+    const row = t.closest("tr[data-acc-row]");
+    if (row && !t.closest("a, button")) openAccDetail(row.getAttribute("data-acc-row"));
+  });
+
+  document.addEventListener("DOMContentLoaded", () => {
+    try { accData = JSON.parse(byId("accountsData").textContent); } catch (e) { accData = []; }
+    const size = byId("accPageSize");
+    size.value = String(accPageSize());
+    size.addEventListener("change", () => {
+      try { localStorage.setItem(ACC_PAGE_SIZE_KEY, size.value); } catch (e) { /* storage unavailable */ }
+      accPage = 0;
+      renderAcc();
+    });
+    byId("accSearch").addEventListener("input", () => { accPage = 0; renderAcc(); });
+    accFilterIds.forEach(id => byId(id).addEventListener("change", () => { accPage = 0; renderAcc(); }));
+    byId("accType").addEventListener("change", syncTypeHint);
+    byId("accTransferForm").addEventListener("submit", checkTransfer);
+    ACC_DRAWERS.forEach(id => {
+      byId(id).addEventListener("click", e => { if (e.target === byId(id)) closeAccDrawers(); });
+    });
+    document.addEventListener("keydown", e => {
+      if (!(e.ctrlKey || e.metaKey) || (e.key !== "s" && e.key !== "S")) return;
+      const open = ACC_DRAWERS.find(id => !byId(id).hidden);
+      if (!open) return;
+      e.preventDefault();
+      byId(open).querySelector("form").requestSubmit();
+    });
+    syncTypeHint();
+    renderAcc();
+  });
 </script>
 {% endblock %}
