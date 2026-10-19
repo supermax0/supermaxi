@@ -405,6 +405,21 @@ export interface WindowState {
 }
 
 export interface FinoraDesktopBridge {
+  lifecycle?: {
+    confirmLeave(): Promise<boolean>;
+    activity(input: { dirty: boolean; saving: boolean }): Promise<void>;
+    reload(): Promise<void>;
+  };
+  pages?: { open(id: string): Promise<void> };
+  updates?: {
+    check(): Promise<{ current: string; latest: string; available: boolean; size: number }>;
+    download(): Promise<{ ready: boolean }>;
+    install(): Promise<void>;
+  };
+  backup?: {
+    export(password: string): Promise<{ saved: boolean }>;
+    restore(password: string): Promise<{ restored: boolean }>;
+  };
   customerRecovery?: CustomerRecoveryBridge;
   stockRecovery?: CustomerRecoveryBridge;
   offline?: OfflineBridge;

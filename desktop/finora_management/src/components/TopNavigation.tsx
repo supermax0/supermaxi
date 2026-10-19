@@ -46,7 +46,7 @@ export function TopNavigation() {
   return (
     <header
       dir="ltr"
-      className="drag-region relative z-30 grid h-[var(--nav-height)] shrink-0 grid-cols-[1fr_auto_1fr] items-center px-6"
+      className="desktop-top-navigation drag-region relative z-30 grid h-[var(--nav-height)] shrink-0 grid-cols-[1fr_auto_1fr] items-center px-6"
     >
       <div className="justify-self-start">
         <FinoraLogo />

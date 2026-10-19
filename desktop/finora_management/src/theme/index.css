@@ -448,3 +448,61 @@
     max-height: 380px;
   }
 }
+
+/* The Windows work area can be smaller than the physical display at high DPI. */
+@media (max-width: 1150px) {
+  .desktop-top-navigation {
+    height: auto;
+    min-height: 112px;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 10px 16px;
+  }
+  .desktop-top-navigation > nav {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    justify-self: center;
+    max-width: calc(100vw - 32px);
+    overflow-x: auto;
+  }
+  .desktop-top-navigation > nav > * {
+    flex-shrink: 0;
+  }
+  .desktop-top-navigation > div:last-child {
+    grid-row: 1;
+    grid-column: 2;
+  }
+  .supplier-details {
+    min-width: 280px;
+    width: 34%;
+  }
+  .settings-navigation {
+    width: 175px;
+    padding: 8px;
+  }
+  [data-window] > div:last-child > div:last-child {
+    padding-left: 12px;
+    padding-right: 12px;
+    padding-bottom: 12px;
+    overflow: auto;
+  }
+}
+@media (max-height: 650px) {
+  [data-window] {
+    --window-inset: 8px;
+  }
+  .settings-navigation {
+    overflow-y: auto;
+  }
+}
+@media (max-width: 850px) {
+  .supplier-details {
+    min-width: 240px;
+  }
+  .settings-navigation {
+    width: 150px;
+  }
+  [role="dialog"] {
+    max-width: calc(100vw - 20px);
+  }
+}

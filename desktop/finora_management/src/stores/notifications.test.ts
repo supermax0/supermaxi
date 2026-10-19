@@ -26,3 +26,24 @@ it("preserves read status through polling and flags newly actionable requests", 
   state.replaceHR([item, { ...item, key: "correction:1" }]);
   expect(useNotifications.getState().unread).toBe(1);
 });
+
+it("keeps read stock alerts stable and removes all operational data when the account changes", () => {
+  const state = useNotifications.getState();
+  const alert = {
+    group: "operations" as const,
+    key: "stock:1:2",
+    tone: "warning" as const,
+    title: "مخزون",
+    body: "",
+    at: 1,
+  };
+  state.add({ tone: "info", title: "متصل", body: "" });
+  state.replaceOperations([alert]);
+  state.markAllRead();
+  state.replaceOperations([alert]);
+  expect(useNotifications.getState().unread).toBe(0);
+  state.add({ group: "operations", tone: "info", title: "طلب جديد", body: "", windowTarget: "orders" });
+  state.clearOperations();
+  expect(useNotifications.getState().items.map((i) => i.title)).toEqual(["متصل"]);
+  expect(useNotifications.getState().unread).toBe(0);
+});

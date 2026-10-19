@@ -27,8 +27,20 @@ async function openDatabase(): Promise<OfflineDatabase> {
   if (!safeStorage.isEncryptionAvailable())
     throw new Error("حماية Windows غير متاحة؛ لم يُفعّل تخزين بيانات الأوفلاين.");
   const directory = path.join(app.getPath("userData"), "offline");
-  const file = path.join(directory, "business.sqlite.enc");
-  const keyFile = path.join(directory, "key.dpapi");
+  let names = { file: "business.sqlite.enc", key: "key.dpapi" };
+  try {
+    const slot = JSON.parse(await fs.readFile(path.join(directory, "current.json"), "utf8")) as {
+      file: string;
+      key: string;
+    };
+    if (!/^slot-[a-f0-9-]{36}\.sqlite\.enc$/.test(slot.file) || !/^slot-[a-f0-9-]{36}\.dpapi$/.test(slot.key))
+      throw Error("مرجع بيانات الاستعادة غير صالح");
+    names = slot;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
+  }
+  const file = path.join(directory, names.file);
+  const keyFile = path.join(directory, names.key);
   let key: Buffer;
   try {
     key = Buffer.from(safeStorage.decryptString(await fs.readFile(keyFile)), "base64");
@@ -70,6 +82,48 @@ export async function getOfflineEngine(
 export function recordOfflineIssue(error: unknown): void {
   issue = error instanceof Error ? error.message : "تعذّر فتح البيانات المحلية؛ لم تُحذف بياناتك.";
   engine?.recordIssue(error);
+}
+export async function flushOfflineWrites(): Promise<void> {
+  if (!database) return;
+  let store: OfflineDatabase;
+  try {
+    store = await database;
+  } catch (error) {
+    recordOfflineIssue(error);
+    return;
+  }
+  await store.settled();
+}
+export async function getOfflineStore() {
+  if (!database) database = openDatabase();
+  return database;
+}
+export async function activateOfflineSlot(slot: { file: string; key: string }) {
+  if (
+    !/^slot-[a-f0-9-]{36}\.sqlite\.enc$/.test(slot.file) ||
+    slot.key !== slot.file.replace(".sqlite.enc", ".dpapi")
+  )
+    throw Error("مرجع بيانات الاستعادة غير صالح");
+  const previous = database;
+  if (previous)
+    await previous
+      .then((store) => store.settled())
+      .catch(() => console.warn("[offline] retained previous slot could not be opened or closed"));
+  await atomicWrite(
+    path.join(app.getPath("userData"), "offline", "current.json"),
+    Buffer.from(JSON.stringify(slot)),
+  );
+  database = null;
+  engine = null;
+  engineServer = null;
+  issue = null;
+  // Outstanding read probes may still hold the previous store. Its files stay intact.
+  if (previous)
+    setTimeout(() => {
+      void previous
+        .then((store) => store.close())
+        .catch(() => console.warn("[offline] retained previous slot could not be opened or closed"));
+    }, 65_000).unref();
 }
 export async function deactivateOffline(): Promise<void> {
   await atomicWrite(

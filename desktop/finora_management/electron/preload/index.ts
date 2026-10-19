@@ -4,6 +4,21 @@ import { IPC } from "../../shared/channels";
 import type { FinoraDesktopBridge, WindowState } from "../../shared/ipc";
 
 const bridge: FinoraDesktopBridge = {
+  lifecycle: {
+    confirmLeave: () => ipcRenderer.invoke(IPC.confirmLeave),
+    activity: (input) => ipcRenderer.invoke(IPC.activity, input),
+    reload: () => ipcRenderer.invoke(IPC.reload),
+  },
+  pages: { open: (id) => ipcRenderer.invoke(IPC.pagesOpen, id) },
+  updates: {
+    check: () => ipcRenderer.invoke(IPC.updateCheck),
+    download: () => ipcRenderer.invoke(IPC.updateDownload),
+    install: () => ipcRenderer.invoke(IPC.updateInstall),
+  },
+  backup: {
+    export: (password) => ipcRenderer.invoke(IPC.backupExport, password),
+    restore: (password) => ipcRenderer.invoke(IPC.backupRestore, password),
+  },
   stockRecovery: {
     list: () => ipcRenderer.invoke(IPC.stockCommandsList),
     retry: (key) => ipcRenderer.invoke(IPC.stockCommandsRetry, key),

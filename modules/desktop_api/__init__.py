@@ -29,6 +29,7 @@ def init_desktop_api(app: Flask) -> None:
     from modules.desktop_api import branches  # noqa: F401 — branches & warehouses (multi-branch management)
     from modules.desktop_api import branch_cash  # noqa: F401 — branch cash transfers (request / approve / receive)
     from modules.desktop_api import permissions  # noqa: F401 — permissions administration
+    from modules.desktop_api import workspace  # noqa: F401 — authenticated desktop workspaces
     from modules.stock_operations import routes as stock_operations_routes  # noqa: F401 — scoped native stock documents
     from modules.inventory_audit import routes as inventory_audit_routes  # noqa: F401 — persistent counting and review
 

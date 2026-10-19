@@ -1,3 +1,4 @@
+import type { WindowId } from "@/windows/registry";
 /** In-app notification center (connection and session events). */
 import { create } from "zustand";
 
@@ -10,7 +11,8 @@ export interface AppNotification {
   body: string;
   at: number;
   read?: boolean;
-  group?: "hr";
+  group?: "hr" | "operations";
+  windowTarget?: WindowId;
   key?: string;
   target?: { tab: string; person_id: number | null; date: string; month: string | null };
 }
@@ -21,6 +23,8 @@ interface NotificationState {
   add(input: Omit<AppNotification, "id" | "at">): void;
   markAllRead(): void;
   clear(): void;
+  clearOperations(): void;
+  replaceOperations(items: Omit<AppNotification, "id">[]): void;
   replaceHR(items: Omit<AppNotification, "id">[]): void;
 }
 
@@ -40,6 +44,23 @@ export const useNotifications = create<NotificationState>()((set, get) => ({
   },
   clear() {
     set({ items: [], unread: 0 });
+  },
+  clearOperations() {
+    const items = get().items.filter((i) => i.group !== "operations");
+    set({ items, unread: items.filter((i) => !i.read).length });
+  },
+  replaceOperations(items) {
+    const old = get().items.filter((i) => i.group === "operations" && i.key);
+    const retained = items.map((i) => ({
+      ...i,
+      id: old.find((p) => p.key === i.key)?.id ?? nextId++,
+      read: old.find((p) => p.key === i.key)?.read ?? false,
+    }));
+    const nextItems = [...retained, ...get().items.filter((i) => i.group !== "operations" || !i.key)].slice(
+      0,
+      MAX_ITEMS,
+    );
+    set({ items: nextItems, unread: nextItems.filter((i) => !i.read).length });
   },
   replaceHR(items) {
     const old = get().items.filter((i) => i.group === "hr");

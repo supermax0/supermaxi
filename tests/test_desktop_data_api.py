@@ -1140,3 +1140,35 @@ def test_online_pos_stock_preview_excludes_device_quota(ctx, colors):
             assert get_available_color_quantity(product_id, "أسود") == 0
             assert available_fulfillment_qty(branch, product_id, "أبيض") == 1
             assert check_stock_rows([{**row, "variant_color": "أبيض"}], preferred_branch_id=branch).can_fulfill
+
+
+def test_desktop_workspace_capabilities_follow_actual_page_permissions(ctx):
+    admin = _client(ctx).get("/api/v1/desktop/workspace", headers=JSON)
+    assert admin.status_code == 200
+    assert {"assets", "maintenance", "notes", "messages", "workspace", "storeSettings", "cameraAudit"}.issubset(admin.get_json()["pages"])
+    clerk = _client(ctx, "clerk_id", role="cashier").get("/api/v1/desktop/workspace", headers=JSON)
+    assert clerk.status_code == 200
+    assert "storeSettings" not in clerk.get_json()["pages"]
+    assert "assets" not in clerk.get_json()["pages"]
+
+
+def test_recovery_quota_read_is_scoped_and_does_not_return_or_consume_stock(ctx):
+    from uuid import uuid4
+    product_id, _ = _quota_product(ctx)
+    client = _client(ctx)
+    payload = _quota_request(ctx, product_id)
+    reserved = client.post("/api/v1/desktop/stock/reserve", json=payload, headers=JSON)
+    assert reserved.status_code == 200
+    path = "/api/v1/desktop/stock/device?device_id=" + payload["device_id"]
+    response = client.get(path, headers=JSON)
+    assert response.status_code == 200, response.get_data(as_text=True)
+    rows = response.get_json()["allocations"]
+    assert len(rows) == 1 and rows[0]["quantity"] == 1 and rows[0]["used"] == rows[0]["returned"] == 0
+    assert rows[0]["id"] == reserved.get_json()["allocations"][0]["id"]
+    assert client.get(path, headers=JSON).get_json() == response.get_json()
+    other = _client(ctx, "clerk_id", role="cashier").get(path, headers=JSON)
+    assert other.status_code in (200, 403)
+    if other.status_code == 200:
+        assert other.get_json()["allocations"] == []
+    assert client.get("/api/v1/desktop/stock/device?device_id=" + str(uuid4()), headers=JSON).get_json()["allocations"] == []
+    assert client.get("/api/v1/desktop/stock/device?device_id=invalid", headers=JSON).status_code == 400

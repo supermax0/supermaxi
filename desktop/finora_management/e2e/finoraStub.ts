@@ -271,6 +271,14 @@ export async function startFinoraStub(
         res.writeHead(302, { Location: "/login" });
         return res.end();
       }
+      if (path === "/api/v1/desktop/workspace")
+        return send(res, 200, { ok: true, pages: ["notes", "messages"] });
+      if (path === "/notes" || path === "/messages") {
+        res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+        return res.end(
+          '<!doctype html><html><body><h1>FINORA workspace</h1><form><label>ملاحظة<input name="note"></label></form></body></html>',
+        );
+      }
       if (
         options.cashShiftServer &&
         (path.startsWith("/api/finance/") ||

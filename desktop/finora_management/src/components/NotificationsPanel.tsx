@@ -47,6 +47,18 @@ export function NotificationsPanel() {
                     </time>
                   </div>
                   <p className="mt-0.5 text-xs leading-5 text-ink-soft">{item.body}</p>
+                  {item.windowTarget && (
+                    <button
+                      type="button"
+                      className="mt-2 text-xs text-violet hover:underline"
+                      onClick={() => {
+                        if (item.windowTarget) useWindowManager.getState().open(item.windowTarget);
+                        useUi.getState().closePanel();
+                      }}
+                    >
+                      فتح الصفحة
+                    </button>
+                  )}
                   {item.target && (
                     <button
                       type="button"

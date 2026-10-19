@@ -31,7 +31,10 @@ import { OfflineSettingsSection } from "./OfflineSettingsSection";
 import { SectionCard, SettingRow, Switch } from "./primitives";
 import { SoundSettingsSection } from "./SoundSettingsSection";
 
-type SectionId = "account" | "orders" | "pos" | "appearance" | "sounds" | "connection" | "offline";
+import { RecoverySettingsSection, UpdateSettingsSection } from "./RecoverySettingsSection";
+
+type SectionId =
+  "account" | "orders" | "pos" | "appearance" | "sounds" | "connection" | "offline" | "recovery" | "updates";
 
 interface SectionDef {
   id: SectionId;
@@ -201,6 +204,8 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose(): vo
     { id: "appearance", label: "المظهر والاختصارات", icon: Palette },
     { id: "sounds", label: "الأصوات", icon: Volume2 },
     { id: "connection", label: "الاتصال", icon: Server },
+    { id: "recovery", label: "النسخ والاستعادة", icon: Cloud },
+    { id: "updates", label: "تحديث التطبيق", icon: Server },
     { id: "offline", label: "الأوفلاين والمزامنة", icon: Cloud },
   ];
   const [section, setSection] = useState<SectionId>("account");
@@ -242,7 +247,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose(): vo
           >
             <nav
               aria-label="أقسام الإعدادات"
-              className="flex w-[220px] shrink-0 flex-col gap-1 border-e border-line/70 bg-surface-sunken/60 p-4"
+              className="settings-navigation flex w-[220px] shrink-0 flex-col gap-1 border-e border-line/70 bg-surface-sunken/60 p-4"
             >
               <h2 className="px-3 pb-3 pt-1 text-lg font-bold text-ink">الإعدادات</h2>
               {sections.map((item) => {
@@ -298,6 +303,8 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose(): vo
                   {section === "connection" && <ConnectionSection />}
                   {section === "sounds" && <SoundSettingsSection />}
                   {section === "offline" && <OfflineSettingsSection />}
+                  {section === "recovery" && <RecoverySettingsSection />}
+                  {section === "updates" && <UpdateSettingsSection />}
                 </motion.div>
               </AnimatePresence>
             </div>

@@ -1,3 +1,4 @@
+import { closeIsolatedApp } from "./closeIsolatedApp";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -52,7 +53,7 @@ test("POS cash sale offline after restart consumes its device quota and synchron
     await expect(pos.getByRole("checkbox", { name: "البيع من حصة هذا الجهاز", exact: true })).toBeChecked();
     await expect.poll(async () => (await localStatus(page)).stock?.rows[0]?.available).toBe(1);
     stub.setOnline(false);
-    await app.close();
+    await closeIsolatedApp(app);
     app = undefined;
     app = await launch();
     page = await app.firstWindow();
@@ -74,7 +75,7 @@ test("POS cash sale offline after restart consumes its device quota and synchron
       ),
     ).toBe(false);
     await page.screenshot({ path: path.join(appDir, "test-results", "offline-pos-sale.png") });
-    await app.close();
+    await closeIsolatedApp(app);
     app = undefined;
     app = await launch();
     page = await app.firstWindow();
@@ -92,7 +93,7 @@ test("POS cash sale offline after restart consumes its device quota and synchron
       reservations: [{ qty: 1 }],
     });
   } finally {
-    if (app) await app.close();
+    if (app) await closeIsolatedApp(app);
     await stub.close();
     rmSync(profile, { recursive: true, force: true });
   }
@@ -130,7 +131,7 @@ test("complete download supplies unvisited supplier details and colored products
     expect(stub.requests.some((r) => r.includes("/suppliers/api/9"))).toBe(false);
     expect(stub.requests.some((r) => r.includes("/suppliers/api/sale-products"))).toBe(false);
     stub.setOnline(false);
-    await app.close();
+    await closeIsolatedApp(app);
     app = undefined;
     app = await launch();
     page = await app.firstWindow();
@@ -157,7 +158,7 @@ test("complete download supplies unvisited supplier details and colored products
     await expect(sale).not.toBeVisible();
     expect(stub.bodies.filter((b) => b.path === "/api/v1/desktop/sync/supplier-sale")).toHaveLength(0);
   } finally {
-    if (app) await app.close();
+    if (app) await closeIsolatedApp(app);
     await stub.close();
     rmSync(profile, { recursive: true, force: true });
   }
@@ -206,7 +207,7 @@ test("encrypted offline restart, local sale draft and reconnect replay", async (
     await expect(sale.getByRole("button", { name: /شاشة LG 50/ })).toBeVisible();
     await sale.getByRole("button", { name: "إلغاء", exact: true }).click();
     stub.setOnline(false);
-    await app.close();
+    await closeIsolatedApp(app);
     app = undefined;
     app = await launch();
     page = await app.firstWindow();
@@ -238,7 +239,7 @@ test("encrypted offline restart, local sale draft and reconnect replay", async (
     const encrypted = readFileSync(path.join(profile, "offline", "business.sqlite.enc"));
     expect(encrypted.toString()).not.toContain("شركة الأمل");
     expect(encrypted.toString()).not.toContain(STUB_CREDENTIALS.password);
-    await app.close();
+    await closeIsolatedApp(app);
     app = undefined;
     app = await launch();
     page = await app.firstWindow();
@@ -251,7 +252,7 @@ test("encrypted offline restart, local sale draft and reconnect replay", async (
     expect(stub.bodies.filter((b) => b.path === "/api/v1/desktop/sync/supplier-sale")).toHaveLength(1);
     await page.screenshot({ path: path.join(appDir, "test-results", "offline-synchronized.png") });
   } finally {
-    if (app) await app.close();
+    if (app) await closeIsolatedApp(app);
     await stub.close();
     rmSync(profile, { recursive: true, force: true });
   }

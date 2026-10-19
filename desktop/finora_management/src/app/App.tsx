@@ -10,9 +10,11 @@ import { useInterfaceSounds } from "@/hooks/useInterfaceSounds";
 import { usePreferences } from "@/stores/preferences";
 import { useSession } from "@/stores/session";
 import { createQueryClient } from "./queryClient";
+import { useExitProtection } from "@/hooks/useExitProtection";
 import { Shell } from "./Shell";
 
 function SessionGate() {
+  useExitProtection();
   useSessionProbe();
   useFinoraLifecycle();
   useOfflineStatus();

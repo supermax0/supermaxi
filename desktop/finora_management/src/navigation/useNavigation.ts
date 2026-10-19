@@ -1,3 +1,8 @@
+import { PanelsTopLeft } from "lucide-react";
+import { WORKSPACE_PAGES, type WorkspacePageId } from "@shared/workspacePages";
+import { useWorkspaceCapabilities, workspaceIdentity } from "@/hooks/useConnectedWorkspaces";
+import { desktopBridge } from "@/services/bridge";
+import { toast } from "@/stores/toasts";
 import { createContext, useContext, useMemo } from "react";
 import type { Permission } from "@/api/finora/schemas";
 import { useNavigationPrefs } from "@/stores/navigationPrefs";
@@ -28,6 +33,8 @@ export interface Navigation {
 export function useNavigation(): Navigation {
   const config = useContext(NavigationConfigContext);
   const permissions = useSession((s) => s.session?.permissions);
+  const session = useSession((s) => s.session);
+  const capabilities = useWorkspaceCapabilities();
   return useMemo(() => {
     const allowed = (item: NavItem) => {
       if (
@@ -39,12 +46,41 @@ export function useNavigation(): Navigation {
       const needed = requiredPermission(item);
       return !needed || (permissions?.includes(needed) ?? false);
     };
-    const groups = config
+    const connected: NavGroup[] =
+      config === NAV_GROUPS &&
+      capabilities.identity === workspaceIdentity(session) &&
+      capabilities.pages.length
+        ? [
+            {
+              id: "connected-workspaces",
+              title: "مساحات العمل",
+              items: capabilities.pages
+                .filter((id) => id in WORKSPACE_PAGES)
+                .map((id) => ({
+                  id: `workspace-${id}`,
+                  label: WORKSPACE_PAGES[id as WorkspacePageId].title,
+                  icon: PanelsTopLeft,
+                  description: "صفحة متصلة بخادم FINORA",
+                  target: {
+                    kind: "run" as const,
+                    run: () => {
+                      void desktopBridge()
+                        .pages?.open(id)
+                        .catch((error: unknown) =>
+                          toast.error(error instanceof Error ? error.message : "تعذّر فتح الصفحة"),
+                        );
+                    },
+                  },
+                })),
+            },
+          ]
+        : [];
+    const groups = [...config, ...connected]
       .map((group) => ({ ...group, items: group.items.filter(allowed) }))
       .filter((group) => group.items.length > 0);
     const items = groups.flatMap((group) => group.items);
     return { groups, items, byId: new Map(items.map((item) => [item.id, item])) };
-  }, [config, permissions]);
+  }, [config, permissions, capabilities, session]);
 }
 
 /** Opens a navigation item through the app's existing navigation and remembers it as recently used. */

@@ -20,6 +20,29 @@ export class OfflineStock {
     private context: () => Context | null,
     private sender: (request: FinoraRequest) => Promise<FinoraResponse>,
   ) {}
+  async returnRecovered(parts: { id: string; qty: number }[]) {
+    const context = this.context();
+    if (!context?.session.branch) throw Error("حدّث جلسة الدخول قبل مراجعة الرصيد المستعاد");
+    const id = randomUUID();
+    const payload = {
+      id,
+      device_id: String(this.store.one("SELECT value FROM metadata WHERE key='device'")?.value),
+      branch_id: context.session.branch.id,
+      parts: stockPartsSchema.parse(parts),
+    };
+    await this.store.write(() => {
+      this.assertScope(context);
+      if (this.store.one("SELECT id FROM stock_requests WHERE scope=? AND state='pending'", [context.id]))
+        throw Error("أكمل طلب الحصة الحالي أولاً");
+      this.store.run("INSERT INTO stock_requests VALUES (?,?,?,?,'pending',NULL)", [
+        id,
+        context.id,
+        "return",
+        JSON.stringify(payload),
+      ]);
+    });
+    await this.request("resume");
+  }
   status(): DeviceStockStatus {
     const context = this.context();
     const task =

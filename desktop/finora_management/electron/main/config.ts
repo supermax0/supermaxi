@@ -4,6 +4,7 @@ import path from "node:path";
 import { app } from "electron";
 import { z } from "zod";
 import { serverUrlSchema, type DesktopConfig } from "../../shared/ipc";
+import { atomicWrite } from "./offlineDatabase";
 
 const storedSchema = z.object({
   serverUrl: z.string().nullable().catch(null),
@@ -47,12 +48,9 @@ async function load(): Promise<StoredConfig> {
 }
 
 async function save(next: StoredConfig): Promise<void> {
-  cache = next;
   const file = configPath();
-  await fs.mkdir(path.dirname(file), { recursive: true });
-  const tmp = `${file}.tmp`;
-  await fs.writeFile(tmp, JSON.stringify(next, null, 2), "utf8");
-  await fs.rename(tmp, file);
+  await atomicWrite(file, Buffer.from(JSON.stringify(next, null, 2), "utf8"));
+  cache = next;
 }
 
 function toPublic(config: StoredConfig): DesktopConfig {

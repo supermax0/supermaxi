@@ -16,6 +16,7 @@ import {
   type SupplierDraft,
 } from "../../shared/offline";
 import { sessionEnvelopeSchema, type FinoraSession } from "../../src/api/finora/schemas";
+import { pendingLocalWork } from "./portableStore";
 import { OfflineDatabase } from "./offlineDatabase";
 import { OfflineSnapshot } from "./offlineSnapshot";
 import { snapshotQuery } from "./snapshotQueries";
@@ -155,6 +156,80 @@ export class OfflineEngine {
 
   recordIssue(error: unknown): void {
     this.error = error instanceof Error ? error.message : "تعذّر حفظ بيانات الأوفلاين؛ راجع التخزين المحلي.";
+  }
+  private recoveringQuota: Promise<OfflineStatus> | null = null;
+  reconcileRestoredQuota(): Promise<OfflineStatus> {
+    if (!this.recoveringQuota)
+      this.recoveringQuota = this.reconcileQuota().finally(() => {
+        this.recoveringQuota = null;
+      });
+    return this.recoveringQuota;
+  }
+  private async reconcileQuota() {
+    await this.store.settled();
+    const context = this.context();
+    if (
+      !context ||
+      !this.store.one("SELECT value FROM metadata WHERE key=?", [`restored-stock:${context.id}`]) ||
+      pendingLocalWork(this.store, context.id)
+    )
+      return this.status();
+    const device = String(this.store.one("SELECT value FROM metadata WHERE key='device'")?.value);
+    const response = await this.sender({
+      method: "GET",
+      path: "/api/v1/desktop/stock/device",
+      query: { device_id: device },
+    });
+    if (!response.ok || response.source === "offline") return this.status();
+    const rowSchema = z
+      .object({
+        id: z.string().uuid(),
+        grant_id: z.string().uuid(),
+        product_id: z.number().int().positive(),
+        name: z.string(),
+        color: z.string(),
+        quantity: z.number().int().nonnegative(),
+        used: z.number().int().nonnegative(),
+        returned: z.number().int().nonnegative(),
+      })
+      .refine((r) => r.used + r.returned <= r.quantity);
+    const rows = z
+      .object({ success: z.literal(true), allocations: z.array(rowSchema) })
+      .parse(response.data).allocations;
+    if (this.context()?.id !== context.id) throw Error("تغيّرت جلسة الدخول أثناء مراجعة الرصيد");
+    await this.store.write(() => {
+      if (this.context()?.id !== context.id || pendingLocalWork(this.store, context.id))
+        throw Error("تغيّر سياق الاستعادة؛ أعد المزامنة بعد اكتمال العمليات");
+      this.store.run("DELETE FROM device_stock WHERE scope=?", [context.id]);
+      for (const row of rows)
+        this.store.run(
+          "INSERT INTO device_stock(id,scope,grant_id,product_id,name,color,quantity,used,returned,frozen) VALUES (?,?,?,?,?,?,?,?,?,1)",
+          [
+            row.id,
+            context.id,
+            row.grant_id,
+            row.product_id,
+            row.name,
+            row.color,
+            row.quantity,
+            row.used,
+            row.returned,
+          ],
+        );
+    });
+    const parts = rows
+      .filter((r) => r.quantity > r.used + r.returned)
+      .map((r) => ({ id: r.id, qty: r.quantity - r.used - r.returned }));
+    if (parts.length) await this.stock.returnRecovered(parts);
+    await this.store.write(() =>
+      this.store.run("DELETE FROM metadata WHERE key=?", [`restored-stock:${context.id}`]),
+    );
+    return this.status();
+  }
+  backupContext() {
+    const context = this.context();
+    if (!context) throw Error("حدّث جلسة الدخول قبل نسخ البيانات المحلية");
+    return context;
   }
 
   private context() {
@@ -647,7 +722,15 @@ export class OfflineEngine {
     if (!verified.ok || verified.source === "offline")
       throw new Error("يلزم اتصال بالسيرفر لإدارة حصة الجهاز.");
     await this.synchronize();
+    const context = this.context();
+    if (
+      kind !== "resume" &&
+      context &&
+      this.store.one("SELECT value FROM metadata WHERE key=?", [`restored-stock:${context.id}`])
+    )
+      throw Error("أكمل مراجعة حصة المخزون المستعادة من المزامنة أولاً");
     await this.stock.request(kind, input);
+    await this.reconcileRestoredQuota();
     return this.status();
   }
 

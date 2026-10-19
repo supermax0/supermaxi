@@ -1,19 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { AuditSheet } from "./AuditSheet";
 import { FeatureHelp } from "@/components/FeatureHelp";
-import { hasDesktopBridge } from "@/services/bridge";
 
 type DetectorConstructor = {
   new (options: { formats: string[] }): { detect(source: HTMLVideoElement): Promise<{ rawValue: string }[]> };
   getSupportedFormats(): Promise<string[]>;
 };
 export function cameraAuditAvailable() {
-  return (
-    !hasDesktopBridge() &&
-    window.isSecureContext &&
-    !!navigator.mediaDevices?.getUserMedia &&
-    !!(window as Window & { BarcodeDetector?: DetectorConstructor }).BarcodeDetector
-  );
+  return window.isSecureContext && !!navigator.mediaDevices?.getUserMedia;
 }
 export function AuditCamera({
   open,
@@ -39,8 +33,10 @@ export function AuditCamera({
       last = "",
       lastSeen = 0,
       timer: number | undefined;
+    let decoder: { stop(): void } | null = null;
     const stop = () => {
       cancelled = true;
+      decoder?.stop();
       stream?.getTracks().forEach((track) => track.stop());
       cancelAnimationFrame(frame);
       if (timer) window.clearTimeout(timer);
@@ -59,11 +55,11 @@ export function AuditCamera({
       }
       try {
         const Constructor = (window as Window & { BarcodeDetector?: DetectorConstructor }).BarcodeDetector;
-        if (!Constructor) throw Error("unsupported");
-        const formats = (await Constructor.getSupportedFormats()).filter((format) =>
-          ["ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e", "qr_code"].includes(format),
-        );
-        if (!formats.length) throw Error("unsupported");
+        const formats = Constructor
+          ? (await Constructor.getSupportedFormats()).filter((format) =>
+              ["ean_13", "ean_8", "code_128", "code_39", "upc_a", "upc_e", "qr_code"].includes(format),
+            )
+          : [];
         stream = await navigator.mediaDevices.getUserMedia({
           audio: false,
           video: { facingMode: { ideal: "environment" } },
@@ -75,6 +71,25 @@ export function AuditCamera({
         if (!video.current) return;
         video.current.srcObject = stream;
         await video.current.play();
+        if (!Constructor || !formats.length) {
+          const { BrowserMultiFormatReader } = await import("@zxing/browser");
+          if (cancelled) return;
+          decoder = await new BrowserMultiFormatReader(undefined, {
+            delayBetweenScanAttempts: 250,
+            delayBetweenScanSuccess: 250,
+          }).decodeFromVideoElement(video.current, (result) => {
+            if (cancelled || !result) return;
+            const code = result.getText(),
+              now = performance.now();
+            if (code && (last !== code || now - lastSeen > 1200)) {
+              last = code;
+              read.current(code);
+            }
+            if (code) lastSeen = now;
+          });
+          if (cancelled) decoder.stop();
+          return;
+        }
         const detector = new Constructor({ formats });
         const scan = async () => {
           if (cancelled) return;
@@ -105,7 +120,7 @@ export function AuditCamera({
         stop();
         setError(
           problem instanceof DOMException && problem.name === "NotAllowedError"
-            ? "إذن الكاميرا مرفوض؛ فعّله من المتصفح أو استخدم قارئ الباركود"
+            ? "إذن الكاميرا مرفوض؛ راجع إذن التطبيق وخصوصية الكاميرا في Windows أو استخدم قارئ الباركود"
             : "تعذر تشغيل مسح الكاميرا على هذا الجهاز؛ استخدم قارئ الباركود أو البحث",
         );
       }

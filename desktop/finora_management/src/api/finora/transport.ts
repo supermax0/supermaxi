@@ -2,6 +2,7 @@ import type { FinoraFormRequest, FinoraRequest, FinoraResponse } from "@shared/i
 import type { ZodType, ZodTypeDef } from "zod";
 import { desktopBridge } from "@/services/bridge";
 import { errorFromResponse, FinoraApiError } from "./errors";
+import { draftScope } from "@/utils/draftScope";
 import { reportTransportOutcome } from "./transportEvents";
 import { isCustomerCommand } from "@shared/customerRecovery";
 import { isStockCommand } from "@shared/stockRecovery";
@@ -39,7 +40,10 @@ export async function finoraForm<T>(
   request: FinoraFormRequest,
   schema: ZodType<T, ZodTypeDef, unknown>,
 ): Promise<T> {
-  return settle(`POST ${request.path}`, await desktopBridge().finora.submitForm(request), schema);
+  const scope = draftScope(document.activeElement);
+  const result = settle(`POST ${request.path}`, await desktopBridge().finora.submitForm(request), schema);
+  document.dispatchEvent(new CustomEvent("finora:form-saved", { detail: scope }));
+  return result;
 }
 
 export async function finoraCall<T>(
@@ -54,6 +58,7 @@ export async function finoraCall<T>(
     throw new FinoraApiError("refused", {
       message: "أعد تشغيل FINORA المحدث لتفعيل الحفظ الآمن لعمليات المخزون",
     });
+  const scope = request.method === "POST" ? draftScope(document.activeElement) : null;
   const response = await desktopBridge().finora.request(request);
   // Reading the encrypted local journal does not establish server reachability.
   // Reporting it as online would invalidate (and cancel) the same query while
@@ -97,6 +102,7 @@ export async function finoraCall<T>(
         });
     }
   }
+  if (scope) document.dispatchEvent(new CustomEvent("finora:form-saved", { detail: scope }));
   return result;
 }
 

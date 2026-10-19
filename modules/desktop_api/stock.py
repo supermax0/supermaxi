@@ -258,3 +258,28 @@ def return_stock():
         if isinstance(exc, StockReservationError):
             raise
         raise StockReservationError("معرّفات إعادة الحصة غير صحيحة") from exc
+
+
+@desktop_api_bp.get("/stock/device")
+def device_stock_for_recovery():
+    """Authoritative allocations for this authenticated employee, device and branch."""
+    try:
+        employee, branch = _context()
+        device = _uuid(request.args.get("device_id"))
+        ensure_reservation_schema()
+        grants = DesktopStockGrant.query.filter_by(device_id=device, employee_id=employee, branch_id=branch).all()
+        names = {}
+        for grant in grants:
+            for item in json.loads(grant.response_json).get("allocations", []):
+                names[item["id"]] = item.get("name", "")
+        rows = []
+        if grants:
+            for item in DesktopStockAllocation.query.filter(DesktopStockAllocation.grant_id.in_([g.id for g in grants])).all():
+                rows.append({"id": item.id, "grant_id": item.grant_id, "product_id": item.requested_product_id,
+                             "name": names.get(item.id, ""), "color": item.color or "", "quantity": item.quantity,
+                             "used": item.consumed, "returned": item.returned})
+        return jsonify(success=True, allocations=rows)
+    except PermissionError:
+        return jsonify(success=False, error="غير مصرح بمراجعة رصيد هذا الجهاز"), 403
+    except (ValueError, TypeError, KeyError):
+        return jsonify(success=False, error="معرف الجهاز غير صالح"), 400

@@ -3,6 +3,7 @@ import { createCipheriv, createDecipheriv, randomBytes, randomUUID } from "node:
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import initSqlJs, { type Database, type SqlJsStatic, type SqlValue } from "sql.js";
+import { setTimeout as delay } from "node:timers/promises";
 
 const MAGIC = Buffer.from("FINORA-OFFLINE-1\n");
 export function encryptDatabase(data: Uint8Array, key: Buffer): Buffer {
@@ -34,13 +35,32 @@ export async function atomicWrite(file: string, data: Uint8Array): Promise<void>
     } finally {
       await handle.close();
     }
-    await fs.rename(temporary, file);
+    await replaceFile(temporary, file);
     renamed = true;
   } finally {
     if (!renamed)
       await fs.unlink(temporary).catch((error: NodeJS.ErrnoException) => {
         if (error.code !== "ENOENT") throw error;
       });
+  }
+}
+
+/** Windows scanners can hold the destination briefly. Never remove the old checkpoint. */
+export async function replaceFile(
+  temporary: string,
+  file: string,
+  rename: typeof fs.rename = fs.rename,
+  pause: (ms: number) => Promise<unknown> = delay,
+): Promise<void> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await rename(temporary, file);
+      return;
+    } catch (error) {
+      if (attempt >= 6 || !["EPERM", "EBUSY", "EACCES"].includes((error as NodeJS.ErrnoException).code ?? ""))
+        throw error;
+      await pause(Math.min(40 * 2 ** attempt, 640));
+    }
   }
 }
 

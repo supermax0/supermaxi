@@ -1,3 +1,4 @@
+import { closeIsolatedApp } from "./closeIsolatedApp";
 import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -103,7 +104,7 @@ test("product editor keeps its heading and save controls fixed while scrolling a
     await expect(sheet.getByLabel("اسم المنتج", { exact: true })).toBeInViewport();
     await expect(sheet.getByLabel("اسم المنتج", { exact: true })).toHaveValue("");
   } finally {
-    await app.close();
+    await closeIsolatedApp(app);
     await stub.close();
     removeProfile(profile);
   }

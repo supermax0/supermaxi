@@ -1,3 +1,4 @@
+import { closeIsolatedApp } from "./closeIsolatedApp";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -60,7 +61,7 @@ test("Desktop audit keeps encrypted dated counts across offline restart and sync
       })
       .toBe(2);
     server.setOnline(false);
-    await app.close();
+    await closeIsolatedApp(app);
     app = null;
     app = await launch();
     page = await app.firstWindow();
@@ -97,7 +98,7 @@ test("Desktop audit keeps encrypted dated counts across offline restart and sync
       path: path.join(artifacts, "desktop-offline-count.png"),
       animations: "disabled",
     });
-    await app.close();
+    await closeIsolatedApp(app);
     app = null;
     server.setOnline(true);
     app = await launch();
@@ -131,7 +132,7 @@ test("Desktop audit keeps encrypted dated counts across offline restart and sync
     if (app) console.log((await (await app.firstWindow()).locator("body").innerText()).slice(-5000));
     throw error;
   } finally {
-    if (app) await app.close();
+    if (app) await closeIsolatedApp(app);
     await server.close();
     rmSync(profile, { recursive: true, force: true });
   }

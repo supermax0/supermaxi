@@ -146,6 +146,7 @@ export async function fetchFinoraImage(path: string): Promise<{ type: string; da
 }
 
 export async function clearFinoraSession(): Promise<void> {
+  (await import("./connectedPages")).closeWorkspaces();
   try {
     await deactivateOffline();
   } finally {

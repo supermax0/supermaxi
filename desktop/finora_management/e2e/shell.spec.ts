@@ -1,3 +1,4 @@
+import { closeIsolatedApp } from "./closeIsolatedApp";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -89,7 +90,7 @@ test.describe.configure({ mode: "serial" });
 test("sign-in, window morphs, switching, rapid switching, native controls and IPC hardening", async () => {
   const { app, page } = await launch();
   try {
-    // frameless window: 1440×900 (or the work area if smaller), minimum 1180×700
+    // frameless window: 1440×900 (or the work area if smaller), minimum 760×480, clamped to the work area
     const bounds = await app.evaluate(({ BrowserWindow, screen }) => {
       const win = BrowserWindow.getAllWindows()[0];
       const area = screen.getPrimaryDisplay().workAreaSize;
@@ -99,13 +100,9 @@ test("sign-in, window morphs, switching, rapid switching, native controls and IP
     });
     if (!bounds) throw new Error("no window");
     const [areaWidth = 0, areaHeight = 0] = bounds.area;
-    expect(bounds.min).toEqual([1180, 700]);
-    expect(
-      Math.abs((bounds.content[0] ?? 0) - Math.max(Math.min(1440, areaWidth), 1180)),
-    ).toBeLessThanOrEqual(2);
-    expect(Math.abs((bounds.content[1] ?? 0) - Math.max(Math.min(900, areaHeight), 700))).toBeLessThanOrEqual(
-      2,
-    );
+    expect(bounds.min).toEqual([Math.min(760, areaWidth), Math.min(480, areaHeight)]);
+    expect(Math.abs((bounds.content[0] ?? 0) - Math.min(1440, areaWidth))).toBeLessThanOrEqual(2);
+    expect(Math.abs((bounds.content[1] ?? 0) - Math.min(900, areaHeight))).toBeLessThanOrEqual(2);
 
     // wrong password → FINORA's message, no session
     const form = page.getByRole("form", { name: "تسجيل الدخول إلى FINORA" });
@@ -253,7 +250,7 @@ test("sign-in, window morphs, switching, rapid switching, native controls and IP
     await page.evaluate(() => window.dispatchEvent(new Event("online")));
     await expect(page.getByText("لا يوجد اتصال بـ FINORA")).toBeHidden({ timeout: 15_000 });
   } finally {
-    await app.close();
+    await closeIsolatedApp(app);
   }
 });
 
@@ -270,14 +267,14 @@ test("the FINORA session survives a restart and sign-out ends it", async () => {
     await expect(form.getByLabel("معرف الشركة")).toHaveValue(STUB_CREDENTIALS.tenantSlug);
     await expect(form.getByLabel("كلمة المرور")).toHaveValue("");
   } finally {
-    await first.app.close();
+    await closeIsolatedApp(first.app);
   }
 
   const second = await launch();
   try {
     await expect(second.page.getByRole("form", { name: "تسجيل الدخول إلى FINORA" })).toBeVisible();
   } finally {
-    await second.app.close();
+    await closeIsolatedApp(second.app);
   }
   expect(stub.requests).toContain("POST /api/v1/desktop/auth/logout");
 });
@@ -340,7 +337,7 @@ test("windows show FINORA data: orders bulk status + print, product images, purc
     await expect(purchases.getByText("P-2026-0047")).toBeVisible();
     await expect(purchases.getByText("P-2026-0048")).toBeHidden();
   } finally {
-    await app.close();
+    await closeIsolatedApp(app);
   }
 });
 
@@ -382,7 +379,7 @@ test("POS: scan, customer, cash checkout through FINORA, payment and print", asy
     });
     await expect(pos.getByTestId("pos-total")).toContainText("0");
   } finally {
-    await app.close();
+    await closeIsolatedApp(app);
   }
 });
 
@@ -410,7 +407,7 @@ test("bank sale type lists only this branch's accounts; settings dialog has the 
     await page.keyboard.press("Escape");
     await expect(settings).toBeHidden();
   } finally {
-    await app.close();
+    await closeIsolatedApp(app);
   }
 });
 
@@ -452,7 +449,7 @@ test("new purchase composer: supplier, scanned + searched products, colour, conf
       ],
     });
   } finally {
-    await app.close();
+    await closeIsolatedApp(app);
   }
 });
 
@@ -502,7 +499,7 @@ test("product editor: create through FINORA's form (multipart) and edit only cha
     expect(updated.raw).toContain('name="sale_price"');
     expect(updated.raw).not.toContain('name="name"');
   } finally {
-    await app.close();
+    await closeIsolatedApp(app);
   }
 });
 
@@ -531,7 +528,7 @@ test("«المزيد» grows out of the top bar, owns the keyboard and yields to
       /none|matrix\(1, 0, 0, 1, 0, 0\)/,
     );
     // The authorized supplier workspace is now registered in More.
-    await expect(panel.getByRole("option", { name: /الموردين/ })).toBeVisible();
+    await expect(panel.getByRole("option", { name: /^الموردين/ })).toBeVisible();
     await expect(panel.getByText("حسابات الموردين والمشتريات والدفعات", { exact: true })).toBeVisible();
 
     // just below the top bar, inside the window, never covered by the open window
@@ -569,7 +566,7 @@ test("«المزيد» grows out of the top bar, owns the keyboard and yields to
     await expect(trigger).toBeFocused();
     await expect(page.locator('[data-nav="orders"]')).toHaveAttribute("aria-pressed", "true");
   } finally {
-    await app.close();
+    await closeIsolatedApp(app);
   }
 });
 
@@ -606,7 +603,7 @@ test("report print opens a real page preview (PDF viewer) instead of the preview
     await preview.screenshot({ path: test.info().outputPath("print-preview.png") });
     expect(stub.requests.some((r) => r.startsWith("GET /reports/api/v2/print/customers"))).toBe(true);
   } finally {
-    await app.close();
+    await closeIsolatedApp(app);
   }
 });
 
@@ -633,7 +630,7 @@ test("expenses page opens from «المزيد» with totals, table, breakdown an
     await page.screenshot({ path: test.info().outputPath("expense-form.png") });
     await page.keyboard.press("Escape");
   } finally {
-    await app.close();
+    await closeIsolatedApp(app);
   }
 });
 
@@ -672,7 +669,7 @@ test("shipping center: overview, carrier profile and a keyboard-driven settlemen
     await page.screenshot({ path: test.info().outputPath("shipping-manifest.png") });
     await expect(win.getByRole("button", { name: /اعتماد التسوية/ })).toBeDisabled();
   } finally {
-    await app.close();
+    await closeIsolatedApp(app);
   }
 });
 
@@ -756,7 +753,7 @@ test("shipping center phase 2: partial settlement, receipts, statement and retur
     await inspect.getByRole("button", { name: /إغلاق المرتجع/ }).click();
     await expect(inspect).toBeHidden();
   } finally {
-    await app.close();
+    await closeIsolatedApp(app);
   }
 });
 
@@ -788,7 +785,7 @@ test("orders page: scan to select, then hand the selection to an agent manifest"
     await expect(page.getByText(/AGT-2-20261015-0001/).first()).toBeVisible();
     await expect(dialog).toBeHidden();
   } finally {
-    await app.close();
+    await closeIsolatedApp(app);
   }
 });
 
@@ -861,6 +858,6 @@ test("branches: top-bar scope selector, branches window, create an empty branch 
       .click();
     await expect(win.getByText("تغذية الصندوق").first()).toBeVisible();
   } finally {
-    await app.close();
+    await closeIsolatedApp(app);
   }
 });

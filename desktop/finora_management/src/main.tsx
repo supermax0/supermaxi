@@ -6,6 +6,7 @@ import "@fontsource-variable/inter";
 import "./theme/index.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
+import { AppErrorBoundary } from "./components/AppErrorBoundary";
 import { App } from "./app/App";
 
 // Decode every font face up front: the first window otherwise pays for loading
@@ -23,6 +24,8 @@ if (!root) throw new Error("#root missing from index.html");
 
 createRoot(root).render(
   <StrictMode>
-    <App />
+    <AppErrorBoundary>
+      <App />
+    </AppErrorBoundary>
   </StrictMode>,
 );
