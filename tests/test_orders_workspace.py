@@ -239,7 +239,8 @@ def test_workspace_opt_in_and_classic_rollback(safety, client, workspace):
         assert saved.status_code == 200 and saved.json["success"]
         html = client.get("/orders/").get_data(as_text=True)
         assert ('id="ordersWorkspace"' in html) == enabled
-        assert ('orders-views.js' in html) == enabled
+        assert 'orders-views.js' not in html
+        assert 'ordersSavedFilter' not in html
         assert 'id="ordersWorkspace"' not in client.get("/orders/?navigation=classic").get_data(as_text=True)
     assert money_state(safety) == before
 
