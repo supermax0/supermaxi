@@ -6,44 +6,16 @@
 {% if session.get("user_id") %}
 <div class="dashboard-top-quick-actions">
   {% if show_data is not defined or show_data != False %}
-  <button type="button" class="dq-btn dq-btn--period dashboard-period-btn" id="periodBtn" onclick="openPeriodModal()" title="الفترة" aria-label="الفترة">
-    <i class="fas fa-calendar-alt"></i>
-    <span class="dq-label" id="periodLabel">{{ _('dashboard_today') }}</span>
-    <span class="dashboard-period-caret" aria-hidden="true">▼</span>
-  </button>
-  <button type="button" class="dq-btn dq-btn--notif dash-notif-btn" id="dashNotifBtn" title="الإشعارات" aria-label="الإشعارات" aria-expanded="false">
-    <i class="fas fa-bell"></i>
-    <span class="dash-notif-badge" id="dashNotifBadge" hidden>0</span>
-  </button>
-  <button type="button" class="dq-btn dq-btn--alerts dash-alerts-top-btn" id="dashAlertsBtn" title="التنبيهات" aria-label="التنبيهات">
-    <i class="fas fa-triangle-exclamation"></i>
-    <span class="dash-notif-badge dash-alerts-badge" id="dashAlertsBadge" hidden>0</span>
-    <span class="dq-label">التنبيهات</span>
-  </button>
-  {% endif %}
-  <button type="button" class="dq-btn dq-btn--search" onclick="FinoraTopbar.run('search')" title="{{ _('dashboard_search') }}">
-    <i class="fas fa-search"></i>
-    <span class="dq-label">{{ _('dashboard_search') }}</span>
-  </button>
-  <button type="button" class="dq-btn dq-btn--profit" onclick="FinoraTopbar.run('profit')" title="{{ _('dashboard_profit_today') }}">
-    <i class="fas fa-chart-line"></i>
-    <span class="dq-label">{{ _('dashboard_profit_today') }}</span>
-  </button>
-  <button type="button" class="dq-btn dq-btn--expense" onclick="FinoraTopbar.run('expense')" title="{{ _('dashboard_add_expense') }}">
-    <i class="fas fa-plus"></i>
-    <span class="dq-label">{{ _('dashboard_add_expense') }}</span>
-  </button>
-  {% if show_data is not defined or show_data != False %}
   <button type="button" class="dq-btn dq-btn--privacy dashboard-user-privacy-btn" id="dashboardPrivacyBtn" title="إظهار الأرقام لمدة 30 ثانية" aria-label="إظهار الأرقام لمدة 30 ثانية" aria-pressed="false">
     <i class="fas fa-eye" aria-hidden="true"></i>
     <span class="dq-label">إظهار الأرقام</span>
   </button>
-  {% if show_pos and business_allows('pos') %}
+  {% endif %}
+  {% if (session.get('role') == 'admin' or (current_employee and (current_employee.role == 'admin' or can_use_pos))) and business_allows('pos') %}
   <a href="/pos" class="dq-btn dq-btn--pos" title="{{ _('dashboard_pos') }}" aria-label="{{ _('dashboard_pos') }}">
     <i class="fas fa-cash-register" aria-hidden="true"></i>
-    <span class="dq-label">{{ _('dashboard_pos') }}</span>
+    <span class="dq-label" lang="en" dir="ltr">POS</span>
   </a>
-  {% endif %}
   {% endif %}
 </div>
 {% endif %}
@@ -3935,6 +3907,8 @@
     btn.title = label;
     btn.setAttribute("aria-label", label);
     btn.setAttribute("aria-pressed", dashboardValuesRevealed ? "true" : "false");
+    const visibleLabel = btn.querySelector(".dq-label");
+    if (visibleLabel) visibleLabel.textContent = dashboardValuesRevealed ? "إخفاء الأرقام" : "إظهار الأرقام";
 
     const icon = btn.querySelector("i");
     if (icon) {
@@ -4009,7 +3983,6 @@
     // جلب البيانات باستخدام AJAX (بدون إعادة تحميل الصفحة)
     const reportsRequest = fetchJson(url)
       .then(d => {
-        setText("periodLabel", d.period_label || "اليوم");
         setText("desktopHomePeriod", d.period_label || "اليوم");
         setText("salesPeriodLabel", "للفترة: " + (d.period_label || "اليوم"));
 
@@ -4254,7 +4227,7 @@
     document.getElementById("periodModal").style.display = "flex";
     var subtitle = document.getElementById("periodModalSubtitle");
     if (subtitle) {
-      var labelEl = document.getElementById("periodLabel");
+      var labelEl = document.getElementById("desktopHomePeriod");
       subtitle.textContent = labelEl ? ("الفترة الحالية: " + labelEl.textContent.trim()) : "";
     }
     document.querySelectorAll('.period-chip').forEach(function(btn) {
@@ -5695,5 +5668,5 @@
 </script>
 
 {% endif %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard-desktop.css') }}?v=20261019c">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard-desktop.css') }}?v=20261019d">
 {% endblock %}

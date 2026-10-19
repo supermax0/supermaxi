@@ -15,6 +15,9 @@ body.page-dashboard {
   color: var(--home-ink);
   background: #f6f5fa;
 }
+body.finora-app.page-dashboard .dashboard-top-quick-actions { gap: 8px; flex-wrap: wrap; overflow: visible; }
+body.finora-app.page-dashboard .dashboard-top-quick-actions .dq-btn { width: auto; max-width: none; min-height: 44px; height: 44px; flex: 0 0 auto; gap: 7px; padding: 0 12px; border-radius: 12px; }
+body.finora-app.page-dashboard .dashboard-top-quick-actions .dq-label { display: inline !important; }
 body.page-dashboard .page-main {
   background: radial-gradient(ellipse at 95% 0, #eee8ff88, transparent 48%), #f7f6fb;
   padding: clamp(14px, 2vw, 28px) !important;

@@ -8,13 +8,16 @@ def test_home_keeps_data_controls_and_no_financial_writes(safety, client):
     response = client.get("/")
     assert response.status_code == 200
     html = response.get_data(as_text=True)
-    assert 'id="finoraDesktopHome"' in html and '/static/css/dashboard-desktop.css?v=20261019c' in html
+    assert 'id="finoraDesktopHome"' in html and '/static/css/dashboard-desktop.css?v=20261019d' in html
     for field in ['finoraSalesValue', 'finoraPurchasesValue', 'finoraInventoryValue', 'desktopHomePeriod',
-                  'periodLabel', 'dashboardPrivacyBtn', 'salesChart', 'profitChart', 'statusChart',
+                  'dashboardPrivacyBtn', 'salesChart', 'profitChart', 'statusChart',
                   'financialYearChart', 'searchModal', 'profitModal', 'addExpenseModal', 'dashAlertsModal']:
         assert html.count('id="'+field+'"') == 1, field
     assert 'data-dashboard-private="true"' in html
     assert 'finora-sparkline' not in html
+    topbar = re.search(r'<div class="dashboard-top-quick-actions">(.*?)</div>', html, re.S)[1]
+    assert topbar.count('class="dq-btn ') == 2
+    assert 'id="dashboardPrivacyBtn"' in topbar and 'href="/pos"' in topbar
     assert money_state(safety) == before
 
 
@@ -41,7 +44,7 @@ def test_cashier_has_welcome_without_financial_dashboard(safety, client, monkeyp
     html = response.get_data(as_text=True)
     assert 'dashboard-welcome-title' in html
     assert 'id="finoraDesktopHome"' not in html and 'id="finoraSalesValue"' not in html
-    assert '/static/css/dashboard-desktop.css?v=20261019c' in html
+    assert '/static/css/dashboard-desktop.css?v=20261019d' in html
 
 
 def test_launcher_obeys_inventory_and_order_permissions(safety, client, monkeypatch):
@@ -60,3 +63,5 @@ def test_launcher_obeys_inventory_and_order_permissions(safety, client, monkeypa
     launcher = re.search(r'<nav class="desktop-home-launcher".*?</nav>', html, re.S)[0]
     assert 'href="/inventory/"' not in launcher and 'href="/orders/"' not in launcher
     assert 'href="/customers/"' not in launcher and 'href="/pos"' not in launcher
+    topbar = re.search(r'<div class="dashboard-top-quick-actions">(.*?)</div>', html, re.S)[1]
+    assert 'href="/pos"' not in topbar
