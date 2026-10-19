@@ -201,3 +201,52 @@ body.page-dashboard .dashboard-welcome-subtitle { color: var(--home-muted); }
   #finoraDesktopHome .desktop-home-launcher-wrap, #finoraDesktopHome .desktop-home-tools { display: none; }
   body.page-dashboard .page-main { background: #fff; }
 }
+
+/* Charts: each canvas owns a stable, responsive box; legends remain real text. */
+#finoraDesktopHome .dashboard-chart-section .chart-card { display: flex; flex-direction: column; gap: 0; }
+#finoraDesktopHome .dashboard-chart-heading { display: flex; align-items: center; gap: 9px; min-height: 38px; line-height: 1.7; }
+#finoraDesktopHome .dashboard-chart-mark { width: 32px; height: 32px; flex: 0 0 auto; border-radius: 10px; display: grid; place-items: center; }
+#finoraDesktopHome .dashboard-chart-mark.is-sales { color: #7950df; background: #f0eaff; }
+#finoraDesktopHome .dashboard-chart-mark.is-profit { color: #238b68; background: #e8f7f0; }
+#finoraDesktopHome .dashboard-chart-mark.is-status { color: #407de0; background: #eaf2ff; }
+#finoraDesktopHome .chart-wrapper { position: relative; width: 100%; height: clamp(230px, 30cqi, 290px); min-height: 230px; margin-top: auto; }
+#finoraDesktopHome .chart-wrapper canvas { display: block; max-width: 100%; }
+#finoraDesktopHome .chart-meta { margin-block: 0 18px; min-height: 72px; align-items: center; }
+#finoraDesktopHome .chart-meta-value { font-size: clamp(13px, 1.5cqi, 17px); font-weight: 750; }
+#finoraDesktopHome .dashboard-status-card { container: home-status / inline-size; }
+#finoraDesktopHome .dashboard-status-layout { display: grid; grid-template-columns: minmax(0,1fr); gap: 12px; align-items: center; flex: 1; }
+#finoraDesktopHome .dashboard-doughnut-wrap { height: 220px; min-height: 220px; max-width: 270px; margin: 0 auto; }
+#finoraDesktopHome .dashboard-status-total { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; gap: 5px; }
+#finoraDesktopHome .dashboard-status-total strong { font-size: 26px; line-height: 1.2; color: var(--home-ink); }
+#finoraDesktopHome .dashboard-status-total span { font-size: 10px; color: var(--home-muted); }
+#finoraDesktopHome .dashboard-status-legend { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 7px; }
+#finoraDesktopHome .dashboard-status-legend li { min-width: 0; }
+#finoraDesktopHome .dashboard-status-legend li:last-child:nth-child(odd) { grid-column: 1 / -1; }
+#finoraDesktopHome .dashboard-status-legend button { display: flex; align-items: center; width: 100%; min-height: 40px; gap: 7px; padding: 8px; border: 1px solid var(--home-line); background: var(--home-soft); border-radius: 10px; color: var(--home-ink); font: inherit; font-size: 11px; text-align: start; cursor: pointer; }
+#finoraDesktopHome .dashboard-chart-dot { display: inline-block; width: 8px; height: 8px; border-radius: 3px; flex: 0 0 auto; }
+#finoraDesktopHome .dashboard-chart-name { flex: 1; min-width: 0; line-height: 1.5; }
+#finoraDesktopHome .dashboard-status-legend strong { font-size: 12px; overflow-wrap: anywhere; }
+#finoraDesktopHome .dashboard-status-legend .is-muted { opacity: .5; text-decoration: line-through; }
+#finoraDesktopHome .dashboard-status-legend button:focus-visible { outline: 2px solid #7950df; outline-offset: 2px; }
+#finoraDesktopHome .dashboard-year-legend { display: flex; flex-wrap: wrap; gap: 18px; margin: 0 0 12px; font-size: 12px; color: var(--home-muted); }
+#finoraDesktopHome .dashboard-year-legend > span { display: inline-flex; align-items: center; gap: 6px; }
+#finoraDesktopHome .dashboard-chart-dot.is-profit { background: #16a34a; }
+#finoraDesktopHome .dashboard-chart-dot.is-expense { background: #7c3aed; }
+#finoraDesktopHome .dashboard-chart-empty { position: absolute; inset: 40% 40px auto; margin: 0; padding: 10px; border-radius: 10px; background: #f8f6fced; text-align: center; font-size: 12px; color: var(--home-muted); pointer-events: none; }
+#finoraDesktopHome .dashboard-chart-empty[hidden], #finoraDesktopHome .dashboard-chart-message[hidden] { display: none; }
+#finoraDesktopHome .dashboard-chart-message { padding: 12px; border: 1px solid #eddbba; border-radius: 12px; color: #936014; background: #fff9ed; font-size: 12px; }
+#finoraDesktopHome .dashboard-chart-message button { width: auto !important; color: inherit; background: #fff; border: 1px solid #eddbba; border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+#finoraDesktopHome .dashboard-year-section .chart-wrapper { height: 310px; }
+@container home-status (min-width: 560px) {
+  #finoraDesktopHome .dashboard-status-layout { grid-template-columns: minmax(0,1fr) minmax(0,1.15fr); gap: 22px; }
+  #finoraDesktopHome .dashboard-status-legend { grid-template-columns: minmax(0,1fr); }
+}
+@media (max-width: 420px) {
+  #finoraDesktopHome .chart-card { padding: 14px; }
+  #finoraDesktopHome .chart-card h4 { font-size: 13px; }
+  #finoraDesktopHome .chart-meta { gap: 7px; padding: 10px; }
+  #finoraDesktopHome .chart-meta-value { font-size: 13px; }
+  #finoraDesktopHome .dashboard-year-section .chart-wrapper { height: 270px; }
+}
+
+#finoraDesktopHome .dashboard-chart-currency { display: inline-block; margin-top: 9px; color: var(--home-muted); background: #eee9f8; border-radius: 7px; padding: 4px 9px; font-size: 10px; }

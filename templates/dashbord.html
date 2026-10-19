@@ -3127,13 +3127,15 @@
 <section class="dashboard-section dashboard-chart-section">
   <div class="dashboard-section-head">
     <div>
-      <h2 class="dashboard-section-title">{% if is_beauty_center %}مؤشرات الجلسات (7 أيام){% else %}{{ _('dashboard_status_chart_title') }}{% endif %}</h2>
-      <p class="dashboard-section-subtitle">{{ _('dashboard_for_selected_period') }}</p>
+      <h2 class="dashboard-section-title">{% if is_beauty_center %}مؤشرات الجلسات{% else %}مؤشرات الأداء{% endif %}</h2>
+      <p class="dashboard-section-subtitle">{% if is_beauty_center %}إيراد وصافي ربح الجلسات لآخر 7 أيام، وتوزيع حالات المواعيد{% else %}المبيعات والربح لآخر 7 أيام، وتوزيع الحالات لجميع الطلبات{% endif %}</p>
+      <span class="dashboard-chart-currency">القيم المالية بالدينار العراقي</span>
     </div>
   </div>
+<p class="dashboard-chart-message" id="dashboardChartError" role="status" hidden>تعذّر تحميل الرسوم البيانية. <button type="button" onclick="initCharts()">إعادة المحاولة</button></p>
 <div class="charts-container">
   <div class="chart-card">
-    <h4>📈 {% if is_beauty_center %}إيراد الجلسات — آخر 7 أيام{% else %}{{ _('dashboard_sales_chart_title') }}{% endif %}</h4>
+    <h4 class="dashboard-chart-heading"><span class="dashboard-chart-mark is-sales" aria-hidden="true">{{ home_icon('trend', 18) }}</span> {% if is_beauty_center %}إيراد الجلسات — آخر 7 أيام{% else %}{{ _('dashboard_sales_chart_title') }}{% endif %}</h4>
     <div class="chart-meta">
       <div class="chart-meta-item">
         <span class="chart-meta-label">{{ _('dashboard_chart_total_7_days') }}</span>
@@ -3145,11 +3147,12 @@
       </div>
     </div>
     <div class="chart-wrapper">
-      <canvas id="salesChart"></canvas>
+      <canvas id="salesChart" role="img" aria-label="المبيعات اليومية لآخر سبعة أيام"></canvas>
+      <p class="dashboard-chart-empty" id="salesChartEmpty" hidden>لا توجد مبيعات خلال آخر 7 أيام.</p>
     </div>
   </div>
   <div class="chart-card">
-    <h4>💰 {% if is_beauty_center %}صافي الربح بعد المصاريف — 7 أيام{% else %}{{ _('dashboard_profit_chart_title') }}{% endif %}</h4>
+    <h4 class="dashboard-chart-heading"><span class="dashboard-chart-mark is-profit" aria-hidden="true">{{ home_icon('wallet', 18) }}</span> {% if is_beauty_center %}صافي الربح بعد المصاريف — 7 أيام{% else %}{{ _('dashboard_profit_chart_title') }}{% endif %}</h4>
     <div class="chart-meta">
       <div class="chart-meta-item">
         <span class="chart-meta-label">{{ _('dashboard_chart_total_7_days') }}</span>
@@ -3161,13 +3164,18 @@
       </div>
     </div>
     <div class="chart-wrapper">
-      <canvas id="profitChart"></canvas>
+      <canvas id="profitChart" role="img" aria-label="الربح اليومي لآخر سبعة أيام"></canvas>
+      <p class="dashboard-chart-empty" id="profitChartEmpty" hidden>لا توجد حركة ربح خلال آخر 7 أيام.</p>
     </div>
   </div>
-  <div class="chart-card">
-    <h4>📊 {% if is_beauty_center %}توزيع حالات المواعيد{% else %}{{ _('dashboard_status_chart_title') }}{% endif %}</h4>
-    <div class="chart-wrapper">
-      <canvas id="statusChart"></canvas>
+  <div class="chart-card dashboard-status-card">
+    <h4 class="dashboard-chart-heading"><span class="dashboard-chart-mark is-status" aria-hidden="true">{{ home_icon('layers', 18) }}</span>{% if is_beauty_center %}توزيع حالات المواعيد{% else %}{{ _('dashboard_status_chart_title') }}{% endif %}</h4>
+    <div class="dashboard-status-layout">
+      <div class="chart-wrapper dashboard-doughnut-wrap">
+        <canvas id="statusChart" role="img" aria-label="توزيع عدد الطلبات حسب الحالة"></canvas>
+        <div class="dashboard-status-total"><strong id="statusChartTotal">0</strong><span>إجمالي الحالات</span></div>
+      </div>
+      <ul class="dashboard-status-legend" id="statusChartLegend" aria-label="حالات الطلبات — اضغط لإظهار أو إخفاء الحالة"></ul>
     </div>
   </div>
 </div>
@@ -3181,8 +3189,9 @@
         <p class="dashboard-section-subtitle">الأرباح والمصروفات حسب أشهر السنة الحالية</p>
       </div>
     </div>
+    <div class="dashboard-year-legend" aria-label="مفتاح ألوان السنة المالية"><span><i class="dashboard-chart-dot is-profit"></i>الأرباح</span><span><i class="dashboard-chart-dot is-expense"></i>المصروفات</span></div>
     <div class="chart-wrapper" id="financialYearChartWrap">
-      <canvas id="financialYearChart"></canvas>
+      <canvas id="financialYearChart" role="img" aria-label="الأرباح والمصروفات لكل شهر من السنة الحالية"></canvas>
     </div>
     <div class="empty-state" id="financialYearEmpty" style="display:none;padding:24px;text-align:center;color:var(--text-muted);">
       لا توجد بيانات كافية لعرض السنة المالية حالياً.
@@ -3879,6 +3888,7 @@
 ======================= -->
 <script src="{{ url_for('static', filename='js/ai_message_format.js') }}"></script>
 <script src="/static/js/barcode-scanner.js"></script>
+<script src="{{ url_for('static', filename='js/dashboard-charts.js') }}?v=20261019a"></script>
 <script src="/static/js/delivery-fee-pay-modal.js"></script>
 <script src="/static/js/return-stock-modal.js"></script>
 <script>
@@ -5004,6 +5014,7 @@
 
     return {
       theme: "light",
+      font: getComputedStyle(document.body).fontFamily,
       text: getVar("--text-main", "#101828"),
       muted: getVar("--text-muted", "#667085"),
       primary: getVar("--primary", "#2563EB"),
@@ -5015,58 +5026,14 @@
   }
 
   function commonChartOptions() {
-    const t = getChartTheme();
-    return {
-      responsive: true,
-      maintainAspectRatio: false,
-      layout: { padding: { top: 10, left: 8, right: 8, bottom: 6 } },
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: t.tooltipBg,
-          borderColor: t.tooltipBorder,
-          borderWidth: 1,
-          titleColor: t.text,
-          bodyColor: t.text,
-          padding: 12,
-          cornerRadius: 12,
-          displayColors: true,
-          boxWidth: 8,
-          boxHeight: 8,
-          usePointStyle: true,
-          callbacks: {
-            label: function (ctx) {
-              const v = ctx.parsed && typeof ctx.parsed.y !== "undefined" ? ctx.parsed.y : ctx.parsed;
-              return `${ctx.dataset.label}: ${formatNumber(v || 0)} د.ع`;
-            }
-          }
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: {
-            color: t.muted,
-            font: { size: 12, weight: "600" },
-            callback: function (v) { return formatNumber(v); }
-          },
-          grid: { color: t.grid }
-        },
-        x: {
-          ticks: {
-            color: t.muted,
-            font: { size: 12, weight: "600" },
-            maxRotation: 0
-          },
-          grid: { color: t.grid }
-        }
-      }
-    };
+    return FinoraDashboardCharts.moneyOptions(getChartTheme(), formatNumber);
   }
 
   function initCharts() {
+    const error = document.getElementById("dashboardChartError");
+    if (error) error.hidden = true;
     fetch("/api/index/charts")
-      .then(r => r.json())
+      .then(r => { if (!r.ok) throw new Error("charts HTTP " + r.status); return r.json(); })
       .then(data => {
         const t = getChartTheme();
         const baseOpts = commonChartOptions();
@@ -5091,6 +5058,9 @@
         if (profitTotalEl) profitTotalEl.innerText = formatNumber(totalProfit) + " د.ع";
         if (profitAvgEl) profitAvgEl.innerText = formatNumber(avgProfit) + " د.ع";
 
+        document.getElementById("salesChartEmpty").hidden = (data.sales || []).some(v => Number(v) !== 0);
+        document.getElementById("profitChartEmpty").hidden = (data.profit || []).some(v => Number(v) !== 0);
+
         // Sales Chart
         const salesCtx = document.getElementById("salesChart");
         if (salesChart) salesChart.destroy();
@@ -5102,12 +5072,13 @@
             datasets: [{
               label: beautyDash ? "إيراد الجلسات (د.ع)" : "المبيعات (د.ع)",
               data: data.sales,
-              backgroundColor: "rgba(37, 99, 235, 0.72)",
-              borderColor: "#2563EB",
+              backgroundColor: "rgba(121, 80, 223, 0.8)",
+              borderColor: "#7950DF",
               borderWidth: 1,
               borderRadius: 10,
-              barThickness: 18,
-              maxBarThickness: 22
+              categoryPercentage: 0.68,
+              barPercentage: 0.75,
+              maxBarThickness: 30
             }]
           },
           options: baseOpts
@@ -5125,7 +5096,9 @@
               label: beautyDash ? "صافي الربح بعد المصاريف (د.ع)" : "الربح (د.ع)",
               data: data.profit,
               borderColor: "#16A34A",
-              backgroundColor: "rgba(22, 163, 74, 0.22)",
+              backgroundColor: "rgba(22, 163, 74, 0.08)",
+              borderWidth: 2.5,
+              pointHitRadius: 12,
               pointRadius: 3,
               pointHoverRadius: 5,
               pointBorderColor: "#16A34A",
@@ -5143,7 +5116,7 @@
           if (statusChart) statusChart.destroy();
 
           const statusSource = data.status || {};
-          const statusConfig = beautyDash ? [
+          const statusConfig = (beautyDash ? [
             { key: "ordered", label: "قيد الانتظار (pending)", bg: "rgba(59, 130, 246, 0.55)", border: "rgba(59, 130, 246, 1)" },
             { key: "shipping", label: "—", bg: "rgba(14, 165, 233, 0.12)", border: "rgba(14, 165, 233, 0.3)" },
             { key: "delivered", label: "—", bg: "rgba(16, 185, 129, 0.12)", border: "rgba(16, 185, 129, 0.3)" },
@@ -5155,7 +5128,7 @@
             { key: "delivered", label: "تم التوصيل", bg: "rgba(16, 185, 129, 0.55)", border: "rgba(16, 185, 129, 1)" },
             { key: "paid", label: "مسدد", bg: "rgba(132, 204, 22, 0.55)", border: "rgba(132, 204, 22, 1)" },
             { key: "returned", label: "مرتجع / ملغي", bg: "rgba(239, 68, 68, 0.55)", border: "rgba(239, 68, 68, 1)" }
-          ];
+          ]).filter(s => s.label !== "—");
 
           const labels = statusConfig.map(s => s.label);
           const values = statusConfig.map(s => Number(statusSource[s.key] || 0));
@@ -5163,6 +5136,7 @@
           const borderColors = statusConfig.map(s => s.border);
 
           const tooltipCfg = commonChartOptions().plugins.tooltip;
+          tooltipCfg.callbacks.label = ctx => FinoraDashboardCharts.statusTooltip(ctx, formatNumber);
 
           statusChart = new Chart(statusCtx, {
             type: "doughnut",
@@ -5179,25 +5153,25 @@
             options: {
               responsive: true,
               maintainAspectRatio: false,
-              cutout: "60%",
+              resizeDelay: 80,
+              animation: matchMedia("(prefers-reduced-motion: reduce)").matches ? false : {duration: 250},
+              cutout: "74%",
               plugins: {
-                legend: {
-                  display: true,
-                  position: "bottom",
-                  labels: {
-                    color: t.muted,
-                    font: { size: 11, weight: "600" },
-                    usePointStyle: true
-                  }
-                },
+                legend: {display: false},
                 tooltip: tooltipCfg
               }
             }
           });
+          FinoraDashboardCharts.statusLegend(statusChart, document.getElementById("statusChartLegend"), formatNumber);
+          const total = values.reduce((sum, value) => sum + value, 0);
+          const totalEl = document.getElementById("statusChartTotal");
+          totalEl.textContent = FinoraDashboardCharts.compact(total);
+          totalEl.setAttribute("aria-label", formatNumber(total) + " حالة");
+          statusCtx.setAttribute("aria-label", labels.map((label, i) => label + ": " + formatNumber(values[i])).join("، "));
         }
 
         initFinancialYearChart();
-      });
+      }).catch(() => { if (error) error.hidden = false; });
   }
 
   function initFinancialYearChart() {
@@ -5721,5 +5695,5 @@
 </script>
 
 {% endif %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard-desktop.css') }}?v=20261019b">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard-desktop.css') }}?v=20261019c">
 {% endblock %}

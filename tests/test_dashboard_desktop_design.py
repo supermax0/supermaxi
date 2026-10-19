@@ -8,7 +8,7 @@ def test_home_keeps_data_controls_and_no_financial_writes(safety, client):
     response = client.get("/")
     assert response.status_code == 200
     html = response.get_data(as_text=True)
-    assert 'id="finoraDesktopHome"' in html and '/static/css/dashboard-desktop.css?v=20261019b' in html
+    assert 'id="finoraDesktopHome"' in html and '/static/css/dashboard-desktop.css?v=20261019c' in html
     for field in ['finoraSalesValue', 'finoraPurchasesValue', 'finoraInventoryValue', 'desktopHomePeriod',
                   'periodLabel', 'dashboardPrivacyBtn', 'salesChart', 'profitChart', 'statusChart',
                   'financialYearChart', 'searchModal', 'profitModal', 'addExpenseModal', 'dashAlertsModal']:
@@ -41,7 +41,7 @@ def test_cashier_has_welcome_without_financial_dashboard(safety, client, monkeyp
     html = response.get_data(as_text=True)
     assert 'dashboard-welcome-title' in html
     assert 'id="finoraDesktopHome"' not in html and 'id="finoraSalesValue"' not in html
-    assert '/static/css/dashboard-desktop.css?v=20261019b' in html
+    assert '/static/css/dashboard-desktop.css?v=20261019c' in html
 
 
 def test_launcher_obeys_inventory_and_order_permissions(safety, client, monkeypatch):
