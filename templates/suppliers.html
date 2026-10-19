@@ -3,573 +3,460 @@
 {% block page_title %}{{ _('suppliers_page_title') }}{% endblock %}
 
 {% block content %}
-<style>
-/* ================= VARIABLES ================= */
-:root {
-  /* Map to global SaaS tokens (Dark/Light aware) */
-  --suppliers-primary: var(--primary);
-  --suppliers-success: var(--success);
-  --suppliers-danger: var(--danger);
-  --suppliers-warning: var(--warning);
-  --suppliers-border: var(--border-light);
-  --suppliers-text: var(--text);
-  --suppliers-muted: var(--text-muted);
-}
+{% from "partials/fd_icons.html" import icon %}
+{% set k = namespace(total_debt=0, total_paid=0, remaining=0) %}{% for s in suppliers %}{% set k.total_debt = k.total_debt + (s.total_debt or 0) %}{% set k.total_paid = k.total_paid + (s.total_paid or 0) %}{% set k.remaining = k.remaining + ([s.remaining or 0, 0]|max) %}{% endfor %}
+{% set supplier_kpis = {'count': suppliers|length, 'total_debt': k.total_debt, 'total_paid': k.total_paid, 'remaining': k.remaining} %}
+{% set active_supplier_exchange_rate = supplier_exchange_rate|default(1350,true) %}
+<link rel="stylesheet" href="/static/css/finora-ui.css?v=20261018e">
+<div class="fd suppliers-page" id="fdPage">
 
-/* ================= CARDS ================= */
-.suppliers-page .card {
-  background: linear-gradient(145deg, var(--card), var(--card-alt));
-  backdrop-filter: blur(14px);
-  border-radius: 20px;
-  padding: 24px;
-  margin-bottom: 24px;
-  border: 1px solid var(--suppliers-border);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-  animation: fade 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
+  <header class="fd-header no-print">
+    <div class="fd-header-main">
+      <span class="fd-header-icon" style="color: var(--fd-purple);">{{ icon('truck', 26) }}</span>
+      <div class="fd-header-text">
+        <h1 class="fd-title">الموردون</h1>
+        <p class="fd-subtitle">حسابات الموردين والديون والمدفوعات</p>
+      </div>
+    </div>
+  </header>
 
-.suppliers-page .card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 6px;
-  height: 100%;
-  background: linear-gradient(180deg, var(--suppliers-primary), var(--suppliers-success));
-  border-radius: 0 20px 20px 0;
-  opacity: 0.7;
-}
+  <nav class="fd-subnav no-print" aria-label="المشتريات">
+    <a class="fd-subnav-link" href="{{ url_for('purchases.purchases_index') }}">سجل المشتريات</a>
+    <a class="fd-subnav-link" href="{{ url_for('purchases.purchases_new') }}">فاتورة شراء جديدة</a>
+    <a class="fd-subnav-link active" href="{{ url_for('suppliers.suppliers') }}">الموردون</a>
+  </nav>
 
-.suppliers-page .card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
-  border-color: rgba(59, 130, 246, 0.22);
-}
+  <div class="fd-kpis no-print">
+    <button type="button" class="fd-kpi fd-kpi--purple active" data-sup-state="">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">عدد الموردين</span>
+        <span><span class="fd-kpi-value">{{ "{:,}".format(supplier_kpis.count) }}</span><span class="fd-kpi-unit">مورد</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('truck', 28) }}</span>
+    </button>
+    <div class="fd-kpi fd-kpi--amber">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('suppliers_th_total_debt') }}</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money">{{ "{:,}".format(supplier_kpis.total_debt) }}</span><span class="fd-kpi-unit">د.ع</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('receipt', 28) }}</span>
+    </div>
+    <button type="button" class="fd-kpi fd-kpi--green" data-sup-state="settled">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('suppliers_th_paid') }}</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money">{{ "{:,}".format(supplier_kpis.total_paid) }}</span><span class="fd-kpi-unit">د.ع</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('check-circle', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--red" data-sup-state="due">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('suppliers_th_remaining') }}</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money">{{ "{:,}".format(supplier_kpis.remaining) }}</span><span class="fd-kpi-unit">د.ع</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('wallet', 28) }}</span>
+    </button>
+  </div>
 
-/* ================= TITLES ================= */
-.suppliers-page .card h3 {
-  margin-top: 0;
-  margin-bottom: 20px;
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--suppliers-text);
-  padding-bottom: 16px;
-  border-bottom: 1px solid var(--suppliers-border);
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+  <div class="fd-toolbar no-print">
+    <div class="fd-chips" id="supChips" role="tablist" aria-label="حالة الحساب">
+      <button type="button" class="fd-chip active" data-sup-state="">الكل<span class="fd-chip-count" data-count=""></span></button>
+      <button type="button" class="fd-chip" data-sup-state="due">عليهم متبقي<span class="fd-chip-count" data-count="due"></span></button>
+      <button type="button" class="fd-chip" data-sup-state="settled">مسددون<span class="fd-chip-count" data-count="settled"></span></button>
+      <button type="button" class="fd-chip" data-sup-state="credit">لنا رصيد<span class="fd-chip-count" data-count="credit"></span></button>
+    </div>
 
-/* ================= FORM ================= */
-.suppliers-page .card form {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 16px;
-}
+    <label class="fd-search fd-tool--search">
+      {{ icon('search', 18) }}
+      <input type="search" id="supSearch" autocomplete="off" placeholder="ابحث باسم المورد أو الهاتف أو العنوان...">
+    </label>
 
-.suppliers-page .card form input {
-  padding: 16px 20px;
-  border-radius: 16px;
-  border: 1px solid var(--border);
-  background: rgba(15, 23, 42, 0.35);
-  color: var(--suppliers-text);
-  font-size: 16px;
-  transition: all 0.3s ease;
-}
+    <div class="fd-tools-row">
+      <button type="button" class="fd-btn fd-btn--primary" onclick="openSupplierDrawer()">
+        {{ icon('package-plus', 18) }}
+        <span class="fd-btn-label">{{ _('suppliers_add_title') }}</span>
+      </button>
+      <div class="fd-pop-wrap">
+        <button type="button" class="fd-btn fd-btn--icon" data-fd-pop="supMorePop" aria-expanded="false" aria-controls="supMorePop" title="المزيد" aria-label="المزيد">{{ icon('dots', 20) }}</button>
+        <div class="fd-pop fd-pop--end fd-menu" id="supMorePop" role="menu" hidden>
+          <a class="fd-menu-item" role="menuitem" href="{{ url_for('purchases.purchases_new') }}">{{ icon('package-plus') }}<span>فاتورة شراء جديدة</span></a>
+          <a class="fd-menu-item" role="menuitem" href="{{ url_for('purchases.purchases_index') }}">{{ icon('receipt') }}<span>سجل المشتريات</span></a>
+          <div class="fd-menu-sep" role="separator"></div>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="exportSuppliersCsv()">{{ icon('download') }}<span>تصدير CSV</span></button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-.suppliers-page .card form input:focus {
-  outline: none;
-  border-color: var(--suppliers-primary);
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-  background: rgba(15, 23, 42, 0.45);
-}
+  <section class="fd-table-card">
+    <div class="fd-table-scroll">
+      <table class="fd-table" id="supTable">
+        <thead>
+          <tr>
+            <th>{{ _('suppliers_th_name') }}</th>
+            <th>الهاتف</th>
+            <th class="fd-col-opt">العنوان</th>
+            <th class="fd-col-opt2">الفواتير</th>
+            <th class="fd-col-opt">آخر شراء</th>
+            <th>{{ _('suppliers_th_total_debt') }}</th>
+            <th class="fd-col-opt2">{{ _('suppliers_th_paid') }}</th>
+            <th>{{ _('suppliers_th_remaining') }}</th>
+            <th class="fd-col-actions"></th>
+          </tr>
+        </thead>
+        <tbody id="supBody">
+          <tr><td colspan="9" class="fd-empty">جاري التحميل...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
 
-.suppliers-page .card form input::placeholder {
-  color: var(--suppliers-muted);
-}
+  <footer class="fd-footer no-print">
+    <div class="fd-footer-info">
+      <select id="supPageSize" aria-label="عدد الموردين في الصفحة">
+        <option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
+      </select>
+      <span class="fd-range" id="supRange"></span>
+      <span class="fd-totals" id="supTotals"></span>
+    </div>
+    <nav class="fd-pager" id="supPager" aria-label="الصفحات"></nav>
+  </footer>
 
-.suppliers-page .card form button {
-  padding: 16px;
-  border: none;
-  border-radius: 16px;
-  background: linear-gradient(135deg, var(--suppliers-primary), #2563eb);
-  color: #fff;
-  font-weight: 600;
-  font-size: 16px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  grid-column: 1 / -1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-}
+  <!-- Detail panel -->
+  <aside class="fd-detail" id="supDetail" aria-label="تفاصيل المورد" hidden>
+    <div class="fd-detail-head">
+      <div class="fd-detail-titles">
+        <h3 class="fd-detail-title" id="supDetailTitle"></h3>
+        <p class="fd-detail-sub" id="supDetailSub"></p>
+      </div>
+      <button type="button" class="fd-btn fd-btn--soft fd-btn--sm" id="supDetailEdit">{{ icon('pencil', 16) }}<span>تعديل</span></button>
+      <button type="button" class="fd-close-btn" onclick="closeSupplierDetail()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+    </div>
+    <div class="fd-detail-body" id="supDetailBody"></div>
+  </aside>
 
-.suppliers-page .card form button:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 15px 30px rgba(59, 130, 246, 0.4);
-}
-
-/* ================= TABLE ================= */
-.suppliers-page .table-wrap {
-  border-radius: 18px;
-  overflow: auto;
-  -webkit-overflow-scrolling: touch;
-  border: 1px solid var(--suppliers-border);
-  background: rgba(2, 6, 23, 0.12);
-}
-
-:root[data-theme="light"] .suppliers-page .table-wrap {
-  background: rgba(255, 255, 255, 0.92);
-  border-color: rgba(2, 6, 23, 0.08);
-}
-
-.suppliers-page table {
-  width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
-  font-size: 14px;
-  margin-top: 10px;
-}
-
-.suppliers-page th {
-  padding: 18px 16px;
-  background: rgba(30, 41, 59, 0.7);
-  color: var(--suppliers-muted);
-  font-weight: 600;
-  text-align: center;
-  border-bottom: 2px solid rgba(59, 130, 246, 0.2);
-}
-
-.suppliers-page td {
-  padding: 20px 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-  color: var(--suppliers-text);
-  text-align: center;
-  transition: all 0.2s ease;
-}
-
-.suppliers-page tbody tr {
-  transition: all 0.3s ease;
-}
-
-.suppliers-page tbody tr:hover {
-  background: rgba(59, 130, 246, 0.05);
-  transform: none;
-}
-
-/* ================= NUMBERS ================= */
-.suppliers-page td:nth-child(2) {
-  font-weight: 700;
-  color: var(--suppliers-warning);
-}
-
-.suppliers-page td:nth-child(3) {
-  font-weight: 700;
-  color: var(--suppliers-success);
-}
-
-.suppliers-page td:nth-child(4) {
-  font-weight: 700;
-  color: var(--suppliers-danger);
-}
-
-/* ================= ACTION LINK ================= */
-.suppliers-page td a {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  border-radius: 14px;
-  background: rgba(59, 130, 246, 0.1);
-  color: var(--suppliers-primary);
-  font-weight: 600;
-  text-decoration: none;
-  transition: all 0.3s ease;
-  border: 1px solid rgba(59, 130, 246, 0.2);
-}
-
-.suppliers-page td a:hover {
-  background: var(--suppliers-primary);
-  color: #fff;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
-}
-
-.suppliers-page .actions-cell {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-  flex-wrap: wrap;
-}
-
-.suppliers-page .actions-cell button.ss-edit-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  border-radius: 14px;
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--suppliers-success);
-  font-weight: 600;
-  border: 1px solid rgba(16, 185, 129, 0.25);
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.suppliers-page .actions-cell button.ss-edit-btn:hover {
-  background: var(--suppliers-success);
-  color: #fff;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
-}
-
-.suppliers-edit-modal {
-  display: none;
-  position: fixed;
-  inset: 0;
-  z-index: 9999;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  background: rgba(2, 6, 23, 0.55);
-}
-
-.suppliers-edit-modal.show {
-  display: flex;
-}
-
-.suppliers-edit-modal__box {
-  width: min(520px, 100%);
-  background: linear-gradient(145deg, var(--card), var(--card-alt));
-  border: 1px solid var(--suppliers-border);
-  border-radius: 18px;
-  padding: 22px;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
-}
-
-.suppliers-edit-modal__box h3 {
-  margin: 0 0 16px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.suppliers-edit-modal__box form {
-  display: grid;
-  gap: 12px;
-}
-
-.suppliers-edit-modal__box input {
-  padding: 14px 16px;
-  border-radius: 14px;
-  border: 1px solid var(--border);
-  background: rgba(15, 23, 42, 0.35);
-  color: var(--suppliers-text);
-  font-size: 15px;
-}
-
-.suppliers-edit-modal__actions {
-  display: flex;
-  gap: 10px;
-  margin-top: 4px;
-}
-
-.suppliers-edit-modal__actions button {
-  flex: 1;
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: none;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.suppliers-edit-modal__actions .btn-save {
-  background: linear-gradient(135deg, var(--suppliers-primary), #2563eb);
-  color: #fff;
-}
-
-.suppliers-edit-modal__actions .btn-cancel {
-  background: rgba(148, 163, 184, 0.15);
-  color: var(--suppliers-text);
-}
-
-.suppliers-edit-modal__close {
-  border: none;
-  background: transparent;
-  color: var(--suppliers-muted);
-  font-size: 22px;
-  cursor: pointer;
-  line-height: 1;
-}
-
-/* Light Mode table readability */
-:root[data-theme="light"] .suppliers-page th {
-  background: rgba(241, 245, 249, 0.96);
-  color: #0f172a;
-  border-bottom-color: rgba(2, 6, 23, 0.10);
-}
-:root[data-theme="light"] .suppliers-page td {
-  color: #0f172a;
-  border-bottom-color: rgba(2, 6, 23, 0.06);
-}
-:root[data-theme="light"] .suppliers-page tbody tr:hover {
-  background: rgba(37, 99, 235, 0.06);
-}
-
-/* ================= RESPONSIVE ================= */
-@media (max-width: 900px) {
-  .suppliers-page .card {
-    padding: 20px;
-  }
-  
-  .suppliers-page .card form {
-    grid-template-columns: 1fr;
-  }
-  
-  .suppliers-page table thead {
-    display: none;
-  }
-  
-  .suppliers-page table tr {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-    margin-bottom: 20px;
-    padding: 20px;
-    background: rgba(30, 41, 59, 0.4);
-    border-radius: 18px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    position: relative;
-    overflow: hidden;
-  }
-  
-  .suppliers-page table tr::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 6px;
-    height: 100%;
-    background: linear-gradient(180deg, var(--suppliers-primary), var(--suppliers-success));
-    opacity: 0.5;
-  }
-  
-  .suppliers-page table td {
-    padding: 0;
-    border: none;
-    text-align: right;
-  }
-  
-  .suppliers-page table td::before {
-    content: attr(data-label);
-    display: block;
-    font-size: 12px;
-    color: var(--suppliers-muted);
-    margin-bottom: 6px;
-    font-weight: 500;
-  }
-  
-  .suppliers-page table td:last-child {
-    grid-column: 1 / -1;
-    display: flex;
-    justify-content: center;
-    padding-top: 16px;
-    margin-top: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
-  }
-
-  :root[data-theme="light"] .suppliers-page table tr {
-    background: rgba(2, 6, 23, 0.03);
-    border-color: rgba(2, 6, 23, 0.06);
-  }
-  :root[data-theme="light"] .suppliers-page table td::before {
-    color: #475569;
-  }
-}
-
-@media (max-width: 480px) {
-  .suppliers-page .card {
-    padding: 16px;
-  }
-  
-  .suppliers-page table tr {
-    grid-template-columns: 1fr;
-    padding: 16px;
-  }
-  
-  .card form button {
-    padding: 14px;
-    font-size: 15px;
-  }
-  
-  td a {
-    width: 100%;
-    justify-content: center;
-  }
-}
-
-/* ================= ANIMATION ================= */
-@keyframes fade {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* ================= NO DATA MESSAGE ================= */
-.no-data {
-  text-align: center;
-  padding: 40px 20px;
-  color: var(--suppliers-muted);
-  font-size: 16px;
-}
-
-.no-data::before {
-  content: "🏭";
-  font-size: 48px;
-  display: block;
-  margin-bottom: 16px;
-  opacity: 0.5;
-}
-</style>
-
-<div class="suppliers-page">
-<div class="card">
-  <h3>➕ {{ _('suppliers_add_title') }}</h3>
-  <form method="post">
-    <input name="name" placeholder="{{ _('suppliers_field_name') }}" data-help="suppliers.name" required>
-    <input name="phone" placeholder="{{ _('suppliers_field_phone') }}" data-help="suppliers.phone">
-    <input name="phone2" placeholder="{{ _('suppliers_field_phone2') }}" data-help="suppliers.phone2">
-    <input name="address" placeholder="{{ _('suppliers_field_address') }}">
-    <input name="opening_balance" type="number" min="0" step="1" placeholder="{{ _('suppliers_field_opening_balance') }}">
-    <button type="submit">💾 {{ _('suppliers_save_button') }}</button>
-  </form>
-</div>
-
-<div class="card">
-  <h3>📦 {{ _('suppliers_list_title') }}</h3>
-
-  {% if not suppliers %}
-  <div class="no-data">{{ _('suppliers_empty_state') }}</div>
-  {% else %}
-  {% set active_supplier_exchange_rate = supplier_exchange_rate|default(1350, true) %}
-  <div class="table-wrap table-mobile-scroll">
-  <table class="responsive-table">
-    <thead>
-      <tr>
-        <th>{{ _('suppliers_th_name') }}</th>
-        <th>{{ _('suppliers_th_total_debt') }}</th>
-        <th>{{ _('suppliers_th_paid') }}</th>
-        <th>{{ _('suppliers_th_remaining') }}</th>
-        <th>المتبقي بالدولار</th>
-        <th>{{ _('suppliers_th_actions') }}</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for s in suppliers %}
-      <tr>
-        <td data-label="{{ _('suppliers_th_name') }}">
-          <strong>{{ s.name }}</strong>
-          {% if (s.member_count|default(1)) > 1 %}
-          <small style="display:block;margin-top:4px;color:var(--text-muted,#64748b);">مجمّع من {{ s.member_count }} سجلات الفروع</small>
-          {% endif %}
-        </td>
-        <td data-label="{{ _('suppliers_th_total_debt') }}" dir="ltr">{{ "{:,}".format(s.total_debt or 0) }} د.ع</td>
-        <td data-label="{{ _('suppliers_th_paid') }}" dir="ltr">{{ "{:,}".format(s.total_paid or 0) }} د.ع</td>
-        <td data-label="{{ _('suppliers_th_remaining') }}" dir="ltr">
-          {% if (s.remaining or 0) < 0 %}
-            رصيد دائن: {{ "{:,}".format((s.remaining or 0)|abs) }} د.ع
-          {% else %}
-            {{ "{:,}".format(s.remaining or 0) }} د.ع
-          {% endif %}
-        </td>
-        <td data-label="المتبقي بالدولار" dir="ltr">
-          {% if (s.remaining or 0) < 0 %}
-            رصيد دائن: ${{ "{:,.2f}".format(((s.remaining or 0)|abs) / active_supplier_exchange_rate) }}
-          {% else %}
-            ${{ "{:,.2f}".format((s.remaining or 0) / active_supplier_exchange_rate) }}
-          {% endif %}
-        </td>
-        <td data-label="{{ _('suppliers_th_actions') }}">
-          <div class="actions-cell">
-            <a href="/suppliers/{{ s.id }}">
-              <span>📋</span>
-              <span>{{ _('suppliers_statement_link') }}</span>
-            </a>
-            <button
-              type="button"
-              class="ss-edit-btn"
-              onclick='openSupplierEditModal({{ {
-                "id": s.id,
-                "name": s.name or "",
-                "phone": s.phone or "",
-                "phone2": s.phone2 or "",
-                "address": s.address or ""
-              }|tojson }})'
-            >
-              <span>✏️</span>
-              <span>{{ _('suppliers_edit_button') }}</span>
-            </button>
-          </div>
-        </td>
-      </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-  {% endif %}
-</div>
-</div>
-
-<div class="suppliers-edit-modal" id="supplierEditModal" onclick="if(event.target===this)closeSupplierEditModal()">
-  <div class="suppliers-edit-modal__box" role="dialog" aria-modal="true" aria-labelledby="supplierEditTitle">
-    <h3>
-      <span id="supplierEditTitle">✏️ {{ _('suppliers_edit_title') }}</span>
-      <button type="button" class="suppliers-edit-modal__close" onclick="closeSupplierEditModal()" aria-label="{{ _('close')|default('إغلاق') }}">×</button>
-    </h3>
-    <form method="post" id="supplierEditForm">
-      <input type="hidden" name="next" value="/suppliers">
-      <input name="name" id="editSupplierName" placeholder="{{ _('suppliers_field_name') }}" required>
-      <input name="phone" id="editSupplierPhone" placeholder="{{ _('suppliers_field_phone') }}">
-      <input name="phone2" id="editSupplierPhone2" placeholder="{{ _('suppliers_field_phone2') }}">
-      <input name="address" id="editSupplierAddress" placeholder="{{ _('suppliers_field_address') }}">
-      <div class="suppliers-edit-modal__actions">
-        <button type="submit" class="btn-save">💾 {{ _('suppliers_update_button') }}</button>
-        <button type="button" class="btn-cancel" onclick="closeSupplierEditModal()">{{ _('cancel')|default('إلغاء') }}</button>
+  <!-- Drawer: new / edit supplier -->
+  <div class="fd-drawer" id="supDrawer" hidden>
+    <form class="fd-drawer-panel" id="supForm" method="post" action="{{ url_for('suppliers.suppliers') }}" role="dialog" aria-modal="true" aria-labelledby="supDrawerTitle">
+      <input type="hidden" id="sfId">
+      <div class="fd-drawer-head">
+        <span class="fd-drawer-icon">{{ icon('truck', 24) }}</span>
+        <div class="fd-drawer-titles">
+          <h2 class="fd-drawer-title" id="supDrawerTitle">{{ _('suppliers_add_title') }}</h2>
+          <p class="fd-drawer-hint">Ctrl+S للحفظ · Esc للإغلاق</p>
+        </div>
+        <button type="button" class="fd-close-btn" onclick="closeSupplierDrawer()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+      </div>
+      <div class="fd-drawer-body">
+        <div class="fd-form-error" id="sfError" role="alert" hidden></div>
+        <section class="fd-section">
+          <div class="fd-section-head"><span class="fd-section-title">{{ icon('truck', 18) }}بيانات المورد</span></div>
+          <label class="fd-field"><span>{{ _('suppliers_field_name') }} <b class="fd-req">*</b></span>
+            <input type="text" name="name" id="sfName" required autocomplete="off" data-help="suppliers.name">
+          </label>
+          <label class="fd-field"><span>{{ _('suppliers_field_phone') }}</span>
+            <input type="tel" name="phone" id="sfPhone" autocomplete="off" dir="ltr" placeholder="07XXXXXXXXX" data-help="suppliers.phone">
+          </label><label class="fd-field"><span>{{ _('suppliers_field_phone2') }}</span><input type="tel" name="phone2" id="sfPhone2" dir="ltr">
+          </label>
+          <label class="fd-field"><span>{{ _('suppliers_field_address') }}</span>
+            <input type="text" name="address" id="sfAddress" autocomplete="off">
+          </label>
+        </section>
+        <section class="fd-section" id="sfOpeningSection">
+          <div class="fd-section-head"><span class="fd-section-title">{{ icon('wallet', 18) }}الرصيد</span></div>
+          <label class="fd-field"><span>{{ _('suppliers_field_opening_balance') }}</span>
+            <input type="number" name="opening_balance" id="sfOpening" min="0" step="1" inputmode="numeric" placeholder="0">
+          </label>
+          <p class="fd-muted" style="margin:0;font-size:13px;">دين سابق على المحل للمورد قبل بدء استخدام النظام.</p>
+        </section>
+      </div>
+      <div class="fd-drawer-foot">
+        <button type="submit" class="fd-btn fd-btn--primary" id="sfSave">{{ icon('check-circle', 18) }}<span id="sfSaveLabel">{{ _('suppliers_save_button') }}</span></button>
+        <button type="button" class="fd-btn" onclick="closeSupplierDrawer()">إلغاء</button>
       </div>
     </form>
   </div>
 </div>
 
+<script type="application/json" id="suppliersData">[
+  {% for s in suppliers %}{% set st = (purchase_stats|default({})).get(s.id, (0, '')) %}
+  {"id": {{ s.id }}, "name": {{ (s.name or '')|tojson }}, "phone": {{ (s.phone or '')|tojson }}, "address": {{ (s.address or '')|tojson }},
+   "phone2": {{ (s.phone2 or '')|tojson }}, "member_count": {{ s.member_count|default(1) }}, "opening_balance": {{ s.opening_balance or 0 }}, "total_debt": {{ s.total_debt or 0 }}, "total_paid": {{ s.total_paid or 0 }},
+   "purchases": {{ st[0] }}, "last_purchase": {{ st[1]|tojson }}}{% if not loop.last %},{% endif %}
+  {% endfor %}
+]</script>
+
+<script src="/static/js/finora-ui.js?v=20261018c"></script>
 <script>
-function openSupplierEditModal(data) {
-  const modal = document.getElementById('supplierEditModal');
-  const form = document.getElementById('supplierEditForm');
-  if (!modal || !form || !data) return;
-  form.action = '/suppliers/' + data.id + '/update';
-  document.getElementById('editSupplierName').value = data.name || '';
-  document.getElementById('editSupplierPhone').value = data.phone || '';
-  document.getElementById('editSupplierPhone2').value = data.phone2 || '';
-  document.getElementById('editSupplierAddress').value = data.address || '';
-  modal.classList.add('show');
-  document.getElementById('editSupplierName').focus();
-}
+  const F = window.FinoraUI;
+  const byId = id => document.getElementById(id);
+  const SUP_PAGE_SIZES = [10, 25, 50, 100];
+  const SUP_PAGE_SIZE_KEY = "suppliers_page_size";
+  let suppliersData = [];
+  let supState = "";
+  let supPage = 0;
+  let supDetailId = null;
 
-function closeSupplierEditModal() {
-  const modal = document.getElementById('supplierEditModal');
-  if (modal) modal.classList.remove('show');
-}
+  const supplierExchangeRate = {{ active_supplier_exchange_rate|tojson }};
+  const fmtUsd = n => "$" + ((Number(n) || 0) / supplierExchangeRate).toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2});
+  const remainingOf = s => (Number(s.total_debt) || 0) - (Number(s.total_paid) || 0);
 
-document.addEventListener('keydown', function (e) {
-  if (e.key === 'Escape') closeSupplierEditModal();
-});
+  function supPageSize() {
+    try {
+      const saved = parseInt(localStorage.getItem(SUP_PAGE_SIZE_KEY), 10);
+      if (SUP_PAGE_SIZES.includes(saved)) return saved;
+    } catch (e) { /* storage unavailable */ }
+    return 25;
+  }
+
+  function supStateOf(s) {
+    const rem = remainingOf(s);
+    return rem > 0 ? "due" : (rem < 0 ? "credit" : "settled");
+  }
+
+  function filteredSuppliers() {
+    const q = byId("supSearch").value.trim().toLowerCase();
+    return suppliersData.filter(s => {
+      if (supState && supStateOf(s) !== supState) return false;
+      if (q && !((s.name + " " + s.phone + " " + s.phone2 + " " + s.address).toLowerCase().includes(q))) return false;
+      return true;
+    });
+  }
+
+  function syncSupplierUi() {
+    const counts = { "": suppliersData.length, due: 0, settled: 0, credit: 0 };
+    suppliersData.forEach(s => { counts[supStateOf(s)]++; });
+    document.querySelectorAll("#supChips [data-count]").forEach(el => {
+      el.textContent = F.num(counts[el.getAttribute("data-count")] || 0);
+    });
+    document.querySelectorAll("#fdPage [data-sup-state]").forEach(el => {
+      el.classList.toggle("active", (el.getAttribute("data-sup-state") || "") === supState);
+    });
+  }
+
+  function renderSuppliers() {
+    F.closeRowMenu();
+    syncSupplierUi();
+    const rows = filteredSuppliers();
+    const size = supPageSize();
+    const pages = Math.max(1, Math.ceil(rows.length / size));
+    supPage = Math.min(supPage, pages - 1);
+    const pageRows = rows.slice(supPage * size, (supPage + 1) * size);
+
+    let remaining = 0;
+    rows.forEach(s => { remaining += Math.max(remainingOf(s), 0); });
+    byId("supTotals").innerHTML = rows.length ? "المتبقي <b>" + F.num(remaining) + " د.ع</b>" : "";
+    const from = rows.length ? supPage * size + 1 : 0;
+    byId("supRange").innerHTML = "عرض " + F.num(from) + "–" + F.num(Math.min(rows.length, (supPage + 1) * size)) + " من <b>" + F.num(rows.length) + "</b> مورد";
+    byId("supPager").innerHTML = F.pagerHtml(supPage, pages, "data-sup-page");
+
+    const tbody = byId("supBody");
+    if (!pageRows.length) {
+      tbody.innerHTML = '<tr><td colspan="9" class="fd-empty">' + (suppliersData.length ? "لا يوجد موردون مطابقون." : "{{ _('suppliers_empty_state') }}") + "</td></tr>";
+      return;
+    }
+    tbody.innerHTML = pageRows.map(s => {
+      const rem = remainingOf(s);
+      const remClass = rem > 0 ? "fd-qty--out" : (rem < 0 ? "fd-qty--low" : "fd-qty--ok");
+      return `
+      <tr data-sup-row="${s.id}" class="${s.id === supDetailId ? "is-open" : ""}" style="cursor:pointer">
+        <td class="fd-td-title" data-label="المورد"><b>${F.esc(s.name)}</b>${s.member_count > 1 ? `<small class="fd-muted">مجمّع من ${F.num(s.member_count)} سجلات الفروع</small>` : ""}</td>
+        <td data-label="الهاتف" class="${F.blank(s.phone) ? "fd-td-blank" : ""}">${F.blank(s.phone) ? '<span class="fd-muted">—</span>' : `<span dir="ltr">${F.esc(s.phone)}</span>`}</td>
+        <td data-label="العنوان" class="fd-col-opt${F.blank(s.address) ? " fd-td-blank" : ""}">${F.dash(s.address)}</td>
+        <td data-label="الفواتير" class="fd-col-opt2">${F.num(s.purchases)}</td>
+        <td data-label="آخر شراء" class="fd-col-opt fd-cell-muted${s.last_purchase ? "" : " fd-td-blank"}">${s.last_purchase ? `<span dir="ltr">${F.esc(s.last_purchase)}</span>` : '<span class="fd-muted">—</span>'}</td>
+        <td data-label="{{ _('suppliers_th_total_debt') }}" class="fd-cell-amount">${F.money(s.total_debt)}</td>
+        <td data-label="{{ _('suppliers_th_paid') }}" class="fd-cell-muted fd-col-opt2">${F.money(s.total_paid)}</td>
+        <td data-label="{{ _('suppliers_th_remaining') }}"><b class="${remClass}">${rem < 0 ? "رصيد دائن: " : ""}${F.money(Math.abs(rem))}</b><small class="fd-muted" dir="ltr">${fmtUsd(rem)}</small></td>
+        <td class="fd-col-actions">
+          <button type="button" class="fd-more-btn" data-fd-row-menu="${s.id}" aria-haspopup="menu" aria-label="إجراءات" title="إجراءات"></button>
+        </td>
+      </tr>`;
+    }).join("");
+  }
+
+  // ---- Detail panel ----
+  function supKv(key, value) {
+    return `<div class="fd-kv-row"><span class="fd-kv-key">${key}</span><span class="fd-kv-val">${value}</span></div>`;
+  }
+
+  function findSupplier(id) {
+    return suppliersData.find(s => s.id === Number(id));
+  }
+
+  function openSupplierDetail(id) {
+    const s = findSupplier(id);
+    if (!s) return;
+    supDetailId = s.id;
+    const rem = remainingOf(s);
+    const state = supStateOf(s);
+    const pill = { due: ["red", "عليه متبقي"], settled: ["green", "مسدد"], credit: ["amber", "لنا رصيد"] }[state];
+    byId("supDetailTitle").textContent = s.name;
+    byId("supDetailSub").textContent = s.phone || "";
+    byId("supDetailBody").innerHTML = `
+      <div class="fd-detail-status"><span class="fd-pill fd-pill--${pill[0]}">${pill[1]}</span></div>
+      <div class="fd-kv">
+        ${supKv("الهاتف الثاني", F.dash(s.phone2))}
+        ${supKv("الهاتف", F.blank(s.phone) ? "—" : `<span dir="ltr">${F.esc(s.phone)}</span>`)}
+        ${supKv("العنوان", F.dash(s.address))}
+        ${supKv("فواتير الشراء", F.num(s.purchases))}
+        ${supKv("آخر شراء", s.last_purchase ? `<span dir="ltr">${F.esc(s.last_purchase)}</span>` : "—")}
+        ${Number(s.opening_balance) ? supKv("{{ _('suppliers_field_opening_balance') }}", F.money(s.opening_balance)) : ""}
+        ${supKv("{{ _('suppliers_th_total_debt') }}", `<b>${F.money(s.total_debt)}</b>`)}
+        ${supKv("{{ _('suppliers_th_paid') }}", F.money(s.total_paid))}
+        ${supKv("{{ _('suppliers_th_remaining') }}", `<b class="${rem > 0 ? "fd-qty--out" : "fd-qty--ok"}">${rem < 0 ? "رصيد دائن: " : ""}${F.money(Math.abs(rem))}</b><small class="fd-muted" dir="ltr">${fmtUsd(rem)}</small>`)}
+      </div>
+      <div class="fd-detail-actions">
+        <a class="fd-btn fd-btn--primary fd-btn--sm" href="/suppliers/${s.id}">{{ _('suppliers_statement_link') }}</a>
+        <a class="fd-btn fd-btn--sm" href="/suppliers/statement/print/${s.id}" target="_blank" rel="noopener">طباعة الكشف</a>
+        <a class="fd-btn fd-btn--sm" href="/suppliers/statement/pdf/${s.id}">PDF</a>
+        ${F.blank(s.phone) ? "" : `<a class="fd-btn fd-btn--sm" href="tel:${F.esc(s.phone)}">اتصال</a>`}
+      </div>`;
+    F.show(byId("supDetail"));
+    document.querySelectorAll("#supBody tr[data-sup-row]").forEach(tr => {
+      tr.classList.toggle("is-open", Number(tr.getAttribute("data-sup-row")) === s.id);
+    });
+  }
+
+  function closeSupplierDetail() {
+    supDetailId = null;
+    F.hide(byId("supDetail"));
+    document.querySelectorAll("#supBody tr.is-open").forEach(tr => tr.classList.remove("is-open"));
+  }
+
+  // ---- Drawer ----
+  function openSupplierDrawer(id) {
+    closeSupplierDetail();
+    F.closePop();
+    const s = id ? findSupplier(id) : null;
+    const form = byId("supForm");
+    form.reset();
+    byId("sfError").hidden = true;
+    byId("sfId").value = s ? s.id : "";
+    byId("sfName").value = s ? s.name : "";
+    byId("sfPhone").value = s ? s.phone : "";
+    byId("sfPhone2").value = s ? s.phone2 : "";
+    byId("sfAddress").value = s ? s.address : "";
+    // the opening balance is part of the debt ledger; it is only set when the supplier is created
+    byId("sfOpeningSection").hidden = !!s;
+    byId("sfOpening").disabled = !!s;
+    byId("supDrawerTitle").textContent = s ? s.name : "{{ _('suppliers_add_title') }}";
+    byId("sfSaveLabel").textContent = s ? "حفظ التعديلات" : "{{ _('suppliers_save_button') }}";
+    F.show(byId("supDrawer"));
+    setTimeout(() => byId("sfName").focus(), 40);
+  }
+
+  function closeSupplierDrawer() { F.hide(byId("supDrawer")); }
+
+  let supSaving = false;
+  async function saveSupplier(event) {
+    const id = byId("sfId").value;
+    const err = byId("sfError");
+    if (!byId("sfName").value.trim()) {
+      if (event) event.preventDefault();
+      err.textContent = "اسم المورد مطلوب.";
+      err.hidden = false;
+      byId("sfName").focus();
+      return;
+    }
+    if (!id) return; // a new supplier posts the form as before
+    if (event) event.preventDefault();
+    if (supSaving) return;
+    supSaving = true;
+    byId("sfSave").disabled = true;
+    const data = { name: byId("sfName").value.trim(), phone: byId("sfPhone").value.trim(), phone2: byId("sfPhone2").value.trim(), address: byId("sfAddress").value.trim() };
+    try {
+      const res = await fetch("/suppliers/api/" + id + "/update", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      const out = await res.json().catch(() => ({}));
+      if (!res.ok || !out.success) {
+        err.textContent = out.error || "تعذر حفظ التعديلات";
+        err.hidden = false;
+        return;
+      }
+      Object.assign(findSupplier(id), data);
+      closeSupplierDrawer();
+      renderSuppliers();
+      openSupplierDetail(id);
+      F.toast("تم تحديث بيانات المورد", "success");
+    } catch (e) {
+      err.textContent = "تعذر الاتصال بالخادم";
+      err.hidden = false;
+    } finally {
+      supSaving = false;
+      byId("sfSave").disabled = false;
+    }
+  }
+
+  function openSupplierMenu(trigger) {
+    const id = Number(trigger.getAttribute("data-fd-row-menu"));
+    F.rowMenu(trigger, [
+      { act: "view", label: "عرض الملخص" },
+      { href: "/suppliers/" + id, label: "{{ _('suppliers_statement_link') }}" },
+      { act: "edit", label: "تعديل البيانات" },
+      "sep",
+      { href: "/suppliers/statement/print/" + id, label: "طباعة كشف الحساب", target: "_blank" },
+      { href: "/suppliers/statement/pdf/" + id, label: "تحميل الكشف PDF" }
+    ], act => {
+      if (act === "view") openSupplierDetail(id);
+      if (act === "edit") openSupplierDrawer(id);
+    });
+  }
+
+  function exportSuppliersCsv() {
+    const cell = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+    const lines = [["المورد", "الهاتف", "العنوان", "الفواتير", "آخر شراء", "إجمالي الدين", "المدفوع", "المتبقي"].map(cell).join(",")];
+    filteredSuppliers().forEach(s => {
+      lines.push([s.name, s.phone, s.address, s.purchases, s.last_purchase, s.total_debt, s.total_paid, remainingOf(s)].map(cell).join(","));
+    });
+    const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "suppliers.csv";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  document.addEventListener("click", event => {
+    const t = event.target;
+    if (!t.closest) return;
+    const menu = t.closest("[data-fd-row-menu]");
+    if (menu) { openSupplierMenu(menu); return; }
+    const page = t.closest("[data-sup-page]");
+    if (page && !page.disabled) {
+      const v = page.getAttribute("data-sup-page");
+      supPage = v === "prev" ? supPage - 1 : v === "next" ? supPage + 1 : parseInt(v, 10) || 0;
+      renderSuppliers();
+      return;
+    }
+    const chip = t.closest("[data-sup-state]");
+    if (chip) { supState = chip.getAttribute("data-sup-state") || ""; supPage = 0; renderSuppliers(); return; }
+    if (t.closest("#supDetailEdit") && supDetailId) { openSupplierDrawer(supDetailId); return; }
+    const row = t.closest("tr[data-sup-row]");
+    if (row && !t.closest("a, button")) openSupplierDetail(row.getAttribute("data-sup-row"));
+  });
+
+  document.addEventListener("DOMContentLoaded", () => {
+    try { suppliersData = JSON.parse(byId("suppliersData").textContent); } catch (e) { suppliersData = []; }
+    const size = byId("supPageSize");
+    size.value = String(supPageSize());
+    size.addEventListener("change", () => {
+      try { localStorage.setItem(SUP_PAGE_SIZE_KEY, size.value); } catch (e) { /* storage unavailable */ }
+      supPage = 0;
+      renderSuppliers();
+    });
+    byId("supSearch").addEventListener("input", () => { supPage = 0; renderSuppliers(); });
+    byId("supForm").addEventListener("submit", saveSupplier);
+    byId("supDrawer").addEventListener("click", e => { if (e.target === byId("supDrawer")) closeSupplierDrawer(); });
+    document.addEventListener("keydown", e => {
+      if (!byId("supDrawer").hidden && (e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
+        e.preventDefault();
+        byId("supForm").requestSubmit();
+      }
+    });
+    renderSuppliers();
+  });
 </script>
-
 {% endblock %}

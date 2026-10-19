@@ -11,11 +11,20 @@ verified final order workspace changes, to restore functional templates and
 their backend implementations. The application source that previously existed
 only outside Git is included in the release commit.
 
-Where layout rewrites conflicted with existing functionality, the complete
-functional page was restored. The global Finora theme remains, along with
-compatible redesigned pages. Clinic-specific layouts keep their own styles.
-Navigation, branch-aware inventory quantities and delivery tracking links were
-merged explicitly.
+The initial recovery restored complete functional templates at conflicting
+pages, which also replaced Claude's page designs. The follow-up merges those
+designs explicitly: compact toolbars, action menus, drawers, table/card layouts,
+headers and navigation retain server pagination, permission checks, installment
+editing, backdated payments, branch/color inventory adjustment, bulk POS
+visibility, supplier second phones and shared balances, scheduled expense
+editing, monthly commission settlement/statement and scan-company selection.
+The purchase editor retains its complete local workflow within the FD design.
+Clinic-specific layouts keep their own styles.
+
+Supplier list presentation data follows the existing branch visibility and
+shared supplier grouping. Drawer mutations use the mature scoped APIs, including
+the inventory API that preserves colors, product options and media metadata.
+Saved order views also retain the redesigned date and amount filters.
 
 `scripts/safe_git_update.py` now rejects dirty server files, divergent history
 and incoming files that would replace server-only files. Both the server deploy
@@ -68,3 +77,12 @@ checkout. The rotating-savings standalone fixture registers the HR/finance
 foreign-key graph before creating its database. Temporary SQLite files stay in
 the validation sandbox. The threaded search cache was rechecked with the real
 monotonic clock. These changes preserve every functional assertion.
+
+The design follow-up passed 159 distinct focused Python regressions (including
+rerunning the credit read-safety check against the redesigned JSON status rather
+than a removed CSS class), and 21 navigation/saved-view JavaScript checks.
+Browser acceptance covers 13 desktop and 13 mobile page routes, with real
+isolated order pagination/filtering, compact row print actions, product drawer
+saves, supplier contact edits, installment editing/payment dates, employee
+branch/transfer fields and monthly payroll statements. External notification
+polling is stubbed in browser acceptance; financial actions use isolated data.

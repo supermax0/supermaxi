@@ -1,266 +1,487 @@
 {% extends "base.html" %}
 {% block title %}{{ _('purchases') }} — سجل المشتريات{% endblock %}
-{% block page_title %}سجل المشتريات{% endblock %}
+{% block page_title %}إدارة المشتريات{% endblock %}
 
 {% block content %}
-<div class="purchases-page pur-history-page">
-  <style>
-    .purchases-page { width: 100%; max-width: none; margin: 0; direction: rtl; }
-    .pur-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
-    .pur-kpi { background: var(--card); border: 1px solid var(--border-light); border-radius: 14px; padding: 12px; }
-    .pur-kpi small { color: var(--text-muted); display: block; margin-bottom: 4px; }
-    .pur-kpi strong { font-size: 20px; }
-    .amount-usd { display: block; margin-top: 3px; color: #2563eb; font-size: 11px; font-weight: 700; direction: ltr; text-align: right; white-space: nowrap; }
-    .pur-kpi .amount-usd { font-size: 12px; }
-    .pur-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
-    .pur-card { background: var(--card); border: 1px solid var(--border-light); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
-    .pur-grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
-    .pur-field { display: flex; flex-direction: column; gap: 6px; }
-    .pur-field label { font-size: 13px; color: var(--text-muted); font-weight: 700; }
-    .pur-field input, .pur-field select {
-      background: var(--card-alt); border: 1px solid var(--border-light); color: var(--text);
-      border-radius: 10px; padding: 10px 12px; font-size: 14px; width: 100%;
-    }
-    .pur-btn { border: none; border-radius: 10px; padding: 10px 14px; font-weight: 700; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
-    .pur-btn-primary { background: var(--primary); color: #fff; }
-    .pur-btn-danger { background: #dc2626; color: #fff; }
-    .pur-btn-muted { background: var(--card-alt); color: var(--text); border: 1px solid var(--border-light); }
-    .pur-title { font-weight: 800; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
-    .pur-table-wrap { border: 1px solid var(--border-light); border-radius: 12px; overflow: auto; }
-    table.pur-table { width: 100%; border-collapse: collapse; min-width: 920px; }
-    table.pur-table th, table.pur-table td { border-bottom: 1px solid var(--border-light); padding: 10px 8px; font-size: 13px; text-align: right; vertical-align: middle; }
-    table.pur-table th { background: var(--card-alt); color: var(--text-muted); position: sticky; top: 0; z-index: 1; }
-    table.pur-table tbody tr:hover { background: rgba(99, 102, 241, 0.06); }
-    .status-badge { display: inline-flex; border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 700; white-space: nowrap; }
-    .status-draft { background: rgba(100,116,139,0.2); color: #cbd5e1; border: 1px solid rgba(100,116,139,0.4); }
-    .status-confirmed { background: rgba(16,185,129,0.2); color: #6ee7b7; border: 1px solid rgba(16,185,129,0.4); }
-    .status-cancelled { background: rgba(239,68,68,0.2); color: #fca5a5; border: 1px solid rgba(239,68,68,0.4); }
-    .muted { color: var(--text-muted); font-size: 12px; }
-    table.pur-table th.pur-col-actions,
-    table.pur-table td.pur-col-actions { width: 48px; max-width: 48px; text-align: center; padding-inline: 4px; }
-    .pur-actions { display: flex; justify-content: center; align-items: center; }
-    .pur-history-page .pur-actions-trigger {
-      display: inline-flex; align-items: center; justify-content: center;
-      min-width: 28px; width: 28px; height: 28px; padding: 0;
-      border-radius: 7px; border: 1px solid var(--border-light);
-      background: var(--card-alt); color: #334155;
-      font-size: 16px; font-weight: 800; line-height: 1; cursor: pointer;
-      transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
-    }
-    .pur-history-page .pur-actions-trigger:hover,
-    .pur-history-page .pur-actions-trigger[aria-expanded="true"] {
-      border-color: #93c5fd; color: #2563eb; background: #eff6ff;
-    }
-    .pur-actions-menu {
-      position: fixed; z-index: 10080;
-      min-width: 190px; max-width: min(240px, calc(100vw - 16px));
-      padding: 6px; margin: 0; list-style: none;
-      border: 1px solid var(--border-light); border-radius: 12px;
-      background: var(--card, #fff);
-      box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
-      direction: rtl;
-    }
-    .pur-actions-menu[hidden] { display: none !important; }
-    .pur-actions-menu-item {
-      display: flex; align-items: center; gap: 10px; width: 100%;
-      padding: 10px 12px; border: 0; border-radius: 8px;
-      background: transparent; color: var(--text, #0f172a);
-      font-size: 13px; font-weight: 600; text-align: right;
-      text-decoration: none; cursor: pointer;
-      transition: background 0.12s ease, color 0.12s ease;
-    }
-    .pur-actions-menu-item i { width: 16px; text-align: center; color: #64748b; font-size: 13px; }
-    .pur-actions-menu-item:hover,
-    .pur-actions-menu-item:focus-visible { background: #f1f5f9; color: #0f172a; outline: none; }
-    .pur-actions-menu-item:hover i,
-    .pur-actions-menu-item:focus-visible i { color: #2563eb; }
-    .pur-actions-menu-item.is-danger { color: #dc2626; }
-    .pur-actions-menu-item.is-danger i { color: #dc2626; }
-    .pur-actions-menu-item.is-danger:hover,
-    .pur-actions-menu-item.is-danger:focus-visible { background: #fef2f2; color: #b91c1c; }
-    .status-chips { display: flex; gap: 8px; flex-wrap: wrap; }
-    .chip-btn { border: 1px solid var(--border-light); background: var(--card-alt); color: var(--text); border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 700; cursor: pointer; }
-    .chip-btn.active { background: var(--primary); color: #fff; border-color: transparent; }
-    .pur-empty { text-align: center; padding: 40px 16px; color: var(--text-muted); }
-    @media (max-width: 900px) {
-      .pur-kpis, .pur-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    }
-    @media (max-width: 600px) {
-      .pur-kpis, .pur-grid-4 { grid-template-columns: 1fr; }
-    }
-  </style>
+{% from "partials/fd_icons.html" import icon %}
+{% set active_supplier_exchange_rate = supplier_exchange_rate|default(1350,true) %}
+<link rel="stylesheet" href="/static/css/finora-ui.css?v=20261018e">
+<div class="fd pur-history-page" id="fdPage">
 
-  {% set active_supplier_exchange_rate = supplier_exchange_rate|default(1350, true) %}
-  <div class="pur-kpis">
-    <div class="pur-kpi">
-      <small>إجمالي المشتريات</small>
-      <strong>{{ "{:,}".format(total_purchases or 0) }} د.ع</strong>
-      <span class="amount-usd">${{ "{:,.2f}".format((total_purchases or 0) / active_supplier_exchange_rate) }}</span>
-    </div>
-    <div class="pur-kpi"><small>عدد الفواتير</small><strong>{{ purchases_count or 0 }}</strong></div>
-    <div class="pur-kpi">
-      <small>مشتريات هذا الشهر</small>
-      <strong>{{ "{:,}".format(monthly_total or 0) }} د.ع</strong>
-      <span class="amount-usd">${{ "{:,.2f}".format((monthly_total or 0) / active_supplier_exchange_rate) }}</span>
-    </div>
-    <div class="pur-kpi">
-      <small>ديون الموردين</small>
-      <strong>{{ "{:,}".format(total_supplier_debts or 0) }} د.ع</strong>
-      <span class="amount-usd">${{ "{:,.2f}".format((total_supplier_debts or 0) / active_supplier_exchange_rate) }}</span>
-    </div>
-  </div>
-
-  <div class="pur-toolbar">
-    <div>
-      <h3 style="margin:0;font-weight:800;">سجل فواتير الشراء</h3>
-      <p class="muted" style="margin:4px 0 0;">عرض وتصفية وإدارة جميع فواتير المشتريات</p>
-    </div>
-    <a href="{{ url_for('purchases.purchases_new') }}" class="pur-btn pur-btn-primary">
-      <i class="fa fa-plus"></i> فاتورة شراء جديدة
-    </a>
-  </div>
-
-  <div class="pur-card">
-    <div class="pur-title"><i class="fa fa-filter"></i> البحث والتصفية</div>
-    <div class="pur-grid-4">
-      <div class="pur-field">
-        <label>بحث</label>
-        <input type="text" id="qSearch" placeholder="رقم الفاتورة / فاتورة المورد / المورد / المنتج">
+  <header class="fd-header no-print">
+    <div class="fd-header-main">
+      <span class="fd-header-icon" style="color: var(--fd-purple);">{{ icon('receipt', 26) }}</span>
+      <div class="fd-header-text">
+        <h1 class="fd-title">إدارة المشتريات</h1>
+        <p class="fd-subtitle">فواتير الشراء والموردين والمدفوعات</p>
       </div>
-      <div class="pur-field">
-        <label>المورد</label>
-        <select id="qSupplier">
-          <option value="">الكل</option>
-          {% for s in suppliers %}
-          <option value="{{ s.id }}">{{ s.name }}</option>
-          {% endfor %}
-        </select>
+    </div>
+  </header>
+
+  <nav class="fd-subnav no-print" aria-label="المشتريات">
+    <a class="fd-subnav-link active" href="{{ url_for('purchases.purchases_index') }}">سجل المشتريات</a>
+    <a class="fd-subnav-link" href="{{ url_for('purchases.purchases_new') }}">فاتورة شراء جديدة</a>
+    <a class="fd-subnav-link" href="{{ url_for('suppliers.suppliers') }}">الموردون</a>
+  </nav>
+
+  <!-- KPI cards (click to filter) -->
+  <div class="fd-kpis no-print">
+    <button type="button" class="fd-kpi fd-kpi--purple active" data-pur-quick="">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">إجمالي المشتريات</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money">{{ "{:,}".format(total_purchases or 0) }}<small class="fd-muted" dir="ltr">${{ "{:,.2f}".format((total_purchases or 0) / active_supplier_exchange_rate) }}</small></span><span class="fd-kpi-unit">د.ع</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('cart', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--green" data-pur-quick="confirmed">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">عدد الفواتير</span>
+        <span><span class="fd-kpi-value">{{ "{:,}".format(purchases_count or 0) }}</span><span class="fd-kpi-unit">فاتورة</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('receipt', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--amber" data-pur-quick="month">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">مشتريات هذا الشهر</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money">{{ "{:,}".format(monthly_total or 0) }}<small class="fd-muted" dir="ltr">${{ "{:,.2f}".format((monthly_total or 0) / active_supplier_exchange_rate) }}</small></span><span class="fd-kpi-unit">د.ع</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('calendar', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--red" data-pur-quick="due">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">ديون الموردين</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money">{{ "{:,}".format(total_supplier_debts or 0) }}<small class="fd-muted" dir="ltr">${{ "{:,.2f}".format((total_supplier_debts or 0) / active_supplier_exchange_rate) }}</small></span><span class="fd-kpi-unit">د.ع</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('wallet', 28) }}</span>
+    </button>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="fd-toolbar no-print">
+    <div class="fd-chips" id="purStatusChips" role="tablist" aria-label="حالة الفاتورة">
+      <button type="button" class="fd-chip active" data-status="">الكل<span class="fd-chip-count" data-count=""></span></button>
+      <button type="button" class="fd-chip" data-status="confirmed">مؤكدة<span class="fd-chip-count" data-count="confirmed"></span></button>
+      <button type="button" class="fd-chip" data-status="draft">مسودة<span class="fd-chip-count" data-count="draft"></span></button>
+      <button type="button" class="fd-chip" data-status="cancelled">ملغية<span class="fd-chip-count" data-count="cancelled"></span></button>
+    </div>
+
+    <div class="fd-pop-wrap fd-tool--filter">
+      <button type="button" class="fd-btn" data-fd-pop="purFiltersPop" aria-expanded="false" aria-controls="purFiltersPop">
+        {{ icon('filter', 18) }}
+        <span class="fd-btn-label">تصفية</span>
+        <span class="fd-count-badge" id="purFilterCount" hidden></span>
+        <span class="fd-chevron">{{ icon('chevron', 16) }}</span>
+      </button>
+      <div class="fd-pop fd-pop--start fd-filter-pop" id="purFiltersPop" role="dialog" aria-label="تصفية" hidden>
+        <div class="fd-form-grid">
+          <label class="fd-field fd-field--wide"><span>المورد</span>
+            <select id="qSupplier">
+              <option value="">الكل</option>
+              {% for s in suppliers %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+            </select>
+          </label>
+          <label class="fd-field"><span>من تاريخ</span><input type="date" id="qDateFrom"></label>
+          <label class="fd-field"><span>إلى تاريخ</span><input type="date" id="qDateTo"></label>
+          <label class="fd-field"><span>أقل مبلغ</span><input type="number" id="qAmountMin" min="0" step="any" inputmode="decimal" placeholder="0"></label>
+          <label class="fd-field"><span>أعلى مبلغ</span><input type="number" id="qAmountMax" min="0" step="any" inputmode="decimal"></label>
+          <label class="fd-field"><span>الدفع</span>
+            <select id="qPayment">
+              <option value="">الكل</option>
+              <option value="due">عليها متبقي</option>
+              <option value="paid">مسددة بالكامل</option>
+            </select>
+          </label>
+          <label class="fd-field"><span>طريقة الشراء</span>
+            <select id="qMode">
+              <option value="">الكل</option>
+              <option value="cash">نقدي</option>
+              <option value="credit">آجل</option>
+              <option value="mixed">دفعات جزئية</option>
+            </select>
+          </label>
+        </div>
+        <div class="fd-pop-foot fd-pop-foot--split">
+          <button type="button" class="fd-link-btn" onclick="clearPurchaseFilters()">مسح التصفية</button>
+          <button type="button" class="fd-btn fd-btn--accent fd-btn--apply" data-fd-pop-close>تطبيق</button>
+        </div>
       </div>
-      <div class="pur-field"><label>من تاريخ</label><input type="date" id="qDateFrom"></div>
-      <div class="pur-field"><label>إلى تاريخ</label><input type="date" id="qDateTo"></div>
     </div>
-    <div class="status-chips" style="margin-top:12px;">
-      <button type="button" class="chip-btn active" data-status="">الكل</button>
-      <button type="button" class="chip-btn" data-status="confirmed">مؤكدة</button>
-      <button type="button" class="chip-btn" data-status="draft">مسودة</button>
-      <button type="button" class="chip-btn" data-status="cancelled">ملغية</button>
-    </div>
-    <div style="display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;">
-      <button class="pur-btn pur-btn-primary" type="button" id="refreshHistoryBtn"><i class="fa fa-rotate"></i> تحديث</button>
-      <a class="pur-btn pur-btn-muted" href="/purchases/export"><i class="fa fa-file-csv"></i> تصدير CSV</a>
+
+    <label class="fd-search fd-tool--search">
+      {{ icon('search', 18) }}
+      <input type="search" id="qSearch" autocomplete="off" placeholder="بحث برقم الفاتورة، فاتورة المورد، المورد أو المنتج...">
+    </label>
+
+    <div class="fd-tools-row">
+      <a href="{{ url_for('purchases.purchases_new') }}" class="fd-btn fd-btn--primary">
+        {{ icon('package-plus', 18) }}
+        <span class="fd-btn-label">فاتورة شراء جديدة</span>
+      </a>
+      <div class="fd-pop-wrap">
+        <button type="button" class="fd-btn fd-btn--icon" data-fd-pop="purMorePop" aria-expanded="false" aria-controls="purMorePop" title="المزيد" aria-label="المزيد">{{ icon('dots', 20) }}</button>
+        <div class="fd-pop fd-pop--end fd-menu" id="purMorePop" role="menu" hidden>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close id="refreshHistoryBtn">{{ icon('trend') }}<span>تحديث السجل</span></button>
+          <a class="fd-menu-item" role="menuitem" href="/purchases/export">{{ icon('download') }}<span>تصدير CSV</span></a>
+          <a class="fd-menu-item" role="menuitem" href="{{ url_for('suppliers.suppliers') }}">{{ icon('users') }}<span>الموردون</span></a>
+        </div>
+      </div>
     </div>
   </div>
 
-  <div class="pur-card" style="padding:0;">
-    <div class="pur-table-wrap">
-      <table class="pur-table" id="historyTable">
+  <!-- Table -->
+  <section class="fd-table-card">
+    <div class="fd-table-scroll" id="purTableScroll">
+      <table class="fd-table" id="historyTable">
         <thead>
           <tr>
             <th>الفاتورة</th>
-            <th>رقم فاتورة المورد</th>
+            <th class="fd-col-opt">فاتورة المورد</th>
             <th>التاريخ</th>
             <th>المورد</th>
-            <th>العناصر</th>
+            <th class="fd-col-opt">العناصر</th>
             <th>الإجمالي</th>
-            <th>المدفوع</th>
+            <th class="fd-col-opt2">المدفوع</th>
             <th>المتبقي</th>
             <th>الحالة</th>
-            <th class="pur-col-actions">إجراءات</th>
+            <th class="fd-col-actions"></th>
           </tr>
         </thead>
         <tbody id="historyBody">
-          <tr><td colspan="10" class="pur-empty">جاري التحميل...</td></tr>
+          <tr><td colspan="10" class="fd-empty">جاري التحميل...</td></tr>
         </tbody>
       </table>
     </div>
-  </div>
+  </section>
+
+  <footer class="fd-footer no-print">
+    <div class="fd-footer-info">
+      <select id="purPageSize" aria-label="عدد الفواتير في الصفحة">
+        <option value="10">10</option>
+        <option value="25">25</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+      </select>
+      <span class="fd-range" id="purRange"></span>
+      <span class="fd-totals" id="purTotals"></span>
+    </div>
+    <nav class="fd-pager" id="purPager" aria-label="الصفحات"></nav>
+  </footer>
+
+  <!-- Detail panel -->
+  <aside class="fd-detail" id="purDetail" aria-label="تفاصيل الفاتورة" hidden>
+    <div class="fd-detail-head">
+      <div class="fd-detail-titles">
+        <h3 class="fd-detail-title" id="purDetailTitle"></h3>
+        <p class="fd-detail-sub" id="purDetailSub"></p>
+      </div>
+      <a class="fd-btn fd-btn--soft fd-btn--sm" id="purDetailEdit" href="#">{{ icon('pencil', 16) }}<span>تعديل</span></a>
+      <a class="fd-close-btn" id="purDetailPrint" href="#" data-finora-print title="طباعة" aria-label="طباعة">{{ icon('print', 18) }}</a>
+      <button type="button" class="fd-close-btn" onclick="closePurchaseDetail()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+    </div>
+    <div class="fd-detail-body" id="purDetailBody"></div>
+  </aside>
 </div>
 
 <script>
-  const fmt = n => `${(Number(n) || 0).toLocaleString('en-US')} د.ع`;
-  const supplierExchangeRate = Number("{{ active_supplier_exchange_rate }}") || 1350;
-  const fmtUsd = n => `$${((Number(n) || 0) / supplierExchangeRate).toLocaleString('en-US', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  })}`;
+  const supplierExchangeRate = {{ active_supplier_exchange_rate|tojson }};
+  const fmtUsd = n => "$" + ((Number(n) || 0) / supplierExchangeRate).toLocaleString("en-US", {minimumFractionDigits:2, maximumFractionDigits:2});
+  const fmtNum = n => (Math.round(Number(n) || 0)).toLocaleString('en-US');
+  const fmt = n => `<span dir="ltr">${fmtNum(n)} د.ع</span>`;
   const byId = id => document.getElementById(id);
+  const PUR_PAGE_SIZES = [10, 25, 50, 100];
+  const PUR_PAGE_SIZE_KEY = "purchases_page_size";
   let historyData = [];
   let statusFilter = "";
+  let quickFilter = "";
+  let purPage = 0;
+  let purDetailId = null;
 
-  const statusLabel = {
-    draft: "مسودة",
-    confirmed: "مؤكدة",
-    cancelled: "ملغية"
-  };
+  const statusLabel = { draft: "مسودة", confirmed: "مؤكدة", cancelled: "ملغية" };
+  const statusTone = { draft: "gray", confirmed: "green", cancelled: "red" };
+  const modeLabel = { cash: "نقدي", credit: "آجل", mixed: "دفعات جزئية" };
 
-  document.querySelectorAll(".chip-btn").forEach(btn => {
-    btn.addEventListener("click", () => {
-      document.querySelectorAll(".chip-btn").forEach(x => x.classList.remove("active"));
-      btn.classList.add("active");
-      statusFilter = btn.dataset.status || "";
-      renderHistoryTable();
-    });
-  });
-
-  async function purchaseImpactConfirm(options) {
-    if (window.finoraConfirmImpact) return window.finoraConfirmImpact(options);
-    return confirm(options.message || options.title || "تأكيد الإجراء");
+  function esc(value) {
+    return String(value ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   }
 
-  function statusClass(s) {
-    if (s === "cancelled") return "status-cancelled";
-    if (s === "draft") return "status-draft";
-    return "status-confirmed";
+  function notifyPurchaseResult(d) {
+    const message = d.message || d.error || "تم التنفيذ";
+    if (typeof showToast === "function") showToast(message, d.success ? "success" : "error");
+    else alert(message);
+  }
+
+  function purPageSize() {
+    try {
+      const saved = parseInt(localStorage.getItem(PUR_PAGE_SIZE_KEY), 10);
+      if (PUR_PAGE_SIZES.includes(saved)) return saved;
+    } catch (e) { /* storage unavailable */ }
+    return 25;
+  }
+
+  function monthStart() {
+    const d = new Date();
+    return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-01";
+  }
+
+  function filteredPurchases() {
+    const min = parseFloat(byId("qAmountMin").value);
+    const max = parseFloat(byId("qAmountMax").value);
+    const payment = byId("qPayment").value;
+    const mode = byId("qMode").value;
+    return historyData.filter(p => {
+      if (statusFilter && (p.status || "") !== statusFilter) return false;
+      if (quickFilter === "month" && (p.date || "") < monthStart()) return false;
+      if (quickFilter === "due" && !(Number(p.remaining_total) > 0 && p.status !== "cancelled")) return false;
+      if (quickFilter === "confirmed" && p.status !== "confirmed") return false;
+      const total = Number(p.grand_total) || 0;
+      if (!isNaN(min) && total < min) return false;
+      if (!isNaN(max) && total > max) return false;
+      if (payment === "due" && !(Number(p.remaining_total) > 0)) return false;
+      if (payment === "paid" && Number(p.remaining_total) > 0) return false;
+      if (mode && (p.purchase_mode || "credit") !== mode) return false;
+      return true;
+    });
+  }
+
+  function renderStatusCounts() {
+    const counts = { "": historyData.length, confirmed: 0, draft: 0, cancelled: 0 };
+    historyData.forEach(p => { if (counts[p.status] !== undefined) counts[p.status]++; });
+    document.querySelectorAll("#purStatusChips [data-count]").forEach(el => {
+      el.textContent = fmtNum(counts[el.getAttribute("data-count")] || 0);
+    });
+  }
+
+  function syncPurFilterUi() {
+    document.querySelectorAll("#purStatusChips .fd-chip").forEach(chip => {
+      chip.classList.toggle("active", (chip.dataset.status || "") === statusFilter);
+    });
+    document.querySelectorAll("#fdPage [data-pur-quick]").forEach(card => {
+      card.classList.toggle("active", card.getAttribute("data-pur-quick") === quickFilter);
+    });
+    const ids = ["qSupplier", "qDateFrom", "qDateTo", "qAmountMin", "qAmountMax", "qPayment", "qMode"];
+    const active = ids.filter(id => byId(id).value).length;
+    const badge = byId("purFilterCount");
+    badge.hidden = active === 0;
+    badge.textContent = String(active);
   }
 
   function renderHistoryTable() {
     closePurActionsMenu();
+    syncPurFilterUi();
     const tbody = byId("historyBody");
-    let rows = historyData;
-    if (statusFilter) rows = rows.filter(p => (p.status || "") === statusFilter);
-    if (!rows.length) {
-      tbody.innerHTML = `<tr><td colspan="10" class="pur-empty">لا توجد فواتير مطابقة.</td></tr>`;
+    const rows = filteredPurchases();
+    const size = purPageSize();
+    const pages = Math.max(1, Math.ceil(rows.length / size));
+    purPage = Math.min(purPage, pages - 1);
+    const pageRows = rows.slice(purPage * size, (purPage + 1) * size);
+
+    let total = 0, remaining = 0;
+    rows.forEach(p => {
+      if (p.status === "cancelled") return;
+      total += Number(p.grand_total) || 0;
+      remaining += Number(p.remaining_total) || 0;
+    });
+    byId("purTotals").innerHTML = rows.length
+      ? "الإجمالي <b>" + fmtNum(total) + " د.ع</b> · المتبقي <b>" + fmtNum(remaining) + " د.ع</b>"
+      : "";
+    const from = rows.length ? purPage * size + 1 : 0;
+    byId("purRange").innerHTML = "عرض " + fmtNum(from) + "–" + fmtNum(Math.min(rows.length, (purPage + 1) * size)) + " من <b>" + fmtNum(rows.length) + "</b> فاتورة";
+    renderPurPager(purPage, pages);
+
+    if (!pageRows.length) {
+      tbody.innerHTML = `<tr><td colspan="10" class="fd-empty">لا توجد فواتير مطابقة.</td></tr>`;
       return;
     }
-    tbody.innerHTML = rows.map(p => `
-      <tr>
-        <td><strong>${p.invoice_no || ("LEG-" + p.id)}</strong></td>
-        <td>${p.supplier_invoice_no || "-"}</td>
-        <td>${p.date || "-"}</td>
-        <td>${p.supplier || "-"}</td>
-        <td>${p.item_count || 0}</td>
-        <td><strong>${fmt(p.grand_total)}</strong><span class="amount-usd">${fmtUsd(p.grand_total)}</span></td>
-        <td>${fmt(p.paid_total)}<span class="amount-usd">${fmtUsd(p.paid_total)}</span></td>
-        <td>${fmt(p.remaining_total)}<span class="amount-usd">${fmtUsd(p.remaining_total)}</span></td>
-        <td><span class="status-badge ${statusClass(p.status)}">${statusLabel[p.status] || p.status || "-"}</span></td>
-        <td class="pur-col-actions">
-          <div class="pur-actions">
-            <button type="button" class="pur-actions-trigger" data-pur-actions-trigger="1"
-              data-purchase-id="${p.id}" data-status="${p.status || ""}"
-              aria-haspopup="menu" aria-expanded="false" aria-label="إجراءات" title="إجراءات">&#8942;</button>
-          </div>
+    tbody.innerHTML = pageRows.map(p => {
+      const due = Number(p.remaining_total) || 0;
+      return `
+      <tr data-purchase-row="${p.id}" class="${p.id === purDetailId ? "is-open" : ""}">
+        <td class="fd-td-title" data-label="الفاتورة"><b class="fd-cell-id">${esc(p.invoice_no || ("LEG-" + p.id))}</b></td>
+        <td data-label="فاتورة المورد" class="fd-cell-sku fd-col-opt">${esc(p.supplier_invoice_no || "—")}</td>
+        <td data-label="التاريخ" class="fd-cell-muted"><span dir="ltr">${esc(p.date || "—")}</span></td>
+        <td data-label="المورد"><b>${esc(p.supplier || "—")}</b></td>
+        <td data-label="العناصر" class="fd-col-opt">${fmtNum(p.item_count)}</td>
+        <td data-label="الإجمالي" class="fd-cell-amount">${fmt(p.grand_total)}<small class="fd-muted" dir="ltr">${fmtUsd(p.grand_total)}</small></td>
+        <td data-label="المدفوع" class="fd-cell-muted fd-col-opt2">${fmt(p.paid_total)}<small class="fd-muted" dir="ltr">${fmtUsd(p.paid_total)}</small></td>
+        <td data-label="المتبقي"><b class="${due > 0 && p.status !== "cancelled" ? "fd-qty--out" : "fd-qty--ok"}">${fmt(due)}</b></td>
+        <td data-label="الحالة"><span class="fd-pill fd-pill--${statusTone[p.status] || "gray"}">${esc(statusLabel[p.status] || p.status || "-")}</span></td>
+        <td class="fd-col-actions">
+          <button type="button" class="fd-more-btn" data-pur-actions-trigger="1"
+            data-purchase-id="${p.id}" data-status="${esc(p.status || "")}"
+            aria-haspopup="menu" aria-expanded="false" aria-label="إجراءات" title="إجراءات"></button>
         </td>
-      </tr>
-    `).join("");
-
+      </tr>`;
+    }).join("");
   }
 
+  function renderPurPager(current, pages) {
+    const chevron = d => '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + d + '"/></svg>';
+    const spread = window.matchMedia("(max-width: 600px)").matches ? 1 : 2;
+    const win = spread * 2 + 1;
+    let start = Math.max(0, current - spread), end = Math.min(pages - 1, current + spread);
+    if (end - start + 1 < win) {
+      if (start === 0) end = Math.min(pages - 1, win - 1);
+      else start = Math.max(0, end - win + 1);
+    }
+    const list = [];
+    if (start > 0) { list.push(0); if (start > 1) list.push("…"); }
+    for (let i = start; i <= end; i++) list.push(i);
+    if (end < pages - 1) { if (end < pages - 2) list.push("…"); list.push(pages - 1); }
+    let html = '<button type="button" class="fd-page fd-page--nav" data-pur-page="prev" aria-label="السابقة"' + (current <= 0 ? " disabled" : "") + ">" + chevron("m9 6 6 6-6 6") + "</button>";
+    list.forEach(p => {
+      html += p === "…"
+        ? '<span class="fd-page-gap">…</span>'
+        : '<button type="button" class="fd-page' + (p === current ? " active" : "") + '" data-pur-page="' + p + '"' + (p === current ? ' aria-current="page"' : "") + ">" + fmtNum(p + 1) + "</button>";
+    });
+    html += '<button type="button" class="fd-page fd-page--nav" data-pur-page="next" aria-label="التالية"' + (current >= pages - 1 ? " disabled" : "") + ">" + chevron("m15 6-6 6 6 6") + "</button>";
+    byId("purPager").innerHTML = html;
+  }
+
+  // ---- Detail panel ----
+  function purKv(key, value) {
+    return `<div class="fd-kv-row"><span class="fd-kv-key">${key}</span><span class="fd-kv-val">${value}</span></div>`;
+  }
+
+  function openPurchaseDetail(id) {
+    const p = historyData.find(x => x.id === Number(id));
+    if (!p) return;
+    purDetailId = p.id;
+    byId("purDetailTitle").textContent = (p.invoice_no || ("LEG-" + p.id)) + " — " + (p.supplier || "بدون مورد");
+    byId("purDetailSub").textContent = (p.date || "") + (p.supplier_invoice_no ? " · فاتورة المورد " + p.supplier_invoice_no : "");
+    const edit = byId("purDetailEdit");
+    edit.hidden = p.status === "confirmed";
+    edit.href = `/purchases/edit/${p.id}`;
+    byId("purDetailPrint").href = `/purchases/print/${p.id}`;
+
+    const items = (p.items || []).map(it => `
+      <tr><td>${esc(it.product || "—")}${it.color ? ` <span class="fd-muted">(${esc(it.color)})</span>` : ""}</td>
+      <td>${fmtNum(it.quantity)}</td><td>${fmt(it.unit_cost)}</td><td><b>${fmt(it.line_total)}</b></td></tr>`).join("");
+    const payments = (p.payments || []).map(pay => `
+      <tr><td><span dir="ltr">${esc(pay.paid_at || "—")}</span></td><td>${esc(pay.account_name || pay.payment_method || "—")}</td><td><b>${fmt(pay.amount)}</b></td></tr>`).join("");
+    const attachments = (p.attachments || []).map(att => `<a class="fd-btn fd-btn--sm" href="${esc(att.url)}" target="_blank" rel="noopener">${esc(att.name || "مرفق")}</a>`).join("");
+    const due = Number(p.remaining_total) || 0;
+
+    byId("purDetailBody").innerHTML = `
+      <div class="fd-detail-status"><span class="fd-pill fd-pill--${statusTone[p.status] || "gray"}">${esc(statusLabel[p.status] || p.status || "-")}</span></div>
+      <div class="fd-kv">
+        ${purKv("المورد", esc(p.supplier || "—"))}
+        ${purKv("التاريخ", `<span dir="ltr">${esc(p.date || "—")}</span>`)}
+        ${purKv("طريقة الشراء", esc(modeLabel[p.purchase_mode] || p.purchase_mode || "—"))}
+        ${p.branch_code ? purKv("الفرع", esc(p.branch_code)) : ""}
+        ${p.reference_no ? purKv("الرقم المرجعي", esc(p.reference_no)) : ""}
+        ${purKv("المجموع الفرعي", fmt(p.sub_total))}
+        ${Number(p.discount_value) ? purKv("الخصم", fmt(p.discount_value)) : ""}
+        ${Number(p.shipping_extra) ? purKv("تكلفة الشحن", fmt(p.shipping_extra)) : ""}
+        ${purKv("الإجمالي", `<b>${fmt(p.grand_total)}<small class="fd-muted" dir="ltr">${fmtUsd(p.grand_total)}</small></b>`)}
+        ${purKv("المدفوع", fmt(p.paid_total))}
+        ${purKv("المتبقي", `<b class="${due > 0 ? "fd-qty--out" : "fd-qty--ok"}">${fmt(due)}</b>`)}
+      </div>
+      ${items ? `<div><div class="fd-section-title" style="margin-bottom:6px;">المنتجات</div>
+        <table class="fd-lines"><thead><tr><th>المنتج</th><th>الكمية</th><th>التكلفة</th><th>الإجمالي</th></tr></thead><tbody>${items}</tbody></table></div>` : ""}
+      ${payments ? `<div><div class="fd-section-title" style="margin-bottom:6px;">الدفعات</div>
+        <table class="fd-lines"><thead><tr><th>التاريخ</th><th>الحساب</th><th>المبلغ</th></tr></thead><tbody>${payments}</tbody></table></div>` : ""}
+      ${p.notes ? `<div class="fd-stock-line" style="font-weight:500;">${esc(p.notes)}</div>` : ""}
+      ${attachments ? `<div class="fd-detail-actions">${attachments}</div>` : ""}
+    `;
+    byId("purDetail").hidden = false;
+    document.querySelectorAll("#historyBody tr[data-purchase-row]").forEach(tr => {
+      tr.classList.toggle("is-open", Number(tr.getAttribute("data-purchase-row")) === p.id);
+    });
+  }
+
+  function closePurchaseDetail() {
+    purDetailId = null;
+    byId("purDetail").hidden = true;
+    document.querySelectorAll("#historyBody tr.is-open").forEach(tr => tr.classList.remove("is-open"));
+  }
+
+  // ---- Popovers ----
+  let fdOpenPop = null;
+  function closeFdPop() {
+    if (!fdOpenPop) return;
+    fdOpenPop.hidden = true;
+    const trigger = document.querySelector('[data-fd-pop="' + fdOpenPop.id + '"]');
+    if (trigger) trigger.setAttribute("aria-expanded", "false");
+    fdOpenPop = null;
+  }
+
+  document.addEventListener("click", (event) => {
+    const t = event.target;
+    if (!t || !t.closest) return;
+    const trigger = t.closest("[data-fd-pop]");
+    if (trigger) {
+      const pop = byId(trigger.getAttribute("data-fd-pop"));
+      const wasOpen = fdOpenPop === pop;
+      closeFdPop();
+      if (pop && !wasOpen) {
+        pop.hidden = false;
+        fdOpenPop = pop;
+        trigger.setAttribute("aria-expanded", "true");
+      }
+      return;
+    }
+    if (t.closest("[data-fd-pop-close]")) closeFdPop();
+    else if (fdOpenPop && !t.closest(".fd-pop")) closeFdPop();
+
+    const chip = t.closest("#purStatusChips .fd-chip");
+    if (chip) {
+      statusFilter = chip.dataset.status || "";
+      quickFilter = "";
+      purPage = 0;
+      renderHistoryTable();
+      return;
+    }
+    const card = t.closest("#fdPage [data-pur-quick]");
+    if (card) {
+      quickFilter = card.getAttribute("data-pur-quick");
+      statusFilter = "";
+      purPage = 0;
+      renderHistoryTable();
+      return;
+    }
+    const pageBtn = t.closest("[data-pur-page]");
+    if (pageBtn && !pageBtn.disabled) {
+      const v = pageBtn.getAttribute("data-pur-page");
+      purPage = v === "prev" ? purPage - 1 : v === "next" ? purPage + 1 : parseInt(v, 10) || 0;
+      renderHistoryTable();
+      byId("purTableScroll").scrollTop = 0;
+      return;
+    }
+    const row = t.closest("#historyBody tr[data-purchase-row]");
+    if (row && !t.closest("button, a")) openPurchaseDetail(row.getAttribute("data-purchase-row"));
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    if (fdOpenPop) closeFdPop();
+    else closePurchaseDetail();
+  });
+
+  function clearPurchaseFilters() {
+    ["qSupplier", "qDateFrom", "qDateTo", "qAmountMin", "qAmountMax", "qPayment", "qMode", "qSearch"].forEach(id => { byId(id).value = ""; });
+    statusFilter = "";
+    quickFilter = "";
+    purPage = 0;
+    loadHistory();
+  }
+
+  // ---- Row ⋯ menu (same actions as before) ----
   let purActionsMenuEl = null;
   let purActionsActiveTrigger = null;
 
   function ensurePurActionsMenu() {
     if (purActionsMenuEl) return purActionsMenuEl;
     purActionsMenuEl = document.createElement("div");
-    purActionsMenuEl.className = "pur-actions-menu";
+    purActionsMenuEl.className = "fd-pop fd-menu fd-row-menu";
     purActionsMenuEl.id = "purActionsMenu";
     purActionsMenuEl.setAttribute("role", "menu");
     purActionsMenuEl.hidden = true;
-    document.body.appendChild(purActionsMenuEl);
+    byId("fdPage").appendChild(purActionsMenuEl);
     return purActionsMenuEl;
   }
 
   function closePurActionsMenu() {
-    const menu = purActionsMenuEl || document.getElementById("purActionsMenu");
+    const menu = purActionsMenuEl || byId("purActionsMenu");
     if (menu) menu.hidden = true;
     if (purActionsActiveTrigger) {
       purActionsActiveTrigger.setAttribute("aria-expanded", "false");
@@ -271,101 +492,73 @@
   function positionPurActionsMenu(trigger) {
     const menu = ensurePurActionsMenu();
     const rect = trigger.getBoundingClientRect();
-    const gap = 6;
-    const viewportPad = 8;
-
     menu.hidden = false;
+    // Phones: the menu is a bottom sheet (CSS), no anchoring
+    if (window.matchMedia("(max-width: 860px)").matches) {
+      menu.style.left = "";
+      menu.style.top = "";
+      return;
+    }
     menu.style.visibility = "hidden";
-    menu.style.left = "0px";
-    menu.style.top = "0px";
-
     const menuRect = menu.getBoundingClientRect();
-    let left = rect.right - menuRect.width;
-    let top = rect.bottom + gap;
-
-    if (left < viewportPad) left = viewportPad;
-    if (left + menuRect.width > window.innerWidth - viewportPad) {
-      left = Math.max(viewportPad, window.innerWidth - menuRect.width - viewportPad);
-    }
-    if (top + menuRect.height > window.innerHeight - viewportPad) {
-      top = rect.top - menuRect.height - gap;
-    }
-    if (top < viewportPad) top = viewportPad;
-
+    let left = rect.left;
+    let top = rect.bottom + 6;
+    if (left + menuRect.width > window.innerWidth - 8) left = Math.max(8, window.innerWidth - menuRect.width - 8);
+    if (top + menuRect.height > window.innerHeight - 8) top = Math.max(8, rect.top - menuRect.height - 6);
     menu.style.left = Math.round(left) + "px";
     menu.style.top = Math.round(top) + "px";
     menu.style.visibility = "";
   }
 
+  const menuIcon = d => '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + d + "</svg>";
+  const PUR_ICONS = {
+    view: '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    edit: '<path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>',
+    unlock: '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.6-1.7"/>',
+    clone: '<rect x="8" y="8" width="13" height="13" rx="2"/><path d="M4 16V5a2 2 0 0 1 2-2h11"/>',
+    cancel: '<circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/>',
+    reopen: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+    print: '<path d="M7 8V3.5h10V8M7 17H4.5V10a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v7H17"/><path d="M7 14h10v6.5H7z"/>',
+    trash: '<path d="M3 6h18M8 6V4h8v2M6 6l1 15h10l1-15"/>'
+  };
+
   function openPurActionsMenu(trigger) {
     const purchaseId = trigger.getAttribute("data-purchase-id");
     const status = trigger.getAttribute("data-status") || "";
     if (!purchaseId) return;
-
     if (purActionsActiveTrigger === trigger && purActionsMenuEl && !purActionsMenuEl.hidden) {
       closePurActionsMenu();
       return;
     }
-
     closePurActionsMenu();
     const menu = ensurePurActionsMenu();
     const id = Number(purchaseId);
-    let items = "";
-
-    if (status !== "confirmed") {
-      items += `<a class="pur-actions-menu-item" role="menuitem" href="/purchases/edit/${id}"><i class="fa fa-pen" aria-hidden="true"></i><span>تحرير</span></a>`;
-    }
-    if (status === "confirmed") {
-      items += `<button type="button" class="pur-actions-menu-item" role="menuitem" data-pur-action="unlock"><i class="fa fa-lock-open" aria-hidden="true"></i><span>فتح للتحرير</span></button>`;
-    }
-    items += `<button type="button" class="pur-actions-menu-item" role="menuitem" data-pur-action="clone"><i class="fa fa-copy" aria-hidden="true"></i><span>استنساخ</span></button>`;
-    if (status !== "cancelled") {
-      items += `<button type="button" class="pur-actions-menu-item" role="menuitem" data-pur-action="cancel"><i class="fa fa-ban" aria-hidden="true"></i><span>إلغاء</span></button>`;
-    }
-    if (status === "cancelled") {
-      items += `<button type="button" class="pur-actions-menu-item" role="menuitem" data-pur-action="reopen"><i class="fa fa-rotate-left" aria-hidden="true"></i><span>إعادة فتح</span></button>`;
-    }
-    items += `<button type="button" class="pur-actions-menu-item is-danger" role="menuitem" data-pur-action="delete"><i class="fa fa-trash" aria-hidden="true"></i><span>حذف</span></button>`;
-    items += `<a class="pur-actions-menu-item" role="menuitem" href="/purchases/print/${id}" data-finora-print><i class="fa fa-print" aria-hidden="true"></i><span>طباعة</span></a>`;
-
+    const item = (action, icon, label, extra) =>
+      `<button type="button" class="fd-menu-item${extra || ""}" role="menuitem" data-pur-action="${action}">${menuIcon(PUR_ICONS[icon])}<span>${label}</span></button>`;
+    let items = item("view", "view", "عرض التفاصيل");
+    if (status !== "confirmed") items += `<a class="fd-menu-item" role="menuitem" href="/purchases/edit/${id}">${menuIcon(PUR_ICONS.edit)}<span>تحرير</span></a>`;
+    if (status === "confirmed") items += item("unlock", "unlock", "فتح للتحرير");
+    items += item("clone", "clone", "استنساخ");
+    if (status !== "cancelled") items += item("cancel", "cancel", "إلغاء");
+    if (status === "cancelled") items += item("reopen", "reopen", "إعادة فتح");
+    items += `<a class="fd-menu-item" role="menuitem" href="/purchases/print/${id}" data-finora-print>${menuIcon(PUR_ICONS.print)}<span>طباعة</span></a>`;
+    items += '<div class="fd-menu-sep" role="separator"></div>';
+    items += item("delete", "trash", "حذف", " is-danger");
     menu.innerHTML = items;
 
     menu.onclick = function (event) {
-      const item = event.target.closest("[data-pur-action], a.pur-actions-menu-item");
-      if (!item || !menu.contains(item)) return;
-
-      const action = item.getAttribute("data-pur-action");
-      if (action === "unlock") {
-        event.preventDefault();
-        closePurActionsMenu();
-        unlockPurchaseForEdit(id);
-        return;
-      }
-      if (action === "clone") {
-        event.preventDefault();
-        closePurActionsMenu();
-        clonePurchase(id);
-        return;
-      }
-      if (action === "cancel") {
-        event.preventDefault();
-        closePurActionsMenu();
-        cancelPurchase(id);
-        return;
-      }
-      if (action === "reopen") {
-        event.preventDefault();
-        closePurActionsMenu();
-        reopenPurchase(id);
-        return;
-      }
-      if (action === "delete") {
-        event.preventDefault();
-        closePurActionsMenu();
-        deletePurchase(id);
-        return;
-      }
+      const el = event.target.closest("[data-pur-action], a.fd-menu-item");
+      if (!el || !menu.contains(el)) return;
+      const action = el.getAttribute("data-pur-action");
       closePurActionsMenu();
+      if (!action) return;
+      event.preventDefault();
+      if (action === "view") openPurchaseDetail(id);
+      if (action === "unlock") unlockPurchaseForEdit(id);
+      if (action === "clone") clonePurchase(id);
+      if (action === "cancel") cancelPurchase(id);
+      if (action === "reopen") reopenPurchase(id);
+      if (action === "delete") deletePurchase(id);
     };
 
     purActionsActiveTrigger = trigger;
@@ -381,17 +574,19 @@
       openPurActionsMenu(trigger);
       return;
     }
-    if (purActionsMenuEl && !purActionsMenuEl.hidden) {
-      if (!purActionsMenuEl.contains(event.target)) closePurActionsMenu();
-    }
+    if (purActionsMenuEl && !purActionsMenuEl.hidden && !purActionsMenuEl.contains(event.target)) closePurActionsMenu();
   }, true);
 
   document.addEventListener("keydown", function (event) {
     if (event.key === "Escape") closePurActionsMenu();
   });
-
   window.addEventListener("resize", closePurActionsMenu);
   window.addEventListener("scroll", closePurActionsMenu, true);
+
+  async function purchaseImpactConfirm(options) {
+    if (window.finoraConfirmImpact) return window.finoraConfirmImpact(options);
+    return confirm(options.message || options.title || "تأكيد الإجراء");
+  }
 
   async function cancelPurchase(id) {
     const ok = await purchaseImpactConfirm({
@@ -403,7 +598,7 @@
     if (!ok) return;
     const r = await fetch(`/purchases/api/${id}/cancel`, { method: "POST" });
     const d = await r.json();
-    alert(d.message || d.error || "تم التنفيذ");
+    notifyPurchaseResult(d);
     if (d.success) loadHistory();
   }
 
@@ -417,7 +612,7 @@
     if (!ok) return;
     const r = await fetch(`/purchases/api/${id}/delete`, { method: "POST" });
     const d = await r.json();
-    alert(d.message || d.error || "تم التنفيذ");
+    notifyPurchaseResult(d);
     if (d.success) loadHistory();
   }
 
@@ -430,7 +625,7 @@
     if (!ok) return;
     const r = await fetch(`/purchases/api/${id}/reopen`, { method: "POST" });
     const d = await r.json();
-    alert(d.message || d.error || "تم التنفيذ");
+    notifyPurchaseResult(d);
     if (d.success) loadHistory();
   }
 
@@ -443,7 +638,7 @@
     if (!ok) return;
     const r = await fetch(`/purchases/api/${id}/unlock-edit`, { method: "POST" });
     const d = await r.json();
-    alert(d.message || d.error || "تم التنفيذ");
+    notifyPurchaseResult(d);
     if (d.success) window.location.href = `/purchases/edit/${id}`;
   }
 
@@ -456,7 +651,7 @@
     if (!ok) return;
     const r = await fetch(`/purchases/api/${id}/clone`, { method: "POST" });
     const d = await r.json();
-    alert(d.message || d.error || "تم التنفيذ");
+    notifyPurchaseResult(d);
     if (d.success && d.purchase_id) window.location.href = `/purchases/edit/${d.purchase_id}`;
     else if (d.success) loadHistory();
   }
@@ -467,14 +662,38 @@
     if (byId("qDateFrom").value) params.set("date_from", byId("qDateFrom").value);
     if (byId("qDateTo").value) params.set("date_to", byId("qDateTo").value);
     if (byId("qSearch").value) params.set("search", byId("qSearch").value);
-    const res = await fetch(`/purchases/api/list?${params.toString()}`);
-    historyData = await res.json();
+    try {
+      const res = await fetch(`/purchases/api/list?${params.toString()}`);
+      historyData = await res.json();
+    } catch (e) {
+      historyData = [];
+    }
     if (!Array.isArray(historyData)) historyData = [];
+    renderStatusCounts();
     renderHistoryTable();
+    if (purDetailId && historyData.some(p => p.id === purDetailId)) openPurchaseDetail(purDetailId);
+    else closePurchaseDetail();
   }
 
+  // Server-side filters reload the list; the rest filter what is loaded
+  ["qSupplier", "qDateFrom", "qDateTo"].forEach(id => byId(id).addEventListener("change", () => { purPage = 0; loadHistory(); }));
+  ["qPayment", "qMode"].forEach(id => byId(id).addEventListener("change", () => { purPage = 0; renderHistoryTable(); }));
+  ["qAmountMin", "qAmountMax"].forEach(id => byId(id).addEventListener("input", () => { purPage = 0; renderHistoryTable(); }));
+  let purSearchTimer;
+  byId("qSearch").addEventListener("input", () => {
+    clearTimeout(purSearchTimer);
+    purSearchTimer = setTimeout(() => { purPage = 0; loadHistory(); }, 300);
+  });
+  byId("qSearch").addEventListener("keydown", e => { if (e.key === "Enter") { clearTimeout(purSearchTimer); purPage = 0; loadHistory(); } });
   byId("refreshHistoryBtn").addEventListener("click", loadHistory);
-  byId("qSearch").addEventListener("keydown", e => { if (e.key === "Enter") loadHistory(); });
+  const purSizeSelect = byId("purPageSize");
+  purSizeSelect.value = String(purPageSize());
+  purSizeSelect.addEventListener("change", () => {
+    try { localStorage.setItem(PUR_PAGE_SIZE_KEY, purSizeSelect.value); } catch (e) { /* storage unavailable */ }
+    purPage = 0;
+    renderHistoryTable();
+  });
+  window.addEventListener("resize", () => renderHistoryTable());
   loadHistory();
 </script>
 {% endblock %}

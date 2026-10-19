@@ -1,5 +1,7 @@
 """Real tenant regression checks for read-only finance pages and explicit maintenance."""
 import os
+import json
+import re
 from datetime import date, datetime, timedelta
 from uuid import uuid4
 
@@ -137,7 +139,9 @@ def test_credit_views_exclude_voided_debt_without_deleting_or_updating_history(s
     for path in ["/customers/credit/", f"/customers/credit/{customer}"]:
         response = client.get(path)
         assert response.status_code == 200, response.get_data(as_text=True)[:500]
-    assert "cc-badge-overdue" in response.get_data(as_text=True)
+    payload = re.search(r'<script[^>]*id="ccdData"[^>]*>(.*?)</script>', response.get_data(as_text=True), re.S)
+    assert payload
+    assert any(row["status"] == "overdue" for row in json.loads(payload.group(1))["installments"])
     with safety["app"].app_context():
         g.tenant = safety["tenant"]
         summary = customer_credit_summary(customer)

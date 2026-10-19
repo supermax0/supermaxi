@@ -56,6 +56,22 @@ test("tenant, user and status keys isolate presets", t => {
   assert.equal(env.window.localStorage.getItem("finora.orders.views.v1.tenant:1:all"), null);
 });
 
+test("redesigned date and amount filters survive saving and applying a view", t => {
+  const env = setup(t);
+  for (const [id, value] of Object.entries({filterDateFrom:"2026-10-01", filterDateTo:"2026-10-19", filterAmountMin:"1000", filterAmountMax:"90000"})) {
+    const input = env.window.document.createElement("input");
+    input.id = id; input.value = value; env.window.document.body.appendChild(input);
+  }
+  env.save("October range");
+  for (const id of ["filterDateFrom", "filterDateTo", "filterAmountMin", "filterAmountMax"]) env.q("#" + id).value = "";
+  env.q("[data-view-select]").value = "0";
+  env.q("[data-view-apply]").click();
+  assert.equal(env.q("#filterDateFrom").value, "2026-10-01");
+  assert.equal(env.q("#filterDateTo").value, "2026-10-19");
+  assert.equal(env.q("#filterAmountMin").value, "1000");
+  assert.equal(env.q("#filterAmountMax").value, "90000");
+});
+
 test("saved filter is a snapshot independent of later grid object mutations", t => {
   const env = setup(t);
   const state = { filters: { total: { type: "greaterThan", filter: 1000 } }, sort: null };

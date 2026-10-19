@@ -3,51 +3,98 @@
 {% block page_title %}💼 نظام الرواتب{% endblock %}
 
 {% block content %}
+{% from "partials/fd_icons.html" import icon %}
+<link rel="stylesheet" href="/static/css/finora-ui.css?v=20261018e">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/payroll.css') }}?v=20260808a">
 
-<div class="payroll-page">
-  <div class="payroll-summary">
-    <div class="payroll-card">
-      <h4>رواتب مستحقة اليوم</h4>
-      <div class="payroll-card-value" id="summarySalaryDue">0</div>
-      <span class="payroll-card-unit">د.ع</span>
+<div class="fd payroll-page payroll-fd-page" id="fdPage">
+  <header class="fd-header no-print">
+    <div class="fd-header-main">
+      <span class="fd-header-icon" style="color: var(--fd-purple);">{{ icon('wallet', 26) }}</span>
+      <div class="fd-header-text">
+        <h1 class="fd-title">الرواتب</h1>
+        <p class="fd-subtitle">رواتب الموظفين والمندوبين، العمولات المعلّقة، الجدولة وسجل المدفوعات</p>
+      </div>
     </div>
-    <div class="payroll-card">
-      <h4>عمولات معلّقة</h4>
-      <div class="payroll-card-value" id="summaryCommissionDue">0</div>
-      <span class="payroll-card-unit">د.ع</span>
-    </div>
-    <div class="payroll-card accent">
-      <h4>إجمالي المستحق</h4>
-      <div class="payroll-card-value" id="summaryTotalDue">0</div>
-      <span class="payroll-card-unit">د.ع</span>
-    </div>
+  </header>
+
+  <nav class="fd-subnav no-print" aria-label="الفريق">
+    <a class="fd-subnav-link" href="/employees/">الموظفون</a>
+    <a class="fd-subnav-link active" href="/payroll">الرواتب</a>
+    <a class="fd-subnav-link" href="/agents">{{ _('delivery_agents') }}</a>
+    <a class="fd-subnav-link" href="/employees/page-warnings">تحذير البيجات</a>
+  </nav>
+
+
+  <div class="fd-kpis no-print pay-summary">
+    <button type="button" class="fd-kpi fd-kpi--amber" data-pay-kpi="salary">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">رواتب مستحقة اليوم</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money" id="summarySalaryDue">0</span><span class="fd-kpi-unit">د.ع</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('calendar', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--purple" data-pay-kpi="commission">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">عمولات معلّقة</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money" id="summaryCommissionDue">0</span><span class="fd-kpi-unit">د.ع</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('receipt', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--red" data-pay-kpi="due">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">إجمالي المستحق</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money" id="summaryTotalDue">0</span><span class="fd-kpi-unit">د.ع</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('alert', 28) }}</span>
+    </button>
   </div>
 
-  <div class="payroll-toolbar">
-    <label>
-      حساب الصرف
+  <div class="fd-toolbar no-print">
+    <label class="pay-treasury" title="الحساب الذي تُخصم منه الرواتب والعمولات">
+      {{ icon('wallet', 18) }}<span>حساب الصرف</span>
       <select id="treasuryAccount">
         {% for acc in treasury_accounts %}
         <option value="{{ acc.id }}" {% if acc.is_default %}selected{% endif %}>{% if independent_branches_enabled %}{{ acc.branch_name }} — {% endif %}{{ acc.name }}</option>
         {% endfor %}
       </select>
     </label>
-    <button type="button" class="payroll-btn primary" id="btnProcessDue">صرف الرواتب المستحقة اليوم</button>
-    <button type="button" class="payroll-btn secondary" id="btnRefresh">تحديث</button>
+
+    <label class="fd-search fd-tool--search">
+      {{ icon('search', 18) }}
+      <input type="search" id="paySearch" autocomplete="off" placeholder="ابحث باسم الموظف أو المندوب...">
+    </label>
+
+    <div class="fd-tools-row">
+      <button type="button" class="fd-btn fd-btn--primary" id="btnProcessDue">
+        {{ icon('check-circle', 18) }}
+        <span class="fd-btn-label">صرف الرواتب المستحقة اليوم</span>
+      </button>
+      <div class="fd-pop-wrap">
+        <button type="button" class="fd-btn fd-btn--icon" data-fd-pop="payMorePop" aria-expanded="false" aria-controls="payMorePop" title="المزيد" aria-label="المزيد">{{ icon('dots', 20) }}</button>
+        <div class="fd-pop fd-pop--end fd-menu" id="payMorePop" role="menu" hidden>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close id="btnRefresh">{{ icon('scan') }}<span>تحديث</span></button>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="exportPayrollCsv()">{{ icon('download') }}<span>تصدير CSV (التبويب الحالي)</span></button>
+          <div class="fd-menu-sep" role="separator"></div>
+          <a class="fd-menu-item" role="menuitem" href="/employees/">{{ icon('users') }}<span>الموظفون (إعداد الرواتب)</span></a>
+          <a class="fd-menu-item" role="menuitem" href="/agents">{{ icon('truck') }}<span>{{ _('delivery_agents') }}</span></a>
+          <a class="fd-menu-item" role="menuitem" href="/expenses">{{ icon('receipt') }}<span>المصاريف</span></a>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div class="payroll-tabs">
-    <button type="button" class="payroll-tab active" data-tab="due">المستحقات</button>
-    <button type="button" class="payroll-tab" data-tab="commission">العمولات</button>
-    <button type="button" class="payroll-tab" data-tab="statement">كشف شهري</button>
-    <button type="button" class="payroll-tab" data-tab="schedule">الجدولة</button>
-    <button type="button" class="payroll-tab" data-tab="history">السجل</button>
+  <div class="payroll-tabs fd-toolbar fd-toolbar--chips no-print">
+    <button type="button" class="payroll-tab fd-chip active" data-tab="due">المستحقات</button>
+    <button type="button" class="payroll-tab fd-chip" data-tab="commission">العمولات</button>
+    <button type="button" class="payroll-tab fd-chip" data-tab="statement">كشف شهري</button>
+    <button type="button" class="payroll-tab fd-chip" data-tab="schedule">الجدولة</button>
+    <button type="button" class="payroll-tab fd-chip" data-tab="history">السجل</button>
   </div>
 
   <section class="payroll-panel active" id="panelDue">
-    <div class="payroll-table-wrap">
-      <table class="payroll-table">
+    <div class="payroll-table-wrap fd-table-card fd-table-scroll">
+      <table class="payroll-table fd-table">
         <thead>
           <tr>
             <th>الاسم</th>
@@ -71,12 +118,12 @@
         شهر السداد
         <input type="month" id="commissionMonth">
       </label>
-      <button type="button" class="payroll-btn secondary" id="btnLoadCommission">عرض عمولات الشهر</button>
+      <button type="button" class="payroll-btn secondary fd-btn" id="btnLoadCommission">عرض عمولات الشهر</button>
       <span class="payroll-commission-hint" id="commissionMonthHint">طلبات جاري الشحن ما تنسدد مع الشهر؛ لما توصل تترحّل وتنصرف مع الشهر اللي تختاره</span>
     </div>
     <div class="payroll-statement-summary" id="commissionMonthSummary">اختر الشهر لعرض العمولات المعلّقة</div>
-    <div class="payroll-table-wrap">
-      <table class="payroll-table">
+    <div class="payroll-table-wrap fd-table-card fd-table-scroll">
+      <table class="payroll-table fd-table">
         <thead>
           <tr>
             <th>الموظف</th>
@@ -99,8 +146,8 @@
         الشهر
         <input type="month" id="statementMonth">
       </label>
-      <button type="button" class="payroll-btn primary" id="btnLoadStatement">عرض الكشف</button>
-      <button type="button" class="payroll-btn secondary" id="btnPrintStatement">
+      <button type="button" class="payroll-btn primary fd-btn fd-btn--primary" id="btnLoadStatement">عرض الكشف</button>
+      <button type="button" class="payroll-btn secondary fd-btn" id="btnPrintStatement">
         <i class="fas fa-print"></i> طباعة الكشف
       </button>
     </div>
@@ -110,8 +157,8 @@
       المبلغ الكلي = عمولة الطلبات الواصلة فقط.
       طلبات جاري الشحن المفتوحة من أشهر سابقة تُرحَّل للشهر المحدد حتى تُغلق حتى لا يضيع حق الموظف.
     </p>
-    <div class="payroll-table-wrap">
-      <table class="payroll-table" id="statementTable">
+    <div class="payroll-table-wrap fd-table-card fd-table-scroll">
+      <table class="payroll-table fd-table" id="statementTable">
         <thead>
           <tr>
             <th>#</th>
@@ -133,8 +180,8 @@
   </section>
 
   <section class="payroll-panel" id="panelSchedule">
-    <div class="payroll-table-wrap">
-      <table class="payroll-table">
+    <div class="payroll-table-wrap fd-table-card fd-table-scroll">
+      <table class="payroll-table fd-table">
         <thead>
           <tr>
             <th>الاسم</th>
@@ -151,8 +198,8 @@
   </section>
 
   <section class="payroll-panel" id="panelHistory">
-    <div class="payroll-table-wrap">
-      <table class="payroll-table">
+    <div class="payroll-table-wrap fd-table-card fd-table-scroll">
+      <table class="payroll-table fd-table">
         <thead>
           <tr>
             <th>التاريخ</th>
@@ -191,8 +238,8 @@
       </table>
     </div>
     <footer>
-      <button type="button" class="payroll-btn primary" id="btnSettleFromModal">سداد شهر محدد</button>
-      <button type="button" class="payroll-btn secondary" data-close-modal>إغلاق</button>
+      <button type="button" class="payroll-btn primary fd-btn fd-btn--primary" id="btnSettleFromModal">سداد شهر محدد</button>
+      <button type="button" class="payroll-btn secondary fd-btn" data-close-modal>إغلاق</button>
     </footer>
   </div>
 </div>
@@ -233,5 +280,31 @@
     treasuryDefault: {% if treasury_accounts %}{{ treasury_accounts[0].id }}{% else %}null{% endif %}
   };
 </script>
-<script src="{{ url_for('static', filename='js/payroll.js') }}?v=20260808b"></script>
+<style>
+#fdPage.payroll-page {max-width:none;gap:20px;}
+#fdPage .payroll-summary {margin:0;grid-template-columns:repeat(3,minmax(0,1fr));}
+#fdPage .payroll-card {display:block;padding:20px 24px;border:1px solid var(--fd-border);border-radius:16px;background:var(--fd-surface);box-shadow:none;text-align:start;}
+#fdPage .payroll-card h4 {color:var(--fd-muted);font-size:14px;margin:0 0 8px;}
+#fdPage .payroll-card-value {font-size:28px;font-weight:800;color:var(--fd-purple);}
+#fdPage .payroll-card-unit {font-size:12px;color:var(--fd-muted);}
+#fdPage .payroll-toolbar, #fdPage .payroll-tabs {background:none;border:0;padding:0;margin:0;}
+#fdPage .payroll-tab {border-radius:12px;background:var(--fd-soft);border:1px solid var(--fd-border);color:var(--fd-text-2);}
+#fdPage .payroll-tab.active {color:var(--fd-purple);background:var(--fd-purple-soft);border-color:#c8b6ee;}
+#fdPage .payroll-btn {border-radius:12px;min-height:40px;font:inherit;font-weight:700;border:1px solid var(--fd-border);background:var(--fd-surface);color:var(--fd-text);}
+#fdPage .payroll-btn.primary {background:var(--fd-purple);border-color:var(--fd-purple);color:white;}
+#fdPage .payroll-panel {padding:0;border:0;background:transparent;box-shadow:none;}
+#fdPage .payroll-table-wrap {border:1px solid var(--fd-border);border-radius:16px;background:var(--fd-surface);}
+#fdPage table.payroll-table th {background:var(--fd-soft);color:var(--fd-muted);height:50px;}
+#fdPage table.payroll-table td {background:transparent;color:var(--fd-text);height:58px;border-color:var(--fd-border);}
+@media(max-width:600px){ #fdPage .payroll-summary{grid-template-columns:1fr;}#fdPage .payroll-tabs{overflow:auto;flex-wrap:nowrap;}#fdPage .payroll-tab{flex-shrink:0;}}
+</style>
+<script src="{{ url_for('static', filename='js/payroll.js') }}?v=20261019-design"></script>
+<script src="/static/js/finora-ui.js?v=20261018c"></script>
+<script>
+function filterPayrollTable(){ const q=document.getElementById('paySearch').value.trim().toLowerCase();document.querySelectorAll('#fdPage .payroll-panel tbody tr').forEach(row=>{row.hidden=!!q&&!row.textContent.toLowerCase().includes(q);}); }
+function exportPayrollCsv(){const table=document.querySelector('#fdPage .payroll-panel.active table');if(!table)return;const cell=v=>'"'+String(v).replace(/"/g,'""')+'"';const rows=[...table.querySelectorAll('tr')].filter(row=>!row.hidden).map(row=>[...row.cells].map(td=>cell(td.textContent.trim())).join(','));const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+rows.join('\n')],{type:'text/csv;charset=utf-8'}));a.download='payroll.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);}
+document.addEventListener('DOMContentLoaded',()=>{document.getElementById('paySearch').addEventListener('input',filterPayrollTable);document.querySelectorAll('#fdPage .payroll-panel tbody').forEach(body=>new MutationObserver(filterPayrollTable).observe(body,{childList:true}));document.querySelectorAll('[data-pay-kpi]').forEach(button=>button.addEventListener('click',()=>document.querySelector('[data-tab="'+(button.dataset.payKpi==='commission'?'commission':'due')+'"]').click()));});
+</script>
+<style>#fdPage .pay-summary{grid-template-columns:repeat(3,minmax(0,1fr));}#fdPage .pay-treasury{display:flex;align-items:center;gap:8px;color:var(--fd-muted);font-weight:700;}#fdPage .pay-treasury select{max-width:210px;}@media(max-width:600px){ #fdPage .pay-summary{grid-template-columns:1fr;}}</style>
+
 {% endblock %}

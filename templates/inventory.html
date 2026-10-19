@@ -5,7 +5,9 @@
 {% block content %}
 {% set _store_tslug = session.get('tenant_slug') or config.get('STOREFRONT_DEFAULT_TENANT_SLUG', '') %}
 <div class="inventory-page">
-  <script src="https://cdn.jsdelivr.net/npm/ag-grid-community/dist/ag-grid-community.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.4/dist/ag-grid-community.min.noStyle.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.4/styles/ag-grid.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ag-grid-community@31.3.4/styles/ag-theme-quartz.css">
 
   <style>
     /* ================= VISUAL HIERARCHY ================= */
@@ -253,34 +255,6 @@
       gap: 8px;
       flex-wrap: wrap;
       align-items: center;
-    }
-
-    .inv-pos-bulk-bar {
-      display: none;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin: 0 0 12px;
-      padding: 10px 12px;
-      border: 1px solid rgba(59, 130, 246, 0.28);
-      border-radius: 12px;
-      background: rgba(59, 130, 246, 0.08);
-    }
-
-    .inv-pos-bulk-bar.is-visible {
-      display: flex;
-    }
-
-    .inv-pos-bulk-bar .inv-pos-bulk-count {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text);
-      margin-inline-end: auto;
-    }
-
-    :root[data-theme="dark"] .inv-pos-bulk-bar {
-      background: rgba(59, 130, 246, 0.14);
-      border-color: rgba(96, 165, 250, 0.35);
     }
 
     .inv-search-box {
@@ -1362,46 +1336,33 @@
       z-index: 10000;
       align-items: center;
       justify-content: center;
-      padding: 16px;
-      background: rgba(15, 23, 42, 0.55);
-      backdrop-filter: blur(4px);
+      background: rgba(0, 0, 0, 0.7);
     }
 
     .inv-modal-card {
-      width: 100%;
-      max-width: 560px;
-      max-height: min(92vh, 820px);
+      width: 90%;
+      max-width: 600px;
+      max-height: 90vh;
       overflow-y: auto;
       position: relative;
-      background: var(--surface, var(--card, #fff));
-      border: 1px solid var(--border);
-      border-radius: 18px;
-      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
-      padding: 22px 22px 18px;
-    }
-
-    .inv-modal-card::before {
-      display: none;
     }
 
     .inv-modal-close {
       position: absolute;
-      top: 14px;
-      left: 14px;
-      width: 36px;
-      height: 36px;
+      top: 20px;
+      left: 20px;
+      width: 40px;
+      height: 40px;
       border: none;
-      border-radius: 10px;
+      border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      font-size: 22px;
-      line-height: 1;
+      font-size: 20px;
       color: #ef4444;
-      background: rgba(239, 68, 68, 0.12);
+      background: rgba(239, 68, 68, 0.2);
       transition: all 0.2s ease;
-      z-index: 2;
     }
 
     .inv-modal-close:hover {
@@ -1410,155 +1371,84 @@
     }
 
     .inv-modal-title {
-      margin: 0 0 18px;
-      padding-inline-end: 40px;
-      color: var(--text);
-      font-size: 20px;
-      font-weight: 800;
+      margin-top: 0;
+      margin-bottom: 24px;
+      color: #f1f5f9;
+      font-size: 24px;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
     }
 
     .inv-modal-title-icon {
-      width: 38px;
-      height: 38px;
-      border-radius: 12px;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 16px;
-      color: #2563eb;
-      background: rgba(37, 99, 235, 0.12);
-      border: 1px solid rgba(37, 99, 235, 0.18);
-      flex-shrink: 0;
+      font-size: 32px;
     }
 
     .inv-modal-form {
       display: grid;
-      gap: 14px;
+      gap: 16px;
     }
 
     .inv-modal-info-box {
-      padding: 14px 16px;
-      border-radius: 14px;
-      border: 1px solid rgba(59, 130, 246, 0.22);
-      background: rgba(59, 130, 246, 0.08);
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+      background: rgba(59, 130, 246, 0.1);
     }
 
     .inv-modal-info-label {
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      display: block;
       margin-bottom: 6px;
-      color: var(--primary, #3b82f6);
-      font-size: 12px;
+      color: #3b82f6;
+      font-size: 13px;
       font-weight: 700;
     }
 
     .inv-modal-info-value {
-      color: var(--text);
-      font-size: 15px;
-      font-weight: 700;
-      line-height: 1.45;
-      word-break: break-word;
+      color: #f1f5f9;
+      font-size: 16px;
+      font-weight: 600;
     }
 
     .inv-modal-info-value.is-lg {
-      font-size: 22px;
-      font-weight: 800;
-      letter-spacing: -0.02em;
+      font-size: 20px;
+      font-weight: 700;
     }
 
     .inv-modal-label {
-      display: flex;
-      align-items: center;
-      gap: 6px;
+      display: block;
       margin-bottom: 6px;
-      color: var(--text-muted);
+      color: #94a3b8;
       font-size: 13px;
-      font-weight: 700;
+      font-weight: 600;
     }
 
     .inv-modal-help {
       display: block;
       margin-top: 6px;
-      color: var(--text-dim, #64748b);
+      color: #64748b;
       font-size: 11px;
-      line-height: 1.5;
     }
 
     .inv-modal-help-accent {
-      color: var(--primary, #3b82f6);
-      font-weight: 700;
+      color: #3b82f6;
+      font-weight: 600;
     }
 
     .inv-modal-input,
     .inv-modal-textarea {
       width: 100%;
-      padding: 12px 14px;
+      padding: 14px;
       border-radius: 12px;
-      border: 1px solid var(--border);
-      background: var(--surface-soft, rgba(15, 23, 42, 0.35));
-      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: rgba(30, 41, 59, 0.7);
+      color: #e2e8f0;
       font-size: 15px;
       font-family: inherit;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
-    }
-
-    .inv-modal-input:focus,
-    .inv-modal-textarea:focus {
-      outline: none;
-      border-color: var(--primary, #3b82f6);
-      box-shadow: 0 0 0 3px var(--primary-glow, rgba(59, 130, 246, 0.2));
     }
 
     .inv-modal-textarea {
       resize: vertical;
-      min-height: 78px;
-    }
-
-    .inv-modal-grid-2 {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    .inv-modal-section {
-      padding: 14px;
-      border-radius: 14px;
-      border: 1px solid var(--border);
-      background: var(--surface-soft, rgba(15, 23, 42, 0.18));
-      display: grid;
-      gap: 10px;
-    }
-
-    .inv-modal-section-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin: 0;
-      color: var(--text);
-      font-size: 13px;
-      font-weight: 800;
-    }
-
-    .inv-modal-section-title i {
-      color: var(--primary, #3b82f6);
-    }
-
-    .inv-modal-preview-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      margin-top: 8px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: rgba(37, 99, 235, 0.1);
-      border: 1px solid rgba(37, 99, 235, 0.18);
-      color: var(--primary, #3b82f6);
-      font-size: 12px;
-      font-weight: 700;
     }
 
     .inv-modal-specs {
@@ -1606,9 +1496,8 @@
 
     .inv-modal-actions {
       display: flex;
-      gap: 10px;
-      margin-top: 4px;
-      padding-top: 4px;
+      gap: 12px;
+      margin-top: 8px;
     }
 
     .inv-btn.grow {
@@ -1616,31 +1505,9 @@
     }
 
     .inv-btn.cancel {
-      background: rgba(239, 68, 68, 0.1);
+      background: rgba(239, 68, 68, 0.2);
       color: #ef4444;
-      border: 1px solid rgba(239, 68, 68, 0.25);
-    }
-
-    .inv-btn.cancel:hover {
-      background: rgba(239, 68, 68, 0.18);
-    }
-
-    @media (max-width: 560px) {
-      .inv-modal-grid-2 {
-        grid-template-columns: 1fr;
-      }
-
-      .inv-modal-card {
-        padding: 18px 14px 14px;
-      }
-
-      .inv-modal-title {
-        font-size: 18px;
-      }
-
-      .inv-modal-actions {
-        flex-direction: column-reverse;
-      }
+      border: 1px solid rgba(239, 68, 68, 0.3);
     }
 
     /* ================= ANIMATIONS ================= */
@@ -1876,168 +1743,157 @@
       }
     }
   </style>
+  <link rel="stylesheet" href="/static/css/finora-ui.css?v=20261018e">
 
 
-  <!-- ================= SUMMARY ================= -->
-  <div class="inv-summary">
-    <div class="inv-box">
-      <div class="inv-box-icon">📦</div>
-      <div class="inv-box-content">
-        <h4>{{ _('inventory_summary_products_title') }}</h4>
-        <b id="invSummaryProducts">{{ products|length }}</b>
-        <small class="inv-small-note" id="invSummaryActive">{{ _('inventory_summary_active') }}: {{ active_count }} | {{ _('inventory_summary_inactive') }}: {{ inactive_count }}</small>
+  {% from "partials/fd_icons.html" import icon %}
+  <div class="fd" id="fdPage">
+
+  <!-- ================= HEADER ================= -->
+  <header class="fd-header no-print">
+    <div class="fd-header-main">
+      <span class="fd-header-icon" style="color: var(--fd-purple);">{{ icon('boxes', 26) }}</span>
+      <div class="fd-header-text">
+        <h1 class="fd-title">إدارة المنتجات</h1>
+        <p class="fd-subtitle">جميع المنتجات والمواصفات والأسعار <span id="invProductsScope"></span></p>
       </div>
     </div>
-    <div class="inv-box">
-      <div class="inv-box-icon">💰</div>
-      <div class="inv-box-content">
-        <h4>{{ _('inventory_summary_value_title') }}</h4>
-        <b><span id="invSummaryValue">{{ "{:,.0f}".format(current_inventory_value) }}</span> <span style="font-size:14px;opacity:0.6">د.ع</span></b>
-        <small class="inv-small-note">{{ _('inventory_summary_value_note') }}</small>
-      </div>
-    </div>
-    <div class="inv-box {% if low_stock_count > 0 %}is-danger{% endif %}">
-      <div class="inv-box-icon">⚠️</div>
-      <div class="inv-box-content">
-        <h4>{{ _('inventory_summary_low_title') }}</h4>
-        <b id="invSummaryLow" class="{% if low_stock_count > 0 %}inv-box-number-danger{% endif %}">{{ low_stock_count }}</b>
-        <small class="inv-small-note">{{ _('inventory_summary_low_note') }}</small>
-      </div>
-    </div>
-    <div class="inv-box">
-      <div class="inv-box-icon">📈</div>
-      <div class="inv-box-content">
-        <h4>{{ _('inventory_summary_profit_title') }}</h4>
-        <b class="inv-box-number-success"><span id="invSummaryProfit">{{ "{:,.0f}".format(expected_profit_from_stock) }}</span> <span
-            style="font-size:14px;opacity:0.6">د.ع</span></b>
-        <small class="inv-small-note">{{ _('inventory_summary_profit_note') }}</small>
-      </div>
-    </div>
-    <div class="inv-box inv-box--featured">
-      <div class="inv-box-icon">🛒</div>
-      <div class="inv-box-content">
-        <h4>{{ _('inventory_summary_purchase_title') }}</h4>
-        <b><span id="invSummaryPurchase">{{ "{:,.0f}".format(total_purchase) }}</span> <span style="font-size:14px;opacity:0.6">د.ع</span></b>
-      </div>
-    </div>
-    <div class="inv-box inv-box--featured">
-      <div class="inv-box-icon">🏷️</div>
-      <div class="inv-box-content">
-        <h4>{{ _('inventory_summary_sale_title') }}</h4>
-        <b><span id="invSummarySale">{{ "{:,.0f}".format(total_sale) }}</span> <span style="font-size:14px;opacity:0.6">د.ع</span></b>
-      </div>
-    </div>
+  </header>
+
+  <nav class="fd-subnav no-print" aria-label="المخزون">
+    <a class="fd-subnav-link active" href="{{ url_for('inventory.inventory') }}">المنتجات</a>
+    <a class="fd-subnav-link" href="{{ url_for('stock_transfers.transfers_index') }}">نقل المخزون</a>
+    <a class="fd-subnav-link" href="{{ url_for('inventory_ledger.inventory_ledger') }}">حركة المخزون</a>
+    <a class="fd-subnav-link" href="{{ url_for('inventory.audit') }}">جرد المخزون</a>
+  </nav>
+
+  <!-- ================= KPI CARDS (click to filter) ================= -->
+  <div class="fd-kpis no-print">
+    <button type="button" class="fd-kpi fd-kpi--purple active" data-fd-stock="all">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">إجمالي المنتجات</span>
+        <span><span class="fd-kpi-value" id="invKpiTotal">{{ products|length }}</span><span class="fd-kpi-unit">منتج</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('boxes', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--green" data-fd-stock="available">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">متوفر في المخزون</span>
+        <span><span class="fd-kpi-value" id="invKpiAvailable">0</span><span class="fd-kpi-unit">منتج</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('layers', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--amber" data-fd-stock="low_only">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">منخفض المخزون</span>
+        <span><span class="fd-kpi-value" id="invKpiLow">{{ low_stock_count }}</span><span class="fd-kpi-unit">منتج</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('alert', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--red" data-fd-stock="zero">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">نفذ المخزون</span>
+        <span><span class="fd-kpi-value" id="invKpiOut">0</span><span class="fd-kpi-unit">منتج</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('ban', 28) }}</span>
+    </button>
   </div>
 
-  <!-- ================= LOW STOCK ALERT ================= -->
-  <div class="card inv-low-stock-card" id="invLowStockCard" {% if not low_stock_products %}hidden{% endif %}>
-    <div class="inv-low-stock-header">
-      <h3 class="inv-low-stock-title">
-        <span>⚠️</span>
-        <span id="invLowStockTitle">{{ _('inventory_low_stock_alert') }} ({{ low_stock_count }})</span>
-      </h3>
-      <button type="button" class="inv-btn secondary sm inv-low-stock-filter-btn" onclick="applyLowStockFilter()">
-        <i class="fas fa-filter"></i>
-        <span>عرض في الجدول</span>
+  <!-- ================= TOOLBAR ================= -->
+  <div class="fd-toolbar no-print">
+    <div class="fd-chips" id="invCategoryChips" role="tablist" aria-label="الفئات">
+      <button type="button" class="fd-chip active" data-fd-category="">الكل</button>
+    </div>
+
+    <div class="fd-pop-wrap fd-tool--filter">
+      <button type="button" class="fd-btn" data-fd-pop="invFiltersPop" aria-expanded="false" aria-controls="invFiltersPop">
+        {{ icon('filter', 18) }}
+        <span class="fd-btn-label">تصفية</span>
+        <span class="fd-count-badge" id="invFilterCount" hidden></span>
+        <span class="fd-chevron">{{ icon('chevron', 16) }}</span>
       </button>
+      <div class="fd-pop fd-pop--start fd-filter-pop" id="invFiltersPop" role="dialog" aria-label="تصفية" hidden>
+        <div class="fd-form-grid">
+          <label class="fd-field"><span>حالة المخزون</span>
+            <select id="filterStock">
+              <option value="all">الكل</option>
+              <option value="available">متوفر</option>
+              <option value="low_only">منخفض</option>
+              <option value="zero">نفذ المخزون</option>
+              <option value="low">منخفض أو نافد</option>
+              <option value="medium">{{ _('inventory_filter_stock_medium') }}</option>
+              <option value="high">{{ _('inventory_filter_stock_high') }}</option>
+            </select>
+          </label>
+          <label class="fd-field"><span>الفرع</span>
+            <select id="filterBranch">
+              <option value="all">{{ _('inventory_filter_branch_all') }}</option>
+              {% for b in company_branches or [] %}
+              <option value="{{ b.id }}">{{ b.name }}{% if b.code %} ({{ b.code }}){% endif %}</option>
+              {% endfor %}
+              <option value="none">— {{ _('inventory_filter_branch_none') }} —</option>
+            </select>
+          </label>
+          <label class="fd-field"><span>الماركة</span>
+            <select id="filterBrand"><option value="">الكل</option></select>
+          </label>
+          <label class="fd-field"><span>البيع</span>
+            <select id="filterActive">
+              <option value="all">الكل</option>
+              <option value="active">{{ _('inventory_filter_active_only') }}</option>
+              <option value="inactive">{{ _('inventory_filter_inactive_only') }}</option>
+            </select>
+          </label>
+          <label class="fd-field"><span>ظهور نقطة البيع</span><select id="filterPosVisible" onchange="applyInventoryFilters()"><option value="all">الكل</option><option value="visible">ظاهر في نقطة البيع</option><option value="hidden">مخفي من نقطة البيع</option></select></label>
+<label class="fd-field"><span>أقل سعر بيع</span>
+            <input type="number" id="filterPriceMin" min="0" step="any" inputmode="decimal" placeholder="0">
+          </label>
+          <label class="fd-field"><span>أعلى سعر بيع</span>
+            <input type="number" id="filterPriceMax" min="0" step="any" inputmode="decimal">
+          </label>
+        </div>
+        <div class="fd-pop-foot fd-pop-foot--split">
+          <button type="button" class="fd-link-btn" onclick="clearInventoryFilters()">مسح التصفية</button>
+          <button type="button" class="fd-btn fd-btn--accent fd-btn--apply" data-fd-pop-close>تطبيق</button>
+        </div>
+      </div>
     </div>
-    <div class="inv-low-stock-list" id="invLowStockList">
-      {% for p in low_stock_products[:10] %}
-      <span class="inv-low-stock-chip">
-        {{ p.name }} ({{ p.quantity }})
-      </span>
-      {% endfor %}
-      {% if low_stock_products|length > 10 %}
-      <span class="inv-low-stock-chip">
-        +{{ low_stock_products|length - 10 }} أكثر
-      </span>
-      {% endif %}
+
+    <label class="fd-search fd-search--scan fd-tool--search">
+      {{ icon('search', 18) }}
+      <input type="search" id="globalSearch" autocomplete="off" placeholder="بحث عن اسم المنتج، SKU، باركود...">
+      <button type="button" class="fd-search-scan" onclick="focusInventoryScan()" title="مسح باركود" aria-label="مسح باركود">{{ icon('scan', 20) }}</button>
+    </label>
+
+    <div class="fd-tools-row">
+      <button type="button" class="fd-btn fd-btn--primary" onclick="openProductDrawer()">
+        {{ icon('package-plus', 18) }}
+        <span class="fd-btn-label">منتج جديد</span>
+      </button>
+      <div class="fd-pop-wrap">
+        <button type="button" class="fd-btn fd-btn--icon" data-fd-pop="invMorePop" aria-expanded="false" aria-controls="invMorePop" title="المزيد" aria-label="المزيد">{{ icon('dots', 20) }}</button>
+        <div class="fd-pop fd-pop--end fd-menu" id="invMorePop" role="menu" hidden>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="printInventoryReport()">{{ icon('print') }}<span>طباعة تقرير المخزون</span></button>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="downloadInventoryAuditTemplate()">{{ icon('download') }}<span>تنزيل جرد الفرع (Excel)</span></button>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="openInventoryAuditUpload()">{{ icon('upload') }}<span>رفع الجرد للـ AI</span></button>
+          <a class="fd-menu-item" role="menuitem" href="{{ url_for('stock_transfers.transfers_index') }}">{{ icon('truck') }}<span>نقل بين الفروع</span></a>
+          <a class="fd-menu-item" role="menuitem" href="{{ url_for('inventory.add_product_page') }}">{{ icon('form') }}<span>إضافة منتج (النموذج الكامل)</span></a>
+          {% if is_beauty_center %}
+          <a class="fd-menu-item" role="menuitem" href="{{ url_for('static', filename='downloads/beauty_product_template.xlsx') }}" download="beauty_product_template.xlsx">{{ icon('sheet') }}<span>قالب Excel</span></a>
+          {% endif %}
+        </div>
+      </div>
     </div>
+    <input id="inventoryAuditUploadInput" type="file" accept=".xlsx,.xlsm" style="display:none" onchange="uploadInventoryAuditToAI(this)">
   </div>
-
-  <!-- ================= ADD PRODUCT ================= -->
-  <div class="card inv-hidden" id="addForm">
-    <h3 style="margin-bottom: 20px; border-bottom: 1px solid var(--border-light); padding-bottom: 14px;">➕ {{ _('inventory_add_product_title') }}</h3>
-    <form method="post">
-      <input type="hidden" name="form_type" value="add_product">
-      <input name="name" placeholder="{{ _('inventory_field_name') }}" required>
-      <input name="barcode" placeholder="{{ _('inventory_field_barcode_optional') }}">
-      <input name="buy_price" type="number" placeholder="{{ _('inventory_field_buy_price') }}" required>
-      <input name="sale_price" type="number" placeholder="{{ _('inventory_field_sale_price') }}" required>
-      <input name="opening_stock" type="number" placeholder="{{ _('inventory_field_opening_stock') }}" value="0" min="0">
-      <button class="inv-btn success" style="margin-top: 4px;"><i class="fas fa-save"></i> {{ _('inventory_save_product') }}</button>
-    </form>
-  </div>
-
 
   <!-- ================= PRODUCTS TABLE ================= -->
-  <div class="card">
-    <div class="inv-products-header">
-      <h3 class="inv-products-title">📦 {{ _('inventory_products_title') }} <span id="invProductsScope" style="font-size:15px; opacity: 0.55; font-weight:500;">({{ products|length }}) — {{ branch_scope_label }}</span></h3>
-      <div class="inv-products-actions">
-        <button type="button" class="inv-btn secondary compact" onclick="printInventoryReport()">
-          <i class="fas fa-print"></i>
-          <span>طباعة</span>
-        </button>
-        <button type="button" class="inv-btn secondary compact" onclick="downloadInventoryAuditTemplate()">
-          <i class="fas fa-file-excel" style="color:#107C41;"></i>
-          <span>تنزيل جرد الفرع</span>
-        </button>
-        <button type="button" class="inv-btn success compact" onclick="openInventoryAuditUpload()">
-          <i class="fas fa-cloud-upload-alt"></i>
-          <span>رفع الجرد للـ AI</span>
-        </button>
-        <input id="inventoryAuditUploadInput" type="file" accept=".xlsx,.xlsm" style="display:none" onchange="uploadInventoryAuditToAI(this)">
-        <a href="{{ url_for('stock_transfers.transfers_index') }}" class="inv-btn secondary compact">
-          <i class="fas fa-truck-loading"></i>
-          <span>نقل بين الفروع</span>
-        </a>
-        <a href="{{ url_for('inventory.add_product_page') }}" class="inv-btn primary compact">
-          <i class="fas fa-plus"></i>
-          <span>{{ _('inventory_add_product') }}</span>
-        </a>
-        <button type="button" class="inv-btn secondary compact" onclick="toggleAdd()">
-          <i class="fas fa-bolt"></i>
-          <span>{{ _('inventory_quick_add') }}</span>
-        </button>
-        {% if is_beauty_center %}
-        <a href="{{ url_for('static', filename='downloads/beauty_product_template.xlsx') }}" class="inv-btn secondary compact" download="beauty_product_template.xlsx">
-          <i class="fas fa-file-excel" style="color:#107C41;"></i>
-          <span>قالب Excel</span>
-        </a>
-        {% endif %}
-      </div>
+  <section class="fd-table-card">
+    <div class="fd-grid-wrap" id="invGridWrap">
+      <div id="productsTable" class="fd-grid ag-theme-quartz" style="height: 600px; width: 100%;"></div>
     </div>
-    <div class="inv-products-filters-bar">
-      <div class="inv-search-box">
-        <i class="fas fa-search search-icon"></i>
-        <input type="text" id="globalSearch" placeholder="{{ _('inventory_search_placeholder') }}" data-help="inventory.search" oninput="onGlobalSearch(this.value)">
-      </div>
-      <select id="filterStock" onchange="filterProducts()" class="inv-products-filter" title="{{ _('inventory_filter_stock_all') }}">
-        <option value="all">🗂️ {{ _('inventory_filter_stock_all') }}</option>
-        <option value="low">🔴 {{ _('inventory_filter_stock_low') }}</option>
-        <option value="medium">🟡 {{ _('inventory_filter_stock_medium') }}</option>
-        <option value="high">🟢 {{ _('inventory_filter_stock_high') }}</option>
-        <option value="zero">⬛ {{ _('inventory_filter_stock_zero') }}</option>
-      </select>
-      <select id="filterBranch" onchange="filterProducts()" class="inv-products-filter" title="{{ _('inventory_col_branch') }}">
-        <option value="all">🏢 {{ _('inventory_filter_branch_all') }}</option>
-        {% for b in company_branches or [] %}
-        <option value="{{ b.id }}">{{ b.name }}{% if b.code %} ({{ b.code }}){% endif %}</option>
-        {% endfor %}
-        <option value="none">— {{ _('inventory_filter_branch_none') }} —</option>
-      </select>
-      <select id="filterActive" onchange="filterProducts()" class="inv-products-filter" title="{{ _('inventory_filter_active_all') }}">
-        <option value="all">{{ _('inventory_filter_active_all') }}</option>
-        <option value="active">✅ {{ _('inventory_filter_active_only') }}</option>
-        <option value="inactive">❌ {{ _('inventory_filter_inactive_only') }}</option>
-      </select>
-      <select id="filterPosVisible" onchange="filterProducts()" class="inv-products-filter" title="ظهور نقطة البيع">
-        <option value="all">كل حالات نقطة البيع</option>
-        <option value="visible">ظاهر في نقطة البيع</option>
-        <option value="hidden">مخفي من نقطة البيع</option>
-      </select>
-    </div>
+  </section>
+
     <div id="invPosBulkBar" class="inv-pos-bulk-bar" aria-live="polite">
       <span class="inv-pos-bulk-count">تم تحديد <strong id="invPosSelectedCount">0</strong> منتج</span>
       <button type="button" class="inv-btn secondary compact" onclick="selectAllVisibleProducts()">تحديد الكل (الظاهر)</button>
@@ -2051,10 +1907,134 @@
         <span>إظهار في نقطة البيع</span>
       </button>
     </div>
-    <div class="table-wrap inv-table-wrap-products" style="height: 600px; min-height: 380px; position: relative;">
-      <div id="productsTable" class="ag-theme-finora" style="height: 100%; width: 100%;"></div>
+<style>.inv-pos-bulk-bar{display:none;gap:8px;align-items:center;flex-wrap:wrap;padding:12px;border:1px solid var(--fd-border);border-radius:12px;background:var(--fd-purple-soft);}.inv-pos-bulk-bar.is-visible{display:flex;}.inv-pos-bulk-count{margin-inline-end:auto;}</style>
+  <footer class="fd-footer no-print">
+    <div class="fd-footer-info">
+      <select id="invPageSize" aria-label="عدد المنتجات في الصفحة">
+        <option value="10">10</option>
+        <option value="25">25</option>
+        <option value="50">50</option>
+        <option value="100">100</option>
+      </select>
+      <span class="fd-range" id="invRange"></span>
+      <span class="fd-totals" id="invTotals"></span>
     </div>
+    <nav class="fd-pager" id="invPager" aria-label="الصفحات"></nav>
+  </footer>
+
+  <!-- ================= PRODUCT DETAIL PANEL ================= -->
+  <aside class="fd-detail" id="invDetail" aria-label="تفاصيل المنتج" hidden>
+    <div class="fd-detail-head">
+      <div class="fd-detail-titles">
+        <h3 class="fd-detail-title" id="invDetailTitle"></h3>
+        <p class="fd-detail-sub" id="invDetailSku"></p>
+      </div>
+      <button type="button" class="fd-btn fd-btn--soft fd-btn--sm" id="invDetailEdit">{{ icon('pencil', 16) }}<span>تعديل</span></button>
+      <a class="fd-close-btn" id="invDetailFull" href="#" title="فتح النموذج الكامل" aria-label="فتح النموذج الكامل">{{ icon('external', 18) }}</a>
+      <button type="button" class="fd-close-btn" onclick="closeProductDetail()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+    </div>
+    <div class="fd-detail-body">
+      <div class="fd-detail-media" id="invDetailMedia"></div>
+      <div class="fd-detail-status" id="invDetailStatus"></div>
+      <div class="fd-kv" id="invDetailRows"></div>
+      <div class="fd-detail-actions" id="invDetailActions"></div>
+    </div>
+  </aside>
+
+  <!-- ================= PRODUCT DRAWER (new / edit) ================= -->
+  <div class="fd-drawer" id="invDrawer" hidden>
+    <form class="fd-drawer-panel" id="invProductForm" role="dialog" aria-modal="true" aria-labelledby="invDrawerTitle" novalidate>
+      <input type="hidden" name="product_id" id="pfId">
+      <div class="fd-drawer-head">
+        <span class="fd-drawer-icon" id="invDrawerIcon">{{ icon('package-plus', 24) }}</span>
+        <div class="fd-drawer-titles">
+          <h2 class="fd-drawer-title" id="invDrawerTitle">منتج جديد</h2>
+          <p class="fd-drawer-hint">Ctrl+S للحفظ · Esc للإغلاق</p>
+        </div>
+        <a class="fd-close-btn" id="invDrawerFull" href="{{ url_for('inventory.add_product_page') }}" title="فتح النموذج الكامل" aria-label="فتح النموذج الكامل">{{ icon('external', 18) }}</a>
+        <button type="button" class="fd-close-btn" onclick="closeProductDrawer()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+      </div>
+
+      <div class="fd-drawer-body">
+        <div class="fd-form-error" id="pfError" role="alert" hidden></div>
+
+        <div class="fd-form-top">
+          <label class="fd-dropzone" id="pfDropzone">
+            <input type="file" name="product_image" id="pfImage" accept="image/png,image/jpeg,image/webp,image/gif">
+            {{ icon('image-plus', 30) }}
+            <span>اسحب صورة هنا أو اضغط للاختيار</span>
+            <img id="pfImagePreview" alt="" hidden>
+          </label>
+          <div class="fd-form-main">
+            <label class="fd-field"><span>اسم المنتج <b class="fd-req">*</b></span>
+              <input type="text" name="name" id="pfName" required autocomplete="off" placeholder="مثال: شاشة LG 50 بوصة 4K">
+            </label>
+            <div class="fd-grid-2">
+              <label class="fd-field"><span>SKU</span>
+                <input type="text" name="sku" id="pfSku" autocomplete="off" dir="ltr" placeholder="TV-LG-50">
+              </label>
+              <div class="fd-field">
+                <span class="fd-label-row"><label for="pfBarcode">الباركود</label><button type="button" class="fd-link" onclick="generateProductBarcode()">{{ icon('wand', 14) }}توليد</button></span>
+                <input type="text" name="barcode" id="pfBarcode" autocomplete="off" dir="ltr" placeholder="امسح أو اكتب">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <section class="fd-section">
+          <div class="fd-section-head"><span class="fd-section-title">{{ icon('tag', 18) }}التصنيف</span></div>
+          <div class="fd-grid-3">
+            <label class="fd-field"><span>الفئة</span><input type="text" name="category" id="pfCategory" list="pfCategoryList" autocomplete="off" placeholder="شاشات"></label>
+            <label class="fd-field"><span>الماركة</span><input type="text" name="brand" id="pfBrand" list="pfBrandList" autocomplete="off" placeholder="LG"></label>
+            <label class="fd-field"><span>الوحدة</span><input type="text" name="unit" id="pfUnit" list="pfUnitList" autocomplete="off" placeholder="قطعة"></label>
+          </div>
+          <datalist id="pfCategoryList"></datalist>
+          <datalist id="pfBrandList"></datalist>
+          <datalist id="pfUnitList"><option value="قطعة"><option value="كرتون"><option value="علبة"><option value="كيلو"><option value="متر"><option value="لتر"></datalist>
+        </section>
+
+        <section class="fd-section">
+          <div class="fd-section-head">
+            <span class="fd-section-title">{{ icon('trend', 18) }}الأسعار</span>
+            <span class="fd-badge fd-badge--green" id="pfProfit" hidden></span>
+          </div>
+          <div class="fd-grid-3">
+            <label class="fd-field"><span>سعر الشراء</span><span class="fd-money"><input type="number" name="buy_price" id="pfBuy" min="0" step="any" inputmode="decimal" placeholder="0"></span></label>
+            <label class="fd-field"><span>سعر البيع</span><span class="fd-money"><input type="number" name="sale_price" id="pfSale" min="0" step="any" inputmode="decimal" placeholder="0"></span></label>
+            <label class="fd-field"><span class="fd-label-row"><span>أدنى مخزون</span><span class="fd-label-note">للتنبيه</span></span><input type="number" name="low_stock_threshold" id="pfMin" min="0" step="1" inputmode="numeric" value="5"></label>
+          </div>
+        </section>
+
+        <section class="fd-section">
+          <div class="fd-section-head"><span class="fd-section-title">{{ icon('layers', 18) }}المخزون</span></div>
+          <div class="fd-grid-2" id="pfStockNew">
+            <label class="fd-field"><span>الكمية الافتتاحية</span><input type="number" name="opening_stock" id="pfOpening" min="0" step="1" inputmode="numeric" value="0"></label>
+            <label class="fd-field"><span>الفرع</span>
+              <select name="branch_id" id="pfBranch">
+                <option value="">الفرع الحالي</option>
+                {% for b in company_branches or [] %}<option value="{{ b.id }}">{{ b.name }}</option>{% endfor %}
+              </select>
+            </label>
+          </div>
+          <div class="fd-stock-line" id="pfStockEdit" hidden>
+            <span>الكمية المتوفرة: <b id="pfStockQty">0</b></span>
+            <button type="button" class="fd-btn fd-btn--soft fd-btn--sm" id="pfAdjustBtn">تعديل المخزون</button>
+          </div>
+        </section>
+
+        <section class="fd-section">
+          <label class="fd-field"><span>الوصف</span><textarea name="description" id="pfDescription" rows="3" placeholder="اختياري"></textarea></label>
+        </section>
+      </div>
+
+      <div class="fd-drawer-foot">
+        <button type="submit" class="fd-btn fd-btn--primary" id="pfSave">{{ icon('check-circle', 18) }}<span id="pfSaveLabel">حفظ المنتج</span></button>
+        <button type="button" class="fd-btn" id="pfSaveAnother">حفظ وإضافة آخر</button>
+      </div>
+    </form>
   </div>
+
+  </div><!-- /#fdPage -->
 
   <section id="inventoryPrintReport" class="inventory-print-report" aria-hidden="true">
     <header class="ipr-header">
@@ -2214,7 +2194,7 @@
   <div class="card inv-modal-card">
     <button onclick="closeEditModal()" class="inv-modal-close">&times;</button>
     <h3 class="inv-modal-title">
-      <span class="inv-modal-title-icon"><i class="fas fa-edit" aria-hidden="true"></i></span>
+      <span class="inv-modal-title-icon">✏️</span>
       <span>{{ _('inventory_edit_product_title') }}</span>
     </h3>
     <form id="editForm" method="post" action="/inventory/edit/" class="inv-modal-form">
@@ -2415,46 +2395,104 @@
     return `(${rows.length}) — ${label}`;
   }
 
-  function updateInventoryBranchSummary(rows) {
-    const scopedRows = Array.isArray(rows) ? rows : productsForSelectedBranch();
-    const activeCount = scopedRows.filter(product => product.active).length;
-    const inactiveCount = scopedRows.length - activeCount;
-    const totalPurchase = scopedRows.reduce((sum, product) => sum + ((Number(product.buy_price) || 0) * (Number(product.quantity) || 0)), 0);
-    const totalSale = scopedRows.reduce((sum, product) => sum + ((Number(product.sale_price) || 0) * (Number(product.quantity) || 0)), 0);
-    const totalProfit = totalSale - totalPurchase;
-    const lowStockRows = scopedRows.filter(product => (Number(product.quantity) || 0) <= (Number(product.low_stock_threshold) || 5));
 
-    const setText = (id, value) => {
-      const el = document.getElementById(id);
-      if (el) el.textContent = value;
-    };
+  // ================= Finora desktop layout (products) =================
+  // Layout follows the table's own width: full -> medium -> compact -> one card per product
+  const INV_LAYOUT_TIERS = [
+    { mode: "full", minWidth: 1160, hidden: [] },
+    { mode: "medium", minWidth: 1000, hidden: ["brand", "low_stock_threshold"] },
+    { mode: "compact", minWidth: 860, hidden: ["brand", "low_stock_threshold", "image_url", "buy_price"] }
+  ];
+  const INV_PAGE_SIZES = [10, 25, 50, 100];
+  const INV_PAGE_SIZE_KEY = "inventory_page_size";
+  const INV_IMAGE_OFF_ICON = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m2 2 20 20"/><path d="M10.4 4H19a2 2 0 0 1 2 2v8.6M21 21H5a2 2 0 0 1-2-2V5"/><path d="m3 16 5-5 3 3M14.5 14.5 16 13l5 5"/></svg>';
+  let invCategoryFilter = "";
+  let invAppliedLayoutMode = null;
 
-    setText('invSummaryProducts', formatInventoryNumber(scopedRows.length));
-    setText('invSummaryActive', `نشط: ${formatInventoryNumber(activeCount)} | غير نشط: ${formatInventoryNumber(inactiveCount)}`);
-    setText('invSummaryValue', formatInventoryNumber(totalPurchase));
-    setText('invSummaryLow', formatInventoryNumber(lowStockRows.length));
-    setText('invSummaryProfit', formatInventoryNumber(totalProfit));
-    setText('invSummaryPurchase', formatInventoryNumber(totalPurchase));
-    setText('invSummarySale', formatInventoryNumber(totalSale));
-    setText('invProductsScope', currentInventoryScopeLabel(scopedRows));
+  function invLayoutTier() {
+    const wrap = document.getElementById("invGridWrap");
+    const width = wrap && wrap.clientWidth ? wrap.clientWidth : window.innerWidth;
+    return INV_LAYOUT_TIERS.find(tier => width >= tier.minWidth) || null;
+  }
 
-    const lowCountEl = document.getElementById('invSummaryLow');
-    if (lowCountEl) lowCountEl.classList.toggle('inv-box-number-danger', lowStockRows.length > 0);
+  function invLayoutMode() {
+    const tier = invLayoutTier();
+    return tier ? tier.mode : "card";
+  }
 
-    const lowCard = document.getElementById('invLowStockCard');
-    const lowTitle = document.getElementById('invLowStockTitle');
-    const lowList = document.getElementById('invLowStockList');
-    if (!lowCard || !lowTitle || !lowList) return;
+  function productMeta(row) {
+    if (!row) return {};
+    if (!row._meta) row._meta = safeParseMeta(row.meta_json);
+    return row._meta;
+  }
 
-    lowCard.hidden = lowStockRows.length === 0;
-    lowTitle.textContent = `تنبيه: منتجات منخفضة المخزون (${lowStockRows.length})`;
-    const visibleRows = lowStockRows.slice(0, 10);
-    lowList.innerHTML = visibleRows.map(product => (
-      `<span class="inv-low-stock-chip">${escapeHtml(product.name)} (${Number(product.quantity) || 0})</span>`
-    )).join('');
-    if (lowStockRows.length > visibleRows.length) {
-      lowList.insertAdjacentHTML('beforeend', `<span class="inv-low-stock-chip">+${lowStockRows.length - visibleRows.length} أكثر</span>`);
+  function productField(row, key) {
+    return String(productMeta(row)[key] || "").trim();
+  }
+
+  function productMinStock(row) {
+    const n = Number(row && row.low_stock_threshold);
+    return Number.isFinite(n) ? n : 5;
+  }
+
+  // متوفر / منخفض / نفذ المخزون
+  function productStockState(row) {
+    const qty = Number(row && row.quantity) || 0;
+    if (qty <= 0) return "out";
+    if (qty <= productMinStock(row)) return "low";
+    return "ok";
+  }
+
+  const INV_STOCK_LABELS = { ok: "متوفر", low: "منخفض", out: "نفذ المخزون" };
+  const INV_STOCK_TONES = { ok: "green", low: "amber", out: "red" };
+
+  function invMoney(value) {
+    return '<span dir="ltr">' + formatInventoryNumber(Math.round(Number(value) || 0)) + ' د.ع</span>';
+  }
+
+  function invStatusPill(row) {
+    const state = productStockState(row);
+    let html = '<span class="fd-pill fd-pill--' + INV_STOCK_TONES[state] + '">' + INV_STOCK_LABELS[state] + '</span>';
+    if (!row.active) html = '<span class="fd-pill fd-pill--gray" title="موقوف عن البيع">موقوف</span>';
+    return html;
+  }
+
+  function invQtyHtml(row) {
+    return '<span class="fd-qty fd-qty--' + productStockState(row) + '">' + formatInventoryNumber(Number(row.quantity) || 0) + '</span>';
+  }
+
+  function invThumb(row) {
+    if (row.image_url) {
+      return '<span class="fd-thumb"><img src="' + escapeHtml(row.image_url) + '" alt="" loading="lazy"></span>';
     }
+    return '<span class="fd-thumb">' + INV_IMAGE_OFF_ICON + '</span>';
+  }
+
+  function invDash(value) {
+    const v = String(value || "").trim();
+    return (!v || v === "---" || v === "—") ? '<span class="fd-muted">—</span>' : escapeHtml(v);
+  }
+
+  function invMoreButton(row) {
+    return '<button type="button" class="fd-more-btn" data-inv-actions-trigger="1"' +
+      ' data-product-id="' + row.id + '"' +
+      ' data-product-name="' + escapeHtml(String(row.name || "")) + '"' +
+      ' data-quantity="' + (Number(row.quantity) || 0) + '"' +
+      ' data-store-visible="' + (row.store_visible ? "1" : "0") + '"' +
+      ' aria-haspopup="menu" aria-expanded="false" aria-label="{{ _('inventory_col_actions') }}" title="{{ _('inventory_col_actions') }}"></button>';
+  }
+
+  function invProductCard(row) {
+    const meta = [row.sku && row.sku !== "---" ? row.sku : "", productField(row, "category"), productField(row, "brand")]
+      .filter(Boolean).map(escapeHtml).join(" · ");
+    return '<div class="fd-card">' +
+      '<div class="fd-card-line"><span class="fd-cell-name">' + escapeHtml(row.name || "—") + '</span>' + invStatusPill(row) + '</div>' +
+      '<div class="fd-card-meta">' + (meta || '<span class="fd-muted">بدون تصنيف</span>') + '</div>' +
+      '<div class="fd-card-line fd-card-foot">' +
+        '<span class="fd-card-amount">' + invMoney(row.sale_price) + '</span>' +
+        '<span class="fd-card-actions"><span class="fd-muted">الكمية</span> ' + invQtyHtml(row) + invMoreButton(row) + '</span>' +
+      '</div>' +
+    '</div>';
   }
 
   function initAgGrid() {
@@ -2467,308 +2505,243 @@
       console.error("Error parsing products data:", e);
       return;
     }
+    if (!Array.isArray(allProducts)) allProducts = [];
+    if (typeof agGrid === "undefined" || typeof agGrid.createGrid !== "function") return;
+
+    const layoutMode = invLayoutMode();
+    const html = (render) => (params) => (params.data ? render(params.data, params.value) : "");
 
     inventoryColumnDefs = [
-      {
-        headerName: "",
-        field: "selected",
-        width: 48,
-        minWidth: 44,
-        maxWidth: 56,
-        sortable: false,
-        filter: false,
-        checkboxSelection: true,
-        headerCheckboxSelection: true,
-        headerCheckboxSelectionFilteredOnly: true,
-        pinned: null
-      },
-      {
-        headerName: "{{ _('inventory_col_actions') }}",
-        field: "actions",
-        width: 72,
-        minWidth: 64,
-        maxWidth: 90,
-        sortable: false,
-        filter: false,
-        pinned: null,
-        cellRenderer: params => {
-          const p = params.data;
-          const nameAttr = escapeHtml(String(p.name || ''));
-          const storeVisible = p.store_visible ? '1' : '0';
-          const posVisible = (p.pos_visible !== false) ? '1' : '0';
-
-          return `
-              <div class="inv-actions-grid">
-                <button
-                  type="button"
-                  class="inv-actions-trigger"
-                  data-inv-actions-trigger="1"
-                  data-product-id="${p.id}"
-                  data-product-name="${nameAttr}"
-                  data-quantity="${Number(p.quantity) || 0}"
-                  data-store-visible="${storeVisible}"
-                  data-pos-visible="${posVisible}"
-                  aria-haspopup="menu"
-                  aria-expanded="false"
-                  aria-label="{{ _('inventory_col_actions') }}"
-                  title="{{ _('inventory_col_actions') }}"
-                >&#8942;</button>
-              </div>
-            `;
-        }
-      },
-      {
-        headerName: "{{ _('inventory_col_product') }}",
-        field: "name",
-        flex: 1,
-        minWidth: 200,
-        cellRenderer: params => {
-          const name = params.value;
-          const active = params.data.active;
-          return `
-              <strong class="inv-product-name ${!active ? 'is-inactive' : ''}">${name}</strong>
-              ${!active ? '<span class="inv-product-state">({{ _('inventory_inactive_short') }})</span>' : ''}
-              ${!params.data.store_visible ? '<span class="inv-product-state">(مخفي من المتجر)</span>' : ''}
-              ${params.data.pos_visible === false ? '<span class="inv-product-state">(مخفي من نقطة البيع)</span>' : ''}
-            `;
-        }
-      },
-      { headerName: "{{ _('inventory_col_barcode') }}", field: "barcode", width: 130 },
-      {
-        headerName: "SKU",
-        field: "sku",
-        width: 110,
-        valueFormatter: params => params.value || '--'
-      },
-      {
-        headerName: "الوحدة",
-        width: 110,
-        valueGetter: params => {
-          const m = safeParseMeta(params.data.meta_json);
-          return m.unit || '--';
-        }
-      },
-      {
-        headerName: "العلامة",
-        width: 140,
-        valueGetter: params => {
-          const m = safeParseMeta(params.data.meta_json);
-          return m.brand || '--';
-        }
-      },
-      {
-        headerName: "الصنف",
-        width: 140,
-        valueGetter: params => {
-          const m = safeParseMeta(params.data.meta_json);
-          return m.category || '--';
-        }
-      },
-      {
-        headerName: "{{ _('inventory_col_branch') }}",
-        field: "branch_name",
-        width: 170,
-        valueGetter: params => params.data.branch_name || '—',
-      },
-      {
-        headerName: "الضمان",
-        width: 110,
-        valueGetter: params => {
-          const m = safeParseMeta(params.data.meta_json);
-          return m.warranty || '--';
-        }
-      },
-      {
-        headerName: "تفاصيل",
-        width: 190,
-        cellRenderer: params => {
-          const raw = params.data.meta_json || '';
-          if (!raw) return '--';
-          const short = raw.length > 50 ? raw.slice(0, 50) + '...' : raw;
-          return `<span title="${escapeHtml(raw)}">${escapeHtml(short)}</span>`;
-        }
-      },
-      {
-        headerName: "IMEI",
-        width: 90,
-        valueGetter: params => {
-          const m = safeParseMeta(params.data.meta_json);
-          return m.enable_imei ? 'نعم' : 'لا';
-        }
-      },
-      {
-        headerName: "الصورة",
-        width: 90,
-        cellRenderer: params => {
-          const url = params.data.image_url;
-          if (!url) return '--';
-          return `<img src="${escapeHtml(url)}" style="width:42px;height:42px;object-fit:cover;border-radius:10px;border:1px solid var(--border-light);" />`;
-        }
-      },
-      {
-        headerName: "رابط المتجر",
-        field: "product_url",
-        width: 140,
-        sortable: false,
-        filter: false,
-        cellRenderer: params => {
-          const url = params.value;
-          if (!params.data.store_visible) return '<span class="inv-product-state">مخفي</span>';
-          if (!url) return '--';
-          return `<a class="action-btn" href="${escapeHtml(url)}" target="_blank" rel="noopener" title="فتح صفحة المنتج"><i class="fas fa-external-link-alt"></i></a>`;
-        }
-      },
-      {
-        headerName: "{{ _('inventory_col_opening') }}",
-        field: "opening_stock",
-        width: 100,
-        valueFormatter: params => (params.value || 0).toLocaleString()
-      },
-      {
-        headerName: "الوصف",
-        field: "description",
-        flex: 1,
-        minWidth: 220,
-        cellRenderer: params => {
-          const v = params.value || '';
-          if (!v) return '--';
-          const short = v.length > 60 ? v.slice(0, 60) + '...' : v;
-          return `<span title="${escapeHtml(v)}">${escapeHtml(short)}</span>`;
-        }
-      },
-      {
-        headerName: "{{ _('inventory_col_current_stock') }}",
-        field: "quantity",
-        width: 150,
-        cellRenderer: params => {
-          const qty = params.value;
-          const threshold = params.data.low_stock_threshold || 5;
-          let cls = 'success';
-          let note = '✅ متوفر';
-
-          if (qty === 0) { cls = 'danger'; }
-          else if (qty <= threshold / 2) { cls = 'danger'; }
-          else if (qty <= threshold) { cls = 'warning'; }
-
-          return `
-              <div style="display: flex; align-items: center; justify-content: center; height: 100%; width: 100%;">
-                <span class="qty-badge ${cls}">${qty}</span>
-              </div>
-            `;
-        }
-      },
-      {
-        headerName: "{{ _('inventory_col_inventory_value') }}",
-        field: "inventory_value",
-        width: 130,
-        valueFormatter: params => (params.value || 0).toLocaleString() + " د.ع"
-      },
-      {
-        headerName: "{{ _('inventory_col_buy_price') }}",
-        field: "buy_price",
-        width: 110,
-        valueFormatter: params => (params.value || 0).toLocaleString() + " د.ع"
-      },
-      {
-        headerName: "{{ _('inventory_col_sale_price') }}",
-        field: "sale_price",
-        width: 110,
-        valueFormatter: params => (params.value || 0).toLocaleString() + " د.ع"
-      },
-      {
-        headerName: "{{ _('inventory_col_profit') }}",
-        field: "profit",
-        width: 110,
-        cellClass: params => (params.value < 0 ? 'inv-profit-cell is-loss' : 'inv-profit-cell is-profit'),
-        valueFormatter: params => (params.value || 0).toLocaleString() + " د.ع"
-      }
+      {headerName:"", field:"selected",colId:"selected", width:48,minWidth:48,maxWidth:48,checkboxSelection:true,headerCheckboxSelection:true,headerCheckboxSelectionFilteredOnly:true,sortable:false},
+      { headerName: "SKU", field: "sku", colId: "sku", minWidth: 120, flex: 1, cellClass: "fd-cell-sku", cellRenderer: html((row, v) => invDash(v)) },
+      { headerName: "اسم المنتج", field: "name", colId: "name", minWidth: 200, flex: 2.2, cellRenderer: html(row => '<span class="fd-cell-name">' + escapeHtml(row.name || "—") + '</span>') },
+      { headerName: "الصورة", field: "image_url", colId: "image_url", minWidth: 96, maxWidth: 110, flex: 0.8, sortable: false, cellRenderer: html(row => invThumb(row)), getQuickFilterText: () => "" },
+      { headerName: "الفئة", colId: "category", minWidth: 110, flex: 1, valueGetter: p => productField(p.data, "category"), cellRenderer: html((row, v) => invDash(v)) },
+      { headerName: "الماركة", colId: "brand", minWidth: 100, flex: 1, valueGetter: p => productField(p.data, "brand"), cellRenderer: html((row, v) => invDash(v)) },
+      { headerName: "سعر الشراء", field: "buy_price", colId: "buy_price", minWidth: 116, flex: 1, cellClass: "fd-cell-muted", cellRenderer: html((row, v) => invMoney(v)) },
+      { headerName: "سعر البيع", field: "sale_price", colId: "sale_price", minWidth: 116, flex: 1, cellClass: "fd-cell-amount", cellRenderer: html((row, v) => invMoney(v)) },
+      { headerName: "الكمية المتوفرة", field: "quantity", colId: "quantity", minWidth: 136, flex: 1, cellRenderer: html(row => invQtyHtml(row)) },
+      { headerName: "أدنى مخزون", field: "low_stock_threshold", colId: "low_stock_threshold", minWidth: 96, flex: 0.8, cellClass: "fd-cell-muted" },
+      { headerName: "الحالة", colId: "status", minWidth: 120, flex: 0.9, valueGetter: p => INV_STOCK_LABELS[productStockState(p.data)], cellRenderer: html(row => invStatusPill(row)) },
+      { headerName: "الباركود", field: "barcode", colId: "barcode", hide: true },
+      { headerName: "المنتجات", colId: "card", flex: 1, minWidth: 220, hide: layoutMode !== "card", cellClass: "fd-card-cell", sortable: false, cellRenderer: html(row => invProductCard(row)), getQuickFilterText: () => "" },
+      { headerName: "", colId: "actions", width: 68, minWidth: 68, maxWidth: 68, sortable: false, resizable: false, cellClass: "fd-actions-cell", cellRenderer: html(row => invMoreButton(row)), getQuickFilterText: () => "" }
     ];
 
-    const columnDefs = inventoryColumnDefs;
-    const mobileColumnFields = new Set(["selected", "actions", "name", "quantity", "buy_price", "sale_price"]);
-    const effectiveColumnDefs = isInventoryMobile()
-      ? columnDefs.filter(col => mobileColumnFields.has(col.field))
-      : columnDefs;
-
     const gridOptions = {
-      columnDefs: effectiveColumnDefs,
+      columnDefs: inventoryColumnDefs,
       rowData: productsForSelectedBranch(),
-      rowHeight: isInventoryMobile() ? 58 : 52,
-      headerHeight: isInventoryMobile() ? 44 : 48,
-      rowSelection: 'multiple',
-      suppressRowClickSelection: true,
+      getRowId: params => String(params.data.id),
+      rowSelection: "multiple", suppressRowClickSelection:true, onSelectionChanged: () => updatePosBulkBar(),
+      getRowHeight: () => (invLayoutMode() === "card" ? 124 : 74),
+      headerHeight: layoutMode === "card" ? 46 : 58,
+      domLayout: layoutMode === "card" ? "autoHeight" : "normal",
       pagination: true,
-      paginationPageSize: isInventoryMobile() ? 10 : 20,
-      paginationPageSizeSelector: [10, 20, 50, 100],
+      suppressPaginationPanel: true,
+      paginationPageSize: readInvPageSize(),
+      paginationPageSizeSelector: INV_PAGE_SIZES,
+      includeHiddenColumnsInQuickFilter: true,
       enableRtl: true,
-      animateRows: true,
-      overlayNoRowsTemplate: '<div class="ag-overlay-no-rows-center" style="padding: 40px; text-align: center; color: var(--text-muted, #94a3b8);"><div style="font-size: 56px; margin-bottom: 16px; opacity: 0.6;">📦</div><div style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">{{ _("inventory_no_products_title") }}</div><div style="font-size: 14px;">{{ _("inventory_no_products_hint") }}</div></div>',
+      animateRows: false,
+      suppressCellFocus: true,
+      overlayNoRowsTemplate: '<div style="padding: 40px; text-align: center; color: #6b7280;"><div style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">{{ _("inventory_no_products_title") }}</div><div style="font-size: 14px;">{{ _("inventory_no_products_hint") }}</div></div>',
       defaultColDef: {
         sortable: true,
-        filter: true,
+        filter: false,
         resizable: true,
-        floatingFilter: true
+        suppressHeaderMenuButton: true,
+        minWidth: 80
       },
       onGridReady: (params) => {
         gridApi = params.api;
+        applyInvResponsiveColumns();
+        refreshInventoryFacets();
         updateInventoryBranchSummary(productsForSelectedBranch());
-        updatePosBulkBar();
       },
-      onSelectionChanged: () => updatePosBulkBar(),
-      isExternalFilterPresent: () => {
-        const stockFilter = document.getElementById('filterStock').value;
-        const activeFilter = document.getElementById('filterActive').value;
-        const posFilter = document.getElementById('filterPosVisible')?.value || 'all';
-        return stockFilter !== 'all' || activeFilter !== 'all' || posFilter !== 'all';
+      onFilterChanged: () => {
+        updateInventoryFooter();
       },
-      doesExternalFilterPass: (node) => {
-        const stockFilter = document.getElementById('filterStock').value;
-        const activeFilter = document.getElementById('filterActive').value;
-        const posFilter = document.getElementById('filterPosVisible')?.value || 'all';
-        const qty = node.data.quantity;
-        const threshold = node.data.low_stock_threshold || 5;
-        const isActive = node.data.active;
-        const posVisible = node.data.pos_visible !== false;
-
-        let matchesStock = true;
-        if (stockFilter === 'low') matchesStock = qty <= threshold;
-        else if (stockFilter === 'medium') matchesStock = qty > threshold && qty <= threshold * 3;
-        else if (stockFilter === 'high') matchesStock = qty > threshold * 3;
-        else if (stockFilter === 'zero') matchesStock = qty === 0;
-
-        let matchesActive = true;
-        if (activeFilter === 'active') matchesActive = isActive;
-        else if (activeFilter === 'inactive') matchesActive = !isActive;
-
-        let matchesPos = true;
-        if (posFilter === 'visible') matchesPos = posVisible;
-        else if (posFilter === 'hidden') matchesPos = !posVisible;
-
-        return matchesStock && matchesActive && matchesPos;
-      }
+      onPaginationChanged: () => {
+        renderInvPager();
+      },
+      onRowClicked: (event) => {
+        const t = event.event && event.event.target;
+        if (t && t.closest && t.closest("[data-inv-actions-trigger], button, a")) return;
+        openProductDetail(event.data.id);
+      },
+      isExternalFilterPresent: () => isInvExternalFilterPresent(),
+      doesExternalFilterPass: (node) => doesInvExternalFilterPass(node.data)
     };
 
     const eGridDiv = document.querySelector('#productsTable');
+    fitInvGridHeight();
     agGrid.createGrid(eGridDiv, gridOptions);
+
+    const wrap = document.getElementById("invGridWrap");
+    if (window.ResizeObserver && wrap) {
+      new ResizeObserver(() => {
+        if (gridApi && invLayoutMode() !== invAppliedLayoutMode) applyInvResponsiveColumns();
+      }).observe(wrap);
+    }
+    window.addEventListener("resize", () => {
+      fitInvGridHeight();
+      renderInvPager();
+    });
+    const sizeSelect = document.getElementById("invPageSize");
+    if (sizeSelect) {
+      sizeSelect.value = String(readInvPageSize());
+      sizeSelect.addEventListener("change", () => {
+        const size = parseInt(sizeSelect.value, 10);
+        if (!INV_PAGE_SIZES.includes(size)) return;
+        gridApi.setGridOption("paginationPageSize", size);
+        try { localStorage.setItem(INV_PAGE_SIZE_KEY, String(size)); } catch (e) { /* storage unavailable */ }
+      });
+    }
   }
 
-  let inventoryResponsiveTimer;
-  window.addEventListener('resize', function () {
+  function applyInvResponsiveColumns() {
     if (!gridApi) return;
-    clearTimeout(inventoryResponsiveTimer);
-    inventoryResponsiveTimer = setTimeout(function () {
-      const mobileColumnFields = new Set(["selected", "actions", "name", "quantity", "buy_price", "sale_price"]);
-      gridApi.setGridOption(
-        'columnDefs',
-        isInventoryMobile()
-          ? inventoryColumnDefs.filter(col => mobileColumnFields.has(col.field))
-          : inventoryColumnDefs
-      );
-      gridApi.setGridOption('paginationPageSize', isInventoryMobile() ? 10 : 20);
-      gridApi.setGridOption('rowHeight', isInventoryMobile() ? 58 : 52);
-      gridApi.resetRowHeights();
-    }, 160);
+    const mode = invLayoutMode();
+    invAppliedLayoutMode = mode;
+    const all = inventoryColumnDefs.map(c => c.colId);
+    let visible;
+    if (mode === "card") {
+      visible = ["selected", "card"];
+    } else {
+      const hidden = invLayoutTier().hidden.concat(["card", "barcode"]);
+      visible = all.filter(id => !hidden.includes(id));
+    }
+    gridApi.setColumnsVisible(all.filter(id => visible.includes(id)), true);
+    gridApi.setColumnsVisible(all.filter(id => !visible.includes(id)), false);
+    document.getElementById("fdPage")?.classList.toggle("fd--cards", mode === "card");
+    gridApi.setGridOption("domLayout", mode === "card" ? "autoHeight" : "normal");
+    gridApi.setGridOption("headerHeight", mode === "card" ? 46 : 58);
+    gridApi.resetRowHeights();
+    fitInvGridHeight();
+    renderInvPager();
+  }
+
+  function fitInvGridHeight() {
+    const gridEl = document.getElementById("productsTable");
+    if (!gridEl) return;
+    if (invLayoutMode() === "card") {
+      gridEl.style.height = "";
+      return;
+    }
+    const footer = document.querySelector("#fdPage .fd-footer");
+    const footerHeight = footer ? footer.offsetHeight + 14 : 0;
+    const top = gridEl.getBoundingClientRect().top + window.scrollY;
+    gridEl.style.height = Math.max(560, window.innerHeight - top - footerHeight - 18) + "px";
+  }
+
+  function readInvPageSize() {
+    try {
+      const saved = parseInt(localStorage.getItem(INV_PAGE_SIZE_KEY), 10);
+      if (INV_PAGE_SIZES.includes(saved)) return saved;
+    } catch (e) { /* storage unavailable */ }
+    return 25;
+  }
+
+  function fdPagerPages(current, pages, spread) {
+    const windowSize = spread * 2 + 1;
+    let start = Math.max(0, current - spread);
+    let end = Math.min(pages - 1, current + spread);
+    if (end - start + 1 < windowSize) {
+      if (start === 0) end = Math.min(pages - 1, windowSize - 1);
+      else start = Math.max(0, end - windowSize + 1);
+    }
+    const out = [];
+    if (start > 0) {
+      out.push(0);
+      if (start > 1) out.push("…");
+    }
+    for (let i = start; i <= end; i++) out.push(i);
+    if (end < pages - 1) {
+      if (end < pages - 2) out.push("…");
+      out.push(pages - 1);
+    }
+    return out;
+  }
+
+  function renderInvPager() {
+    if (!gridApi) return;
+    const pager = document.getElementById("invPager");
+    const range = document.getElementById("invRange");
+    const pageSize = gridApi.paginationGetPageSize();
+    const total = gridApi.paginationGetRowCount();
+    const pages = Math.max(1, gridApi.paginationGetTotalPages());
+    const current = Math.min(gridApi.paginationGetCurrentPage(), pages - 1);
+    const from = total ? current * pageSize + 1 : 0;
+    const to = Math.min(total, (current + 1) * pageSize);
+    if (range) {
+      range.innerHTML = "عرض " + formatInventoryNumber(from) + "–" + formatInventoryNumber(to) +
+        " من <b>" + formatInventoryNumber(total) + "</b> منتج";
+    }
+    if (!pager) return;
+    const spread = window.matchMedia("(max-width: 600px)").matches ? 1 : 2;
+    const chevron = d => '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + d + '"/></svg>';
+    let html = '<button type="button" class="fd-page fd-page--nav" data-inv-page="prev" aria-label="السابقة"' + (current <= 0 ? ' disabled' : '') + '>' + chevron("m9 6 6 6-6 6") + '</button>';
+    fdPagerPages(current, pages, spread).forEach(p => {
+      if (p === "…") html += '<span class="fd-page-gap">…</span>';
+      else html += '<button type="button" class="fd-page' + (p === current ? ' active' : '') + '" data-inv-page="' + p + '"' + (p === current ? ' aria-current="page"' : '') + '>' + formatInventoryNumber(p + 1) + '</button>';
+    });
+    html += '<button type="button" class="fd-page fd-page--nav" data-inv-page="next" aria-label="التالية"' + (current >= pages - 1 ? ' disabled' : '') + '>' + chevron("m15 6-6 6 6 6") + '</button>';
+    pager.innerHTML = html;
+  }
+
+  document.addEventListener("click", (event) => {
+    const btn = event.target.closest ? event.target.closest("[data-inv-page]") : null;
+    if (!btn || !gridApi || btn.disabled) return;
+    const page = btn.getAttribute("data-inv-page");
+    if (page === "prev") gridApi.paginationGoToPreviousPage();
+    else if (page === "next") gridApi.paginationGoToNextPage();
+    else gridApi.paginationGoToPage(parseInt(page, 10) || 0);
   });
+
+  // ---- Filters (popover + category chips + KPI cards) ----
+  function invFilterValue(id) {
+    return (document.getElementById(id) || {}).value || "";
+  }
+
+  function isInvExternalFilterPresent() {
+    return invFilterValue("filterStock") !== "all" && invFilterValue("filterStock") !== ""
+      || invFilterValue("filterActive") !== "all" && invFilterValue("filterActive") !== ""
+      || !!invFilterValue("filterBrand")
+      || !!invFilterValue("filterPriceMin")
+      || !!invFilterValue("filterPriceMax")
+      || !!invCategoryFilter || (invFilterValue("filterPosVisible") || "all") !== "all";
+  }
+
+  function doesInvExternalFilterPass(row) {
+    const qty = Number(row.quantity) || 0;
+    const threshold = productMinStock(row);
+    const stock = invFilterValue("filterStock") || "all";
+    const state = productStockState(row);
+    if (stock === "available" && state !== "ok") return false;
+    if (stock === "low_only" && state !== "low") return false;
+    if (stock === "zero" && state !== "out") return false;
+    if (stock === "low" && qty > threshold) return false;
+    if (stock === "medium" && !(qty > threshold && qty <= threshold * 3)) return false;
+    if (stock === "high" && !(qty > threshold * 3)) return false;
+
+    const active = invFilterValue("filterActive") || "all";
+    if (active === "active" && !row.active) return false;
+    if (active === "inactive" && row.active) return false;
+
+    const brand = invFilterValue("filterBrand");
+    if (brand && productField(row, "brand") !== brand) return false;
+    if (invCategoryFilter && productField(row, "category") !== invCategoryFilter) return false;
+
+    const sale = Number(row.sale_price) || 0;
+    const minPrice = parseFloat(invFilterValue("filterPriceMin"));
+    const maxPrice = parseFloat(invFilterValue("filterPriceMax"));
+    if (!isNaN(minPrice) && sale < minPrice) return false;
+    if (!isNaN(maxPrice) && sale > maxPrice) return false;
+    const pos = invFilterValue("filterPosVisible") || "all";
+    if (pos === "visible" && row.pos_visible === false) return false;
+    if (pos === "hidden" && row.pos_visible !== false) return false;
+    return true;
+  }
 
   function filterProducts() {
     if (!gridApi) return;
@@ -2776,23 +2749,109 @@
     gridApi.setGridOption('rowData', scopedRows);
     updateInventoryBranchSummary(scopedRows);
     gridApi.onFilterChanged();
-    updatePosBulkBar();
+  }
+
+  function applyInventoryFilters() {
+    if (!gridApi) return;
+    gridApi.onFilterChanged();
+    syncInvKpiActive();
+  }
+
+  function clearInventoryFilters() {
+    ["filterStock", "filterActive", "filterPosVisible"].forEach(id => { const el = document.getElementById(id); if (el) el.value = "all"; });
+    ["filterBrand", "filterPriceMin", "filterPriceMax"].forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; });
+    const branch = document.getElementById("filterBranch");
+    if (branch) branch.value = "all";
+    setInvCategory("");
+    filterProducts();
+    syncInvKpiActive();
   }
 
   function applyLowStockFilter() {
     const stockEl = document.getElementById('filterStock');
-    const activeEl = document.getElementById('filterActive');
-    if (!stockEl) return;
-    stockEl.value = 'low';
-    if (activeEl) activeEl.value = 'all';
-    filterProducts();
-    const tableCard = document.querySelector('.inv-table-wrap-products');
-    if (tableCard) tableCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (stockEl) stockEl.value = 'low_only';
+    applyInventoryFilters();
   }
 
   function onGlobalSearch(value) {
     if (gridApi) gridApi.setGridOption('quickFilterText', value);
   }
+
+  function setInvCategory(category) {
+    invCategoryFilter = category || "";
+    document.querySelectorAll("#invCategoryChips [data-fd-category]").forEach(chip => {
+      chip.classList.toggle("active", chip.getAttribute("data-fd-category") === invCategoryFilter);
+    });
+  }
+
+  function syncInvKpiActive() {
+    const stock = invFilterValue("filterStock") || "all";
+    document.querySelectorAll("#fdPage [data-fd-stock]").forEach(card => {
+      card.classList.toggle("active", card.getAttribute("data-fd-stock") === stock);
+    });
+    const ids = ["filterStock", "filterActive", "filterBranch", "filterBrand", "filterPriceMin", "filterPriceMax"];
+    const active = ids.filter(id => {
+      const v = invFilterValue(id);
+      return v && v !== "all";
+    }).length;
+    const badge = document.getElementById("invFilterCount");
+    if (badge) {
+      badge.hidden = active === 0;
+      badge.textContent = String(active);
+    }
+  }
+
+  // Category chips, brand filter options and the drawer suggestions come from the products
+  function refreshInventoryFacets() {
+    const categories = new Map();
+    const brands = new Set();
+    allProducts.forEach(row => {
+      const c = productField(row, "category");
+      const b = productField(row, "brand");
+      if (c) categories.set(c, (categories.get(c) || 0) + 1);
+      if (b) brands.add(b);
+    });
+    const sortAr = (a, b) => a.localeCompare(b, "ar");
+    const chips = document.getElementById("invCategoryChips");
+    if (chips) {
+      chips.innerHTML = '<button type="button" class="fd-chip" data-fd-category="">الكل</button>' +
+        Array.from(categories.keys()).sort(sortAr).map(c =>
+          '<button type="button" class="fd-chip" data-fd-category="' + escapeHtml(c) + '">' + escapeHtml(c) + '</button>'
+        ).join("");
+      setInvCategory(categories.has(invCategoryFilter) ? invCategoryFilter : "");
+    }
+    const brandSelect = document.getElementById("filterBrand");
+    if (brandSelect) {
+      const current = brandSelect.value;
+      brandSelect.innerHTML = '<option value="">الكل</option>' +
+        Array.from(brands).sort(sortAr).map(b => '<option value="' + escapeHtml(b) + '">' + escapeHtml(b) + '</option>').join("");
+      brandSelect.value = brands.has(current) ? current : "";
+    }
+    const fillList = (id, values) => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = Array.from(values).sort(sortAr).map(v => '<option value="' + escapeHtml(v) + '">').join("");
+    };
+    fillList("pfCategoryList", categories.keys());
+    fillList("pfBrandList", brands);
+  }
+
+  document.addEventListener("click", (event) => {
+    const t = event.target;
+    if (!t || !t.closest) return;
+    const chip = t.closest("#invCategoryChips [data-fd-category]");
+    if (chip) {
+      setInvCategory(chip.getAttribute("data-fd-category"));
+      applyInventoryFilters();
+      return;
+    }
+    const card = t.closest("#fdPage [data-fd-stock]");
+    if (card) {
+      const stockEl = document.getElementById("filterStock");
+      if (stockEl) stockEl.value = card.getAttribute("data-fd-stock");
+      applyInventoryFilters();
+    }
+  });
+
 
   function getFilteredInventoryRowsForPrint() {
     const rows = [];
@@ -2950,15 +3009,385 @@
     requestAnimationFrame(() => window.print());
   }
 
-  document.addEventListener("DOMContentLoaded", initAgGrid);
 
-  function toggleAdd() {
-    const addForm = document.getElementById('addForm');
-    addForm.classList.toggle('inv-hidden');
-    if (!addForm.classList.contains('inv-hidden')) {
-      addForm.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  // ================= KPI + footer =================
+  function updateInventoryBranchSummary(rows) {
+    const scopedRows = Array.isArray(rows) ? rows : productsForSelectedBranch();
+    const counts = { ok: 0, low: 0, out: 0 };
+    scopedRows.forEach(row => { counts[productStockState(row)]++; });
+    const setText = (id, value) => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = value;
+    };
+    setText('invKpiTotal', formatInventoryNumber(scopedRows.length));
+    setText('invKpiAvailable', formatInventoryNumber(counts.ok));
+    setText('invKpiLow', formatInventoryNumber(counts.low));
+    setText('invKpiOut', formatInventoryNumber(counts.out));
+    const branchFilter = document.getElementById('filterBranch');
+    const scope = (!branchFilter || branchFilter.value === 'all')
+      ? 'كل الفروع'
+      : (branchFilter.options[branchFilter.selectedIndex]?.textContent.trim() || '—');
+    setText('invProductsScope', '· ' + scope);
+    syncInvKpiActive();
+    updateInventoryFooter();
+  }
+
+  function updateInventoryFooter() {
+    if (!gridApi) return;
+    let value = 0;
+    let profit = 0;
+    gridApi.forEachNodeAfterFilter(node => {
+      const row = node.data || {};
+      const qty = Math.max(0, Number(row.quantity) || 0);
+      value += (Number(row.buy_price) || 0) * qty;
+      profit += ((Number(row.sale_price) || 0) - (Number(row.buy_price) || 0)) * qty;
+    });
+    const totals = document.getElementById("invTotals");
+    if (totals) {
+      totals.innerHTML = "قيمة المخزون <b>" + formatInventoryNumber(value) + " د.ع</b> · الربح المتوقع <b>" + formatInventoryNumber(profit) + " د.ع</b>";
+    }
+    renderInvPager();
+  }
+
+  // ================= Popovers (filters / more) =================
+  let fdOpenPop = null;
+
+  function closeFdPop() {
+    if (!fdOpenPop) return;
+    fdOpenPop.hidden = true;
+    const trigger = document.querySelector('[data-fd-pop="' + fdOpenPop.id + '"]');
+    if (trigger) trigger.setAttribute("aria-expanded", "false");
+    fdOpenPop = null;
+  }
+
+  document.addEventListener("click", (event) => {
+    const t = event.target;
+    if (!t || !t.closest) return;
+    const trigger = t.closest("[data-fd-pop]");
+    if (trigger) {
+      const pop = document.getElementById(trigger.getAttribute("data-fd-pop"));
+      if (!pop) return;
+      const wasOpen = fdOpenPop === pop;
+      closeFdPop();
+      if (!wasOpen) {
+        pop.hidden = false;
+        fdOpenPop = pop;
+        trigger.setAttribute("aria-expanded", "true");
+      }
+      return;
+    }
+    if (t.closest("[data-fd-pop-close]")) {
+      closeFdPop();
+      return;
+    }
+    if (fdOpenPop && !t.closest(".fd-pop")) closeFdPop();
+  });
+
+  // ================= Product detail panel =================
+  let invDetailId = null;
+
+  function findInvRow(id) {
+    const key = String(id);
+    if (gridApi) {
+      const node = gridApi.getRowNode(key);
+      if (node && node.data) return node.data;
+    }
+    return allProducts.find(p => String(p.id) === key) || null;
+  }
+
+  function invKv(key, value) {
+    return '<div class="fd-kv-row"><span class="fd-kv-key">' + key + '</span><span class="fd-kv-val">' + value + '</span></div>';
+  }
+
+  function openProductDetail(id) {
+    const row = findInvRow(id);
+    if (!row) return;
+    invDetailId = row.id;
+    const meta = productMeta(row);
+    const profit = (Number(row.sale_price) || 0) - (Number(row.buy_price) || 0);
+    document.getElementById("invDetailTitle").textContent = row.name || "—";
+    document.getElementById("invDetailSku").textContent = row.sku && row.sku !== "---" ? row.sku : "";
+    document.getElementById("invDetailFull").href = "/inventory/add?edit=" + encodeURIComponent(row.id);
+    document.getElementById("invDetailMedia").innerHTML = row.image_url
+      ? '<img src="' + escapeHtml(row.image_url) + '" alt="">'
+      : '<span class="fd-thumb" style="width:150px;height:110px;">' + INV_IMAGE_OFF_ICON.replace(/width="22" height="22"/, 'width="44" height="44"') + '</span>';
+    document.getElementById("invDetailStatus").innerHTML = invStatusPill(row);
+    document.getElementById("invDetailRows").innerHTML =
+      invKv("SKU", invDash(row.sku)) +
+      invKv("الباركود", invDash(row.barcode)) +
+      invKv("الفئة", invDash(meta.category)) +
+      invKv("الماركة", invDash(meta.brand)) +
+      invKv("الوحدة", invDash(meta.unit)) +
+      invKv("سعر الشراء", invMoney(row.buy_price)) +
+      invKv("سعر البيع", invMoney(row.sale_price)) +
+      invKv("الربح للقطعة", '<span class="' + (profit >= 0 ? 'fd-qty--ok' : 'fd-qty--out') + '">' + invMoney(profit) + '</span>') +
+      invKv("الكمية المتوفرة", invQtyHtml(row)) +
+      invKv("أدنى مخزون", formatInventoryNumber(productMinStock(row))) +
+      invKv("الفرع", invDash(row.branch_name)) +
+      invKv("قيمة المخزون", invMoney((Number(row.buy_price) || 0) * Math.max(0, Number(row.quantity) || 0)));
+    document.getElementById("invDetailActions").innerHTML =
+      '<button type="button" class="fd-btn fd-btn--sm" data-inv-detail-action="adjust">تعديل المخزون</button>' +
+      '<button type="button" class="fd-btn fd-btn--sm" data-inv-detail-action="movements">حركة المخزون</button>' +
+      '<a class="fd-btn fd-btn--sm" href="/inventory/report/' + encodeURIComponent(row.id) + '">تقرير المنتج</a>';
+    document.getElementById("invDetail").hidden = false;
+  }
+
+  function closeProductDetail() {
+    invDetailId = null;
+    const panel = document.getElementById("invDetail");
+    if (panel) panel.hidden = true;
+  }
+
+  document.addEventListener("click", (event) => {
+    const t = event.target;
+    if (!t || !t.closest) return;
+    if (t.closest("#invDetailEdit") && invDetailId) {
+      openProductDrawer(invDetailId);
+      return;
+    }
+    const action = t.closest("[data-inv-detail-action]");
+    if (action && invDetailId) {
+      const row = findInvRow(invDetailId);
+      const kind = action.getAttribute("data-inv-detail-action");
+      if (kind === "adjust" && row) openAdjustModal(row.id, row.name, Number(row.quantity) || 0);
+      if (kind === "movements" && row) viewMovements(row.id);
+    }
+  });
+
+  // ================= Product drawer (new / edit) =================
+  let invDrawerInitial = "";
+  let invDrawerSaving = false;
+
+  function pfEl(id) {
+    return document.getElementById(id);
+  }
+
+  function invDrawerSnapshot() {
+    const form = pfEl("invProductForm");
+    const parts = [];
+    new FormData(form).forEach((v, k) => parts.push(k + "=" + (v instanceof File ? v.name : v)));
+    return parts.join("&");
+  }
+
+  function setPfImagePreview(url) {
+    const img = pfEl("pfImagePreview");
+    if (!img) return;
+    if (url) {
+      img.src = url;
+      img.hidden = false;
+    } else {
+      img.removeAttribute("src");
+      img.hidden = true;
     }
   }
+
+  function updatePfProfit() {
+    const buy = parseFloat(pfEl("pfBuy").value) || 0;
+    const sale = parseFloat(pfEl("pfSale").value) || 0;
+    const badge = pfEl("pfProfit");
+    if (!badge) return;
+    if (!buy || !sale) {
+      badge.hidden = true;
+      return;
+    }
+    const profit = sale - buy;
+    const pct = buy ? (profit / buy) * 100 : 0;
+    badge.hidden = false;
+    badge.className = "fd-badge " + (profit >= 0 ? "fd-badge--green" : "fd-badge--red");
+    badge.textContent = "الربح " + formatInventoryNumber(Math.round(profit)) + " · " + pct.toFixed(1) + "%";
+  }
+
+  function updatePfDirty() {
+    const editing = !!pfEl("pfId").value;
+    pfEl("pfSave").disabled = editing && invDrawerSnapshot() === invDrawerInitial;
+  }
+
+  function showPfError(message) {
+    const box = pfEl("pfError");
+    box.textContent = message || "";
+    box.hidden = !message;
+    if (message) box.scrollIntoView({ block: "nearest" });
+  }
+
+  function openProductDrawer(id) {
+    closeProductDetail();
+    closeFdPop();
+    const row = id ? findInvRow(id) : null;
+    const form = pfEl("invProductForm");
+    form.reset();
+    showPfError("");
+    pfEl("pfId").value = row ? row.id : "";
+    const meta = row ? productMeta(row) : {};
+    const clean = v => (v && v !== "---" ? v : "");
+    pfEl("pfName").value = row ? (row.name || "") : "";
+    pfEl("pfSku").value = row ? clean(row.sku) : "";
+    pfEl("pfBarcode").value = row ? clean(row.barcode) : "";
+    pfEl("pfCategory").value = meta.category || "";
+    pfEl("pfBrand").value = meta.brand || "";
+    pfEl("pfUnit").value = meta.unit || "";
+    pfEl("pfBuy").value = row ? (row.buy_price || 0) : "";
+    pfEl("pfSale").value = row ? (row.sale_price || 0) : "";
+    pfEl("pfMin").value = row ? productMinStock(row) : 5;
+    pfEl("pfDescription").value = row ? (row.description || "") : "";
+    setPfImagePreview(row ? row.image_url : "");
+
+    pfEl("pfStockNew").hidden = !!row;
+    pfEl("pfStockEdit").hidden = !row;
+    if (row) pfEl("pfStockQty").textContent = formatInventoryNumber(Number(row.quantity) || 0);
+    pfEl("invDrawerTitle").textContent = row ? (row.name || "تعديل منتج") : "منتج جديد";
+    pfEl("pfSaveLabel").textContent = row ? "حفظ التعديلات" : "حفظ المنتج";
+    pfEl("pfSaveAnother").hidden = !!row;
+    pfEl("invDrawerFull").href = row ? "/inventory/add?edit=" + encodeURIComponent(row.id) : "{{ url_for('inventory.add_product_page') }}";
+
+    updatePfProfit();
+    pfEl("invDrawer").hidden = false;
+    invDrawerInitial = invDrawerSnapshot();
+    updatePfDirty();
+    setTimeout(() => pfEl("pfName").focus(), 40);
+  }
+
+  function closeProductDrawer() {
+    const drawer = pfEl("invDrawer");
+    if (drawer) drawer.hidden = true;
+  }
+
+  // EAN-13 in-store barcode (prefix 20) with a valid check digit
+  function generateProductBarcode() {
+    const used = new Set(allProducts.map(p => String(p.barcode || "")));
+    let code = "";
+    do {
+      let body = "20";
+      for (let i = 0; i < 10; i++) body += Math.floor(Math.random() * 10);
+      let sum = 0;
+      for (let i = 0; i < 12; i++) sum += Number(body[i]) * (i % 2 ? 3 : 1);
+      code = body + ((10 - (sum % 10)) % 10);
+    } while (used.has(code));
+    pfEl("pfBarcode").value = code;
+    updatePfDirty();
+  }
+
+  async function saveProductDrawer(addAnother) {
+    if (invDrawerSaving) return;
+    const name = pfEl("pfName").value.trim();
+    if (!name) {
+      showPfError("يرجى إدخال اسم المنتج.");
+      pfEl("pfName").focus();
+      return;
+    }
+    invDrawerSaving = true;
+    pfEl("pfSave").disabled = true;
+    showPfError("");
+    try {
+      const productId = pfEl("pfId").value;
+      const payload = new FormData(pfEl("invProductForm"));
+      if (!productId) payload.set("_response", "json");
+      const res = await fetch(productId ? "/inventory/api/products/" + encodeURIComponent(productId) + "/update" : "{{ url_for('inventory.add_product_page') }}", {
+        method: "POST",
+        body: payload,
+        headers: { "Accept": "application/json" }
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.success) {
+        showPfError(data.error || "تعذر حفظ المنتج.");
+        const fieldMap = { name: "pfName", barcode: "pfBarcode", sku: "pfSku", buy_price: "pfBuy", sale_price: "pfSale" };
+        if (data.field && fieldMap[data.field]) pfEl(fieldMap[data.field]).focus();
+        return;
+      }
+      if (addAnother) sessionStorage.setItem("inventory_add_another", "1");
+      window.location.reload();
+    } catch (err) {
+      console.error(err);
+      showPfError("تعذر الاتصال بالخادم، حاول مرة أخرى.");
+    } finally {
+      invDrawerSaving = false;
+      updatePfDirty();
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    if (sessionStorage.getItem("inventory_add_another") === "1") { sessionStorage.removeItem("inventory_add_another"); openProductDrawer(); }
+    const form = pfEl("invProductForm");
+    if (!form) return;
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      saveProductDrawer(false);
+    });
+    pfEl("pfSaveAnother").addEventListener("click", () => saveProductDrawer(true));
+    form.addEventListener("input", () => {
+      updatePfProfit();
+      updatePfDirty();
+    });
+    form.addEventListener("change", updatePfDirty);
+    pfEl("invDrawer").addEventListener("click", (event) => {
+      if (event.target === pfEl("invDrawer")) closeProductDrawer();
+    });
+    pfEl("pfAdjustBtn").addEventListener("click", () => {
+      const row = findInvRow(pfEl("pfId").value);
+      if (row) openAdjustModal(row.id, row.name, Number(row.quantity) || 0);
+    });
+
+    // Image: click or drag & drop
+    const zone = pfEl("pfDropzone");
+    const input = pfEl("pfImage");
+    input.addEventListener("change", () => {
+      const file = input.files && input.files[0];
+      if (file) setPfImagePreview(URL.createObjectURL(file));
+    });
+    ["dragenter", "dragover"].forEach(type => zone.addEventListener(type, (e) => { e.preventDefault(); zone.classList.add("is-over"); }));
+    ["dragleave", "drop"].forEach(type => zone.addEventListener(type, (e) => { e.preventDefault(); zone.classList.remove("is-over"); }));
+    zone.addEventListener("drop", (e) => {
+      const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (!file || !/^image\//.test(file.type)) return;
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      input.files = dt.files;
+      setPfImagePreview(URL.createObjectURL(file));
+      updatePfDirty();
+    });
+
+    // Filters
+    ["filterStock", "filterActive", "filterBrand"].forEach(id => pfEl(id)?.addEventListener("change", applyInventoryFilters));
+    pfEl("filterBranch")?.addEventListener("change", () => { filterProducts(); syncInvKpiActive(); });
+    ["filterPriceMin", "filterPriceMax"].forEach(id => pfEl(id)?.addEventListener("input", applyInventoryFilters));
+
+    // Search; Enter on an exact barcode / SKU (scanner) opens that product
+    const search = pfEl("globalSearch");
+    search.addEventListener("input", () => onGlobalSearch(search.value));
+    search.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter") return;
+      const code = search.value.trim();
+      if (!code) return;
+      const match = allProducts.filter(p => p.barcode === code || p.sku === code);
+      if (match.length === 1) {
+        event.preventDefault();
+        openProductDetail(match[0].id);
+      }
+    });
+  });
+
+  function focusInventoryScan() {
+    const search = document.getElementById("globalSearch");
+    if (!search) return;
+    search.focus();
+    search.select();
+  }
+
+  document.addEventListener("keydown", (event) => {
+    const drawerOpen = !document.getElementById("invDrawer")?.hidden;
+    if (drawerOpen && (event.ctrlKey || event.metaKey) && (event.key === "s" || event.key === "S")) {
+      event.preventDefault();
+      if (!pfEl("pfSave").disabled) saveProductDrawer(false);
+      return;
+    }
+    if (event.key !== "Escape") return;
+    if (document.getElementById("adjustModal")?.style.display === "flex") return;
+    if (drawerOpen) closeProductDrawer();
+    else if (fdOpenPop) closeFdPop();
+    else closeProductDetail();
+  });
+
+  document.addEventListener("DOMContentLoaded", initAgGrid);
+
 
   function openEditModal(id) {
     const product = allProducts.find(item => Number(item.id) === Number(id));
@@ -3192,7 +3621,7 @@
     const productName = trigger.getAttribute('data-product-name') || '';
     const quantity = Number(trigger.getAttribute('data-quantity') || 0);
     const storeVisible = trigger.getAttribute('data-store-visible') === '1';
-    const posVisible = trigger.getAttribute('data-pos-visible') !== '0';
+    const posVisible = findInvRow(productId)?.pos_visible !== false;
     if (!productId) return;
 
     if (invActionsActiveTrigger === trigger && invActionsMenuEl && !invActionsMenuEl.hidden) {
@@ -3204,8 +3633,6 @@
     const menu = ensureInvActionsMenu();
     const storeLabel = storeVisible ? 'إخفاء من المتجر' : 'إظهار في المتجر';
     const storeIcon = storeVisible ? 'fa-eye-slash' : 'fa-eye';
-    const posLabel = posVisible ? 'إخفاء من نقطة البيع' : 'إظهار في نقطة البيع';
-    const posIcon = posVisible ? 'fa-cash-register' : 'fa-store';
 
     menu.innerHTML = `
       <button type="button" class="inv-actions-menu-item" role="menuitem" data-inv-action="report">
@@ -3215,13 +3642,13 @@
         <i class="fas fa-list" aria-hidden="true"></i><span>{{ _('inventory_action_movements') }}</span>
       </button>
       <button type="button" class="inv-actions-menu-item" role="menuitem" data-inv-action="adjust">
-        <i class="fas fa-bolt" aria-hidden="true"></i><span>{{ _('inventory_action_adjust_stock') }}</span>
+        <i class="fas fa-wrench" aria-hidden="true"></i><span>{{ _('inventory_action_adjust_stock') }}</span>
       </button>
-      <button type="button" class="inv-actions-menu-item" role="menuitem" data-inv-action="purchase-list">
-        <i class="fas fa-list-check" aria-hidden="true"></i><span>إضافة إلى قائمة الشراء</span>
+      <button type="button" class="inv-actions-menu-item" role="menuitem" data-inv-action="edit">
+        <i class="fas fa-edit" aria-hidden="true"></i><span>{{ _('inventory_action_edit') }}</span>
       </button>
       <a class="inv-actions-menu-item" role="menuitem" href="/inventory/add?edit=${encodeURIComponent(productId)}">
-        <i class="fas fa-edit" aria-hidden="true"></i><span>{{ _('inventory_action_edit') }}</span>
+        <i class="fas fa-up-right-from-square" aria-hidden="true"></i><span>النموذج الكامل</span>
       </a>
       <button type="button" class="inv-actions-menu-item" role="menuitem" data-inv-action="toggle">
         <i class="fas fa-power-off" aria-hidden="true"></i><span>{{ _('inventory_action_toggle') }}</span>
@@ -3229,9 +3656,7 @@
       <button type="button" class="inv-actions-menu-item" role="menuitem" data-inv-action="toggle-store">
         <i class="fas ${storeIcon}" aria-hidden="true"></i><span>${storeLabel}</span>
       </button>
-      <button type="button" class="inv-actions-menu-item" role="menuitem" data-inv-action="toggle-pos">
-        <i class="fas ${posIcon}" aria-hidden="true"></i><span>${posLabel}</span>
-      </button>
+      <button type="button" class="inv-actions-menu-item" role="menuitem" data-inv-action="toggle-pos">${posVisible ? "إخفاء من نقطة البيع" : "إظهار في نقطة البيع"}</button>
       <div class="inv-actions-menu-sep" role="separator"></div>
       <a class="inv-actions-menu-item is-danger" role="menuitem" href="/inventory/delete/${encodeURIComponent(productId)}" data-inventory-delete="1">
         <i class="fas fa-trash" aria-hidden="true"></i><span>{{ _('inventory_action_delete') }}</span>
@@ -3243,10 +3668,17 @@
       if (!item || !menu.contains(item)) return;
 
       const action = item.getAttribute('data-inv-action');
+      if (action === 'toggle-pos') { event.preventDefault(); submitInvPostAction('/inventory/toggle-pos/' + encodeURIComponent(productId)); return; }
       if (action === 'report') {
         event.preventDefault();
         closeInvActionsMenu();
         window.location.href = `/inventory/report/${productId}`;
+        return;
+      }
+      if (action === 'edit') {
+        event.preventDefault();
+        closeInvActionsMenu();
+        openProductDrawer(productId);
         return;
       }
       if (action === 'movements') {
@@ -3261,19 +3693,6 @@
         openAdjustModal(productId, productName, quantity);
         return;
       }
-      if (action === 'purchase-list') {
-        event.preventDefault();
-        closeInvActionsMenu();
-        fetch(`/purchases/lists/api/from-inventory/${encodeURIComponent(productId)}`, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'}
-        }).then(async response => {
-          const data = await response.json();
-          if (!response.ok) throw new Error(data.error || 'تعذر إضافة المنتج');
-          window.location.href = data.redirect_url;
-        }).catch(error => window.alert(error.message || 'تعذر إضافة المنتج إلى قائمة الشراء'));
-        return;
-      }
       if (action === 'toggle') {
         event.preventDefault();
         closeInvActionsMenu();
@@ -3284,12 +3703,6 @@
         event.preventDefault();
         closeInvActionsMenu();
         submitInvPostAction(`/inventory/toggle-store/${productId}`);
-        return;
-      }
-      if (action === 'toggle-pos') {
-        event.preventDefault();
-        closeInvActionsMenu();
-        submitInvPostAction(`/inventory/toggle-pos/${productId}`);
         return;
       }
       if (item.getAttribute('data-inventory-delete') === '1') {

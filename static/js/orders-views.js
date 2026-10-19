@@ -1,6 +1,6 @@
 (function () {
   "use strict";
-  const controlIds = ["searchInput", "filterCity", "filterStatus", "filterPayment", "filterEmployee", "filterShipping", "filterDeliveryAgent", "filterScheduledDate", "filterInstallmentType", "filterInstallmentStatus"];
+  const controlIds = ["searchInput", "filterCity", "filterStatus", "filterPayment", "filterEmployee", "filterShipping", "filterDeliveryAgent", "filterScheduledDate", "filterInstallmentType", "filterInstallmentStatus", "filterDateFrom", "filterDateTo", "filterAmountMin", "filterAmountMax"];
   const fields = new Set(["order_id", "date", "barcode", "customer_name", "phone", "phone2", "total", "paid_amount", "remaining", "status", "payment_status", "employee", "page_name", "city", "address", "shipping_company", "shipping_barcode", "delivery_agent", "note"]);
   const object = value => value && typeof value === "object" && !Array.isArray(value);
   function validGrid(state) {

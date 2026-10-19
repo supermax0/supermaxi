@@ -3,7 +3,9 @@
 {% block page_title %}{% if form_mode == 'edit' %}تعديل فاتورة شراء{% else %}فاتورة شراء جديدة{% endif %}{% endblock %}
 
 {% block content %}
-<div class="purchases-page pur-form-page">
+{% from "partials/fd_icons.html" import icon %}
+<link rel="stylesheet" href="/static/css/finora-ui.css?v=20261018e">
+<div class="fd purchases-page pur-form-page" id="fdPage">
   <style>
     .purchases-page { width: 100%; max-width: 1180px; margin: 0 auto; direction: rtl; }
     .pur-topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
@@ -71,6 +73,85 @@
     }
     .collapse-body { display: none; margin-top: 10px; }
     .collapse-body.open { display: block; }
+
+    /* ===== Finora desktop look (overrides the base styles above) ===== */
+    #fdPage.pur-form-page { max-width: 1180px; gap: 14px; }
+    #fdPage .pur-card {
+      margin: 0; padding: 20px 22px;
+      border: 1px solid var(--fd-border); border-radius: 18px;
+      background: var(--fd-surface); box-shadow: var(--fd-shadow);
+    }
+    #fdPage .pur-title { gap: 8px; margin-bottom: 14px; font-size: 16px; font-weight: 800; color: var(--fd-text); }
+    #fdPage .pur-title i { color: var(--fd-purple); }
+    #fdPage .pur-grid-4, #fdPage .pur-grid-3, #fdPage .pur-grid-2 { gap: 14px 16px; }
+    #fdPage .pur-field label { font-size: 14px; font-weight: 600; color: var(--fd-text-2); }
+    #fdPage .pur-field input:not([type="file"]),
+    #fdPage .pur-field select,
+    #fdPage .pur-field textarea {
+      min-height: 48px !important; padding: 0 14px !important;
+      border: 1px solid var(--fd-border-strong) !important; border-radius: 14px !important;
+      background: var(--fd-surface) !important; color: var(--fd-text) !important;
+      font: inherit !important; font-size: 15px !important; font-weight: 600 !important;
+    }
+    #fdPage .pur-field textarea { padding: 10px 14px !important; }
+    #fdPage .pur-field input:focus, #fdPage .pur-field select:focus, #fdPage .pur-field textarea:focus {
+      outline: none !important; border-color: var(--fd-purple) !important;
+      box-shadow: 0 0 0 3px rgba(108, 63, 209, 0.12) !important;
+    }
+    #fdPage .pur-btn {
+      min-height: 46px !important; padding: 0 18px !important; border-radius: 14px !important;
+      font: inherit !important; font-size: 15px !important; font-weight: 700 !important; justify-content: center;
+    }
+    #fdPage .pur-btn-primary {
+      border: 0 !important; color: #fff !important;
+      background: linear-gradient(135deg, #7b4be6 0%, #5f33c9 100%) !important;
+      box-shadow: 0 6px 16px rgba(108, 63, 209, 0.25) !important;
+    }
+    #fdPage .pur-btn-muted {
+      border: 1px solid var(--fd-border-strong) !important;
+      background: var(--fd-surface) !important; color: var(--fd-text) !important;
+    }
+    #fdPage .pay-mode-group { gap: 10px; }
+    #fdPage .pay-mode-btn {
+      min-height: 50px !important; border: 1px solid var(--fd-border-strong) !important; border-radius: 14px !important;
+      background: var(--fd-surface) !important; color: var(--fd-text-2) !important;
+      font: inherit !important; font-size: 15px !important; font-weight: 700 !important;
+    }
+    #fdPage .pay-mode-btn.active {
+      border-color: #b9a3f1 !important; background: var(--fd-purple-soft) !important; color: var(--fd-purple) !important;
+    }
+    #fdPage .pur-table-wrap { border: 1px solid var(--fd-border); border-radius: 14px; }
+    #fdPage table.pur-table th {
+      height: 48px; background: var(--fd-soft) !important; color: var(--fd-text-2) !important;
+      font-size: 14px; font-weight: 700; border-color: var(--fd-border) !important;
+    }
+    #fdPage table.pur-table td {
+      height: 56px; background: transparent !important; color: var(--fd-text) !important;
+      font-size: 14px; border-color: #eef0f4 !important;
+    }
+    #fdPage .collapse-toggle {
+      min-height: 48px !important; border: 1px solid var(--fd-border-strong) !important; border-radius: 14px !important;
+      background: var(--fd-soft) !important; color: var(--fd-text) !important; font: inherit !important; font-weight: 700 !important;
+    }
+    #fdPage .product-suggest { border: 1px solid var(--fd-border); border-radius: 14px; background: var(--fd-surface); box-shadow: 0 18px 48px rgba(16, 24, 40, 0.16); }
+    #fdPage .product-suggest button { min-height: 0 !important; padding: 10px 14px !important; border-radius: 0 !important; font-size: 14px !important; }
+    #fdPage .product-suggest button:hover { background: var(--fd-purple-soft) !important; }
+    #fdPage .pur-total-bar {
+      padding: 14px 20px; border: 1px solid var(--fd-border); border-radius: 18px;
+      background: rgba(255, 255, 255, 0.96); box-shadow: 0 -8px 28px rgba(16, 24, 40, 0.08);
+    }
+    #fdPage .pur-totals > div small { font-size: 13px; color: var(--fd-muted); }
+    #fdPage .pur-totals strong { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
+    #fdPage #sumRemain { color: #e11d48; }
+    @media (max-width: 900px) {
+      #fdPage .pur-grid-4, #fdPage .pur-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 560px) {
+      #fdPage .pur-grid-4, #fdPage .pur-grid-3, #fdPage .pur-grid-2 { grid-template-columns: 1fr; }
+      #fdPage .pur-field[style*="span 2"] { grid-column: auto !important; }
+      #fdPage .pur-total-bar > div:last-child { width: 100%; }
+      #fdPage .pur-total-bar .pur-btn { flex: 1 1 0; }
+    }
     @media (max-width: 720px) {
       .pur-card { padding: 14px; border-radius: 14px; }
       .pur-grid-4, .pur-grid-3, .pur-grid-2, .pay-mode-group { grid-template-columns: 1fr; }
@@ -79,12 +160,21 @@
     }
   </style>
 
-  <div class="pur-topbar">
-    <a href="{{ url_for('purchases.purchases_index') }}" class="pur-btn pur-btn-muted">
-      <i class="fa fa-arrow-right"></i> العودة للسجل
-    </a>
-    <span class="muted">{% if form_mode == 'edit' %}تعديل مسودة أو فاتورة مفتوحة{% else %}أدخل البيانات الأساسية ثم أضف المنتجات{% endif %}</span>
-  </div>
+  <header class="fd-header no-print">
+    <div class="fd-header-main">
+      <span class="fd-header-icon" style="color: var(--fd-purple);">{{ icon('receipt', 26) }}</span>
+      <div class="fd-header-text">
+        <h1 class="fd-title">{% if form_mode == 'edit' %}تعديل فاتورة شراء{% else %}فاتورة شراء جديدة{% endif %}</h1>
+        <p class="fd-subtitle">{% if form_mode == 'edit' %}تعديل مسودة أو فاتورة مفتوحة{% else %}أدخل البيانات الأساسية ثم أضف المنتجات{% endif %}</p>
+      </div>
+    </div>
+  </header>
+
+  <nav class="fd-subnav no-print" aria-label="المشتريات">
+    <a class="fd-subnav-link" href="{{ url_for('purchases.purchases_index') }}">سجل المشتريات</a>
+    <a class="fd-subnav-link active" href="{{ url_for('purchases.purchases_new') }}">{% if form_mode == 'edit' %}تعديل فاتورة{% else %}فاتورة شراء جديدة{% endif %}</a>
+    <a class="fd-subnav-link" href="{{ url_for('suppliers.suppliers') }}">الموردون</a>
+  </nav>
 
   <!-- الأساسيات -->
   <div class="pur-card">

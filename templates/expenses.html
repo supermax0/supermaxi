@@ -1,564 +1,250 @@
 {% extends "base.html" %}
 {% block title %}{{ _('expenses') }}{% endblock %}
-{% block page_title %}💰 {{ _('expenses_page_title') }}{% endblock %}
+{% block page_title %}{{ _('expenses_page_title') }}{% endblock %}
 
 {% block content %}
-<div class="toast-container" id="toastContainer"></div>
-<div class="loading-overlay" id="loadingOverlay"><div class="loading-spinner"></div></div>
+{% from "partials/fd_icons.html" import icon %}
+<link rel="stylesheet" href="/static/css/finora-ui.css?v=20261018e">
+<div class="fd expenses-page" id="fdPage">
 
-<style>
-  .exp-page { width: 100%; max-width: none; margin: 0; padding: 0 0 80px; box-sizing: border-box; }
-  .exp-page *, .exp-page *::before, .exp-page *::after { box-sizing: border-box; }
-
-  .exp-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
-  .exp-sum-card {
-    background: var(--card); border: 1px solid var(--border); border-radius: 12px;
-    padding: 10px 12px; position: relative; overflow: hidden;
-  }
-  .exp-sum-card::before { content: ""; position: absolute; top: 0; right: 0; left: 0; height: 3px; }
-  .exp-sum-card.total::before { background: #ef4444; }
-  .exp-sum-card.month::before { background: #f59e0b; }
-  .exp-sum-card.today::before { background: #3b82f6; }
-  .exp-sum-card .lbl { font-size: 10px; color: var(--text-muted); font-weight: 600; }
-  .exp-sum-card .val { font-size: 1.05rem; font-weight: 800; line-height: 1.2; margin-top: 2px; }
-  .exp-sum-card.total .val { color: #ef4444; }
-  .exp-sum-card.month .val { color: #d97706; }
-  .exp-sum-card.today .val { color: #2563eb; }
-  .exp-sum-card .sub { font-size: 9px; color: var(--text-muted); }
-
-  .exp-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(300px, 380px); gap: 14px; align-items: start; }
-  .exp-panel { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; }
-  .exp-panel-title { margin: 0 0 10px; font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 6px; }
-
-  .exp-toolbar { display: flex; gap: 6px; margin-bottom: 10px; align-items: center; }
-  .exp-toolbar input, .exp-toolbar select {
-    flex: 1; min-width: 0; height: 36px; padding: 0 10px; border-radius: 9px;
-    border: 1px solid var(--border); background: var(--bg, #fff); font-size: 13px;
-  }
-  .exp-tool-btn {
-    width: 36px !important; height: 36px !important; min-width: 36px !important;
-    padding: 0 !important; border-radius: 9px; border: 1px solid var(--border);
-    background: var(--card-alt, #f8fafc); font-size: 15px; cursor: pointer;
-    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
-  }
-  .exp-filters-more { display: none; gap: 6px; margin-bottom: 10px; }
-  .exp-filters-more.is-open { display: flex; }
-  .exp-filters-more input { flex: 1; height: 36px; padding: 0 10px; border-radius: 9px; border: 1px solid var(--border); font-size: 13px; }
-  .exp-filters-more .exp-tool-btn { width: auto !important; min-width: 0 !important; padding: 0 10px !important; font-size: 12px; }
-
-  .exp-cat-list { display: flex; flex-direction: column; gap: 8px; }
-  .exp-cat-card {
-    border: 1px solid var(--border); border-radius: 14px; overflow: hidden;
-    background: var(--card); box-shadow: 0 1px 3px rgba(15,23,42,.05);
-    transition: transform .15s, box-shadow .15s;
-  }
-  .exp-cat-card.has-items { cursor: pointer; }
-  .exp-cat-card.has-items:active { transform: scale(.985); }
-  .exp-cat-card.has-items:hover { box-shadow: 0 4px 14px rgba(15,23,42,.08); }
-  .exp-cat-head {
-    display: grid; grid-template-columns: 44px 1fr auto 20px; grid-template-rows: auto auto;
-    gap: 2px 10px; align-items: center; padding: 12px 14px;
-  }
-  .exp-cat-icon {
-    width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center;
-    justify-content: center; font-size: 20px; grid-row: 1 / 3;
-  }
-  .exp-cat-name { font-size: 14px; font-weight: 800; line-height: 1.3; grid-column: 2; grid-row: 1; }
-  .exp-cat-sub { font-size: 11px; color: var(--text-muted); grid-column: 2; grid-row: 2; }
-  .exp-cat-total { text-align: left; grid-column: 3; grid-row: 1 / 3; align-self: center; }
-  .exp-cat-total .amt { font-size: 14px; font-weight: 800; color: #ef4444; }
-  .exp-cat-total .cnt { font-size: 9px; color: var(--text-muted); text-align: left; }
-  .exp-cat-arrow { grid-column: 4; grid-row: 1 / 3; color: var(--text-muted); font-size: 18px; align-self: center; }
-  .exp-cat-body { display: none; }
-
-  .exp-item { padding: 12px 14px; border-bottom: 1px solid var(--border); background: var(--card); }
-  .exp-item:last-child { border-bottom: none; }
-  .exp-item-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-  .exp-item-title { font-size: 14px; font-weight: 700; line-height: 1.4; flex: 1; min-width: 0; word-break: break-word; }
-  .exp-item-amt { font-size: 14px; font-weight: 800; color: #ef4444; white-space: nowrap; flex-shrink: 0; }
-  .exp-item-meta { font-size: 11px; color: var(--text-muted); line-height: 1.4; margin-top: 5px; word-break: break-word; }
-  .exp-item-actions { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
-  .exp-item-edit {
-    border: 1px solid #93c5fd; background: #eff6ff; color: #1d4ed8;
-    border-radius: 8px; padding: 5px 10px; font-size: 11px; font-weight: 700;
-    cursor: pointer; line-height: 1.2;
-  }
-  .exp-item-edit:hover { background: #dbeafe; }
-  .exp-item-delete {
-    border: 1px solid #fecaca; background: #fef2f2; color: #dc2626;
-    border-radius: 8px; padding: 5px 10px; font-size: 11px; font-weight: 700;
-    cursor: pointer; line-height: 1.2;
-  }
-  .exp-item-delete:hover { background: #fee2e2; }
-  .exp-item-delete:disabled { opacity: .55; cursor: wait; }
-  .exp-cat-empty { padding: 24px 16px; text-align: center; font-size: 13px; color: var(--text-muted); }
-
-  .exp-series-modal {
-    position: fixed; inset: auto 0 0 0; z-index: 10230;
-    background: var(--card); border-radius: 20px 20px 0 0;
-    max-height: 92vh; display: flex; flex-direction: column;
-    box-shadow: 0 -8px 30px rgba(15,23,42,.18);
-    transform: translateY(110%); opacity: 0; visibility: hidden; pointer-events: none;
-    transition: transform .28s cubic-bezier(.32,.72,0,1), opacity .2s, visibility .2s;
-  }
-  .exp-series-modal.is-open {
-    transform: translateY(0); opacity: 1; visibility: visible; pointer-events: auto;
-  }
-  .exp-series-head {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0;
-  }
-  .exp-series-head h3 { margin: 0; font-size: 15px; font-weight: 800; }
-  .exp-series-close {
-    width: 34px; height: 34px; border: none; border-radius: 50%;
-    background: var(--card-alt, #f1f5f9); cursor: pointer; font-size: 16px;
-  }
-  .exp-series-body { overflow-y: auto; padding: 14px 16px; flex: 1; display: grid; gap: 10px; }
-  .exp-series-hint {
-    font-size: 12px; color: var(--text-muted); background: #fffbeb;
-    border: 1px solid #fde68a; border-radius: 10px; padding: 8px 10px; line-height: 1.45;
-  }
-  .exp-series-form { display: grid; gap: 8px; }
-  .exp-series-form label { display: grid; gap: 4px; font-size: 11px; font-weight: 700; color: var(--text-muted); }
-  .exp-series-form input,
-  .exp-series-form select,
-  .exp-series-form textarea {
-    width: 100%; min-height: 40px; padding: 8px 10px; border-radius: 10px;
-    border: 1px solid var(--border); background: #fff; font: inherit; color: var(--text);
-  }
-  .exp-series-form textarea { min-height: 64px; resize: vertical; }
-  .exp-series-members {
-    border: 1px solid var(--border); border-radius: 12px; max-height: 180px; overflow-y: auto;
-  }
-  .exp-series-member {
-    display: flex; justify-content: space-between; gap: 8px; padding: 8px 10px;
-    border-bottom: 1px solid var(--border); font-size: 12px;
-  }
-  .exp-series-member:last-child { border-bottom: none; }
-  .exp-series-member .st { color: #d97706; font-weight: 700; }
-  .exp-series-member .st.posted { color: #059669; }
-  .exp-series-foot {
-    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
-    border-top: 1px solid var(--border); flex-shrink: 0; display: grid; gap: 8px;
-  }
-  .exp-series-save {
-    width: 100%; border: none; border-radius: 12px; padding: 12px;
-    background: var(--primary); color: #fff; font-weight: 800; font-size: 14px; cursor: pointer;
-  }
-  @media (min-width: 640px) {
-    .exp-series-modal {
-      inset: auto; top: 50%; left: 50%; right: auto; bottom: auto;
-      width: min(520px, calc(100vw - 32px)); max-height: 85vh;
-      border-radius: 18px; transform: translate(-50%, -46%) scale(.96);
-    }
-    .exp-series-modal.is-open { transform: translate(-50%, -50%) scale(1); }
-  }
-
-  .exp-cat-icon.rent { background: rgba(139,92,246,.14); }
-  .exp-cat-icon.salary { background: rgba(59,130,246,.14); }
-  .exp-cat-icon.electricity { background: rgba(251,191,36,.16); }
-  .exp-cat-icon.internet { background: rgba(16,185,129,.14); }
-  .exp-cat-icon.advertising { background: rgba(236,72,153,.14); }
-  .exp-cat-icon.maintenance { background: rgba(245,158,11,.14); }
-  .exp-cat-icon.other { background: rgba(107,114,128,.14); }
-  .exp-cat-icon.c1 { background: rgba(14,165,233,.14); }
-  .exp-cat-icon.c2 { background: rgba(168,85,247,.14); }
-  .exp-cat-icon.c3 { background: rgba(34,197,94,.14); }
-  .exp-cat-icon.c4 { background: rgba(244,63,94,.14); }
-  .exp-cat-icon.c5 { background: rgba(99,102,241,.14); }
-  .exp-cat-icon.c6 { background: rgba(20,184,166,.14); }
-  .exp-cat-icon.c7 { background: rgba(234,179,8,.14); }
-  .exp-cat-icon.c8 { background: rgba(249,115,22,.14); }
-
-  .exp-form { display: grid; gap: 10px; }
-  .exp-f-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .exp-f-full { grid-column: 1 / -1; }
-  .exp-form input:not([type="checkbox"]):not([type="radio"]),
-  .exp-form select,
-  .exp-form textarea {
-    width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--border);
-    background: var(--bg, #fff); font-size: 14px; min-height: 42px;
-  }
-  .exp-form textarea { min-height: 70px; resize: vertical; }
-  .exp-btn-primary {
-    width: 100%; border: none; border-radius: 10px; padding: 12px; font-weight: 700;
-    background: var(--primary); color: #fff; font-size: 14px; cursor: pointer;
-  }
-  .exp-repeat-box { padding: 10px; border-radius: 10px; border: 1px solid var(--border); background: var(--card-alt, #f8fafc); }
-  .exp-time-field { display: grid; gap: 4px; font-size: 12px; font-weight: 700; color: var(--text-muted); }
-  .exp-time-field > span small { font-weight: 500; opacity: .8; }
-  .exp-time-field input[type="time"] { min-height: 40px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; font: inherit; background: #fff; color: var(--text); }
-  .exp-time-hint { font-size: 10px; font-weight: 500; color: var(--text-muted); line-height: 1.4; }
-  .exp-repeat-toggle {
-    display: flex; align-items: flex-start; gap: 8px; cursor: pointer; margin: 0;
-  }
-  .exp-repeat-toggle input[type="checkbox"] {
-    width: 16px !important; height: 16px !important; min-height: 0 !important;
-    min-width: 16px !important; padding: 0 !important; margin: 2px 0 0;
-    flex-shrink: 0; accent-color: var(--primary);
-  }
-  .exp-repeat-label { display: flex; flex-direction: column; gap: 1px; line-height: 1.3; }
-  .exp-repeat-label strong { font-size: 13px; font-weight: 700; }
-  .exp-repeat-label small { font-size: 10px; color: var(--text-muted); font-weight: 400; }
-  .exp-repeat-fields { display: none; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
-  .exp-repeat-box.is-active .exp-repeat-fields { display: grid; }
-  .exp-repeat-field { display: grid; gap: 4px; font-size: 11px; font-weight: 700; color: var(--text-muted); }
-  .exp-repeat-field input,
-  .exp-repeat-field select { width: 100%; min-height: 36px; padding: 6px 8px; border: 1px solid var(--border); border-radius: 8px; font: inherit; background: #fff; color: var(--text); }
-
-  .exp-fab {
-    display: none; position: fixed; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); left: 14px;
-    z-index: 10200; width: 50px; height: 50px; border-radius: 50%; border: none;
-    background: var(--primary); color: #fff; font-size: 26px; line-height: 1;
-    box-shadow: 0 4px 16px rgba(37,99,235,.4); cursor: pointer;
-    touch-action: manipulation; -webkit-tap-highlight-color: transparent;
-  }
-
-  .exp-overlay {
-    position: fixed; inset: 0; background: rgba(15,23,42,.5); z-index: 10210;
-    opacity: 0; visibility: hidden; pointer-events: none; transition: opacity .22s;
-    backdrop-filter: blur(2px);
-  }
-  .exp-overlay.is-open { opacity: 1; visibility: visible; pointer-events: auto; }
-
-  .exp-sheet {
-    position: fixed; bottom: 0; left: 0; right: 0; z-index: 10220; background: var(--card);
-    border-radius: 20px 20px 0 0; max-height: 92vh; overflow: hidden;
-    transform: translateY(105%); transition: transform .25s cubic-bezier(.32,.72,0,1);
-    visibility: hidden; pointer-events: none; display: flex; flex-direction: column;
-  }
-  .exp-sheet.is-open { transform: translateY(0); visibility: visible; pointer-events: auto; }
-  .exp-sheet-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-  .exp-sheet-head h3 { margin: 0; font-size: 14px; font-weight: 800; }
-  .exp-sheet-close { border: none; background: var(--card-alt); border-radius: 8px; padding: 5px 9px; font-weight: 700; font-size: 13px; cursor: pointer; width: auto !important; }
-  .exp-sheet-body { overflow-y: auto; padding: 10px 12px 12px; flex: 1; -webkit-overflow-scrolling: touch; }
-  .exp-sheet .exp-form { gap: 7px; }
-  .exp-sheet .exp-form input:not([type="checkbox"]):not([type="radio"]),
-  .exp-sheet .exp-form select,
-  .exp-sheet .exp-form textarea {
-    min-height: 36px; padding: 7px 10px; font-size: 13px; border-radius: 8px;
-  }
-  .exp-sheet .exp-form textarea { min-height: 52px; max-height: 72px; }
-  .exp-sheet .exp-f-row { gap: 6px; }
-  .exp-sheet .exp-repeat-box { padding: 8px 10px; border-radius: 8px; }
-  .exp-sheet .exp-repeat-label strong { font-size: 12px; }
-  .exp-sheet .exp-repeat-label small { font-size: 9px; }
-  .exp-sheet .exp-repeat-toggle input[type="checkbox"] { width: 15px; height: 15px; }
-  .exp-sheet .exp-repeat-fields { gap: 6px; margin-top: 6px; }
-  .exp-sheet .exp-repeat-fields input,
-  .exp-sheet .exp-repeat-fields select { min-height: 34px; padding: 6px 8px; font-size: 12px; }
-  .exp-sheet .exp-btn-primary {
-    padding: 10px; font-size: 13px; border-radius: 9px; margin-top: 2px;
-    position: sticky; bottom: 0; z-index: 1;
-  }
-
-  .exp-cat-modal {
-    position: fixed; z-index: 10225; background: var(--card); overflow: hidden;
-    display: flex; flex-direction: column;
-    bottom: 0; left: 0; right: 0; max-height: 88vh; border-radius: 20px 20px 0 0;
-    transform: translateY(105%); transition: transform .28s cubic-bezier(.32,.72,0,1);
-    visibility: hidden; pointer-events: none;
-  }
-  .exp-cat-modal.is-open { transform: translateY(0); visibility: visible; pointer-events: auto; }
-  .exp-cat-modal-hero {
-    padding: 20px 16px 16px; background: linear-gradient(135deg, #1e40af 0%, #3b82f6 50%, #60a5fa 100%);
-    color: #fff; position: relative; flex-shrink: 0;
-  }
-  .exp-cat-modal-hero::after {
-    content: ""; position: absolute; bottom: -1px; left: 0; right: 0; height: 16px;
-    background: var(--card); border-radius: 16px 16px 0 0;
-  }
-  .exp-cat-modal-top { display: flex; align-items: flex-start; gap: 12px; position: relative; z-index: 1; }
-  .exp-cat-modal-icon {
-    width: 52px; height: 52px; border-radius: 14px; background: rgba(255,255,255,.2);
-    display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0;
-  }
-  .exp-cat-modal-info { flex: 1; min-width: 0; }
-  .exp-cat-modal-info h3 { margin: 0 0 4px; font-size: 18px; font-weight: 800; }
-  .exp-cat-modal-info p { margin: 0; font-size: 12px; opacity: .85; }
-  .exp-cat-modal-total { margin-top: 14px; position: relative; z-index: 1; }
-  .exp-cat-modal-total .lbl { font-size: 11px; opacity: .8; }
-  .exp-cat-modal-total .val { font-size: 26px; font-weight: 900; letter-spacing: -.5px; }
-  .exp-cat-modal-close {
-    position: absolute; top: 14px; left: 14px; z-index: 2;
-    width: 34px !important; height: 34px !important; border-radius: 50%; border: none;
-    background: rgba(255,255,255,.2); color: #fff; font-size: 16px; cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .exp-cat-modal-list { overflow-y: auto; flex: 1; padding: 8px 0 0; }
-  .exp-cat-modal-list .exp-item { border-bottom: 1px solid var(--border); }
-  .exp-cat-modal-foot {
-    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
-    border-top: 1px solid var(--border); flex-shrink: 0; background: var(--card);
-  }
-  .exp-cat-modal-add {
-    width: 100%; border: none; border-radius: 12px; padding: 13px;
-    background: var(--primary); color: #fff; font-weight: 800; font-size: 14px; cursor: pointer;
-  }
-
-  .loading-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: none; align-items: center; justify-content: center; z-index: 9999; }
-  .loading-overlay.active { display: flex; }
-  .loading-spinner { width: 44px; height: 44px; border: 3px solid rgba(255,255,255,.2); border-top-color: #fff; border-radius: 50%; animation: expSpin .7s linear infinite; }
-  @keyframes expSpin { to { transform: rotate(360deg); } }
-  .toast-container { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 10000; width: calc(100% - 20px); max-width: 400px; }
-  .toast { padding: 10px 14px; border-radius: 10px; color: #fff; font-weight: 600; margin-bottom: 6px; font-size: 13px; }
-  .toast.success { background: #059669; } .toast.error { background: #dc2626; } .toast.warning { background: #d97706; }
-
-  @media (min-width: 640px) {
-    .exp-cat-modal {
-      bottom: auto; top: 50%; left: 50%; right: auto;
-      width: min(480px, calc(100vw - 32px)); max-height: 80vh;
-      border-radius: 20px; transform: translate(-50%, -50%) scale(.92);
-      opacity: 0; transition: transform .25s cubic-bezier(.32,.72,0,1), opacity .2s;
-    }
-    .exp-cat-modal.is-open { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-    .exp-cat-modal-hero { border-radius: 20px 20px 0 0; }
-  }
-
-  @media (max-width: 960px) {
-    .exp-page {
-      padding: 10px 12px 92px;
-      overflow-x: hidden;
-      font-size: 16px;
-    }
-    .exp-page button:not(.exp-btn-primary):not(.exp-cat-modal-add) { width: auto !important; min-height: 0 !important; }
-    .exp-layout { grid-template-columns: 1fr; }
-    .exp-form-panel { display: none; }
-    .exp-fab {
-      display: flex; align-items: center; justify-content: center;
-      width: 56px; height: 56px; font-size: 28px;
-    }
-    .exp-panel { padding: 0; border: none; background: transparent; }
-    .exp-panel-title { font-size: 18px; margin-bottom: 12px; }
-
-    /* إحصائيات في صف واحد مضغوط */
-    .exp-summary {
-      display: grid !important;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px;
-      margin-bottom: 14px;
-      overflow: visible;
-    }
-    .exp-sum-card {
-      min-width: 0;
-      padding: 10px 8px;
-      border-radius: 12px;
-    }
-    .exp-sum-card .lbl { font-size: 10px; line-height: 1.25; }
-    .exp-sum-card .val { font-size: clamp(14px, 3.8vw, 17px); margin-top: 4px; }
-    .exp-sum-card .sub { display: none; }
-
-    .exp-toolbar { gap: 8px; margin-bottom: 12px; }
-    .exp-toolbar input {
-      height: 44px;
-      padding: 0 12px;
-      font-size: 15px;
-      border-radius: 10px;
-    }
-    .exp-tool-btn {
-      width: 44px !important;
-      height: 44px !important;
-      min-width: 44px !important;
-      font-size: 18px;
-      border-radius: 10px;
-    }
-    .exp-filters-more input { height: 44px; font-size: 15px; }
-
-    .exp-cat-card.is-empty { display: none; }
-    .exp-cat-list { gap: 10px; }
-    .exp-cat-card { border-radius: 16px; }
-    .exp-cat-head {
-      grid-template-columns: 56px 1fr auto 22px;
-      gap: 6px 12px;
-      padding: 16px 14px;
-      min-height: 84px;
-    }
-    .exp-cat-icon { width: 56px; height: 56px; border-radius: 14px; font-size: 26px; }
-    .exp-cat-name { font-size: 17px; }
-    .exp-cat-sub { font-size: 13px; margin-top: 2px; }
-    .exp-cat-total .amt { font-size: 17px; }
-    .exp-cat-total .cnt { font-size: 11px; }
-    .exp-cat-arrow { font-size: 24px; }
-
-                .exp-cat-modal-list .exp-item { padding: 14px 16px; }
-    .exp-cat-modal-list .exp-item-title { font-size: 15px; }
-    .exp-cat-modal-list .exp-item-amt { font-size: 15px; }
-    .exp-cat-modal-list .exp-item-meta { font-size: 12px; }
-    .exp-cat-modal-list .exp-item-delete,
-    .exp-cat-modal-list .exp-item-edit {
-      padding: 7px 12px; font-size: 12px;
-    }
-
-    .exp-sheet-head h3 { font-size: 16px; }
-    .exp-sheet .exp-form input:not([type="checkbox"]):not([type="radio"]),
-    .exp-sheet .exp-form select,
-    .exp-sheet .exp-form textarea {
-      min-height: 44px;
-      padding: 10px 12px;
-      font-size: 16px;
-      border-radius: 10px;
-    }
-    .exp-sheet .exp-form textarea { min-height: 64px; max-height: 90px; }
-    .exp-sheet .exp-repeat-label strong { font-size: 14px; }
-    .exp-sheet .exp-repeat-label small { font-size: 11px; }
-    .exp-sheet .exp-btn-primary { padding: 12px; font-size: 15px; }
-  }
-</style>
-
-<div class="exp-page">
-  <div class="exp-summary">
-    <div class="exp-sum-card total">
-      <div class="lbl">{{ _('expenses_stat_total') }}</div>
-      <div class="val">{{ "{:,.0f}".format(total) }}</div>
-      <div class="sub">{{ _('expenses_stat_total_subtitle') }}</div>
+  <header class="fd-header no-print">
+    <div class="fd-header-main">
+      <span class="fd-header-icon" style="color: var(--fd-purple);">{{ icon('wallet', 26) }}</span>
+      <div class="fd-header-text">
+        <h1 class="fd-title">{{ _('expenses_page_title') }}</h1>
+        <p class="fd-subtitle">مصاريف المحل حسب الفئة، المخصومة من الصندوق والمجدولة</p>
+      </div>
     </div>
-    <div class="exp-sum-card month">
-      <div class="lbl">{{ _('expenses_stat_month') }}</div>
-      <div class="val">{{ "{:,.0f}".format(month_total) }}</div>
-      <div class="sub">{{ current_month_name }}</div>
-    </div>
-    <div class="exp-sum-card today">
-      <div class="lbl">{{ _('expenses_stat_today') }}</div>
-      <div class="val">{{ "{:,.0f}".format(today_total) }}</div>
-      <div class="sub">{{ today_date }}</div>
-    </div>
+  </header>
+
+  <div class="fd-kpis no-print">
+    <button type="button" class="fd-kpi fd-kpi--purple active" data-exp-quick="">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('expenses_stat_total') }}</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money">{{ "{:,.0f}".format(total) }}</span><span class="fd-kpi-unit">د.ع</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('wallet', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--amber" data-exp-quick="month">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">مصاريف {{ current_month_name }}</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money">{{ "{:,.0f}".format(month_total) }}</span><span class="fd-kpi-unit">د.ع</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('calendar', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--green" data-exp-quick="today">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">{{ _('expenses_stat_today') }}</span>
+        <span><span class="fd-kpi-value fd-kpi-value--money">{{ "{:,.0f}".format(today_total) }}</span><span class="fd-kpi-unit">د.ع</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('receipt', 28) }}</span>
+    </button>
+    <button type="button" class="fd-kpi fd-kpi--red" data-exp-quick="scheduled">
+      <span class="fd-kpi-text">
+        <span class="fd-kpi-label">مجدولة لم تُخصم</span>
+        <span><span class="fd-kpi-value" id="expScheduledCount">0</span><span class="fd-kpi-unit">مصروف</span></span>
+      </span>
+      <span class="fd-kpi-icon">{{ icon('alert', 28) }}</span>
+    </button>
   </div>
 
-  <div class="exp-layout">
-    <div class="exp-panel">
-      <h3 class="exp-panel-title">📂 فئات المصاريف</h3>
+  <div class="fd-toolbar no-print">
 
-      <div class="exp-toolbar">
-        <input type="text" id="searchInput" placeholder="بحث...">
-        <button type="button" class="exp-tool-btn" id="addCategoryBtn" title="فئة جديدة">📁</button>
-        <button type="button" class="exp-tool-btn" id="filterToggleBtn" title="فلتر">📅</button>
-      </div>
-      <div class="exp-filters-more" id="filtersMore">
-        <input type="date" id="filterDateFrom">
-        <input type="date" id="filterDateTo">
-        <button type="button" class="exp-tool-btn" id="clearFiltersBtn">مسح</button>
-      </div>
-
-      <div class="exp-cat-list">
-        {% for group in category_groups %}
-        <div class="exp-cat-card{% if group.count > 0 %} has-items{% else %} is-empty{% endif %}"
-          data-category="{{ group.key }}"
-          data-label="{{ group.label }}"
-          data-icon="{{ group.icon }}"
-          data-total="{{ group.total }}"
-          data-count="{{ group.count }}">
-          <div class="exp-cat-head" data-open-cat>
-            <div class="exp-cat-icon {{ group.color }}">{{ group.icon }}</div>
-            <div class="exp-cat-name">{{ group.label }}</div>
-            <div class="exp-cat-sub">{{ group.count }} مصروف</div>
-            <div class="exp-cat-total">
-              <div class="amt">{{ "{:,.0f}".format(group.total) }}</div>
-              <div class="cnt">د.ع</div>
-            </div>
-            {% if group.count > 0 %}
-            <div class="exp-cat-arrow">‹</div>
-            {% endif %}
-          </div>
-          <div class="exp-cat-body">
-            {% if group.expenses %}
-              {% for e in group.expenses %}
-              <div class="exp-item"
-                data-id="{{ e.id }}"
-                data-title="{{ (e.title or '')|lower }}"
-                data-note="{{ (e.note or '')|lower }}"
-                data-date="{{ e.expense_date.strftime('%Y-%m-%d') if e.expense_date else '' }}"
-                data-scheduled="{{ 0 if e.cash_posted else 1 }}"
-                {% if e.id in series_edit_anchors %}data-series-edit="1"{% endif %}>
-                <div class="exp-item-top">
-                  <div class="exp-item-title">{{ e.title }}</div>
-                  <div class="exp-item-amt">{{ "{:,.0f}".format(e.amount or 0) }}</div>
-                </div>
-                <div class="exp-item-meta">
-                  {{ e.expense_date.strftime('%Y-%m-%d') if e.expense_date else '—' }}
-                  {% if e.post_time %} · {{ e.post_time.strftime('%H:%M') }}{% endif %}
-                  {% if e.note %} · {{ e.note }}{% endif %}
-                  {% if not e.cash_posted %} · <span style="color:#d97706">مجدول</span>{% endif %}
-                </div>
-                {% if e.id in series_edit_anchors or not e.employee_payment_id %}
-                <div class="exp-item-actions">
-                  {% if e.id in series_edit_anchors %}
-                  <button type="button" class="exp-item-edit" data-edit-series="{{ e.id }}">✏️ تعديل السلسلة المجدولة</button>
-                  {% endif %}
-                  {% if not e.employee_payment_id %}
-                  <button type="button" class="exp-item-delete"
-                    data-delete-expense="{{ e.id }}"
-                    data-delete-title="{{ e.title }}"
-                    data-delete-amount="{{ e.amount or 0 }}">🗑️ حذف</button>
-                  {% endif %}
-                </div>
-                {% endif %}
-              </div>
-              {% endfor %}
-            {% else %}
-              <div class="exp-cat-empty">لا مصاريف في هذه الفئة</div>
-            {% endif %}
-          </div>
+    <div class="fd-pop-wrap fd-tool--filter">
+      <button type="button" class="fd-btn" data-fd-pop="expFiltersPop" aria-expanded="false" aria-controls="expFiltersPop">
+        {{ icon('filter', 18) }}
+        <span class="fd-btn-label">تصفية</span>
+        <span class="fd-count-badge" id="expFilterCount" hidden></span>
+        <span class="fd-chevron">{{ icon('chevron', 16) }}</span>
+      </button>
+      <div class="fd-pop fd-pop--start fd-filter-pop" id="expFiltersPop" role="dialog" aria-label="تصفية" hidden>
+        <div class="fd-form-grid">
+          <label class="fd-field"><span>من تاريخ</span><input type="date" id="filterDateFrom"></label>
+          <label class="fd-field"><span>إلى تاريخ</span><input type="date" id="filterDateTo"></label>
+          <label class="fd-field"><span>أقل مبلغ</span><input type="number" id="filterAmountMin" min="0" step="any" inputmode="decimal" placeholder="0"></label>
+          <label class="fd-field"><span>أعلى مبلغ</span><input type="number" id="filterAmountMax" min="0" step="any" inputmode="decimal"></label>
+          <label class="fd-field"><span>الحساب</span>
+            <select id="filterAccount">
+              <option value="">الكل</option>
+              {% for acc in treasury_choices|default([]) %}<option value="{{ acc.id }}">{{ acc.branch_name }} — {{ acc.name }}</option>{% endfor %}
+            </select>
+          </label>
+          <label class="fd-field"><span>الحالة</span>
+            <select id="filterPosted">
+              <option value="">الكل</option>
+              <option value="posted">مخصوم من الصندوق</option>
+              <option value="scheduled">مجدول</option>
+            </select>
+          </label>
         </div>
-        {% endfor %}
+        <div class="fd-pop-foot fd-pop-foot--split">
+          <button type="button" class="fd-link-btn" onclick="clearExpenseFilters()">مسح التصفية</button>
+          <button type="button" class="fd-btn fd-btn--accent fd-btn--apply" data-fd-pop-close>تطبيق</button>
+        </div>
       </div>
     </div>
 
-    <div class="exp-panel exp-form-panel">
-      <h3 class="exp-panel-title">➕ {{ _('expenses_add_title') }}</h3>
-      {% include 'expenses/_add_form.html' %}
-    </div>
-  </div>
-</div>
+    <label class="fd-search fd-tool--search">
+      {{ icon('search', 18) }}
+      <input type="search" id="searchInput" autocomplete="off" placeholder="ابحث بعنوان المصروف أو الملاحظة...">
+    </label>
 
-<button type="button" class="exp-fab" id="expFabBtn" aria-label="إضافة">+</button>
-
-<div class="exp-overlay" id="expOverlay"></div>
-
-<div class="exp-sheet" id="expSheet">
-  <div class="exp-sheet-head">
-    <h3>➕ {{ _('expenses_add_title') }}</h3>
-    <button type="button" class="exp-sheet-close" id="expSheetCloseBtn">✕</button>
-  </div>
-  <div class="exp-sheet-body">
-    {% include 'expenses/_add_form.html' %}
-  </div>
-</div>
-
-<div class="exp-cat-modal" id="catModal">
-  <button type="button" class="exp-cat-modal-close" id="catModalCloseBtn">✕</button>
-  <div class="exp-cat-modal-hero">
-    <div class="exp-cat-modal-top">
-      <div class="exp-cat-modal-icon" id="catModalIcon">📦</div>
-      <div class="exp-cat-modal-info">
-        <h3 id="catModalTitle">—</h3>
-        <p id="catModalSub">0 مصروف</p>
+    <div class="fd-tools-row">
+      <button type="button" class="fd-btn fd-btn--primary" onclick="openExpenseDrawer()">
+        {{ icon('wallet', 18) }}
+        <span class="fd-btn-label">{{ _('expenses_add_title') }}</span>
+      </button>
+      <div class="fd-pop-wrap">
+        <button type="button" class="fd-btn fd-btn--icon" data-fd-pop="expMorePop" aria-expanded="false" aria-controls="expMorePop" title="المزيد" aria-label="المزيد">{{ icon('dots', 20) }}</button>
+        <div class="fd-pop fd-pop--end fd-menu" id="expMorePop" role="menu" hidden>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="promptNewCategory()">{{ icon('tag') }}<span>فئة جديدة</span></button>
+          <button type="button" class="fd-menu-item" role="menuitem" data-fd-pop-close onclick="exportExpensesCsv()">{{ icon('download') }}<span>تصدير CSV</span></button>
+          <a class="fd-menu-item" role="menuitem" href="/cash">{{ icon('wallet') }}<span>الصندوق</span></a>
+        </div>
       </div>
     </div>
-    <div class="exp-cat-modal-total">
-      <div class="lbl">إجمالي الفئة</div>
-      <div class="val" id="catModalTotal">0</div>
+  </div>
+
+  <div class="fd-toolbar fd-toolbar--chips no-print">
+    <div class="fd-chips" id="expCatChips" role="tablist" aria-label="فئات المصاريف">
+      <button type="button" class="fd-chip active" data-exp-cat="">الكل<span class="fd-chip-count" data-count=""></span></button>
+      {% for group in category_groups %}
+      <button type="button" class="fd-chip" data-exp-cat="{{ group.key }}">{{ group.icon }} {{ group.label }}<span class="fd-chip-count" data-count="{{ group.key }}"></span></button>
+      {% endfor %}
     </div>
   </div>
-  <div class="exp-cat-modal-list" id="catModalList"></div>
-  <div class="exp-cat-modal-foot">
-    <button type="button" class="exp-cat-modal-add" id="catModalAddBtn">➕ إضافة مصروف لهذه الفئة</button>
-  </div>
-</div>
 
-<div class="exp-series-modal" id="seriesModal">
-  <div class="exp-series-head">
+  <section class="fd-table-card">
+    <div class="fd-table-scroll">
+      <table class="fd-table" id="expTable">
+        <thead>
+          <tr>
+            <th>المصروف</th>
+            <th>الفئة</th>
+            <th>التاريخ</th>
+            <th>المبلغ</th>
+            <th class="fd-col-opt">الحساب</th>
+            <th class="fd-col-opt2">الحالة</th>
+            <th class="fd-col-actions"></th>
+          </tr>
+        </thead>
+        <tbody id="expBody">
+          <tr><td colspan="7" class="fd-empty">جاري التحميل...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="fd-footer no-print">
+    <div class="fd-footer-info">
+      <select id="expPageSize" aria-label="عدد المصاريف في الصفحة">
+        <option value="10">10</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>
+      </select>
+      <span class="fd-range" id="expRange"></span>
+      <span class="fd-totals" id="expTotals"></span>
+    </div>
+    <nav class="fd-pager" id="expPager" aria-label="الصفحات"></nav>
+  </footer>
+
+  <!-- Detail panel -->
+  <aside class="fd-detail" id="expDetail" aria-label="تفاصيل المصروف" hidden>
+    <div class="fd-detail-head">
+      <div class="fd-detail-titles">
+        <h3 class="fd-detail-title" id="expDetailTitle"></h3>
+        <p class="fd-detail-sub" id="expDetailSub"></p>
+      </div>
+      <button type="button" class="fd-close-btn" onclick="closeExpenseDetail()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+    </div>
+    <div class="fd-detail-body" id="expDetailBody"></div>
+  </aside>
+
+  <!-- Drawer: new expense (posts the same form as before) -->
+  <div class="fd-drawer" id="expDrawer" hidden>
+    <form class="fd-drawer-panel" id="expForm" method="post" action="{{ url_for('expenses.expenses') }}" role="dialog" aria-modal="true" aria-labelledby="expDrawerTitle">
+      <div class="fd-drawer-head">
+        <span class="fd-drawer-icon">{{ icon('wallet', 24) }}</span>
+        <div class="fd-drawer-titles">
+          <h2 class="fd-drawer-title" id="expDrawerTitle">{{ _('expenses_add_title') }}</h2>
+          <p class="fd-drawer-hint">Ctrl+S للحفظ · Esc للإغلاق</p>
+        </div>
+        <button type="button" class="fd-close-btn" onclick="closeExpenseDrawer()" aria-label="إغلاق">{{ icon('x', 20) }}</button>
+      </div>
+      <div class="fd-drawer-body">
+        <div class="fd-form-error" id="efError" role="alert" hidden></div>
+        <section class="fd-section">
+          <div class="fd-section-head"><span class="fd-section-title">{{ icon('receipt', 18) }}بيانات المصروف</span></div>
+          <label class="fd-field"><span>العنوان <b class="fd-req">*</b></span>
+            <input type="text" name="title" id="efTitle" required autocomplete="off" placeholder="{{ _('expenses_field_title_placeholder') }}">
+          </label>
+          <label class="fd-field"><span>الفئة <b class="fd-req">*</b></span>
+            <select name="category" id="efCategory" required>
+              <option value="">{{ _('expenses_field_category_placeholder') }}</option>
+              {% for cat in expense_categories %}<option value="{{ cat.key }}">{{ cat.icon }} {{ cat.label }}</option>{% endfor %}
+            </select>
+          </label>
+          <div class="fd-grid-2">
+            <label class="fd-field"><span>المبلغ (د.ع) <b class="fd-req">*</b></span>
+              <input type="number" name="amount" id="efAmount" step="0.01" min="0" required inputmode="decimal" placeholder="{{ _('expenses_field_amount_placeholder') }}">
+            </label>
+            <label class="fd-field"><span>التاريخ <b class="fd-req">*</b></span>
+              <input type="date" name="expense_date" id="efDate" value="{{ default_date }}" required>
+            </label>
+          </div>
+          <label class="fd-field"><span>ساعة الصرف (اختياري)</span><input name="expense_time" type="time" id="efTime"><small class="fd-muted">اتركها فارغة للصرف من بداية اليوم</small></label>
+          <label class="fd-field"><span>{{ _('pay_from_account') }}</span>
+            <select name="treasury_account_id" id="efAccount" required>
+              {% for acc in treasury_choices|default([]) %}<option value="{{ acc.id }}">{{ acc.branch_name }} — {{ acc.name }}</option>{% endfor %}
+            </select>
+          </label>
+        </section>
+        <section class="fd-section">
+          <label class="fd-check">
+            <input type="checkbox" name="repeat_enabled" value="1" id="efRepeat">
+            <span><b>تكرار المصروف</b><small class="fd-muted" style="display:block;">المستحق فقط يُخصم من الصندوق، والباقي يبقى مجدولاً</small></span>
+          </label>
+          <div class="fd-grid-2" id="efRepeatFields" hidden>
+            <label class="fd-field"><span>كل</span>
+              <input type="number" name="repeat_interval" min="1" max="365" value="1">
+            </label>
+            <label class="fd-field"><span>الوحدة</span>
+              <select name="repeat_unit">
+                <option value="months" selected>شهر</option>
+                <option value="weeks">أسبوع</option>
+                <option value="days">يوم</option>
+                <option value="years">سنة</option>
+              </select>
+            </label>
+            <label class="fd-field"><span>عدد المرات</span>
+              <input type="number" name="repeat_count" min="1" max="366" value="12">
+            </label>
+          </div>
+        </section>
+        <section class="fd-section">
+          <label class="fd-field"><span>ملاحظة</span>
+            <textarea name="note" rows="3" placeholder="{{ _('expenses_field_note_placeholder') }}"></textarea>
+          </label>
+        </section>
+      </div>
+      <div class="fd-drawer-foot">
+        <button type="submit" class="fd-btn fd-btn--primary" id="efSave">{{ icon('check-circle', 18) }}<span>{{ _('expenses_save_button') }}</span></button>
+        <button type="button" class="fd-btn" onclick="closeExpenseDrawer()">إلغاء</button>
+      </div>
+    </form>
+  </div>
+<div class="fd-drawer" id="seriesModal" hidden><div class="fd-drawer-panel" role="dialog" aria-modal="true" aria-label="تعديل المصاريف المجدولة">
+  <div class="fd-drawer-head">
     <h3>تعديل المصاريف المجدولة</h3>
     <button type="button" class="exp-series-close" id="seriesModalCloseBtn">✕</button>
   </div>
-  <div class="exp-series-body">
+  <div class="fd-drawer-body">
     <div class="exp-series-hint" id="seriesHint">التعديل يطبّق على كل المصاريف المجدولة في السلسلة (غير المخصومة). المخصومة سابقاً تبقى كما هي.</div>
     <form class="exp-series-form" id="seriesEditForm">
       <input type="hidden" id="seriesExpenseId" value="">
-      <label>
+      <label class="fd-field">
         <span>العنوان</span>
         <input type="text" id="seriesTitle" required>
       </label>
-      <label>
+      <label class="fd-field">
         <span>الفئة</span>
         <select id="seriesCategory" required>
           {% for cat in expense_categories %}
@@ -566,7 +252,7 @@
           {% endfor %}
         </select>
       </label>
-      <label>
+      <label class="fd-field">
         <span>الصرف من</span>
         <select id="seriesTreasury" required>
           {% for acc in treasury_choices|default([]) %}
@@ -575,16 +261,16 @@
         </select>
       </label>
       <div class="exp-f-row">
-        <label>
+        <label class="fd-field">
           <span>المبلغ</span>
           <input type="number" id="seriesAmount" min="1" step="1" required>
         </label>
-        <label>
+        <label class="fd-field">
           <span>ساعة الصرف</span>
           <input type="time" id="seriesPostTime">
         </label>
       </div>
-      <label>
+      <label class="fd-field">
         <span>ملاحظة</span>
         <textarea id="seriesNote" rows="2" placeholder="بدون لاحقة التكرار"></textarea>
       </label>
@@ -594,89 +280,255 @@
       <div class="exp-series-members" id="seriesMembersList"></div>
     </div>
   </div>
-  <div class="exp-series-foot">
-    <button type="button" class="exp-series-save" id="seriesSaveBtn">💾 حفظ التعديل على المجدول</button>
+  <div class="fd-drawer-foot">
+    <button type="button" class="fd-btn fd-btn--primary" id="seriesSaveBtn">💾 حفظ التعديل على المجدول</button>
   </div>
 </div>
 
+</div>
+</div>
+
+<script type="application/json" id="expensesData">[
+  {% set ns = namespace(first=true) %}
+  {% for group in category_groups %}{% for e in group.expenses %}{% if not ns.first %},{% endif %}{% set ns.first = false %}
+  {"id": {{ e.id }}, "title": {{ (e.title or '')|tojson }}, "note": {{ (e.note or '')|tojson }}, "amount": {{ e.amount or 0 }},
+   "date": {{ (e.expense_date.strftime('%Y-%m-%d') if e.expense_date else '')|tojson }},
+   "cat": {{ group.key|tojson }}, "cat_label": {{ (group.label or '')|tojson }}, "cat_icon": {{ (group.icon or '')|tojson }},
+   "account_id": {{ e.treasury_account_id or 'null' }}, "posted": {{ 'true' if e.cash_posted else 'false' }},
+   "salary": {{ 'true' if e.employee_payment_id else 'false' }}, "series_edit": {{ 'true' if e.id in series_edit_anchors else 'false' }}, "post_time": {{ (e.post_time.strftime('%H:%M') if e.post_time else '')|tojson }}}
+  {% endfor %}{% endfor %}
+]</script>
+
+<script src="/static/js/finora-ui.js?v=20261018c"></script>
 <script>
-function showToast(msg, type) {
-  const c = document.getElementById('toastContainer');
-  if (!c) return;
-  const t = document.createElement('div');
-  t.className = 'toast ' + (type || 'info');
-  t.textContent = msg;
-  c.appendChild(t);
-  setTimeout(() => t.remove(), 3000);
-}
+  const F = window.FinoraUI;
+  const byId = id => document.getElementById(id);
+  const EXP_PAGE_SIZES = [10, 25, 50, 100];
+  const EXP_PAGE_SIZE_KEY = "expenses_page_size";
+  const EXP_ACCOUNTS = {
+    {% for acc in treasury_choices|default([]) %}{{ acc.id }}: {{ acc.name|tojson }}{% if not loop.last %}, {% endif %}{% endfor %}
+  };
+  const TODAY = {{ today_date|tojson }};
+  let expensesData = [];
+  let expCat = "";
+  let expQuick = "";
+  let expPage = 0;
+  let expDetailId = null;
 
-function fmtNum(n) {
-  return Number(n || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
-}
-
-let activeCatKey = null;
-
-function openOverlay() {
-  document.getElementById('expOverlay')?.classList.add('is-open');
-  document.body.style.overflow = 'hidden';
-}
-function closeOverlay() {
-  document.getElementById('expOverlay')?.classList.remove('is-open');
-  if (!document.getElementById('expSheet')?.classList.contains('is-open')
-      && !document.getElementById('catModal')?.classList.contains('is-open')
-      && !document.getElementById('seriesModal')?.classList.contains('is-open')) {
-    document.body.style.overflow = '';
+  function expPageSize() {
+    try {
+      const saved = parseInt(localStorage.getItem(EXP_PAGE_SIZE_KEY), 10);
+      if (EXP_PAGE_SIZES.includes(saved)) return saved;
+    } catch (e) { /* storage unavailable */ }
+    return 25;
   }
-}
 
-function openAddExpense(catKey) {
-  const sheet = document.getElementById('expSheet');
-  if (!sheet) return;
-  if (catKey) {
-    const sel = sheet.querySelector('.expense-category-select');
-    if (sel) sel.value = catKey;
+  const monthStart = () => TODAY.slice(0, 8) + "01";
+  const filterIds = ["filterDateFrom", "filterDateTo", "filterAmountMin", "filterAmountMax", "filterAccount", "filterPosted"];
+
+  function filteredExpenses() {
+    const q = byId("searchInput").value.trim().toLowerCase();
+    const from = byId("filterDateFrom").value;
+    const to = byId("filterDateTo").value;
+    const min = parseFloat(byId("filterAmountMin").value);
+    const max = parseFloat(byId("filterAmountMax").value);
+    const account = byId("filterAccount").value;
+    const posted = byId("filterPosted").value;
+    return expensesData.filter(e => {
+      if (expCat && e.cat !== expCat) return false;
+      if (expQuick === "month" && !(e.posted && e.date >= monthStart() && e.date <= TODAY)) return false;
+      if (expQuick === "today" && !(e.posted && e.date === TODAY)) return false;
+      if (expQuick === "scheduled" && e.posted) return false;
+      if (q && !((e.title + " " + e.note).toLowerCase().includes(q))) return false;
+      if (from && e.date < from) return false;
+      if (to && e.date > to) return false;
+      if (!isNaN(min) && e.amount < min) return false;
+      if (!isNaN(max) && e.amount > max) return false;
+      if (account && String(e.account_id || "") !== account) return false;
+      if (posted === "posted" && !e.posted) return false;
+      if (posted === "scheduled" && e.posted) return false;
+      return true;
+    });
   }
-  openOverlay();
-  sheet.classList.add('is-open');
-}
 
-function closeAddExpense() {
-  document.getElementById('expSheet')?.classList.remove('is-open');
-  closeOverlay();
-}
+  function syncExpenseUi() {
+    const counts = { "": expensesData.length };
+    expensesData.forEach(e => { counts[e.cat] = (counts[e.cat] || 0) + 1; });
+    document.querySelectorAll("#expCatChips [data-count]").forEach(el => {
+      el.textContent = F.num(counts[el.getAttribute("data-count")] || 0);
+    });
+    document.querySelectorAll("#expCatChips .fd-chip").forEach(chip => {
+      chip.classList.toggle("active", (chip.getAttribute("data-exp-cat") || "") === expCat);
+    });
+    document.querySelectorAll("#fdPage [data-exp-quick]").forEach(card => {
+      card.classList.toggle("active", card.getAttribute("data-exp-quick") === expQuick);
+    });
+    byId("expScheduledCount").textContent = F.num(expensesData.filter(e => !e.posted).length);
+    const active = filterIds.filter(id => byId(id).value).length;
+    const badge = byId("expFilterCount");
+    badge.hidden = active === 0;
+    badge.textContent = String(active);
+  }
 
-function openCategoryModal(card) {
-  if (!card || !card.classList.contains('has-items')) return;
-  activeCatKey = card.dataset.category;
-  document.getElementById('catModalIcon').textContent = card.dataset.icon || '📦';
-  document.getElementById('catModalTitle').textContent = card.dataset.label || '—';
-  document.getElementById('catModalSub').textContent = (card.dataset.count || '0') + ' مصروف';
-  document.getElementById('catModalTotal').textContent = fmtNum(card.dataset.total) + ' د.ع';
+  function statusPill(e) {
+    if (e.salary) return '<span class="fd-pill fd-pill--blue">راتب</span>';
+    return e.posted ? '<span class="fd-pill fd-pill--green">مخصوم</span>' : '<span class="fd-pill fd-pill--amber">مجدول</span>';
+  }
 
-  const list = document.getElementById('catModalList');
-  const body = card.querySelector('.exp-cat-body');
-  list.innerHTML = '';
-  if (body) {
-    const items = body.querySelectorAll('.exp-item');
-    if (items.length) {
-      items.forEach(item => {
-        if (item.style.display === 'none') return;
-        list.appendChild(item.cloneNode(true));
+  function renderExpenses() {
+    F.closeRowMenu();
+    syncExpenseUi();
+    const rows = filteredExpenses();
+    const size = expPageSize();
+    const pages = Math.max(1, Math.ceil(rows.length / size));
+    expPage = Math.min(expPage, pages - 1);
+    const pageRows = rows.slice(expPage * size, (expPage + 1) * size);
+
+    let total = 0;
+    rows.forEach(e => { if (e.posted) total += e.amount; });
+    byId("expTotals").innerHTML = rows.length ? "المخصوم <b>" + F.num(total) + " د.ع</b>" : "";
+    const from = rows.length ? expPage * size + 1 : 0;
+    byId("expRange").innerHTML = "عرض " + F.num(from) + "–" + F.num(Math.min(rows.length, (expPage + 1) * size)) + " من <b>" + F.num(rows.length) + "</b> مصروف";
+    byId("expPager").innerHTML = F.pagerHtml(expPage, pages, "data-exp-page");
+
+    const tbody = byId("expBody");
+    if (!pageRows.length) {
+      tbody.innerHTML = '<tr><td colspan="7" class="fd-empty">' + (expensesData.length ? "لا توجد مصاريف مطابقة." : "لا توجد مصاريف بعد.") + "</td></tr>";
+      return;
+    }
+    tbody.innerHTML = pageRows.map(e => `
+      <tr data-exp-row="${e.id}" class="${e.id === expDetailId ? "is-open" : ""}" style="cursor:pointer">
+        <td class="fd-td-title" data-label="المصروف">
+          <span style="display:flex;flex-direction:column;gap:2px;min-width:0">
+            <b>${F.esc(e.title)}</b>
+            ${F.blank(e.note) ? "" : `<small class="fd-muted" style="font-weight:500">${F.esc(e.note)}</small>`}
+          </span>
+        </td>
+        <td data-label="الفئة"><span class="fd-pill fd-pill--purple">${F.esc(e.cat_icon)} ${F.esc(e.cat_label || "—")}</span></td>
+        <td data-label="التاريخ" class="fd-cell-muted"><span dir="ltr">${F.esc(e.date || "—")}</span></td>
+        <td data-label="المبلغ"><b class="${e.posted ? "" : "fd-qty--low"}">${F.money(e.amount)}</b></td>
+        <td data-label="الحساب" class="fd-col-opt${EXP_ACCOUNTS[e.account_id] ? "" : " fd-td-blank"}">${F.dash(EXP_ACCOUNTS[e.account_id])}</td>
+        <td data-label="الحالة" class="fd-col-opt2">${statusPill(e)}</td>
+        <td class="fd-col-actions">
+          <button type="button" class="fd-more-btn" data-fd-row-menu="${e.id}" aria-haspopup="menu" aria-label="إجراءات" title="إجراءات"></button>
+        </td>
+      </tr>`).join("");
+  }
+
+  function clearExpenseFilters() {
+    filterIds.forEach(id => { byId(id).value = ""; });
+    expPage = 0;
+    renderExpenses();
+  }
+
+  // ---- Detail panel ----
+  const findExpense = id => expensesData.find(e => e.id === Number(id));
+  const kv = (key, value) => `<div class="fd-kv-row"><span class="fd-kv-key">${key}</span><span class="fd-kv-val">${value}</span></div>`;
+
+  function openExpenseDetail(id) {
+    const e = findExpense(id);
+    if (!e) return;
+    expDetailId = e.id;
+    byId("expDetailTitle").textContent = e.title;
+    byId("expDetailSub").textContent = (e.cat_icon ? e.cat_icon + " " : "") + (e.cat_label || "");
+    byId("expDetailBody").innerHTML = `
+      <div class="fd-detail-status">${statusPill(e)}</div>
+      <div class="fd-kv">
+        ${kv("المبلغ", `<b>${F.money(e.amount)}</b>`)}
+        ${kv("التاريخ", `<span dir="ltr">${F.esc(e.date || "—")}</span>`)}
+        ${kv("الفئة", F.esc((e.cat_icon ? e.cat_icon + " " : "") + (e.cat_label || "—")))}
+        ${kv("الحساب", F.dash(EXP_ACCOUNTS[e.account_id]))}
+        ${kv("الخصم من الصندوق", e.posted ? "تم الخصم" : "يُخصم عند حلول موعده")}
+      </div>
+      ${F.blank(e.note) ? "" : `<div class="fd-stock-line" style="font-weight:500;">${F.esc(e.note)}</div>`}
+      <div class="fd-detail-actions">
+        ${e.salary
+          ? '<span class="fd-muted" style="font-size:13px;">مصروف راتب — يُعدّل من صفحة الرواتب.</span>'
+          : `<button type="button" class="fd-btn fd-btn--sm" data-exp-delete="${e.id}" style="color:#dc2626 !important">حذف المصروف</button>`}
+      </div>`;
+    F.show(byId("expDetail"));
+    document.querySelectorAll("#expBody tr[data-exp-row]").forEach(tr => {
+      tr.classList.toggle("is-open", Number(tr.getAttribute("data-exp-row")) === e.id);
+    });
+  }
+
+  function closeExpenseDetail() {
+    expDetailId = null;
+    F.hide(byId("expDetail"));
+    document.querySelectorAll("#expBody tr.is-open").forEach(tr => tr.classList.remove("is-open"));
+  }
+
+  async function deleteExpense(id) {
+    const e = findExpense(id);
+    if (!e || e.salary) return;
+    const refund = e.posted ? "\nسيُعاد المبلغ إلى الصندوق." : "";
+    if (!confirm("حذف المصروف «" + e.title + "»؟" + refund)) return;
+    try {
+      const res = await fetch("/expenses/delete/" + e.id, {method:"POST", headers:{"Accept":"application/json","X-Requested-With":"XMLHttpRequest"}});
+      const data = await res.json();
+      if (!res.ok || data.success === false) throw new Error(data.error || "تعذر حذف المصروف");
+      location.reload();
+    } catch (err) { F.toast(err.message, "error"); }
+  }
+
+  // ---- Drawer ----
+  function openExpenseDrawer(catKey) {
+    closeExpenseDetail();
+    F.closePop();
+    byId("efError").hidden = true;
+    if (catKey !== undefined) byId("efCategory").value = catKey || "";
+    else if (expCat) byId("efCategory").value = expCat;
+    F.show(byId("expDrawer"));
+    setTimeout(() => byId("efTitle").focus(), 40);
+  }
+
+  function closeExpenseDrawer() { F.hide(byId("expDrawer")); }
+
+  function validateExpenseForm(event) {
+    const missing = [["efTitle", "عنوان المصروف"], ["efCategory", "الفئة"], ["efAmount", "المبلغ"], ["efDate", "التاريخ"]]
+      .find(([id]) => !byId(id).value.trim());
+    if (!missing && Number(byId("efAmount").value) > 0) {
+      byId("efSave").disabled = true;
+      return;
+    }
+    event.preventDefault();
+    const err = byId("efError");
+    err.textContent = missing ? missing[1] + " مطلوب." : "أدخل مبلغاً أكبر من صفر.";
+    err.hidden = false;
+    byId(missing ? missing[0] : "efAmount").focus();
+  }
+
+  async function promptNewCategory() {
+    const name = (window.prompt("اسم الفئة الجديدة:") || "").trim();
+    if (!name) return;
+    try {
+      const res = await fetch("/expenses/categories/add", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name })
       });
-    } else {
-      list.innerHTML = '<div class="exp-cat-empty">لا مصاريف في هذه الفئة</div>';
+      const out = await res.json().catch(() => ({}));
+      if (!out.success) throw new Error(out.error || "تعذر إضافة الفئة");
+      F.toast("تمت إضافة الفئة", "success");
+      setTimeout(() => location.reload(), 400);
+    } catch (e) {
+      F.toast(e.message, "error");
     }
   }
 
-  openOverlay();
-  document.getElementById('catModal')?.classList.add('is-open');
-}
-
-function closeCategoryModal() {
-  document.getElementById('catModal')?.classList.remove('is-open');
-  activeCatKey = null;
-  closeOverlay();
-}
+  function exportExpensesCsv() {
+    const cell = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+    const lines = [["التاريخ", "المصروف", "الفئة", "المبلغ", "الحساب", "الحالة", "ملاحظة"].map(cell).join(",")];
+    filteredExpenses().forEach(e => {
+      lines.push([e.date, e.title, e.cat_label, e.amount, EXP_ACCOUNTS[e.account_id] || "", e.posted ? "مخصوم" : "مجدول", e.note].map(cell).join(","));
+    });
+    const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "expenses.csv";
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
 
 function renderSeriesMembers(members) {
   const box = document.getElementById('seriesMembersList');
@@ -690,7 +542,7 @@ function renderSeriesMembers(members) {
       ? '<span class="st posted">مخصوم</span>'
       : '<span class="st">مجدول</span>';
     const rep = m.repeat_index && m.repeat_total ? ` · تكرار ${m.repeat_index}/${m.repeat_total}` : '';
-    return `<div class="exp-series-member"><div>${m.expense_date || '—'}${rep}${m.post_time ? ' · ' + m.post_time : ''}</div><div>${fmtNum(m.amount)} · ${st}</div></div>`;
+    return `<div class="exp-series-member"><div>${m.expense_date || '—'}${rep}${m.post_time ? ' · ' + m.post_time : ''}</div><div>${F.num(m.amount)} · ${st}</div></div>`;
   }).join('');
 }
 
@@ -717,17 +569,14 @@ async function openSeriesEditor(expenseId) {
         '. غيّر البطاقة/المبلغ/الساعة هنا لكل المجدولين دفعة واحدة.';
     }
     renderSeriesMembers(s.members || []);
-    document.getElementById('catModal')?.classList.remove('is-open');
-    openOverlay();
-    modal.classList.add('is-open');
+    closeExpenseDetail(); F.closePop(); F.show(modal);
   } catch (e) {
-    showToast(e.message || 'خطأ', 'error');
+    F.toast(e.message || 'خطأ', 'error');
   }
 }
 
 function closeSeriesEditor() {
-  document.getElementById('seriesModal')?.classList.remove('is-open');
-  closeOverlay();
+  F.hide(byId("seriesModal"));
 }
 
 async function saveSeriesEditor() {
@@ -751,148 +600,80 @@ async function saveSeriesEditor() {
     });
     const data = await res.json();
     if (!data.success) throw new Error(data.error || 'تعذر الحفظ');
-    showToast('تم تعديل المصاريف المجدولة', 'success');
+    F.toast('تم تعديل المصاريف المجدولة', 'success');
     setTimeout(() => location.reload(), 450);
   } catch (e) {
-    showToast(e.message || 'خطأ', 'error');
+    F.toast(e.message || 'خطأ', 'error');
     if (btn) { btn.disabled = false; btn.textContent = '💾 حفظ التعديل على المجدول'; }
   }
 }
 
-function applyFilters() {
-  const q = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
-  const from = document.getElementById('filterDateFrom')?.value || '';
-  const to = document.getElementById('filterDateTo')?.value || '';
-  document.querySelectorAll('.exp-cat-card').forEach(card => {
-    let visible = 0;
-    card.querySelectorAll('.exp-item').forEach(item => {
-      const ok = (!q || (item.dataset.title || '').includes(q) || (item.dataset.note || '').includes(q))
-        && (!from || (item.dataset.date || '') >= from)
-        && (!to || (item.dataset.date || '') <= to);
-      item.style.display = ok ? '' : 'none';
-      if (ok) visible++;
+  function openExpenseMenu(trigger) {
+    const e = findExpense(trigger.getAttribute("data-fd-row-menu"));
+    if (!e) return;
+    const items = [
+      { act: "view", label: "عرض التفاصيل" },
+      { act: "again", label: "مصروف جديد بنفس الفئة" }
+    ];
+    if (e.series_edit) items.push({act:"series", label:"تعديل السلسلة المجدولة"});
+    if (!e.salary) items.push("sep", { act: "delete", label: "حذف", danger: true });
+    F.rowMenu(trigger, items, act => {
+      if (act === "view") openExpenseDetail(e.id);
+      if (act === "series") openSeriesEditor(e.id);
+      if (act === "again") openExpenseDrawer(e.cat);
+      if (act === "delete") deleteExpense(e.id);
     });
-    const hasItems = Number(card.dataset.count || 0) > 0;
-    if (q || from || to) {
-      card.style.display = visible > 0 ? '' : 'none';
-    } else {
-      card.style.display = hasItems || !card.classList.contains('is-empty') ? '' : (window.innerWidth > 960 ? '' : 'none');
+  }
+
+  document.addEventListener("click", event => {
+    const t = event.target;
+    if (!t.closest) return;
+    const menu = t.closest("[data-fd-row-menu]");
+    if (menu) { openExpenseMenu(menu); return; }
+    const page = t.closest("[data-exp-page]");
+    if (page && !page.disabled) {
+      const v = page.getAttribute("data-exp-page");
+      expPage = v === "prev" ? expPage - 1 : v === "next" ? expPage + 1 : parseInt(v, 10) || 0;
+      renderExpenses();
+      return;
     }
-  });
-}
-
-async function addExpenseCategory(name) {
-  const n = (name || '').trim();
-  if (!n) { showToast('أدخل اسم الفئة', 'warning'); return; }
-  const res = await fetch('/expenses/categories/add', {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: n })
-  });
-  const data = await res.json();
-  if (!data.success) throw new Error(data.error || 'خطأ');
-  showToast('تمت الإضافة', 'success');
-  setTimeout(() => location.reload(), 400);
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  ['expFabBtn', 'expSheet', 'expOverlay', 'catModal', 'seriesModal'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el && el.parentElement !== document.body) document.body.appendChild(el);
+    const chip = t.closest("[data-exp-cat]");
+    if (chip) { expCat = chip.getAttribute("data-exp-cat") || ""; expPage = 0; renderExpenses(); return; }
+    const kpi = t.closest("[data-exp-quick]");
+    if (kpi) { expQuick = kpi.getAttribute("data-exp-quick") || ""; expPage = 0; renderExpenses(); return; }
+    const del = t.closest("[data-exp-delete]");
+    if (del) { deleteExpense(del.getAttribute("data-exp-delete")); return; }
+    const row = t.closest("tr[data-exp-row]");
+    if (row && !t.closest("a, button")) openExpenseDetail(row.getAttribute("data-exp-row"));
   });
 
-  document.getElementById('expFabBtn')?.addEventListener('click', e => { e.preventDefault(); openAddExpense(); });
-  document.getElementById('expOverlay')?.addEventListener('click', () => {
-    closeAddExpense();
-    closeCategoryModal();
-    closeSeriesEditor();
-  });
-  document.getElementById('expSheetCloseBtn')?.addEventListener('click', closeAddExpense);
-  document.getElementById('catModalCloseBtn')?.addEventListener('click', closeCategoryModal);
-  document.getElementById('seriesModalCloseBtn')?.addEventListener('click', closeSeriesEditor);
-  document.getElementById('seriesSaveBtn')?.addEventListener('click', saveSeriesEditor);
-  document.getElementById('catModalAddBtn')?.addEventListener('click', () => {
-    const key = activeCatKey;
-    closeCategoryModal();
-    openAddExpense(key);
-  });
-
-  document.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-edit-series]');
-    if (!btn) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const id = btn.getAttribute('data-edit-series');
-    openSeriesEditor(id);
-  });
-
-  document.addEventListener('click', async (e) => {
-    const btn = e.target.closest('[data-delete-expense]');
-    if (!btn) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const id = btn.getAttribute('data-delete-expense');
-    const title = btn.getAttribute('data-delete-title') || 'هذا المصروف';
-    const amount = fmtNum(btn.getAttribute('data-delete-amount'));
-    if (!id) return;
-    if (!window.confirm('حذف المصروف «' + title + '» بمبلغ ' + amount + ' د.ع؟\nإذا كان مخصوماً من الصندوق سيُرجع المبلغ تلقائياً.')) return;
-    btn.disabled = true;
-    try {
-      const res = await fetch('/expenses/delete/' + id, {
-        method: 'POST',
-        headers: {
-          'Accept': 'application/json',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || data.success === false) {
-        throw new Error(data.error || 'تعذر حذف المصروف');
+  document.addEventListener("DOMContentLoaded", () => {
+    try { expensesData = JSON.parse(byId("expensesData").textContent); } catch (e) { expensesData = []; }
+    // paid expenses newest first, then the scheduled ones by due date
+    expensesData.sort((a, b) => (b.posted - a.posted) ||
+      (a.posted ? (b.date || "").localeCompare(a.date || "") : (a.date || "").localeCompare(b.date || "")) || b.id - a.id);
+    const size = byId("expPageSize");
+    size.value = String(expPageSize());
+    size.addEventListener("change", () => {
+      try { localStorage.setItem(EXP_PAGE_SIZE_KEY, size.value); } catch (e) { /* storage unavailable */ }
+      expPage = 0;
+      renderExpenses();
+    });
+    byId("searchInput").addEventListener("input", () => { expPage = 0; renderExpenses(); });
+    filterIds.forEach(id => byId(id).addEventListener(id.startsWith("filterAmount") ? "input" : "change", () => { expPage = 0; renderExpenses(); }));
+    byId("efRepeat").addEventListener("change", e => { byId("efRepeatFields").hidden = !e.target.checked; });
+    byId("expForm").addEventListener("submit", validateExpenseForm);
+    byId("expDrawer").addEventListener("click", e => { if (e.target === byId("expDrawer")) closeExpenseDrawer(); });
+    document.addEventListener("keydown", e => {
+      if (!byId("expDrawer").hidden && (e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
+        e.preventDefault();
+        byId("expForm").requestSubmit();
       }
-      showToast(data.message || 'تم حذف المصروف', 'success');
-      setTimeout(() => location.reload(), 400);
-    } catch (err) {
-      showToast(err.message || 'خطأ', 'error');
-      btn.disabled = false;
-    }
-  });
-
-  document.getElementById('addCategoryBtn')?.addEventListener('click', async () => {
-    const name = window.prompt('اسم الفئة الجديدة:');
-    if (!name) return;
-    try { await addExpenseCategory(name); } catch (e) { showToast(e.message, 'error'); }
-  });
-
-  document.getElementById('filterToggleBtn')?.addEventListener('click', () => {
-    document.getElementById('filtersMore')?.classList.toggle('is-open');
-  });
-  document.getElementById('clearFiltersBtn')?.addEventListener('click', () => {
-    ['searchInput', 'filterDateFrom', 'filterDateTo'].forEach(id => {
-      const el = document.getElementById(id); if (el) el.value = '';
     });
-    document.getElementById('filtersMore')?.classList.remove('is-open');
-    applyFilters();
+    byId("seriesModalCloseBtn").addEventListener("click", closeSeriesEditor);
+    byId("seriesSaveBtn").addEventListener("click", saveSeriesEditor);
+    byId("seriesModal").addEventListener("click",e=>{if(e.target===byId("seriesModal"))closeSeriesEditor();});
+    renderExpenses();
   });
-
-  document.querySelectorAll('[data-open-cat]').forEach(head => {
-    head.addEventListener('click', () => {
-      const card = head.closest('.exp-cat-card');
-      if (card?.classList.contains('has-items')) openCategoryModal(card);
-    });
-  });
-
-  ['searchInput', 'filterDateFrom', 'filterDateTo'].forEach(id => {
-    document.getElementById(id)?.addEventListener('input', applyFilters);
-  });
-
-  document.querySelectorAll('.exp-repeat-box').forEach(box => {
-    const cb = box.querySelector('[name="repeat_enabled"]');
-    if (!cb) return;
-    const sync = () => box.classList.toggle('is-active', cb.checked);
-    cb.addEventListener('change', sync);
-    sync();
-  });
-
-  applyFilters();
-});
 </script>
 {% endblock %}

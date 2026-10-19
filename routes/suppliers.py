@@ -483,6 +483,7 @@ def _shared_supplier_rows(suppliers: list[Supplier]) -> list[SimpleNamespace]:
             phone=representative.phone,
             phone2=representative.phone2,
             address=representative.address,
+            opening_balance=sum(int(supplier.opening_balance or 0) for supplier in members),
             total_debt=total_debt,
             total_paid=total_paid,
             remaining=total_debt - total_paid,
@@ -724,11 +725,39 @@ def suppliers():
     if not independent_branches_enabled():
         supplier_query = supplier_query.execution_options(skip_branch_scope=True)
     suppliers = supplier_query.order_by(Supplier.name.asc(), Supplier.id.asc()).all()
+    # Presentation data for the redesigned list, scoped to the same visible
+    # supplier records and aggregated across their shared branch copies.
+    from sqlalchemy import func
+    purchase_stats = {}
+    if suppliers:
+        stats_query = db.session.query(
+            Purchase.supplier_id, func.count(Purchase.id), func.max(Purchase.purchase_date),
+        ).filter(
+            Purchase.supplier_id.in_([supplier.id for supplier in suppliers]),
+            func.coalesce(Purchase.status, "confirmed") != "cancelled",
+        )
+        if not independent_branches_enabled():
+            stats_query = stats_query.execution_options(skip_branch_scope=True)
+        raw_stats = {
+            supplier_id: (int(count or 0), last_date.isoformat() if last_date else "")
+            for supplier_id, count, last_date in stats_query.group_by(Purchase.supplier_id).all()
+        }
+        if independent_branches_enabled():
+            purchase_stats = raw_stats
+        else:
+            groups = {}
+            for supplier in suppliers:
+                groups.setdefault(_shared_supplier_key(supplier), []).append(supplier)
+            for members in groups.values():
+                representative = min(members, key=lambda supplier: (int(supplier.branch_id or 0), int(supplier.id)))
+                values = [raw_stats.get(supplier.id, (0, "")) for supplier in members]
+                purchase_stats[representative.id] = (sum(value[0] for value in values), max(value[1] for value in values))
     if not independent_branches_enabled():
         suppliers = _shared_supplier_rows(suppliers)
     return render_template(
         "suppliers.html",
         suppliers=suppliers,
+        purchase_stats=purchase_stats,
         supplier_exchange_rate=get_supplier_exchange_rate(),
     )
 

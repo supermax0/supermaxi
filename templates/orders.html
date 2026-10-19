@@ -48,65 +48,94 @@
   <div class="loading-spinner"></div>
 </div>
 
-<!-- ==================== Compact Orders Toolbar ==================== -->
-{% if organized_nav_enabled|default(false) %}
-{% include "_orders_workspace.html" %}
-{% endif %}
-<div class="orders-toolbar no-print" id="ordersToolbar">
-  <div class="orders-toolbar-block orders-toolbar-block--collapsible collapsed" id="filtersSection">
-    <button type="button" class="orders-toolbar-toggle" onclick="toggleSection('filtersSection')"
-      aria-expanded="false" aria-controls="filtersSectionPanel">
-      <span class="orders-toolbar-kicker">{{ _('orders_filters_title') }}</span>
-      <span class="orders-toolbar-toggle-icon" aria-hidden="true">▾</span>
+<div class="ofd" id="ordersFd">
+
+<!-- ==================== Header ==================== -->
+<header class="ofd-header no-print">
+  <span class="ofd-header-icon" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="20" r="1.4"/><circle cx="18" cy="20" r="1.4"/><path d="M2.5 3.5h2.6l2.3 11.2a1.6 1.6 0 0 0 1.6 1.3h8.6a1.6 1.6 0 0 0 1.6-1.2l1.6-7.3H6"/></svg>
+  </span>
+  <div class="ofd-header-text">
+    <h1 class="ofd-title">{{ self.page_title() }}</h1>
+    <p class="ofd-subtitle">طلبات العملاء وحالات التجهيز والشحن</p>
+  </div>
+</header>
+
+<!-- ==================== Toolbar ==================== -->
+<div class="ofd-toolbar no-print" id="ordersToolbar">
+
+  <div class="ofd-pop-wrap ofd-tool--filter">
+    <button type="button" class="ofd-btn" data-ofd-pop="ofdFiltersPop" aria-expanded="false" aria-controls="ofdFiltersPop">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 4.5h17l-6.6 7.8v5.6l-3.8 1.9v-7.5z"/></svg>
+      <span class="ofd-btn-label">تصفية</span>
+      <span class="ofd-count-badge" id="ofdFilterCount" hidden></span>
+      <svg class="ofd-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
     </button>
-    <div class="orders-toolbar-panel" id="filtersSectionPanel">
-      <div class="filters-grid">
-      <select id="filterCity">
-        <option value="">{{ _('orders_filter_all_cities') }}</option>
-        <option value="{{ province_filter_primary }}">{{ primary_province }}</option>
-        <option value="{{ province_filter_group }}">{{ provinces_group_label }}</option>
-      </select>
-
-      <select id="filterStatus" title="{{ _('orders_filter_all_statuses') }}" data-help="orders.status">
-        <option value="">{{ _('orders_filter_all_statuses') }}</option>
-        <option>{{ _('orders_status_ordered') }}</option>
-        <option>{{ _('orders_status_packed') }}</option>
-        <option>{{ _('orders_status_shipping') }}</option>
-        <option>{{ _('orders_status_delivered') }}</option>
-        <option>{{ _('orders_status_returned') }}</option>
-      </select>
-
-      <select id="filterPayment" data-help="orders.payment_method">
-        <option value="">{{ _('orders_filter_all_payments') }}</option>
-        <option>{{ _('orders_payment_unpaid') }}</option>
-        <option>{{ _('orders_payment_partial') }}</option>
-        <option>{{ _('orders_payment_paid') }}</option>
-        <option>{{ _('orders_payment_returned') }}</option>
-      </select>
-
-      <select id="filterEmployee">
-        <option value="">{{ _('orders_filter_all_employees') }}</option>
-        {% for e in employees %}<option value="{{ e.name }}">{{ e.name }}</option>{% endfor %}
-      </select>
-
-      <select id="filterShipping">
-        <option value="">{{ _('orders_filter_all_shippings') }}</option>
-        {% for s in shippings %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}
-      </select>
-
-      <select id="filterDeliveryAgent" title="{{ _('orders_filter_all_agents') }}">
-        <option value="">{{ _('orders_filter_all_agents') }}</option>
-        <option value="none">{{ _('orders_option_none') }}</option>
-        {% for agent in delivery_agents or [] %}<option value="{{ agent.name }}">{{ agent.name }}</option>{% endfor %}
-      </select>
-
-      <select id="filterInstallmentType" title="نوع الطلب">
+    <div class="ofd-pop ofd-pop--start ofd-filter-pop" id="ofdFiltersPop" role="dialog" aria-label="تصفية" hidden>
+      <div class="ofd-form-grid">
+        <label class="ofd-field"><span>المحافظة</span>
+          <select id="filterCity">
+            <option value="">كل المحافظات</option>
+            <option value="{{ province_filter_primary }}">{{ primary_province }}</option>
+            <option value="{{ province_filter_group }}">{{ provinces_group_label }}</option>
+          </select>
+        </label>
+        <label class="ofd-field"><span>شركة النقل</span>
+          <select id="filterShipping">
+            <option value="">الكل</option>
+            {% for s in shippings %}<option value="{{ s.name }}">{{ s.name }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="ofd-field ofd-field--wide"><span>المندوب</span>
+          <select id="filterDeliveryAgent">
+            <option value="">الكل</option>
+            <option value="none">{{ _('orders_option_none') }}</option>
+            {% for agent in delivery_agents or [] %}<option value="{{ agent.name }}">{{ agent.name }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="ofd-field"><span>من تاريخ</span>
+          <input type="date" id="filterDateFrom">
+        </label>
+        <label class="ofd-field"><span>إلى تاريخ</span>
+          <input type="date" id="filterDateTo">
+        </label>
+        <label class="ofd-field"><span>أقل مبلغ</span>
+          <input type="number" id="filterAmountMin" min="0" step="any" inputmode="decimal" placeholder="0">
+        </label>
+        <label class="ofd-field"><span>أعلى مبلغ</span>
+          <input type="number" id="filterAmountMax" min="0" step="any" inputmode="decimal">
+        </label>
+        <label class="ofd-field"><span>الحالة</span>
+          <select id="filterStatus">
+            <option value="">الكل</option>
+            <option>{{ _('orders_status_ordered') }}</option>
+            <option>{{ _('orders_status_packed') }}</option>
+            <option>{{ _('orders_status_shipping') }}</option>
+            <option>{{ _('orders_status_delivered') }}</option>
+            <option>{{ _('orders_status_returned') }}</option>
+          </select>
+        </label>
+        <label class="ofd-field"><span>الدفع</span>
+          <select id="filterPayment">
+            <option value="">الكل</option>
+            <option>{{ _('orders_payment_unpaid') }}</option>
+            <option>{{ _('orders_payment_partial') }}</option>
+            <option>{{ _('orders_payment_paid') }}</option>
+            <option>{{ _('orders_payment_returned') }}</option>
+          </select>
+        </label>
+        <label class="ofd-field"><span>الموظف</span>
+          <select id="filterEmployee">
+            <option value="">الكل</option>
+            {% for e in employees %}<option value="{{ e.name }}">{{ e.name }}</option>{% endfor %}
+          </select>
+        </label>
+        <label class="ofd-field"><span>نوع الطلب</span><select id="filterInstallmentType" title="نوع الطلب">
         <option value="">نوع الطلب: الكل</option>
         <option value="normal">طلب عادي</option>
         <option value="installment">أقساط</option>
-      </select>
-
-      <select id="filterInstallmentStatus" title="حالة الأقساط">
+      </select></label>
+<label class="ofd-field"><span>حالة الأقساط</span><select id="filterInstallmentStatus" title="حالة الأقساط">
         <option value="">حالة الأقساط: الكل</option>
         <option value="ACTIVE">نشط</option>
         <option value="PARTIALLY_RETURNED">مرتجع جزئياً</option>
@@ -114,79 +143,240 @@
         <option value="MANUALLY_SETTLED">تم التسديد يدوياً</option>
         <option value="RETURNED">مرتجع</option>
         <option value="CANCELLED">ملغي</option>
-      </select>
-
-      <input type="date" id="filterScheduledDate" title="{{ _('orders_filter_order_date') }}"
-        placeholder="{{ _('orders_filter_order_date') }}"
-        class="date-filter">
-
-      <span id="activeShippingScanBadge" class="orders-scan-badge" style="display:none;"></span>
+      </select></label>
+<label class="ofd-field"><span>{{ _('orders_filter_order_date') }}</span>
+          <input type="date" id="filterScheduledDate">
+        </label>
+      </div>
+      <span id="activeShippingScanBadge" class="ofd-note" style="display:none;"></span>
+      <div class="ofd-pop-foot ofd-pop-foot--split">
+        <button type="button" class="ofd-link-btn" onclick="clearFilters()">مسح التصفية</button>
+        <button type="button" class="ofd-btn ofd-btn--accent ofd-btn--apply" data-ofd-pop-close onclick="applyFilters()">تطبيق</button>
       </div>
     </div>
   </div>
 
-  {% if can_manage_orders or can_return_orders %}
-  <div class="orders-toolbar-block" id="bulkActionsSection">
-    <div class="orders-toolbar-kicker">{{ _('orders_bulk_title') }}</div>
-    <div class="bulk-actions">
-      {% if can_manage_orders or can_return_orders %}
-      <div class="action-group">
-        <select id="bulkStatus">
-          <option value="">{{ _('orders_bulk_change_status') }}</option>
-          {% if can_manage_orders %}
-          <option>{{ _('orders_status_ordered') }}</option>
-          <option>{{ _('orders_status_packed') }}</option>
-          <option>{{ _('orders_status_shipping') }}</option>
-          <option>{{ _('orders_status_delivered') }}</option>
-          {% endif %}
-          {% if can_return_orders %}
-          <option>{{ _('orders_status_returned') }}</option>
-          {% endif %}
-        </select>
-        <button class="btn btn-primary" type="button" onclick="applyStatus()">{{ _('orders_bulk_apply') }}</button>
-      </div>
-      {% endif %}
+  <label class="ofd-search ofd-tool--search">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>
+    <input id="searchInput" type="search" autocomplete="off" placeholder="بحث برقم الطلب، اسم العميل، رقم الهاتف، المحافظة أو العنوان...">
+  </label>
 
-      {% if can_manage_orders %}
-      <div class="action-group">
-        <select id="bulkShipping">
-          <option value="">{{ _('orders_bulk_shipping') }}</option>
-          <option value="none">{{ _('orders_option_none') }}</option>
-          {% for s in shippings %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
-        </select>
-        <button class="btn btn-primary" type="button" onclick="applyShipping()">{{ _('orders_bulk_apply') }}</button>
-      </div>
-
-      <div class="action-group">
-        <select id="bulkDeliveryAgent">
-          <option value="">{{ _('orders_bulk_agent') }}</option>
-          <option value="none">{{ _('orders_option_none') }}</option>
-          {% for agent in delivery_agents or [] %}<option value="{{ agent.id }}">{{ agent.name }}</option>{% endfor %}
-        </select>
-        <button class="btn btn-primary" type="button" onclick="applyDeliveryAgent()">{{ _('orders_bulk_apply') }}</button>
-      </div>
-      {% endif %}
-    </div>
-  </div>
-  {% endif %}
-
-  <div class="orders-toolbar-block orders-toolbar-block--tools" id="reportsSection">
-    <div class="orders-toolbar-kicker">{{ _('orders_reports_title') }}</div>
-    <div class="report-section">
-      <select id="reportShippingCompany">
-        <option value="">{{ _('orders_reports_select_shipping') }}</option>
-        {% for s in shippings %}
-        <option value="{{ s.id }}" data-name="{{ s.name }}">{{ s.name }}</option>
-        {% endfor %}
-      </select>
-      <button class="btn btn-success" type="button" onclick="createShippingReport()">
-        <span>📋</span>
-        <span>{{ _('orders_reports_print_statement') }}</span>
+  <div class="ofd-tools-row">
+    <div class="ofd-pop-wrap">
+      <button type="button" class="ofd-btn ofd-btn--rose-soft" id="ofdScanBtn" data-ofd-pop="ofdScanPop" aria-expanded="false" aria-controls="ofdScanPop">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m3.5 6 1.5 1.5L8 4.5M3.5 12.5 5 14l3-3M3.5 19l1.5 1.5L8 17.5M11.5 6h9M11.5 12.5h9M11.5 19h9"/></svg>
+        <span class="ofd-btn-label">مسح للتحديد</span>
       </button>
+      <div class="ofd-pop" id="ofdScanPop" role="dialog" aria-label="مسح للتحديد" hidden>
+        <div class="ofd-pop-head">مسح للتحديد</div>
+        <p class="ofd-pop-hint">امسح باركود الفاتورة أو اكتب رقم الطلب ثم Enter، ويتحدد الطلب في الجدول.</p>
+        <input type="text" id="ofdScanInput" class="ofd-input" inputmode="numeric" autocomplete="off" placeholder="باركود أو رقم الطلب">
+        <div class="ofd-scan-log" id="ofdScanLog" aria-live="polite"></div>
+        <div class="ofd-pop-foot">
+          <button type="button" class="ofd-btn ofd-btn--ghost" onclick="clearOrdersSelection()">إلغاء التحديد</button>
+          <button type="button" class="ofd-btn ofd-btn--accent" data-ofd-pop-close>تم</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="ofd-pop-wrap">
+      <button type="button" class="ofd-btn" data-ofd-pop="ofdAssignPop" aria-expanded="false" aria-controls="ofdAssignPop">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 3 10.5 13.5M21 3l-6.5 18-4-7.5L3 9.5z"/></svg>
+        <span class="ofd-btn-label">تسليم وإسناد</span>
+      </button>
+      <div class="ofd-pop ofd-menu" id="ofdAssignPop" role="menu" aria-label="تسليم وإسناد" hidden>
+        <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-open-view="agent">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></svg>
+          <span>إسناد لمندوب</span>
+        </button>
+        <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-open-view="shipping">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.5h11v9h-11zM13.5 9.5h4l3 3v3h-7"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>
+          <span>تسليم لشركة نقل</span>
+        </button>
+        <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-pop-close onclick="printAgentReport()">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2.5H6.5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8z"/><path d="M14 2.5V8h5.5M8.5 13h7M8.5 17h7"/></svg>
+          <span>كشف مندوب (يظهر في بوابته)</span>
+        </button>
+        <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-open-view="report">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 3 10.5 13.5M21 3l-6.5 18-4-7.5L3 9.5z"/></svg>
+          <span>كشف تسليم لشركة نقل</span>
+        </button>
+      </div>
+    </div>
+
+    <button type="button" class="ofd-btn ofd-btn--rose" id="ofdPrintSelectedBtn" onclick="printSelectedInvoices()" disabled>
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 8V3.5h10V8M7 17H4.5V10a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v7H17"/><path d="M7 14h10v6.5H7z"/></svg>
+      <span class="ofd-btn-label">{{ _('orders_selected_print_selected') }}</span>
+      <span class="ofd-count-badge ofd-count-badge--light" id="ofdSelectedBadge" hidden></span>
+    </button>
+
+    <div class="ofd-pop-wrap">
+      <button type="button" class="ofd-btn ofd-btn--muted" data-ofd-pop="ofdMorePop" aria-expanded="false" aria-controls="ofdMorePop">
+        <span class="ofd-btn-label">إجراءات</span>
+        <svg class="ofd-chevron" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="ofd-pop ofd-pop--end ofd-menu" id="ofdMorePop" role="menu" aria-label="إجراءات" hidden>
+        <div class="ofd-menu-view" data-ofd-view="main">
+          <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-view-go="status">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 12a8.5 8.5 0 0 1-14.6 5.9M3.5 12A8.5 8.5 0 0 1 18.1 6.1"/><path d="M18.5 2.5v4h-4M5.5 21.5v-4h4"/></svg>
+            <span>تغيير الحالة</span>
+          </button>
+          <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-view-go="agent">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></svg>
+            <span>تغيير المندوب</span>
+          </button>
+          <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-view-go="shipping">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.5h11v9h-11zM13.5 9.5h4l3 3v3h-7"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>
+            <span>تغيير شركة النقل</span>
+          </button>
+          <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-pop-close onclick="printAgentReport()">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2.5H6.5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8z"/><path d="M14 2.5V8h5.5M8.5 13h7M8.5 17h7"/></svg>
+            <span>كشف مندوب (يظهر في بوابته)</span>
+          </button>
+          <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-view-go="report">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 3 10.5 13.5M21 3l-6.5 18-4-7.5L3 9.5z"/></svg>
+            <span>كشف تسليم لشركة نقل</span>
+          </button>
+          <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-pop-close onclick="returnSelectedOrders()">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>
+            <span>ترجيع</span>
+          </button>
+          <div class="ofd-menu-sep" role="separator"></div>
+          <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-pop-close onclick="printSelectedReport()">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3.5" width="14" height="18" rx="2"/><path d="M9 3.5h6v3H9zM8.5 11h7M8.5 15h5"/></svg>
+            <span>{{ _('orders_selected_print_statement') }}</span>
+          </button>
+          <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-pop-close onclick="sendWhatsAppToSelected()">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20.5 11.6a8.5 8.5 0 0 1-12.4 7.5L3.5 20.5l1.4-4.4a8.5 8.5 0 1 1 15.6-4.5z"/></svg>
+            <span>{{ _('orders_selected_send_message') }}</span>
+          </button>
+          <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-pop-close onclick="exportOrdersPdf()">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2.5H6.5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8z"/><path d="M14 2.5V8h5.5M12 11.5v6M9.5 15l2.5 2.5 2.5-2.5"/></svg>
+            <span>تصدير PDF</span>
+          </button>
+          <button type="button" class="ofd-menu-item" role="menuitem" data-ofd-pop-close onclick="openColumnVisibilityModal()">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="4" width="17" height="16" rx="2"/><path d="M9.5 4v16M14.5 4v16"/></svg>
+            <span>{{ _('orders_columns_button') }}</span>
+          </button>
+        </div>
+        <div class="ofd-menu-view" data-ofd-view="status" hidden>
+          <div class="ofd-view-head">
+            <button type="button" class="ofd-view-back" data-ofd-view-go="main" aria-label="رجوع"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+            <span class="ofd-view-title">تغيير الحالة</span>
+            <span class="ofd-pop-sub" data-ofd-selected-label></span>
+          </div>
+          <select id="bulkStatus" aria-label="الحالة الجديدة">
+            <option value="">{{ _('orders_bulk_change_status') }}</option>
+            <option>{{ _('orders_status_ordered') }}</option>
+            <option>{{ _('orders_status_packed') }}</option>
+            <option>{{ _('orders_status_shipping') }}</option>
+            <option>{{ _('orders_status_delivered') }}</option>
+          </select>
+          {% if can_manage_orders or can_return_orders %}<button type="button" class="ofd-btn ofd-btn--accent ofd-btn--apply ofd-btn--block" data-ofd-pop-close onclick="applyStatus()">تطبيق</button>{% endif %}
+        </div>
+        <div class="ofd-menu-view" data-ofd-view="agent" hidden>
+          <div class="ofd-view-head">
+            <button type="button" class="ofd-view-back" data-ofd-view-go="main" aria-label="رجوع"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+            <span class="ofd-view-title">تغيير المندوب</span>
+            <span class="ofd-pop-sub" data-ofd-selected-label></span>
+          </div>
+          <select id="bulkDeliveryAgent" aria-label="المندوب">
+            <option value="">{{ _('orders_bulk_agent') }}</option>
+            <option value="none">{{ _('orders_option_none') }}</option>
+            {% for agent in delivery_agents or [] %}<option value="{{ agent.id }}">{{ agent.name }}</option>{% endfor %}
+          </select>
+          {% if can_manage_orders %}<button type="button" class="ofd-btn ofd-btn--accent ofd-btn--apply ofd-btn--block" data-ofd-pop-close onclick="applyDeliveryAgent()">تطبيق</button>{% endif %}
+        </div>
+        <div class="ofd-menu-view" data-ofd-view="shipping" hidden>
+          <div class="ofd-view-head">
+            <button type="button" class="ofd-view-back" data-ofd-view-go="main" aria-label="رجوع"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+            <span class="ofd-view-title">تغيير شركة النقل</span>
+            <span class="ofd-pop-sub" data-ofd-selected-label></span>
+          </div>
+          <select id="bulkShipping" aria-label="شركة النقل">
+            <option value="">{{ _('orders_bulk_shipping') }}</option>
+            <option value="none">{{ _('orders_option_none') }}</option>
+            {% for s in shippings %}<option value="{{ s.id }}">{{ s.name }}</option>{% endfor %}
+          </select>
+          {% if can_manage_orders %}<button type="button" class="ofd-btn ofd-btn--accent ofd-btn--apply ofd-btn--block" data-ofd-pop-close onclick="applyShipping()">تطبيق</button>{% endif %}
+        </div>
+        <div class="ofd-menu-view" data-ofd-view="report" hidden>
+          <div class="ofd-view-head">
+            <button type="button" class="ofd-view-back" data-ofd-view-go="main" aria-label="رجوع"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button>
+            <span class="ofd-view-title">كشف تسليم لشركة نقل</span>
+            <span class="ofd-pop-sub" data-ofd-selected-label></span>
+          </div>
+          <select id="reportShippingCompany" aria-label="شركة النقل">
+            <option value="">{{ _('orders_reports_select_shipping') }}</option>
+            {% for s in shippings %}
+            <option value="{{ s.id }}" data-name="{{ s.name }}">{{ s.name }}</option>
+            {% endfor %}
+          </select>
+          <button type="button" class="ofd-btn ofd-btn--accent ofd-btn--apply ofd-btn--block" data-ofd-pop-close onclick="createShippingReport()">طباعة الكشف</button>
+        </div>
+      </div>
     </div>
   </div>
 
+  <span id="selectedCount" class="ofd-sr-only" aria-live="polite"></span>
+  <span id="tableStats" class="table-stats" hidden aria-hidden="true"></span>
 </div>
+
+<style>
+.ofd .orders-workspace{padding:0;border:0;border-radius:0;background:transparent;margin:0 0 18px;}
+.ofd .orders-status-tabs{gap:8px;margin-bottom:12px;}
+.ofd .orders-status-tabs a{border:0;background:transparent;border-radius:12px;padding:10px 16px;font-size:14px;font-weight:700;color:var(--ofd-muted,#667085);}
+.ofd .orders-status-tabs a[aria-current="page"]{background:var(--ofd-purple-soft,#f1eaff);color:var(--ofd-purple,#6c3fd1);}
+.ofd .orders-saved-filters-panel{font-size:13px;color:var(--ofd-muted,#667085);}
+.ofd .orders-saved-filters-panel summary{cursor:pointer;padding:4px 0;}
+.ofd .orders-saved-filters{margin-top:10px;}
+@media(max-width:860px){ .ofd .orders-status-tabs{flex-wrap:nowrap;} }
+</style>
+<!-- ==================== Status Tabs ==================== -->
+{% if organized_nav_enabled|default(false) %}
+{% include "_orders_workspace.html" %}
+{% else %}
+<nav class="ofd-tabs no-print" aria-label="حالات الطلبات">
+{% for tab in orders_status_links or [] %}{% if business_allows('orders') and business_allows(tab.feature) %}
+<a href="{{ tab.href }}" class="ofd-tab{% if (page_type or 'all') == tab.key %} active{% endif %}">{{ _(tab.label) }}<span class="ofd-tab-count" data-order-status-count="{{ tab.key }}" hidden></span></a>
+{% endif %}{% endfor %}
+</nav>
+{% endif %}
+
+
+<!-- ==================== Orders Table ==================== -->
+<section class="ofd-table-card" data-print-date="">
+  <div class="ofd-grid-wrap" id="print-area">
+        <div class="orders-risk-legend" aria-label="دليل درجة خطورة الطلبات المتكررة">
+      <span><i class="orders-risk-dot orders-risk-dot--orange"></i>طلب متكرر من نفس الموظف</span>
+      <span><i class="orders-risk-dot orders-risk-dot--red"></i>طلب متكرر من موظف آخر</span>
+    </div>
+<div id="ordersTable" class="ag-theme-quartz" style="height: 600px; width: 100%;"></div>
+  </div>
+</section>
+
+<!-- ==================== Footer: page size + pager ==================== -->
+<footer class="ofd-footer no-print">
+  <div class="ofd-footer-info">
+    <select id="ordersPageSizeSelect" aria-label="عدد الطلبات في الصفحة">
+      <option value="10">10</option>
+      <option value="25">25</option>
+      <option value="50">50</option>
+      <option value="100">100</option>
+    </select>
+    <span class="ofd-range" id="ordersRangeInfo"></span>
+    <span class="ofd-totals" id="ofdTotals"></span>
+  </div>
+  <nav class="ofd-pager" id="ofdPager" aria-label="الصفحات">
+<button class="ofd-page" id="ordersFirstPage" onclick="ordersGoToPage(1)" aria-label="الأولى">«</button>
+<button class="ofd-page" id="ordersPrevPage" onclick="ordersGoToPage(ordersCurrentPage - 1)" aria-label="السابقة">‹</button>
+<span id="ordersPageInfo"></span>
+<button class="ofd-page" id="ordersNextPage" onclick="ordersGoToPage(ordersCurrentPage + 1)" aria-label="التالية">›</button>
+<button class="ofd-page" id="ordersLastPage" onclick="ordersGoToPage(ordersTotalPages)" aria-label="الأخيرة">»</button>
+</nav>
+</footer>
+
+</div><!-- /.ofd -->
 
 <div id="stockAllocationModal" class="vis-modal" onclick="if(event.target === this) closeStockAllocationModal();">
   <div class="vis-box stock-alloc-box" onclick="event.stopPropagation();">
@@ -203,74 +393,6 @@
       <button type="button" class="vis-btn vis-btn-save" onclick="confirmBulkStockSelection()">تحويل الطلبات المختارة</button>
     </div>
   </div>
-</div>
-
-<!-- ==================== Orders Table ==================== -->
-<div class="orders-card" data-print-date="">
-  <div class="orders-table-toolbar no-print" id="selectionActionsSection">
-    <div class="orders-toolbar-search orders-table-search">
-      <input id="searchInput" placeholder="{{ _('orders_search_placeholder') }}">
-    </div>
-    <div class="section-title orders-section-title-row orders-table-actions-row">
-    <div class="orders-title-actions">
-      <div class="selected-actions-grid">
-        <button class="btn btn-primary" type="button" onclick="printSelectedInvoices()">
-          <span>🖨️</span>
-          <span>{{ _('orders_selected_print_selected') }}</span>
-        </button>
-        <button class="btn btn-primary" type="button" onclick="printSelectedReport()">
-          <span>📋</span>
-          <span>{{ _('orders_selected_print_statement') }}</span>
-        </button>
-        <button class="btn btn-primary" type="button" onclick="printAgentReport()">
-          <span>👤</span>
-          <span>{{ _('orders_selected_print_agent') }}</span>
-        </button>
-        <button class="btn btn-warning" type="button" onclick="sendWhatsAppToSelected()">
-          <span>📱</span>
-          <span>{{ _('orders_selected_send_message') }}</span>
-        </button>
-      </div>
-    </div>
-    <span class="orders-section-actions">
-      <button class="btn btn-success orders-toggle-btn" type="button" onclick="exportOrdersPdf()"
-        title="تصدير PDF">
-        <span>📄</span>
-        <span>تصدير PDF</span>
-      </button>
-      <button class="btn btn-secondary orders-toggle-btn" type="button" onclick="openColumnVisibilityModal()"
-        title="{{ _('orders_columns_toggle_title') }}">
-        <span>👁️</span>
-        <span>{{ _('orders_columns_button') }}</span>
-      </button>
-      <span id="selectedCount" class="selected-count orders-selected-count"></span>
-      <span id="tableStats" class="table-stats" hidden aria-hidden="true"></span>
-    </span>
-    </div>
-  </div>
-
-  <div class="table-container" id="print-area">
-    <div class="orders-risk-legend" aria-label="دليل درجة خطورة الطلبات المتكررة">
-      <span><i class="orders-risk-dot orders-risk-dot--orange"></i>طلب متكرر من نفس الموظف</span>
-      <span><i class="orders-risk-dot orders-risk-dot--red"></i>طلب متكرر من موظف آخر</span>
-    </div>
-    <div id="ordersTable" class="ag-theme-quartz" style="height: 600px; width: 100%;"></div>
-    <div id="ordersServerPager" class="orders-server-pager no-print" aria-label="التنقل بين صفحات الطلبات">
-      <div class="orders-server-pager__nav">
-        <button type="button" id="ordersFirstPage" onclick="ordersGoToPage(1)" title="الصفحة الأولى">⏮</button>
-        <button type="button" id="ordersPrevPage" onclick="ordersGoToPage(ordersCurrentPage - 1)" title="الصفحة السابقة">‹</button>
-        <span id="ordersPageInfo">الصفحة 1 من 1</span>
-        <button type="button" id="ordersNextPage" onclick="ordersGoToPage(ordersCurrentPage + 1)" title="الصفحة التالية">›</button>
-        <button type="button" id="ordersLastPage" onclick="ordersGoToPage(ordersTotalPages)" title="الصفحة الأخيرة">⏭</button>
-      </div>
-      <div class="orders-server-pager__range" id="ordersRangeInfo">0 طلب</div>
-      <label class="orders-server-pager__size">
-        <span>حجم الصفحة:</span>
-        <select id="ordersPageSizeSelect"></select>
-      </label>
-    </div>
-  </div>
-
 </div>
 
 <style>
@@ -4521,12 +4643,342 @@
   window.exportExcel = exportOrdersPdf;
 
   function updateSelectionCount() {
+    updateOrdersSelectionUi();
     const selected = selectedIds();
     const countElement = document.getElementById('selectedCount');
     if (countElement) {
       countElement.textContent = selected.length > 0 ? `(${selected.length} محدد)` : '';
     }
   }
+
+  // ============= Finora desktop layout (toolbar, pager, cards) =============
+  // Layout follows the table's own width (sidebar open/closed, laptop, iPad, phone):
+  // full -> medium (no address) -> compact (no address/agent) -> one card per order
+  const ORDERS_CARD_QUERY = window.matchMedia("(max-width: 860px)");
+  const ORDERS_LAYOUT_TIERS = [
+    { mode: "full", minWidth: 1180, hidden: [] },
+    { mode: "medium", minWidth: 1040, hidden: ["address"] },
+    { mode: "compact", minWidth: 940, hidden: ["address", "delivery_agent"] }
+  ];
+  const ORDERS_PAGE_SIZE_KEY = "orders_page_size";
+  const ORDERS_PAGE_SIZES = [10, 25, 50, 100];
+
+  function ordersLayoutTier() {
+    const wrap = document.getElementById("print-area");
+    const width = wrap && wrap.clientWidth ? wrap.clientWidth : window.innerWidth;
+    return ORDERS_LAYOUT_TIERS.find(tier => width >= tier.minWidth) || null;
+  }
+
+  function ordersLayoutMode() {
+    const tier = ordersLayoutTier();
+    return tier ? tier.mode : "card";
+  }
+
+  function formatOrdersNumber(value) {
+    return (Math.round(parseFloat(value) || 0)).toLocaleString("en-US");
+  }
+
+  function formatOrdersAmount(value) {
+    return formatOrdersNumber(value) + " د.ع";
+  }
+
+  // "2026-10-18 15:24" -> "18/10 15:24" (year shown only when it is not the current one)
+  function formatOrdersShortDate(value) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/.exec(String(value || ""));
+    if (!m) return value || "—";
+    const year = Number(m[1]) === new Date().getFullYear() ? "" : "/" + m[1].slice(2);
+    return m[3] + "/" + m[2] + year + (m[4] ? " " + m[4] + ":" + m[5] : "");
+  }
+
+  function isEmptyOrderValue(value) {
+    const v = value === null || value === undefined ? "" : String(value).trim();
+    return !v || v === "—" || v === "-";
+  }
+
+  function ordersStatusTone(row) {
+    if (row.is_stock_locked) return "amber";
+    const status = row.status;
+    if (status === "تم التوصيل") return "green";
+    if (status === "معباة") return "purple";
+    if (status === "جاري الشحن") return "sky";
+    if (displayOrderStatus(status) === RETURN_STATUS) return "red";
+    return "blue";
+  }
+
+  function renderOrderStatusPill(row) {
+    const status = row.is_stock_locked ? STOCK_LOCKED_STATUS : row.status;
+    if (isEmptyOrderValue(status)) return "";
+    return '<span class="ofd-pill ofd-pill--' + ordersStatusTone(row) + '">' + escapeHtml(displayOrderStatus(status)) + '</span>';
+  }
+
+  function renderOrderPaymentCell(row) {
+    const canPay = !row.actions_collapsed && !row.is_stock_locked && !!(ORDERS_USER_CAN_PAY && row.can_pay);
+    if (canPay) {
+      return '<button type="button" class="ofd-pay-btn" data-action="pay" data-order-id="' + row.id + '" title="تسديد الطلب">' +
+        '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/></svg>' +
+        '<span>تسديد</span></button>';
+    }
+    const payment = String(row.payment_status || "");
+    let tone = "muted";
+    if (payment === "مسدد") tone = "green";
+    else if (payment === "جزئي") tone = "amber";
+    else if (payment === "ملغي" || isReturnedStatus(payment)) tone = "red";
+    return '<span class="ofd-pay-text ofd-pay-text--' + tone + '">' + escapeHtml(isEmptyOrderValue(payment) ? "—" : payment) + '</span>';
+  }
+
+  function renderOrderCustomerCell(row) {
+    const name = isEmptyOrderValue(row.customer_name) ? "—" : row.customer_name;
+    const phone = isEmptyOrderValue(row.phone) ? "" : row.phone;
+    return '<div class="ofd-cust"><span class="ofd-cust-name">' + escapeHtml(name) + '</span>' +
+      (row.is_installment_order ? '<span class="installment-order-badge">أقساط '+escapeHtml(row.installment_badge || '')+'</span>' : '') +
+      (phone ? '<span class="ofd-cust-phone" dir="ltr">' + escapeHtml(phone) + '</span>' : '') + '</div>';
+  }
+
+  function renderOrderAgentCell(value) {
+    if (isEmptyOrderValue(value)) return '<span class="ofd-muted">غير معين</span>';
+    return escapeHtml(value);
+  }
+
+  function renderOrderCard(row) {
+    const city = isEmptyOrderValue(row.city) ? "" : row.city;
+    const agent = isEmptyOrderValue(row.delivery_agent) ? "" : row.delivery_agent;
+    const address = isEmptyOrderValue(row.address) ? "" : row.address;
+    const meta = [city, address].filter(Boolean).map(escapeHtml).join(" · ");
+    return '<div class="ofd-card">' +
+      '<div class="ofd-card-line">' +
+        '<span class="ofd-card-id">#' + escapeHtml(row.order_id) + '</span>' +
+        renderOrderStatusPill(row) +
+      '</div>' +
+      '<div class="ofd-card-line">' + renderOrderCustomerCell(row) +
+        '<span class="ofd-card-date" dir="ltr">' + escapeHtml(formatOrdersShortDate(row.date)) + '</span>' +
+      '</div>' +
+      '<div class="ofd-card-meta">' + (meta || '<span class="ofd-muted">بدون عنوان</span>') +
+        '<span class="ofd-card-agent">' + (agent ? escapeHtml(agent) : '<span class="ofd-muted">غير معين</span>') + '</span>' +
+      '</div>' +
+      '<div class="ofd-card-line ofd-card-foot">' +
+        '<span class="ofd-card-amount" dir="ltr">' + formatOrdersAmount(row.total) + '</span>' +
+        '<span class="ofd-card-actions">' + renderOrderPaymentCell(row) + renderRowActions(row) + '</span>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function updateOrdersSelectionUi() {
+    if (!gridApi) return;
+    const count = gridApi.getSelectedRows().length;
+    const printBtn = document.getElementById("ofdPrintSelectedBtn");
+    const badge = document.getElementById("ofdSelectedBadge");
+    if (printBtn) printBtn.disabled = count === 0;
+    if (badge) {
+      badge.hidden = count === 0;
+      badge.textContent = formatOrdersNumber(count);
+    }
+    document.querySelectorAll("[data-ofd-selected-label]").forEach(el => {
+      el.textContent = count ? "(" + formatOrdersNumber(count) + " محدد)" : "(حدّد طلبات أولاً)";
+    });
+  }
+
+  function clearOrdersSelection() {
+    if (gridApi) gridApi.deselectAll();
+  }
+
+  function updateOrdersFilterBadge() {
+    const ids = ["filterCity", "filterStatus", "filterPayment", "filterEmployee", "filterShipping", "filterDeliveryAgent", "filterScheduledDate", "filterDateFrom", "filterDateTo", "filterAmountMin", "filterAmountMax", "filterInstallmentType", "filterInstallmentStatus"];
+    const active = ids.filter(id => document.getElementById(id)?.value).length;
+    const badge = document.getElementById("ofdFilterCount");
+    if (!badge) return;
+    badge.hidden = active === 0;
+    badge.textContent = String(active);
+  }
+
+  // Desktop/tablet: grid fills the window down to the pager. Cards: grid grows with the page.
+  function fitOrdersGridHeight() {
+    const gridEl = document.getElementById("ordersTable");
+    if (!gridEl) return;
+    if (ordersLayoutMode() === "card") {
+      gridEl.style.height = "";
+      return;
+    }
+    const footer = document.querySelector("#ordersFd .ofd-footer");
+    const footerHeight = footer ? footer.offsetHeight + 14 : 0;
+    const top = gridEl.getBoundingClientRect().top + window.scrollY;
+    const available = window.innerHeight - top - footerHeight - 18;
+    gridEl.style.height = Math.max(420, available) + "px";
+  }
+
+  function readOrdersPageSize() {
+    try {
+      const saved = parseInt(localStorage.getItem(ORDERS_PAGE_SIZE_KEY), 10);
+      if (ORDERS_PAGE_SIZES.includes(saved)) return saved;
+    } catch (e) { /* storage unavailable */ }
+    return 25;
+  }
+
+  function ordersPagerPages(current, pages, spread) {
+    const windowSize = spread * 2 + 1;
+    let start = Math.max(0, current - spread);
+    let end = Math.min(pages - 1, current + spread);
+    if (end - start + 1 < windowSize) {
+      if (start === 0) end = Math.min(pages - 1, windowSize - 1);
+      else start = Math.max(0, end - windowSize + 1);
+    }
+    const out = [];
+    if (start > 0) {
+      out.push(0);
+      if (start > 1) out.push("…");
+    }
+    for (let i = start; i <= end; i++) out.push(i);
+    if (end < pages - 1) {
+      if (end < pages - 2) out.push("…");
+      out.push(pages - 1);
+    }
+    return out;
+  }
+
+  function renderOrdersPager() { updateOrdersPager(); }
+
+  // ---- Toolbar popovers (bottom sheets on phones) ----
+  let ofdOpenPop = null;
+
+  function ensureOfdBackdrop() {
+    let el = document.getElementById("ofdBackdrop");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "ofdBackdrop";
+      el.className = "ofd-backdrop";
+      el.hidden = true;
+      // Same stacking context as the popovers, so the sheet stays above it
+      (document.getElementById("ordersFd") || document.body).appendChild(el);
+    }
+    return el;
+  }
+
+  function closeOfdPop() {
+    if (!ofdOpenPop) return;
+    ofdOpenPop.hidden = true;
+    const trigger = document.querySelector('[data-ofd-pop="' + ofdOpenPop.id + '"]');
+    if (trigger) trigger.setAttribute("aria-expanded", "false");
+    ofdOpenPop = null;
+    ensureOfdBackdrop().hidden = true;
+  }
+
+  // Actions menu: "main" list plus sub-panels (status / agent / shipping / report)
+  function showOfdMenuView(pop, name) {
+    const views = pop.querySelectorAll("[data-ofd-view]");
+    if (!views.length) return;
+    let target = null;
+    views.forEach(view => {
+      const match = view.getAttribute("data-ofd-view") === name;
+      view.hidden = !match;
+      if (match) target = view;
+    });
+    const focusEl = target && (target.querySelector("select") || target.querySelector("button"));
+    if (focusEl && name !== "main") setTimeout(() => focusEl.focus(), 30);
+  }
+
+  function openOfdPop(pop, view) {
+    closeOfdPop();
+    showOfdMenuView(pop, view || "main");
+    pop.hidden = false;
+    ofdOpenPop = pop;
+    const trigger = document.querySelector('[data-ofd-pop="' + pop.id + '"]');
+    if (trigger) trigger.setAttribute("aria-expanded", "true");
+    ensureOfdBackdrop().hidden = !ORDERS_CARD_QUERY.matches;
+    updateOrdersSelectionUi();
+    if (pop.id === "ofdScanPop") {
+      setTimeout(() => document.getElementById("ofdScanInput")?.focus(), 30);
+    }
+  }
+
+  function isOrdersScanSelectOpen() {
+    return !!(ofdOpenPop && ofdOpenPop.id === "ofdScanPop");
+  }
+
+  document.addEventListener("click", (event) => {
+    const t = event.target;
+    if (!t || !t.closest) return;
+    const viewGo = t.closest("[data-ofd-view-go]");
+    if (viewGo && ofdOpenPop) {
+      showOfdMenuView(ofdOpenPop, viewGo.getAttribute("data-ofd-view-go"));
+      return;
+    }
+    // «تسليم وإسناد» shortcuts jump straight into an actions sub-panel
+    const openView = t.closest("[data-ofd-open-view]");
+    if (openView) {
+      const morePop = document.getElementById("ofdMorePop");
+      if (morePop) openOfdPop(morePop, openView.getAttribute("data-ofd-open-view"));
+      return;
+    }
+    const trigger = t.closest("[data-ofd-pop]");
+    if (trigger) {
+      const pop = document.getElementById(trigger.getAttribute("data-ofd-pop"));
+      if (!pop) return;
+      if (ofdOpenPop === pop) closeOfdPop();
+      else openOfdPop(pop);
+      return;
+    }
+    if (t.closest("[data-ofd-pop-close]")) {
+      closeOfdPop();
+      return;
+    }
+    if (ofdOpenPop && !t.closest(".ofd-pop")) closeOfdPop();
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeOfdPop();
+  });
+
+  // ---- مسح للتحديد: scanning (or typing) an order selects it in the grid ----
+  function findOrderForScanSelect(code) {
+    const t = String(code || "").trim().replace(/^#/, "");
+    if (!t) return null;
+    return allOrders.find(o => {
+      const barcode = isEmptyOrderValue(o.barcode) ? "" : String(o.barcode).trim();
+      const shippingBarcode = isEmptyOrderValue(o.shipping_barcode) ? "" : String(o.shipping_barcode).trim();
+      return String(o.id) === t || (barcode && barcode === t) || (shippingBarcode && shippingBarcode === t);
+    }) || null;
+  }
+
+  function logOrderScan(text, ok) {
+    const log = document.getElementById("ofdScanLog");
+    if (!log) return;
+    const item = document.createElement("div");
+    item.className = "ofd-scan-item " + (ok ? "is-ok" : "is-miss");
+    item.textContent = (ok ? "✓ " : "✗ ") + text;
+    log.prepend(item);
+    while (log.children.length > 5) log.lastChild.remove();
+  }
+
+  function selectOrderByScan(code) {
+    if (!gridApi) return;
+    const raw = String(code || "").trim();
+    if (!raw) return;
+    const order = findOrderForScanSelect(raw);
+    const node = order ? gridApi.getRowNode(String(order.id)) : null;
+    if (!node) {
+      logOrderScan(raw + " — غير موجود في القائمة", false);
+      showToast("⚠️ لا يوجد طلب بهذا الرقم في القائمة الحالية", "warning");
+      return;
+    }
+    node.setSelected(true);
+    if (node.rowIndex !== null && node.rowIndex !== undefined) {
+      const pageSize = gridApi.paginationGetPageSize();
+
+      gridApi.ensureNodeVisible(node, "middle");
+      gridApi.flashCells({ rowNodes: [node] });
+    }
+    const name = isEmptyOrderValue(order.customer_name) ? "" : " " + order.customer_name;
+    logOrderScan("#" + order.id + name + (node.rowIndex === null ? " (مخفي بالفلتر)" : ""), true);
+  }
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter" || !event.target || event.target.id !== "ofdScanInput") return;
+    event.preventDefault();
+    selectOrderByScan(event.target.value);
+    event.target.value = "";
+  });
+
+
+
 
   function updateToggleAllState() {
     if (!gridApi) return;
@@ -4620,6 +5072,10 @@
     params.set('page', String(page));
     params.set('page_size', String(ordersPageSize));
 
+    [['filterDateFrom', 'date_from'], ['filterDateTo', 'date_to'], ['filterAmountMin', 'amount_min'], ['filterAmountMax', 'amount_max']].forEach(([id, key]) => {
+      const value = document.getElementById(id)?.value;
+      if (value) params.set(key, value);
+    });
     const search = document.getElementById('searchInput')?.value.trim() || '';
     const status = document.getElementById('filterStatus')?.value || '';
     const payment = document.getElementById('filterPayment')?.value || '';
@@ -4758,6 +5214,7 @@
   window.ordersGoToPage = ordersGoToPage;
 
   function applyFilters() {
+    updateOrdersFilterBadge();
     if (!gridApi) return;
     scheduleOrdersReload(1);
   }
@@ -4813,6 +5270,8 @@
       tableStats.textContent = `{{ _('orders_table_stats_prefix') }} ${totalCount}`;
     }
 
+    const totals = document.getElementById("ofdTotals");
+    if (totals) totals.textContent = "الإجمالي " + formatOrdersAmount(totalAmount);
     gridApi.setGridOption(
       "pinnedBottomRowData",
       totalCount > 0 ? buildOrdersFooterRow(totalCount, totalQty, totalAmount) : []
@@ -4825,7 +5284,7 @@
 
 
   function clearFilters() {
-    ['searchInput', 'filterCity', 'filterStatus', 'filterPayment', 'filterEmployee', 'filterShipping', 'filterDeliveryAgent', 'filterScheduledDate', 'filterInstallmentType', 'filterInstallmentStatus'].forEach(id => {
+    ['searchInput', 'filterCity', 'filterStatus', 'filterPayment', 'filterEmployee', 'filterShipping', 'filterDeliveryAgent', 'filterScheduledDate', 'filterInstallmentType', 'filterInstallmentStatus', 'filterDateFrom', 'filterDateTo', 'filterAmountMin', 'filterAmountMax'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = "";
     });
@@ -4834,6 +5293,7 @@
       gridApi.setFilterModel(null);
     }
 
+    updateOrdersFilterBadge();
     showToast({{ _('orders_toast_filters_cleared')|tojson }}, "success");
     scheduleOrdersReload(1);
   }
@@ -7688,20 +8148,8 @@
     const canReturn = !collapsed && !isStockLocked && !!(ORDERS_USER_CAN_RETURN && row && !isReturned && row.status !== 'تم الطلب');
     const canCancel = !collapsed && !isStockLocked && !!(ORDERS_USER_CAN_DELETE && row && row.can_cancel);
 
-    // Page-specific primary buttons (outside the menu)
-    const showCancelOutside = canCancel && (ORDERS_PAGE_TYPE === 'ordered' || (row && row.status === 'تم الطلب'));
-    const showReturnOutside = canReturn && (ORDERS_PAGE_TYPE === 'shipping' || (row && row.status === 'جاري الشحن'));
-
-    function actionBtn(className, action, label, title, extraAttrs, disabled) {
-      const disClass = disabled ? ' is-disabled' : '';
-      const disAttr = disabled ? ' disabled' : '';
-      return '<button type="button" class="action-btn-small ' + className + disClass + '" data-action="' + action + '" data-order-id="' + id + '"' + (extraAttrs || '') + ' title="' + title + '"' + disAttr + '>' +
-        '<span class="action-label">' + label + '</span>' +
-        '</button>';
-    }
-
     let html = '<div class="orders-row-actions">';
-    // Menu trigger first; print + page primary action stay outside
+    // All actions use the compact menu and the original permission gates.
     html += '<button type="button" class="orders-actions-trigger"' +
       ' data-orders-actions-trigger="1"' +
       ' data-ui-build="20260720e"' +
@@ -7710,19 +8158,12 @@
       ' data-has-phone="' + (phoneRaw ? '1' : '0') + '"' +
       ' data-stock-locked="' + (isStockLocked ? '1' : '0') + '"' +
       ' data-can-pay="' + (canPay ? '1' : '0') + '"' +
-      ' data-can-return="' + (canReturn && !showReturnOutside ? '1' : '0') + '"' +
-      ' data-can-cancel="' + (canCancel && !showCancelOutside ? '1' : '0') + '"' +
+      ' data-can-return="' + (canReturn ? '1' : '0') + '"' +
+      ' data-can-cancel="' + (canCancel ? '1' : '0') + '"' +
       ' aria-haspopup="menu"' +
       ' aria-expanded="false"' +
       ' aria-label="إجراءات"' +
       ' title="إجراءات"></button>';
-    if (showCancelOutside) {
-      html += actionBtn('cancel-btn', 'cancel', 'إلغاء', 'إلغاء الطلب', '', false);
-    }
-    if (showReturnOutside) {
-      html += actionBtn('return-btn', 'return', 'الراجع', 'إرجاع الطلب', '', false);
-    }
-    html += actionBtn('print-btn', 'invoice', 'طباعة', 'طباعة الفاتورة', '', false);
     html += '</div>';
     return html;
   }
@@ -7801,6 +8242,7 @@
     let html =
       '<button type="button" class="orders-actions-menu-item" role="menuitem" data-action="details" data-order-id="' + orderId + '">' +
       '<i class="fa fa-eye" aria-hidden="true"></i><span>تفاصيل</span></button>';
+    html += '<button type="button" class="orders-actions-menu-item" role="menuitem" data-action="invoice" data-order-id="' + orderId + '"><i class="fa fa-print" aria-hidden="true"></i><span>طباعة الفاتورة</span></button>';
 
     if (canPay) {
       html += '<button type="button" class="orders-actions-menu-item is-pay" role="menuitem" data-action="pay" data-order-id="' + orderId + '">' +
@@ -8098,9 +8540,11 @@
       headerName: "إجراءات",
       colId: "actions",
       field: "actions",
-      width: isOrdersMobile ? 165 : 210,
-      minWidth: isOrdersMobile ? 150 : 190,
-      maxWidth: isOrdersMobile ? 180 : 260,
+      width: 68,
+      minWidth: 68,
+      maxWidth: 68,
+      pinned: "left",
+      resizable: false,
       lockVisible: true,
       cellClass: "orders-actions-cell",
       cellRenderer: ActionsRenderer,
@@ -8205,7 +8649,24 @@
       { headerName: "الملاحظات", field: "note", width: 200 },
     ];
 
-    const columnDefs = [checkboxCol, actionsCol].concat(dataCols);
+
+    const defaultFields = ['order_id', 'customer_name', 'city', 'address', 'delivery_agent', 'date', 'total', 'payment_status', 'status'];
+    const htmlCell = fn => params => params.node.rowPinned ? (params.value ?? '') : fn(params.data, params.value);
+    const presenters = {
+      customer_name: htmlCell(row => renderOrderCustomerCell(row)),
+      payment_status: htmlCell(row => renderOrderPaymentCell(row)),
+      date: htmlCell((row, value) => '<span dir="ltr">'+escapeHtml(formatOrdersShortDate(value))+'</span>'),
+      total: htmlCell((row, value) => '<span dir="ltr">'+formatOrdersAmount(value)+'</span>')
+    };
+    dataCols.forEach(col => {
+      col.hide = !defaultFields.includes(col.field);
+      if (defaultFields.includes(col.field)) { col.flex = col.field === 'customer_name' ? 1.5 : 1; col.minWidth = 110; delete col.width; }
+      if (presenters[col.field]) col.cellRenderer = presenters[col.field];
+    });
+    dataCols.sort((a, b) => (defaultFields.indexOf(a.field) < 0 ? 100 : defaultFields.indexOf(a.field)) - (defaultFields.indexOf(b.field) < 0 ? 100 : defaultFields.indexOf(b.field)));
+    const cardCol = {colId:'card', headerName:'الطلبات', flex:1, minWidth:240, hide:true, sortable:false, filter:false, cellClass:'ofd-card-cell', cellRenderer: htmlCell(row => renderOrderCard(row))};
+    const columnDefs = [checkboxCol].concat(dataCols, [cardCol, actionsCol]);
+
 
     const gridEl = document.querySelector("#ordersTable");
     const tableWrap = document.querySelector(".table-container");
@@ -8255,7 +8716,8 @@
         }
         return undefined;
       },
-      rowHeight: window.matchMedia("(max-width: 768px)").matches ? 52 : 46,
+      getRowHeight: params => params.node.rowPinned ? 46 : (ordersLayoutMode() === "card" ? 190 : 72),
+      headerHeight: 58,
       pagination: false,
       rowSelection: 'multiple',
       isRowSelectable: (node) => !node.rowPinned,
@@ -8272,10 +8734,7 @@
       },
       onGridReady: (params) => {
         gridApi = params.api;
-        try {
-          // Keep actions wide enough for ⋮ + primary + print (avoid clipping into #)
-          params.api.setColumnWidths([{ key: 'actions', newWidth: 210 }], false);
-        } catch (e) { /* older AG Grid */ try { params.api.setColumnWidth('actions', 210); } catch (e2) {} }
+        applyOrdersDesignLayout();
         updateStats();
 
         // تطبيق الأعمدة المحفوظة
@@ -8351,7 +8810,8 @@
   function ensureEssentialColumnsVisible() {
     if (!gridApi) return;
     try {
-      gridApi.setColumnsVisible(ORDERS_ESSENTIAL_COLUMNS, true);
+      gridApi.setColumnsVisible(ordersLayoutMode() === "card" ? ["checkbox"] : ORDERS_ESSENTIAL_COLUMNS, true);
+      if (ordersLayoutMode() === "card") gridApi.setColumnsVisible(["actions"], false);
     } catch (e) {
       console.warn("ensureEssentialColumnsVisible:", e);
     }
@@ -8529,7 +8989,7 @@
     }, 500);
 
     // Add event listeners
-    ['searchInput', 'filterCity', 'filterStatus', 'filterPayment', 'filterEmployee', 'filterShipping', 'filterDeliveryAgent', 'filterScheduledDate', 'filterInstallmentType', 'filterInstallmentStatus'].forEach(id => {
+    ['searchInput', 'filterCity', 'filterStatus', 'filterPayment', 'filterEmployee', 'filterShipping', 'filterDeliveryAgent', 'filterScheduledDate', 'filterInstallmentType', 'filterInstallmentStatus', 'filterDateFrom', 'filterDateTo', 'filterAmountMin', 'filterAmountMax'].forEach(id => {
       document.getElementById(id)?.addEventListener("change", applyFilters);
     });
     document.getElementById("searchInput")?.addEventListener("keyup", applyFilters);
@@ -8613,6 +9073,39 @@
     }
   });
 
+
+  function applyOrdersDesignLayout() {
+    if (!gridApi) return;
+    const cards = ordersLayoutMode() === 'card';
+    const all = gridApi.getColumns().map(c => c.getColId());
+    if (cards) {
+      if (!window.ordersDesktopVisible) window.ordersDesktopVisible = gridApi.getColumnState().filter(c => !c.hide).map(c => c.colId);
+      gridApi.setColumnsVisible(all.filter(id => !['card', 'checkbox'].includes(id)), false);
+      gridApi.setColumnsVisible(['card', 'checkbox'], true);
+    } else {
+      gridApi.setColumnsVisible(['card'], false);
+      if (window.ordersDesktopVisible) { gridApi.setColumnsVisible(window.ordersDesktopVisible, true); window.ordersDesktopVisible = null; }
+    }
+    document.getElementById('ordersFd').classList.toggle('ofd--cards', cards);
+    gridApi.setGridOption('domLayout', cards ? 'autoHeight' : 'normal');
+    gridApi.resetRowHeights();
+    fitOrdersGridHeight();
+  }
+  window.addEventListener('resize', applyOrdersDesignLayout);
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    try {
+      const response = await fetch('/orders/api/counts', {headers:{'Accept':'application/json'},credentials:'same-origin'});
+      if (!response.ok) return;
+      const data = await response.json();
+      if (!data.success) return;
+      document.querySelectorAll('[data-order-status-count]').forEach(el => {
+        const count = data.counts[el.dataset.orderStatusCount];
+        if (Number.isFinite(count)) { el.textContent = count.toLocaleString('en-US'); el.hidden = false; }
+      });
+    } catch (error) { console.warn('Order tab counts unavailable', error); }
+  });
+
   // ============= Make functions globally available =============
   window.showLoading = showLoading;
   window.hideLoading = hideLoading;
@@ -8650,6 +9143,7 @@
   window.cancelOrder = cancelOrder;
   window.toggleSection = toggleSection;
 </script>
+<link rel="stylesheet" href="/static/css/orders-desktop.css?v=20261019-design-merge">
 <script src="/static/js/order-location.js"></script>
 
 {% endblock %}
