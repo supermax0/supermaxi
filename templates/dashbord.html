@@ -2566,7 +2566,41 @@
   }
 </style>
 
-<div class="dashboard-shell">
+{% from "partials/fd_icons.html" import icon as home_icon %}
+<div class="dashboard-shell" id="finoraDesktopHome">
+  <header class="desktop-home-header">
+    <div class="desktop-home-intro">
+      <span class="desktop-home-eyebrow"><span aria-hidden="true"></span>مساحة عمل فينورا</span>
+      <h1>أهلاً{% if employee_name or session.get('name') %}، {{ employee_name or session.get('name') }}{% endif %}</h1>
+      <p>نظرة عامة على أعمالك، واختصارات توصلك لشغلك بسرعة.</p>
+    </div>
+    <div class="desktop-home-tools">
+      <span class="desktop-home-date" id="desktopHomeDate"></span>
+      <button type="button" class="desktop-home-period" onclick="openPeriodModal()" aria-haspopup="dialog">
+        {{ home_icon('calendar', 18) }}<span id="desktopHomePeriod">آخر 30 يوم</span>{{ home_icon('chevron', 14) }}
+      </button>
+    </div>
+  </header>
+
+  <nav class="desktop-home-launcher" aria-label="اختصارات مساحة العمل">
+    {% if show_pos and business_allows('pos') %}
+    <a href="/pos" class="desktop-home-shortcut desktop-home-shortcut--primary"><span class="desktop-home-shortcut-icon">{{ home_icon('cart', 22) }}</span><span><b>نقطة البيع</b><small>ابدأ عملية بيع</small></span>{{ home_icon('external', 15) }}</a>
+    {% endif %}
+    {% if (is_admin or (current_employee and can_see_orders)) and business_allows('orders') %}
+    <a href="/orders/" class="desktop-home-shortcut"><span class="desktop-home-shortcut-icon">{{ home_icon('receipt', 22) }}</span><span><b>الطلبات</b><small>تابع الطلبات وحالاتها</small></span>{{ home_icon('external', 15) }}</a>
+    {% endif %}
+    {% if (is_admin or (current_employee and can_manage_inventory)) and business_allows('inventory') %}
+    <a href="/inventory/" class="desktop-home-shortcut"><span class="desktop-home-shortcut-icon is-azure">{{ home_icon('boxes', 22) }}</span><span><b>المخزون</b><small>المنتجات والكميات</small></span>{{ home_icon('external', 15) }}</a>
+    {% endif %}
+    {% if (is_admin or (current_employee and can_manage_customers)) and business_allows('customers') %}
+    <a href="/customers/" class="desktop-home-shortcut"><span class="desktop-home-shortcut-icon is-green">{{ home_icon('users', 22) }}</span><span><b>الزبائن</b><small>حسابات وعلاقات العملاء</small></span>{{ home_icon('external', 15) }}</a>
+    {% endif %}
+    {% if (is_admin or (current_employee and can_manage_inventory)) and business_allows('purchases') %}
+    <a href="/purchases/" class="desktop-home-shortcut"><span class="desktop-home-shortcut-icon is-amber">{{ home_icon('download', 22) }}</span><span><b>المشتريات</b><small>الموردون والفواتير</small></span>{{ home_icon('external', 15) }}</a>
+    {% endif %}
+  </nav>
+
+  <div class="desktop-home-section-label"><h2>الملخص المالي</h2><span>حسب الفترة المحددة</span></div>
   <section class="finora-summary-grid" aria-label="ملخص مالي رئيسي">
     <div class="finora-stat-card">
       <div class="finora-stat-top">
@@ -2630,9 +2664,6 @@
         <span class="finora-stat-icon info"><i class="fas fa-money-bill-trend-up"></i></span>
       </div>
       <div class="finora-stat-note">إجمالي مصروفات الفترة المحددة</div>
-      <svg class="finora-sparkline" viewBox="0 0 240 50" aria-hidden="true">
-        <path d="M4 38 C42 18, 72 44, 112 24 S178 16, 236 30" fill="none" stroke="#0EA5E9" stroke-width="4" stroke-linecap="round"/>
-      </svg>
     </div>
     <div class="finora-wide-card">
       <div class="finora-stat-top">
@@ -2643,16 +2674,13 @@
         <span class="finora-stat-icon danger"><i class="fas fa-rotate-left"></i></span>
       </div>
       <div class="finora-stat-note">طلبات مرتجعة أو ملغاة حسب بيانات الطلبات</div>
-      <svg class="finora-sparkline" viewBox="0 0 240 50" aria-hidden="true">
-        <path d="M4 34 C46 40, 70 18, 116 28 S178 44, 236 14" fill="none" stroke="#DC2626" stroke-width="4" stroke-linecap="round"/>
-      </svg>
     </div>
   </section>
 
   <section class="dashboard-section">
     <div class="dashboard-section-head">
       <div>
-        <h2 class="dashboard-section-title">{% if is_beauty_center %}المواعيد والجلسات{% else %}{{ _('dashboard_orders_all') }}{% endif %}</h2>
+        <h2 class="dashboard-section-title">{% if is_beauty_center %}المواعيد والجلسات{% else %}متابعة الطلبات{% endif %}</h2>
         <p class="dashboard-section-subtitle">{% if is_beauty_center %}إحصاءات مواعيد مركز التجميل{% else %}{{ _('dashboard_for_selected_period') }}{% endif %}</p>
       </div>
     </div>
@@ -3971,6 +3999,7 @@
     const reportsRequest = fetchJson(url)
       .then(d => {
         setText("periodLabel", d.period_label || "اليوم");
+        setText("desktopHomePeriod", d.period_label || "اليوم");
         setText("salesPeriodLabel", "للفترة: " + (d.period_label || "اليوم"));
 
         // الصف الأول: الرصيد النقدي
@@ -5376,6 +5405,8 @@
     });
     hideDashboardPrivateValues();
 
+    const homeDate = document.getElementById("desktopHomeDate");
+    if (homeDate) homeDate.textContent = new Intl.DateTimeFormat(document.documentElement.lang || "ar", {timeZone:"Asia/Baghdad", weekday:"long", day:"numeric", month:"long"}).format(new Date());
     load("last_30_days");
     const rowsEl = document.getElementById("rows");
     if (rowsEl) {
@@ -5689,4 +5720,5 @@
 </script>
 
 {% endif %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard-desktop.css') }}?v=20261019a">
 {% endblock %}
