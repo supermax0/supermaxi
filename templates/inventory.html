@@ -1946,6 +1946,7 @@
   <div class="fd-drawer" id="invDrawer" data-edit-prices="{{ '1' if inventory_edit_prices else '0' }}" data-trade-in="{{ '1' if inventory_trade_in else '0' }}" hidden>
     <form class="fd-drawer-panel" id="invProductForm" role="dialog" aria-modal="true" aria-labelledby="invDrawerTitle" novalidate>
       <input type="hidden" name="product_id" id="pfId">
+      <input type="hidden" name="publish_storefront" id="pfPublishIntent" value="">
       <div class="fd-drawer-head">
         <span class="fd-drawer-icon" id="invDrawerIcon">{{ icon('package-plus', 24) }}</span>
         <div class="fd-drawer-titles">
@@ -2044,6 +2045,8 @@
             <label class="fd-field"><span>المتجر الإلكتروني</span><select id="pfStore" name="store_visible"><option value="1">ظاهر</option><option value="0">مخفي</option></select></label>
           </div>
           <p class="fd-editor-note">إعداد الظهور لكل قناة مستقل عن حالة البيع.</p>
+          <p class="fd-editor-note" id="pfStoreStatus" role="status"></p>
+          <button type="button" class="fd-btn fd-btn--soft fd-btn--sm" id="pfPublish" hidden>نشر المنتج في المتجر عند الحفظ</button>
         </section>
         <section class="fd-section">
           <label class="fd-field"><span>الوصف</span><textarea name="description" id="pfDescription" rows="3" placeholder="اختياري"></textarea></label>
@@ -3268,6 +3271,8 @@
     pfEl("pfActive").value = product.active === false ? "0" : "1";
     pfEl("pfPos").value = product.pos_visible === false ? "0" : "1";
     pfEl("pfStore").value = product.store_visible === false ? "0" : "1";
+    pfEl("pfStoreStatus").textContent = product.storefront_publication?.message || "";
+    pfEl("pfPublish").hidden = !product.storefront_publication?.can_publish;
     invDrawerImageUrl = product.image_url || "";
     setPfImagePreview(invDrawerImageUrl);
     pfEl("pfStockQty").textContent = formatInventoryNumber(product.current_stock || 0);
@@ -3299,6 +3304,8 @@
     if (invDrawerObjectUrl) URL.revokeObjectURL(invDrawerObjectUrl);
     invDrawerObjectUrl = "";
     setPfImagePreview("");
+    pfEl("pfStoreStatus").textContent = "";
+    pfEl("pfPublish").hidden = true;
     pfEl("pfExistingColors").replaceChildren();
     pfEl("pfNewColors").replaceChildren();
     pfEl("pfOpening").disabled = false;
@@ -3409,6 +3416,7 @@
       for (const [key, id] of Object.entries({active:"pfActive", pos_visible:"pfPos", store_visible:"pfStore"})) {
         if ((invDrawerProduct[key] === false ? "0" : "1") === pfEl(id).value) payload.delete(key);
       }
+      if (pfEl("pfPublishIntent").value === "1" && pfEl("pfStore").value === "1") payload.set("store_visible", "1");
       payload.delete("opening_stock"); payload.delete("branch_id");
       payload.delete("color_name[]"); payload.delete("color_qty[]");
       if (colors.length) { payload.set("add_colors", JSON.stringify(colors)); payload.set("color_stock", String(invDrawerProduct.current_stock)); }
@@ -3436,6 +3444,12 @@
     try { if (sessionStorage.getItem("inventory_add_another") === "1") { sessionStorage.removeItem("inventory_add_another"); addAnother = true; } } catch (_) { /* Storage can be unavailable in private browsing. */ }
     if (addAnother) { history.replaceState(null, "", location.pathname); openProductDrawer(); }
     pfEl("pfAddColor").addEventListener("click", addPfColor);
+    pfEl("pfPublish").addEventListener("click", () => {
+      pfEl("pfPublishIntent").value = "1";
+      pfEl("pfStore").value = "1";
+      pfEl("pfStoreStatus").textContent = "سيتم نشر المنتج في المتجر عند حفظ التعديلات.";
+      updatePfDirty();
+    });
     for (const id of ["invDrawerFull", "pfOptionsLink"]) pfEl(id).addEventListener("click", event => { if (!closeProductDrawer()) event.preventDefault(); });
     window.addEventListener("beforeunload", event => { if (!pfEl("invDrawer").hidden && !invDrawerSaving && !invDrawerLoading && invDrawerSnapshot() !== invDrawerInitial) { event.preventDefault(); event.returnValue = ""; } });
     const form = pfEl("invProductForm");

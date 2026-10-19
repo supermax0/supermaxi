@@ -338,6 +338,21 @@ def _sync_installment(product: Product, *, visible: bool | None = None, featured
         item.featured = bool(featured)
 
 
+def sync_product_publication(product: Product, *, visible: bool) -> None:
+    """Publish an explicitly enabled inventory product in the existing catalogue.
+
+    Hiding the cash-store flag must not disable a separately published installment item.
+    Existing catalogue copy, prices, media and plans stay intact. The caller commits.
+    """
+    if not visible:
+        return
+    item = InstallmentProduct.query.filter_by(product_id=product.id).first()
+    if item is None:
+        _sync_installment(product, visible=visible)
+    else:
+        item.status = "published"
+
+
 def _managed_card(product: Product, tenant_slug: str, *, currency: str) -> dict:
     linked = InstallmentProduct.query.filter_by(product_id=product.id).first()
     catalog_item = linked if linked is not None and linked.status == "published" else None

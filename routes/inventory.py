@@ -1431,7 +1431,10 @@ def add_product_page():
                     set_opening_branch_stock(stock_branch_id, p.id, p.opening_stock)
             if "color_images" in request.form:
                 apply_color_images(p, request.form.get("color_images"), request.files, created_color_files)
+            if json_reply and request.form.get("store_visible") == "1":
+                _sync_inventory_storefront([p.id], True)
             db.session.commit()
+            _refresh_storefront()
         except (ProductColorError, OSError, SQLAlchemyError) as exc:
             db.session.rollback()
             cleanup_color_uploads(created_color_files)
@@ -1547,7 +1550,8 @@ def toggle_product_store_visibility(id):
         return redirect(url_for("inventory.inventory"))
 
     p = Product.query.get_or_404(id)
-    _apply_catalog_visibility(p, "store_visible", not bool(p.store_visible))
+    targets = _apply_catalog_visibility(p, "store_visible", not bool(p.store_visible))
+    _sync_inventory_storefront(targets, bool(p.store_visible))
     db.session.commit()
     _refresh_storefront()
     flash(
@@ -1575,6 +1579,39 @@ def _refresh_storefront() -> None:
         storefront_routes._PAGE_CACHE.clear()
     except Exception:
         current_app.logger.exception("storefront cache refresh failed")
+
+
+def _sync_inventory_storefront(product_ids: list[int], visible: bool) -> None:
+    from modules.store_api.services.control import sync_product_publication
+
+    for product_id in product_ids:
+        product = db.session.get(Product, product_id)
+        if product is not None:
+            sync_product_publication(product, visible=visible)
+
+
+def _inventory_storefront_state(product: Product) -> dict:
+    """Report effective public visibility, rather than only the inventory flag."""
+    from modules.storefront.services.catalog_service import cash_store_product_is_visible
+    from modules.installments.models import InstallmentProduct
+
+    linked = InstallmentProduct.query.filter_by(product_id=product.id).first()
+    default = get_default_branch()
+    other_branch = bool(independent_branches_enabled() and default and product.branch_id != default.id)
+    can_publish = bool(product.active and product.store_visible is not False and not other_branch
+                       and not cash_store_product_is_visible(product))
+    if not product.active:
+        status, message = "inactive", "غير ظاهر فعلياً: المنتج غير متاح للبيع."
+    elif product.store_visible is False:
+        status, message = "hidden", "المنتج مخفي من المتجر."
+    elif other_branch:
+        status, message = "other_branch", "غير ظاهر في المتجر العام: المنتج تابع لفرع آخر؛ المتجر يعرض الفرع الرئيسي."
+    elif not cash_store_product_is_visible(product):
+        status, message = "unpublished", "غير منشور فعلياً: تفعيل الظهور وحده لم يربط المنتج بكاتالوگ المتجر. اضغط نشر ثم احفظ."
+    else:
+        status, message = "published", "ظاهر فعلياً في المتجر."
+    return {"status": status, "message": message, "can_publish": can_publish,
+            "catalog_status": linked.status if linked else None}
 
 
 def _apply_catalog_visibility(product: Product, field: str, visible: bool) -> list[int]:
@@ -2184,6 +2221,7 @@ def product_api_details(product_id):
             "editor_settings_supported": True,
             "pos_visible": product.pos_visible is not False,
             "store_visible": product.store_visible is not False,
+            "storefront_publication": _inventory_storefront_state(product),
             "low_stock_threshold": int(product.low_stock_threshold if product.low_stock_threshold is not None else 5),
             "description": product.description or "",
             "image_url": product.image_url or "",
@@ -2302,6 +2340,8 @@ def product_api_update(product_id):
                                   can_edit_price=check_permission("edit_price"))
         if "color_images" in form:
             apply_color_images(product, form.get("color_images"), request.files, created_color_files)
+        if "store_visible" in visibility_changes:
+            _sync_inventory_storefront(visibility_changes["store_visible"], form.get("store_visible") == "1")
         db.session.commit()
         _refresh_storefront()
     except ProductColorError as exc:
