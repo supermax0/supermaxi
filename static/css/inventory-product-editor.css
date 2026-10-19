@@ -1,0 +1,21 @@
+/* Product editor additions, scoped to the new inventory drawer. */
+#fdPage .fd-editor-fields { border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+#fdPage .fd-editor-fields > * { flex-shrink: 0; }
+#fdPage .fd-editor-fields:disabled { opacity: .5; }
+#fdPage .fd-editor-status { padding: 14px; border-radius: 12px; background: var(--fd-purple-soft); color: var(--fd-purple); }
+#fdPage .fd-editor-status[hidden] { display: none; }
+#fdPage .fd-editor-note { font-size: 12px; color: var(--fd-muted); margin: 8px 0; line-height: 1.8; }
+#fdPage .fd-editor-colors { display: flex; flex-wrap: wrap; gap: 8px; margin-block: 10px; }
+#fdPage .fd-editor-color-chip { border: 1px solid var(--fd-border); border-radius: 10px; padding: 7px 12px; font-size: 13px; background: var(--fd-bg); }
+#fdPage .fd-editor-color-row { display: grid; grid-template-columns: minmax(0,1fr) minmax(90px,.6fr) auto; align-items: end; gap: 10px; margin-block: 12px; }
+#fdPage .fd-editor-color-row.is-edit { grid-template-columns: minmax(0,1fr) auto; }
+#fdPage #pfOptionsLink { display: block; margin-top: 14px; font-size: 13px; }
+#fdPage #pfSaveState { margin-inline-start: auto; }
+#fdPage #pfFields input[readonly] { background: var(--fd-bg); color: var(--fd-muted); cursor: default; }
+#fdPage .fd-editor-color-row .fd-close-btn { margin-bottom: 5px; }
+@media (max-width: 600px) {
+  #fdPage #pfSaveState { display: none; }
+  #fdPage .fd-editor-color-row { grid-template-columns: minmax(0,1fr) 90px auto; gap: 6px; }
+  #fdPage .fd-drawer-head { gap: 8px; }
+  #fdPage .fd-drawer-title { font-size: 17px; }
+}

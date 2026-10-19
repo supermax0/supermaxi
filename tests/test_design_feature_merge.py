@@ -125,9 +125,18 @@ def test_shared_supplier_design_aggregates_branch_purchases_and_preserves_contac
             db.session.commit()
 
 
-def test_inventory_redesign_keeps_branch_color_adjustment_and_bulk_pos_controls(client):
+def test_inventory_redesign_keeps_branch_color_adjustment_and_bulk_pos_controls(safety, client):
+    from extensions import db
+    from flask import g
+    from models.product import Product
+    with safety["app"].app_context():
+        g.tenant = safety["tenant"]
+        product = db.session.get(Product, safety["product"])
+        product.low_stock_threshold = 0
+        db.session.commit()
     html = client.get("/inventory/").get_data(as_text=True)
-    assert json_data(html, "productsData")
+    rows = json_data(html, "productsData")
+    assert next(row for row in rows if row["id"] == safety["product"])["low_stock_threshold"] == 0
     for field in ["filterPosVisible", "invPosBulkBar", "adjustColorName", "adjustSalePrice", "adjustBranchId"]:
         assert f'id="{field}"' in html
     assert '"branch_colors"' in html

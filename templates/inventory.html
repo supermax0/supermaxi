@@ -1942,7 +1942,8 @@
   </aside>
 
   <!-- ================= PRODUCT DRAWER (new / edit) ================= -->
-  <div class="fd-drawer" id="invDrawer" hidden>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/inventory-product-editor.css') }}?v=1">
+  <div class="fd-drawer" id="invDrawer" data-edit-prices="{{ '1' if inventory_edit_prices else '0' }}" data-trade-in="{{ '1' if inventory_trade_in else '0' }}" hidden>
     <form class="fd-drawer-panel" id="invProductForm" role="dialog" aria-modal="true" aria-labelledby="invDrawerTitle" novalidate>
       <input type="hidden" name="product_id" id="pfId">
       <div class="fd-drawer-head">
@@ -1956,7 +1957,9 @@
       </div>
 
       <div class="fd-drawer-body">
+        <div class="fd-editor-status" id="pfStatus" role="status" aria-live="polite" hidden></div>
         <div class="fd-form-error" id="pfError" role="alert" hidden></div>
+        <fieldset id="pfFields" class="fd-editor-fields">
 
         <div class="fd-form-top">
           <label class="fd-dropzone" id="pfDropzone">
@@ -1999,12 +2002,15 @@
             <span class="fd-badge fd-badge--green" id="pfProfit" hidden></span>
           </div>
           <div class="fd-grid-3">
-            <label class="fd-field"><span>سعر الشراء</span><span class="fd-money"><input type="number" name="buy_price" id="pfBuy" min="0" step="any" inputmode="decimal" placeholder="0"></span></label>
-            <label class="fd-field"><span>سعر البيع</span><span class="fd-money"><input type="number" name="sale_price" id="pfSale" min="0" step="any" inputmode="decimal" placeholder="0"></span></label>
+            <label class="fd-field"><span>سعر الشراء</span><span class="fd-money"><input type="number" name="buy_price" id="pfBuy" min="0" step="1" inputmode="numeric" placeholder="0"></span></label>
+            <label class="fd-field"><span>سعر البيع</span><span class="fd-money"><input type="number" name="sale_price" id="pfSale" min="0" step="1" inputmode="numeric" placeholder="0"></span></label>
             <label class="fd-field"><span class="fd-label-row"><span>أدنى مخزون</span><span class="fd-label-note">للتنبيه</span></span><input type="number" name="low_stock_threshold" id="pfMin" min="0" step="1" inputmode="numeric" value="5"></label>
           </div>
         </section>
 
+        <section class="fd-section" id="pfExchangeSection" hidden>
+          <label class="fd-field"><span>سعر البيع عند الاستبدال</span><input type="number" name="exchange_sale_price" id="pfExchange" min="0" step="1" inputmode="numeric" placeholder="اختياري"></label>
+        </section>
         <section class="fd-section">
           <div class="fd-section-head"><span class="fd-section-title">{{ icon('layers', 18) }}المخزون</span></div>
           <div class="fd-grid-2" id="pfStockNew">
@@ -2023,12 +2029,31 @@
         </section>
 
         <section class="fd-section">
+          <div class="fd-section-head"><span class="fd-section-title">{{ icon('layers', 18) }}الألوان والخيارات</span></div>
+          <p class="fd-editor-note" id="pfColorHint">يمكنك إضافة ألوان وتحديد الرصيد الافتتاحي لكل لون.</p>
+          <div id="pfExistingColors" class="fd-editor-colors"></div>
+          <div id="pfNewColors" class="fd-editor-new-colors"></div>
+          <button type="button" class="fd-btn fd-btn--soft fd-btn--sm" id="pfAddColor">+ إضافة لون</button>
+          <a class="fd-link" id="pfOptionsLink" href="{{ url_for('inventory.add_product_page') }}">إدارة الخيارات والصور والمواصفات المتقدمة</a>
+        </section>
+        <section class="fd-section">
+          <div class="fd-section-head"><span class="fd-section-title">إعدادات البيع والظهور</span></div>
+          <div class="fd-grid-3">
+            <label class="fd-field"><span>حالة البيع</span><select id="pfActive" name="active"><option value="1">متاح للبيع</option><option value="0">غير متاح للبيع</option></select></label>
+            <label class="fd-field"><span>نقطة البيع</span><select id="pfPos" name="pos_visible"><option value="1">ظاهر</option><option value="0">مخفي</option></select></label>
+            <label class="fd-field"><span>المتجر الإلكتروني</span><select id="pfStore" name="store_visible"><option value="1">ظاهر</option><option value="0">مخفي</option></select></label>
+          </div>
+          <p class="fd-editor-note">إعداد الظهور لكل قناة مستقل عن حالة البيع.</p>
+        </section>
+        <section class="fd-section">
           <label class="fd-field"><span>الوصف</span><textarea name="description" id="pfDescription" rows="3" placeholder="اختياري"></textarea></label>
         </section>
+        </fieldset>
       </div>
 
       <div class="fd-drawer-foot">
         <button type="submit" class="fd-btn fd-btn--primary" id="pfSave">{{ icon('check-circle', 18) }}<span id="pfSaveLabel">حفظ المنتج</span></button>
+        <span id="pfSaveState" class="fd-editor-note" role="status"></span>
         <button type="button" class="fd-btn" id="pfSaveAnother">حفظ وإضافة آخر</button>
       </div>
     </form>
@@ -2098,7 +2123,7 @@
       "has_colors": {{ 'true' if p.id in product_branch_colors_map else 'false' }},
       "opening_stock": {{ p.opening_stock or 0 }},
       "quantity": {{ display_qty }},
-      "low_stock_threshold": {{ p.low_stock_threshold or 5 }},
+      "low_stock_threshold": {{ p.low_stock_threshold if p.low_stock_threshold is not none else 5 }},
       "active": {{ 'true' if p.active else 'false' }},
       "store_visible": {{ 'true' if p.store_visible else 'false' }},
       "pos_visible": {{ 'true' if (p.pos_visible is none or p.pos_visible) else 'false' }},
@@ -3157,49 +3182,53 @@
   // ================= Product drawer (new / edit) =================
   let invDrawerInitial = "";
   let invDrawerSaving = false;
+  let invDrawerLoading = false;
+  let invDrawerRequest = 0;
+  let invDrawerProduct = null;
+  let invDrawerImageUrl = "";
+  let invDrawerObjectUrl = "";
+  let invDrawerReturnFocus = null;
 
-  function pfEl(id) {
-    return document.getElementById(id);
-  }
+  function pfEl(id) { return document.getElementById(id); }
 
   function invDrawerSnapshot() {
-    const form = pfEl("invProductForm");
-    const parts = [];
-    new FormData(form).forEach((v, k) => parts.push(k + "=" + (v instanceof File ? v.name : v)));
-    return parts.join("&");
+    return JSON.stringify(Array.from(new FormData(pfEl("invProductForm")), ([k, v]) =>
+      [k, v instanceof File ? [v.name, v.size, v.name ? v.lastModified : 0] : v]));
   }
 
   function setPfImagePreview(url) {
     const img = pfEl("pfImagePreview");
-    if (!img) return;
-    if (url) {
-      img.src = url;
-      img.hidden = false;
-    } else {
-      img.removeAttribute("src");
-      img.hidden = true;
-    }
+    if (url) { img.src = url; img.hidden = false; }
+    else { img.removeAttribute("src"); img.hidden = true; }
+  }
+
+  function previewPfFile(file) {
+    if (invDrawerObjectUrl) URL.revokeObjectURL(invDrawerObjectUrl);
+    invDrawerObjectUrl = "";
+    if (file && (!/\.(png|jpe?g|webp|gif)$/i.test(file.name) || file.size > 10 * 1024 * 1024)) {
+      pfEl("pfImage").value = "";
+      showPfError("اختر صورة PNG أو JPG أو WebP أو GIF بحجم لا يتجاوز 10 ميغابايت.");
+    } else if (file) { invDrawerObjectUrl = URL.createObjectURL(file); }
+    setPfImagePreview(invDrawerObjectUrl || invDrawerImageUrl);
+    updatePfDirty();
   }
 
   function updatePfProfit() {
-    const buy = parseFloat(pfEl("pfBuy").value) || 0;
-    const sale = parseFloat(pfEl("pfSale").value) || 0;
+    const buy = Number(pfEl("pfBuy").value) || 0;
+    const sale = Number(pfEl("pfSale").value) || 0;
     const badge = pfEl("pfProfit");
-    if (!badge) return;
-    if (!buy || !sale) {
-      badge.hidden = true;
-      return;
-    }
+    badge.hidden = !pfEl("pfSale").value;
     const profit = sale - buy;
-    const pct = buy ? (profit / buy) * 100 : 0;
-    badge.hidden = false;
     badge.className = "fd-badge " + (profit >= 0 ? "fd-badge--green" : "fd-badge--red");
-    badge.textContent = "الربح " + formatInventoryNumber(Math.round(profit)) + " · " + pct.toFixed(1) + "%";
+    badge.textContent = "الربح " + formatInventoryNumber(profit) + (buy ? " · " + ((profit / buy) * 100).toFixed(1) + "%" : "");
   }
 
   function updatePfDirty() {
-    const editing = !!pfEl("pfId").value;
-    pfEl("pfSave").disabled = editing && invDrawerSnapshot() === invDrawerInitial;
+    const dirty = invDrawerSnapshot() !== invDrawerInitial;
+    const busy = invDrawerSaving || invDrawerLoading;
+    pfEl("pfSave").disabled = busy || (!!pfEl("pfId").value && !dirty);
+    pfEl("pfSaveAnother").disabled = busy;
+    pfEl("pfSaveState").textContent = invDrawerSaving ? "جارٍ الحفظ…" : invDrawerLoading ? (pfEl("pfError").hidden ? "جارٍ التحميل…" : "تعذّر التحميل") : dirty ? "تغييرات غير محفوظة" : "";
   }
 
   function showPfError(message) {
@@ -3209,46 +3238,131 @@
     if (message) box.scrollIntoView({ block: "nearest" });
   }
 
-  function openProductDrawer(id) {
-    closeProductDetail();
-    closeFdPop();
-    const row = id ? findInvRow(id) : null;
-    const form = pfEl("invProductForm");
-    form.reset();
-    showPfError("");
-    pfEl("pfId").value = row ? row.id : "";
-    const meta = row ? productMeta(row) : {};
-    const clean = v => (v && v !== "---" ? v : "");
-    pfEl("pfName").value = row ? (row.name || "") : "";
-    pfEl("pfSku").value = row ? clean(row.sku) : "";
-    pfEl("pfBarcode").value = row ? clean(row.barcode) : "";
-    pfEl("pfCategory").value = meta.category || "";
-    pfEl("pfBrand").value = meta.brand || "";
-    pfEl("pfUnit").value = meta.unit || "";
-    pfEl("pfBuy").value = row ? (row.buy_price || 0) : "";
-    pfEl("pfSale").value = row ? (row.sale_price || 0) : "";
-    pfEl("pfMin").value = row ? productMinStock(row) : 5;
-    pfEl("pfDescription").value = row ? (row.description || "") : "";
-    setPfImagePreview(row ? row.image_url : "");
-
-    pfEl("pfStockNew").hidden = !!row;
-    pfEl("pfStockEdit").hidden = !row;
-    if (row) pfEl("pfStockQty").textContent = formatInventoryNumber(Number(row.quantity) || 0);
-    pfEl("invDrawerTitle").textContent = row ? (row.name || "تعديل منتج") : "منتج جديد";
-    pfEl("pfSaveLabel").textContent = row ? "حفظ التعديلات" : "حفظ المنتج";
-    pfEl("pfSaveAnother").hidden = !!row;
-    pfEl("invDrawerFull").href = row ? "/inventory/add?edit=" + encodeURIComponent(row.id) : "{{ url_for('inventory.add_product_page') }}";
-
-    updatePfProfit();
-    pfEl("invDrawer").hidden = false;
-    invDrawerInitial = invDrawerSnapshot();
+  function addPfColor() {
+    const existing = invDrawerProduct?.colors || [];
+    const list = pfEl("pfNewColors");
+    if (existing.length + list.children.length >= 40) { showPfError("الحد الأقصى 40 لوناً للمنتج."); return; }
+    const row = document.createElement("div");
+    row.className = "fd-editor-color-row" + (pfEl("pfId").value ? " is-edit" : "");
+    row.innerHTML = '<label class="fd-field"><span>اسم اللون</span><input name="color_name[]" maxlength="80" required placeholder="مثال: أسود"></label>' +
+      (!pfEl("pfId").value ? '<label class="fd-field"><span>الرصيد الافتتاحي</span><input name="color_qty[]" type="number" min="0" step="1" value="0" required></label>' : '') +
+      '<button type="button" class="fd-close-btn" aria-label="إزالة اللون">×</button>';
+    row.querySelector("button").addEventListener("click", () => { row.remove(); syncPfColorStock(); updatePfDirty(); });
+    list.appendChild(row);
+    syncPfColorStock();
     updatePfDirty();
-    setTimeout(() => pfEl("pfName").focus(), 40);
+    row.querySelector("input").focus();
+  }
+
+  function syncPfColorStock() {
+    const colored = !pfEl("pfId").value && pfEl("pfNewColors").children.length > 0;
+    pfEl("pfOpening").disabled = colored;
+    if (colored) pfEl("pfOpening").value = Array.from(pfEl("pfNewColors").querySelectorAll('[name="color_qty[]"]')).reduce((sum, el) => sum + (Number(el.value) || 0), 0);
+  }
+
+  function populatePfProduct(product) {
+    invDrawerProduct = product;
+    for (const [id, key] of Object.entries({pfName:"name", pfSku:"sku", pfBarcode:"barcode", pfCategory:"category", pfBrand:"brand", pfUnit:"unit", pfBuy:"buy_price", pfSale:"sale_price", pfMin:"low_stock_threshold", pfDescription:"description", pfExchange:"exchange_sale_price"})) {
+      pfEl(id).value = product[key] ?? "";
+    }
+    pfEl("pfActive").value = product.active === false ? "0" : "1";
+    pfEl("pfPos").value = product.pos_visible === false ? "0" : "1";
+    pfEl("pfStore").value = product.store_visible === false ? "0" : "1";
+    invDrawerImageUrl = product.image_url || "";
+    setPfImagePreview(invDrawerImageUrl);
+    pfEl("pfStockQty").textContent = formatInventoryNumber(product.current_stock || 0);
+    const hasOptions = !!product.option_axes?.length;
+    pfEl("pfAddColor").hidden = hasOptions;
+    pfEl("pfColorHint").textContent = hasOptions ? "هذا المنتج يحتوي خيارات مركبة. استخدم إدارة الخيارات لتعديلها." : "الألوان الجديدة تبدأ برصيد صفر. عند إضافة أول لون يُنقل إليه الرصيد الحالي؛ تعديل الكميات من تعديل المخزون.";
+    for (const color of product.colors || []) {
+      const chip = document.createElement("span");
+      chip.className = "fd-editor-color-chip";
+      chip.textContent = (color.label || color.name) + " · " + formatInventoryNumber(color.qty || 0);
+      pfEl("pfExistingColors").appendChild(chip);
+    }
+    pfEl("invDrawerTitle").textContent = "تعديل: " + product.name;
+    const pricePermission = pfEl("invDrawer").dataset.editPrices === "1";
+    for (const id of ["pfBuy", "pfSale", "pfExchange"]) pfEl(id).readOnly = !pricePermission;
+  }
+
+  async function openProductDrawer(id) {
+    if (!pfEl("invDrawer").hidden && !closeProductDrawer()) return;
+    closeProductDetail(); closeFdPop();
+    const token = ++invDrawerRequest;
+    invDrawerReturnFocus = document.activeElement;
+    const form = pfEl("invProductForm");
+    form.reset(); showPfError("");
+    pfEl("pfFields").disabled = false;
+    pfEl("pfId").value = id || "";
+    invDrawerProduct = null;
+    invDrawerImageUrl = "";
+    if (invDrawerObjectUrl) URL.revokeObjectURL(invDrawerObjectUrl);
+    invDrawerObjectUrl = "";
+    setPfImagePreview("");
+    pfEl("pfExistingColors").replaceChildren();
+    pfEl("pfNewColors").replaceChildren();
+    pfEl("pfOpening").disabled = false;
+    pfEl("pfAddColor").hidden = false;
+    pfEl("pfColorHint").textContent = "يمكنك إضافة ألوان وتحديد الرصيد الافتتاحي لكل لون. المجموع يُحسب تلقائياً.";
+    for (const key of ["pfBuy", "pfSale", "pfExchange"]) pfEl(key).readOnly = false;
+    pfEl("pfStockNew").hidden = !!id;
+    pfEl("pfStockEdit").hidden = !id;
+    pfEl("invDrawerTitle").textContent = id ? "تحميل المنتج…" : "منتج جديد";
+    pfEl("pfSaveLabel").textContent = id ? "حفظ التعديلات" : "حفظ المنتج";
+    pfEl("pfSaveAnother").hidden = !!id;
+    const full = "{{ url_for('inventory.add_product_page') }}" + (id ? "?edit=" + encodeURIComponent(id) : "");
+    pfEl("invDrawerFull").href = full;
+    pfEl("pfOptionsLink").href = full;
+    const trade = pfEl("invDrawer").dataset.tradeIn === "1";
+    pfEl("pfExchangeSection").hidden = !trade;
+    pfEl("pfExchange").disabled = !trade;
+    invDrawerLoading = !!id;
+    pfEl("pfFields").disabled = !!id;
+    pfEl("pfStatus").hidden = !id;
+    pfEl("pfStatus").textContent = id ? "جارٍ جلب أحدث بيانات المنتج…" : "";
+    pfEl("invDrawer").hidden = false;
+    pfEl("invDrawer").setAttribute("aria-busy", String(!!id));
+    pfEl("invDrawer").querySelector('[aria-label="إغلاق"]').focus();
+    pfEl("invDrawer").querySelector(".fd-drawer-body").scrollTop = 0;
+    invDrawerInitial = invDrawerSnapshot();
+    updatePfProfit(); updatePfDirty();
+    if (id) {
+      try {
+        const res = await fetch("/inventory/api/products/" + encodeURIComponent(id), {headers:{Accept:"application/json"}, cache:"no-store"});
+        const data = await res.json();
+        if (token !== invDrawerRequest) return;
+        if (!res.ok || !data.success) throw new Error(data.error || "تعذر تحميل المنتج. أغلق النافذة وحاول مجدداً.");
+        populatePfProduct(data.product);
+        pfEl("pfFields").disabled = false;
+        pfEl("pfStatus").hidden = true;
+      } catch (err) {
+        if (token !== invDrawerRequest) return;
+        pfEl("invDrawerTitle").textContent = "تعذر تحميل المنتج";
+        showPfError(err.message || "تعذر الاتصال بالخادم.");
+        pfEl("pfStatus").hidden = true;
+        return;
+      } finally {
+        if (token === invDrawerRequest) {
+          invDrawerLoading = pfEl("pfFields").disabled;
+          pfEl("invDrawer").setAttribute("aria-busy", "false");
+          invDrawerInitial = invDrawerSnapshot();
+          updatePfProfit(); updatePfDirty();
+        }
+      }
+    }
+    pfEl("pfName").focus();
   }
 
   function closeProductDrawer() {
-    const drawer = pfEl("invDrawer");
-    if (drawer) drawer.hidden = true;
+    if (invDrawerSaving) return false;
+    if (!invDrawerLoading && !pfEl("invDrawer").hidden && invDrawerSnapshot() !== invDrawerInitial && !window.confirm("توجد تعديلات غير محفوظة. تريد إغلاق النافذة وترك التعديلات؟")) return false;
+    ++invDrawerRequest;
+    pfEl("invDrawer").hidden = true;
+    invDrawerLoading = false;
+    if (invDrawerObjectUrl) URL.revokeObjectURL(invDrawerObjectUrl);
+    invDrawerObjectUrl = "";
+    invDrawerReturnFocus?.focus();
+    return true;
   }
 
   // EAN-13 in-store barcode (prefix 20) with a valid check digit
@@ -3267,45 +3381,63 @@
   }
 
   async function saveProductDrawer(addAnother) {
-    if (invDrawerSaving) return;
-    const name = pfEl("pfName").value.trim();
-    if (!name) {
-      showPfError("يرجى إدخال اسم المنتج.");
-      pfEl("pfName").focus();
-      return;
+    if (invDrawerSaving || invDrawerLoading || pfEl("invDrawer").hidden) return;
+    const form = pfEl("invProductForm");
+    showPfError("");
+    if (!pfEl("pfName").value.trim()) { showPfError("يرجى إدخال اسم المنتج."); pfEl("pfName").focus(); return; }
+    for (const el of form.querySelectorAll('input[type="number"]:not(:disabled)')) {
+      if (el.value && (!Number.isSafeInteger(Number(el.value)) || Number(el.value) < 0)) {
+        showPfError("الأسعار والكميات يجب أن تكون أعداداً صحيحة من صفر فأكثر."); el.focus(); return;
+      }
+    }
+    if (!form.reportValidity()) return;
+    const colors = Array.from(pfEl("pfNewColors").querySelectorAll('[name="color_name[]"]'), el => el.value.trim());
+    const allNames = [...(invDrawerProduct?.colors || []).map(c => c.name), ...colors].map(n => n.trim().toLocaleLowerCase());
+    if (new Set(allNames).size !== allNames.length) { showPfError("يوجد اسم لون مكرر؛ راجع أسماء الألوان."); return; }
+    const productId = pfEl("pfId").value;
+    const payload = new FormData(form);
+    if (!productId) {
+      payload.set("_response", "json");
+      if (pfEl("pfActive").value === "0") payload.set("not_for_sale", "1");
+      if (colors.length) payload.set("has_colors", "1");
+    } else {
+      // Partial updates preserve stock, gallery, options and concurrent edits to untouched fields.
+      const fields = {name:"pfName", sku:"pfSku", barcode:"pfBarcode", category:"pfCategory", brand:"pfBrand", unit:"pfUnit", buy_price:"pfBuy", sale_price:"pfSale", exchange_sale_price:"pfExchange", low_stock_threshold:"pfMin", description:"pfDescription"};
+      for (const [key, id] of Object.entries(fields)) {
+        if (String(invDrawerProduct[key] ?? "") === pfEl(id).value) payload.delete(key);
+      }
+      for (const [key, id] of Object.entries({active:"pfActive", pos_visible:"pfPos", store_visible:"pfStore"})) {
+        if ((invDrawerProduct[key] === false ? "0" : "1") === pfEl(id).value) payload.delete(key);
+      }
+      payload.delete("opening_stock"); payload.delete("branch_id");
+      payload.delete("color_name[]"); payload.delete("color_qty[]");
+      if (colors.length) { payload.set("add_colors", JSON.stringify(colors)); payload.set("color_stock", String(invDrawerProduct.current_stock)); }
     }
     invDrawerSaving = true;
-    pfEl("pfSave").disabled = true;
-    showPfError("");
+    updatePfDirty();
     try {
-      const productId = pfEl("pfId").value;
-      const payload = new FormData(pfEl("invProductForm"));
-      if (!productId) payload.set("_response", "json");
-      const res = await fetch(productId ? "/inventory/api/products/" + encodeURIComponent(productId) + "/update" : "{{ url_for('inventory.add_product_page') }}", {
-        method: "POST",
-        body: payload,
-        headers: { "Accept": "application/json" }
-      });
+      const res = await fetch(productId ? "/inventory/api/products/" + encodeURIComponent(productId) + "/update" : "{{ url_for('inventory.add_product_page') }}", {method:"POST", body:payload, headers:{Accept:"application/json"}});
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.success) {
-        showPfError(data.error || "تعذر حفظ المنتج.");
-        const fieldMap = { name: "pfName", barcode: "pfBarcode", sku: "pfSku", buy_price: "pfBuy", sale_price: "pfSale" };
-        if (data.field && fieldMap[data.field]) pfEl(fieldMap[data.field]).focus();
-        return;
+      if (!res.ok || !data.success) { showPfError(data.error || "تعذر حفظ المنتج. راجع البيانات وحاول مجدداً."); return; }
+      invDrawerInitial = invDrawerSnapshot();
+      if (addAnother) {
+        try { sessionStorage.setItem("inventory_add_another", "1"); }
+        catch (_) { window.location.assign("{{ url_for('inventory.inventory') }}?new_product=1"); return; }
       }
-      if (addAnother) sessionStorage.setItem("inventory_add_another", "1");
       window.location.reload();
     } catch (err) {
       console.error(err);
-      showPfError("تعذر الاتصال بالخادم، حاول مرة أخرى.");
-    } finally {
-      invDrawerSaving = false;
-      updatePfDirty();
-    }
+      showPfError("تعذر الاتصال بالخادم. بياناتك باقية هنا؛ تحقق من المنتج قبل إعادة محاولة الحفظ.");
+    } finally { invDrawerSaving = false; updatePfDirty(); }
   }
 
   document.addEventListener("DOMContentLoaded", () => {
-    if (sessionStorage.getItem("inventory_add_another") === "1") { sessionStorage.removeItem("inventory_add_another"); openProductDrawer(); }
+    let addAnother = new URLSearchParams(location.search).get("new_product") === "1";
+    try { if (sessionStorage.getItem("inventory_add_another") === "1") { sessionStorage.removeItem("inventory_add_another"); addAnother = true; } } catch (_) { /* Storage can be unavailable in private browsing. */ }
+    if (addAnother) { history.replaceState(null, "", location.pathname); openProductDrawer(); }
+    pfEl("pfAddColor").addEventListener("click", addPfColor);
+    for (const id of ["invDrawerFull", "pfOptionsLink"]) pfEl(id).addEventListener("click", event => { if (!closeProductDrawer()) event.preventDefault(); });
+    window.addEventListener("beforeunload", event => { if (!pfEl("invDrawer").hidden && !invDrawerSaving && !invDrawerLoading && invDrawerSnapshot() !== invDrawerInitial) { event.preventDefault(); event.returnValue = ""; } });
     const form = pfEl("invProductForm");
     if (!form) return;
     form.addEventListener("submit", (event) => {
@@ -3314,6 +3446,7 @@
     });
     pfEl("pfSaveAnother").addEventListener("click", () => saveProductDrawer(true));
     form.addEventListener("input", () => {
+      syncPfColorStock();
       updatePfProfit();
       updatePfDirty();
     });
@@ -3323,7 +3456,7 @@
     });
     pfEl("pfAdjustBtn").addEventListener("click", () => {
       const row = findInvRow(pfEl("pfId").value);
-      if (row) openAdjustModal(row.id, row.name, Number(row.quantity) || 0);
+      if (row && closeProductDrawer()) openAdjustModal(row.id, row.name, Number(row.quantity) || 0);
     });
 
     // Image: click or drag & drop
@@ -3331,7 +3464,7 @@
     const input = pfEl("pfImage");
     input.addEventListener("change", () => {
       const file = input.files && input.files[0];
-      if (file) setPfImagePreview(URL.createObjectURL(file));
+      previewPfFile(file);
     });
     ["dragenter", "dragover"].forEach(type => zone.addEventListener(type, (e) => { e.preventDefault(); zone.classList.add("is-over"); }));
     ["dragleave", "drop"].forEach(type => zone.addEventListener(type, (e) => { e.preventDefault(); zone.classList.remove("is-over"); }));
@@ -3341,7 +3474,7 @@
       const dt = new DataTransfer();
       dt.items.add(file);
       input.files = dt.files;
-      setPfImagePreview(URL.createObjectURL(file));
+      previewPfFile(file);
       updatePfDirty();
     });
 
@@ -3374,6 +3507,12 @@
 
   document.addEventListener("keydown", (event) => {
     const drawerOpen = !document.getElementById("invDrawer")?.hidden;
+    if (drawerOpen && event.key === "Tab") {
+      const focusable = Array.from(pfEl("invProductForm").querySelectorAll('a[href], button, input, select, textarea')).filter(el => !el.matches(":disabled") && el.offsetParent !== null);
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    }
     if (drawerOpen && (event.ctrlKey || event.metaKey) && (event.key === "s" || event.key === "S")) {
       event.preventDefault();
       if (!pfEl("pfSave").disabled) saveProductDrawer(false);

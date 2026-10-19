@@ -1164,6 +1164,8 @@ def inventory():
         product_branch_map=product_branch_map,
         product_branch_stock_map=product_branch_stock_map,
         product_branch_colors_map=product_branch_colors_map,
+        inventory_edit_prices=check_permission("edit_price"),
+        inventory_trade_in=tenant_feature_enabled("trade_in_sales", default=False),
     )
 
 
@@ -1203,6 +1205,18 @@ def add_product_page():
 
         if json_reply:
             try:
+                for field in ("opening_stock", "buy_price", "sale_price", "low_stock_threshold"):
+                    raw_number = request.form.get(field)
+                    if raw_number is not None and int(raw_number or 0) < 0:
+                        raise ValueError(field)
+                for field in ("color_qty[]", "color_buy_price[]", "color_sale_price[]"):
+                    for raw_number in request.form.getlist(field):
+                        if int(raw_number or 0) < 0:
+                            raise ValueError(field)
+                if request.form.get("has_colors"):
+                    names = [name.strip().casefold() for name in request.form.getlist("color_name[]")]
+                    if not names or len(names) > 40 or any(not name or len(name) > 80 for name in names) or len(set(names)) != len(names):
+                        return jsonify(success=False, error="راجع أسماء الألوان؛ لا يمكن ترك الاسم فارغاً أو تكراره"), 400
                 for field in ("pos_visible", "store_visible"):
                     if field in request.form and request.form.get(field) not in {"0", "1"}:
                         raise ValueError(field)
@@ -1210,7 +1224,7 @@ def add_product_page():
                 if raw_exchange_price < 0:
                     raise ValueError("exchange_sale_price")
             except ValueError:
-                return jsonify(success=False, error="قيمة سعر الاستبدال أو إعداد الظهور غير صحيحة"), 400
+                return jsonify(success=False, error="الأسعار والكميات يجب أن تكون أعداداً صحيحة غير سالبة، وإعداد الظهور يجب أن يكون صحيحاً"), 400
             if raw_exchange_price and not tenant_feature_enabled("trade_in_sales", default=False):
                 return jsonify(success=False, error="ميزة الاستبدال غير مفعّلة لهذه الشركة"), 400
 
