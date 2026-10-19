@@ -1,0 +1,228 @@
+/* Self-hosted FINORA typography also works in the audit page's strict CSP. */
+@font-face { font-family: 'Finora UI'; src: url('../fonts/finora-arabic-400.woff2') format('woff2'); font-weight: 400; font-display: swap; }
+@font-face { font-family: 'Finora UI'; src: url('../fonts/finora-arabic-500.woff2') format('woff2'); font-weight: 500; font-display: swap; }
+@font-face { font-family: 'Finora UI'; src: url('../fonts/finora-arabic-600.woff2') format('woff2'); font-weight: 600; font-display: swap; }
+@font-face { font-family: 'Finora UI'; src: url('../fonts/finora-arabic-700.woff2') format('woff2'); font-weight: 700 900; font-display: swap; }
+/* Screen-only: invoice/receipt print layouts are preserved. */
+@media screen {
+  html body.finora-unified {
+    --fu-accent: #7950df;
+    --fu-accent-hover: #6840ca;
+    --fu-accent-soft: #f1ecfd;
+    --fu-ink: #25213f;
+    --fu-muted: #746d88;
+    --fu-line: #e8e3f1;
+    --fu-soft: #f8f6fc;
+    --fu-bg: #f6f5fa;
+    --fu-surface: #fff;
+    --fu-radius: 16px;
+    --fu-shadow: 0 2px 10px #44315e05;
+    --primary: var(--fu-accent);
+    --primary-hover: var(--fu-accent-hover);
+    --primary-soft: var(--fu-accent-soft);
+    --bg: var(--fu-bg);
+    --bg-page: var(--fu-bg);
+    --bg-main: var(--fu-bg);
+    --card: var(--fu-surface);
+    --card-alt: var(--fu-soft);
+    --surface: var(--fu-surface);
+    --surface-soft: var(--fu-soft);
+    --surface-hover: var(--fu-accent-soft);
+    --border: var(--fu-line);
+    --border-light: var(--fu-line);
+    --text: var(--fu-ink);
+    --text-main: var(--fu-ink);
+    --text-secondary: var(--fu-muted);
+    --text-muted: var(--fu-muted);
+    --shadow-card: var(--fu-shadow);
+    --card-bg: var(--fu-surface);
+    color: var(--fu-ink);
+    background: var(--fu-bg);
+    --ed-bg: var(--fu-bg); --ed-surface: var(--fu-surface); --ed-soft: var(--fu-soft); --ed-border: var(--fu-line); --ed-wine: var(--fu-accent); --ed-wine-hover: var(--fu-accent-hover); --ed-wine-soft: var(--fu-accent-soft); --ed-ink: var(--fu-ink); --ed-muted: var(--fu-muted);
+    --fm-bg: var(--fu-bg); --fm-surface: var(--fu-surface); --fm-soft: var(--fu-soft); --fm-border: var(--fu-line); --fm-burgundy: var(--fu-accent); --fm-burgundy-hover: var(--fu-accent-hover); --fm-burgundy-soft: var(--fu-accent-soft); --fm-ink: var(--fu-ink); --fm-muted: var(--fu-muted);
+    --ws-accent: var(--fu-accent); --ws-accent-soft: var(--fu-accent-soft); --ws-bg: var(--fu-bg); --ws-border: var(--fu-line); --ws-text: var(--fu-ink); --ws-muted: var(--fu-muted); --ws-font: 'Finora UI', Tahoma, Arial, sans-serif;
+    --exec-blue: var(--fu-accent); --exec-purple: var(--fu-accent); --exec-text: var(--fu-ink); --exec-border: var(--fu-line); --exec-bg: var(--fu-bg);
+    --chat-primary: var(--fu-accent); --chat-primary-light: var(--fu-accent-soft); --chat-primary-dark: var(--fu-accent-hover); --chat-bg: var(--fu-bg); --chat-surface: var(--fu-surface); --chat-surface-light: var(--fu-soft); --chat-text: var(--fu-ink); --chat-muted: var(--fu-muted);
+    font-family: 'Finora UI', Tahoma, Arial, sans-serif !important;
+    font-size: 14px;
+    line-height: 1.65;
+  }
+  /* The legacy base assigns a font to every element, overriding inheritance. */
+  body.finora-unified :where(h1,h2,h3,h4,h5,h6,p,span,div,section,article,header,footer,nav,main,aside,form,label,input,textarea,select,button,a,ul,ol,li,dl,dt,dd,table,thead,tbody,tfoot,tr,th,td,strong,b,em,small,summary,details,option,fieldset,legend):not(.fa,.fas,.far,.fab,.fal,.fad,.fa-solid,.fa-regular,.fa-brands,.fa-light,.fa-thin,.fa-duotone,.ag-icon,.material-icons,.material-symbols-outlined) {
+    font-family: inherit !important;
+  }
+  body.finora-unified :is(#fdPage,#ordersFd,.ins-wrap,.finance-page,.pos-app,.quick-pos,.notes-app,.exec-board,.ed-app,.fm-app,.ws-root) {
+    --fd-purple: var(--fu-accent);
+    --fd-purple-soft: var(--fu-accent-soft);
+    --fd-surface: var(--fu-surface);
+    --fd-soft: var(--fu-soft);
+    --fd-border: var(--fu-line);
+    --fd-border-strong: #dbd3e9;
+    --fd-text: var(--fu-ink);
+    --fd-text-2: var(--fu-muted);
+    --fd-muted: var(--fu-muted);
+    --fd-shadow: var(--fu-shadow);
+    --fd-radius: 12px;
+    --fin-accent: var(--fu-accent);
+    --fin-ink: var(--fu-ink);
+    --fin-line: var(--fu-line);
+    --ins-navy: var(--fu-ink);
+    --ins-blue: var(--fu-accent);
+    --ins-border: var(--fu-line);
+    --ins-text: var(--fu-ink);
+    --ins-muted: var(--fu-muted);
+    --ins-shadow: var(--fu-shadow);
+    --n-accent: var(--fu-accent);
+    font-family: inherit !important;
+  }
+  body.finora-unified .page-main {
+    padding: clamp(14px, 2vw, 28px) !important;
+    background: var(--fu-bg);
+    gap: 18px;
+  }
+  body.finora-unified :is(#fdPage,#ordersFd,.mnt-page,.tr-wrap,.fa-page,.rs-page,.rc-page,.finance-page,.ins-wrap,.advisor-page,.daily-archive,.dr-page,.inv-add-page,.team-admin-page,.settings-page-wrap) {
+    width: 100%;
+    max-width: 1640px;
+    min-width: 0;
+    box-sizing: border-box;
+    margin-inline: auto;
+    padding-inline: 0;
+    gap: 18px;
+  }
+  body.finora-unified .fu-page-header,
+  body.finora-unified :is(#fdPage,#ordersFd) .fu-page-header {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px 18px;
+    min-height: 96px;
+    height: auto;
+    margin: 0 0 18px;
+    padding: 20px 22px;
+    border: 1px solid var(--fu-line);
+    border-radius: 18px;
+    background: linear-gradient(110deg, #eee8fa88, #ffffff 70%) !important;
+    color: var(--fu-ink) !important;
+    box-shadow: var(--fu-shadow) !important;
+    box-sizing: border-box;
+    overflow: visible;
+  }
+  body.finora-unified :is(#fdPage,#ordersFd) .fu-page-header { margin-bottom: 0; }
+  body.finora-unified .fu-page-header > * { min-width: 0; max-width: 100%; }
+  body.finora-unified .fu-title,
+  body.finora-unified :is(#fdPage,#ordersFd) .fu-title {
+    margin: 0 !important;
+    font-size: clamp(20px, 1.8vw, 25px) !important;
+    line-height: 1.5 !important;
+    font-weight: 800 !important;
+    letter-spacing: -.35px;
+    color: var(--fu-ink) !important;
+    overflow-wrap: anywhere;
+  }
+  body.finora-unified .fu-subtitle { margin: 5px 0 0 !important; font-size: 12px !important; color: var(--fu-muted) !important; line-height: 1.8; }
+  body.finora-unified .fu-page-header :is(.fd-header-main,.ofd-header-main) { display: flex !important; align-items: center; gap: 12px; }
+  body.finora-unified .fu-page-header :is(.fd-header-icon,.ofd-header-icon,.rc-hero-icon,.cr-hero-icon) {
+    width: 42px; height: 42px; border-radius: 12px; flex: 0 0 42px;
+    border: 0; color: var(--fu-accent); background: var(--fu-accent-soft); box-shadow: none;
+  }
+  body.finora-unified .fu-page-header .ins-dashboard-hero__art,
+  body.finora-unified .fu-page-header::before,
+  body.finora-unified .fu-page-header::after { display: none; }
+  body.finora-unified .ins-dashboard-hero__actions { margin-top: 14px; }
+  body.finora-unified .fu-compact-header {
+    background: var(--fu-surface) !important;
+    color: var(--fu-ink) !important;
+    border-color: var(--fu-line) !important;
+    box-shadow: var(--fu-shadow) !important;
+    font-family: inherit !important;
+  }
+  body.finora-unified .fu-compact-header .fu-title { font-size: 18px !important; }
+  body.finora-unified[data-workspace-header='ready'] .topbar .page-title { visibility: hidden; }
+
+  body.finora-unified .fu-card,
+  body.finora-unified :is(#fdPage,#ordersFd) .fu-card {
+    border: 1px solid var(--fu-line) !important;
+    border-radius: var(--fu-radius) !important;
+    background: var(--fu-surface) !important;
+    color: var(--fu-ink);
+    box-shadow: var(--fu-shadow) !important;
+  }
+  body.finora-unified .fu-stat,
+  body.finora-unified :is(#fdPage,#ordersFd) .fu-stat {
+    min-width: 0;
+    border: 1px solid var(--fu-line) !important;
+    border-radius: var(--fu-radius) !important;
+    background: var(--fu-surface) !important;
+    box-shadow: var(--fu-shadow) !important;
+    color: var(--fu-ink) !important;
+  }
+  body.finora-unified #finoraDesktopHome .home-finance-featured { background: linear-gradient(120deg, #eee7fc, #faf8ff 72%) !important; border-color: #dcd0f1 !important; }
+  body.finora-unified .fu-stat :is(.label,.lbl,.stat-label,.fd-kpi-label,.kpi-label) { color: var(--fu-muted); font-size: 12px; font-weight: 600; }
+  body.finora-unified .fu-stat :is(.value,.val,.num,.stat-value,.fd-kpi-value,.kpi-value) { font-weight: 800; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  body.finora-unified .fu-toolbar { gap: 10px; }
+  body.finora-unified .fu-control,
+  body.finora-unified :is(#fdPage,#ordersFd) .fu-control {
+    font-family: inherit !important;
+    border-radius: 12px !important;
+    min-height: 42px !important;
+    height: auto !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    line-height: 1.5 !important;
+    box-shadow: none !important;
+    text-decoration: none;
+    box-sizing: border-box;
+  }
+  body.finora-unified .fu-primary,
+  body.finora-unified :is(#fdPage,#ordersFd) .fu-primary {
+    background: var(--fu-accent) !important; border-color: var(--fu-accent) !important; color: #fff !important;
+  }
+  body.finora-unified .fu-primary:hover { background: var(--fu-accent-hover) !important; }
+  body.finora-unified .fu-control:disabled { opacity: .5; cursor: not-allowed; }
+  body.finora-unified .fu-secondary,
+  body.finora-unified :is(#fdPage,#ordersFd) .fu-secondary { background: var(--fu-surface) !important; color: var(--fu-ink) !important; border-color: var(--fu-line) !important; }
+  body.finora-unified .fu-danger,
+  body.finora-unified :is(#fdPage,#ordersFd) .fu-danger { background: #fff0f3 !important; border-color: #f0b9c5 !important; color: #b6294c !important; }
+  body.finora-unified .fu-tabs { gap: 8px; }
+  body.finora-unified .fu-tabs :is(a,button) { font-family: inherit !important; border-radius: 10px !important; font-size: 13px !important; font-weight: 700; }
+  body.finora-unified .fu-tabs :is(.active,[aria-selected='true']) { background: var(--fu-accent-soft) !important; color: var(--fu-accent) !important; border-color: #d9caf6 !important; box-shadow: none !important; }
+  body.finora-unified :is(.page-main,.pos-app,.quick-pos,.fm-app,.ed-app) :is(input,select,textarea):not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='hidden']):not([type='file']) {
+    border-radius: 11px !important;
+    border-color: var(--fu-line) !important;
+    color: var(--fu-ink) !important;
+    background-color: var(--fu-surface) !important;
+    font-family: inherit !important;
+  }
+  body.finora-unified :is(input,select,textarea):focus-visible { outline-color: var(--fu-accent); }
+  body.finora-unified :is(button,a):focus-visible { outline: 2px solid var(--fu-accent); outline-offset: 3px; }
+  body.finora-unified :is(#fdPage,#ordersFd) { --ag-header-background-color: var(--fu-soft); --ag-background-color: var(--fu-surface); --ag-foreground-color: var(--fu-ink); --ag-border-color: var(--fu-line); --ag-font-family: 'Finora UI', Tahoma, Arial, sans-serif; }
+  body.finora-unified .fu-scroll-table th { background: var(--fu-soft) !important; color: var(--fu-muted) !important; font-size: 12px; font-weight: 700; }
+  body.finora-unified .fu-scroll-table :is(th,td) { border-color: var(--fu-line) !important; }
+  body.finora-unified .fu-scroll-table tbody td { font-size: 13px; }
+  body.finora-unified :is(.fd-drawer-panel,.ofd-drawer-panel,.finance-drawer,.pl-dialog,.modal-content,.ins-quick-modal__panel,.cr-camera-box) { background: var(--fu-surface); border-color: var(--fu-line); border-radius: 18px; color: var(--fu-ink); }
+  body.finora-unified :is(.notes-library,.notes-workspace,.pos-main,.pos-sidebar,.ed-pane,.fm-panel,.ws-sidebar,.ws-main) { background-color: var(--fu-surface); color: var(--fu-ink); border-color: var(--fu-line); }
+  body.finora-unified.finora-audit { --ink: 37 33 63; --ink-soft: 116 109 136; --surface: 255 255 255; --surface-sunken: 248 246 252; --line: 232 227 241; --maroon: 121 80 223; --maroon-soft: 241 236 253; --violet: 121 80 223; --violet-soft: 241 236 253; --violet-deep: 104 64 202; }
+  body.finora-unified.finora-audit .rounded-panel { border-radius: var(--fu-radius); }
+  body.finora-unified :is(.sales-ai-app,.sales-ai-settings,.sales-ai-overlay,.sales-ai-message-actions) {
+    --ai-bg: var(--fu-bg); --ai-surface: var(--fu-surface); --ai-surface-soft: var(--fu-soft); --ai-surface-hover: var(--fu-accent-soft); --ai-border: var(--fu-line); --ai-text: var(--fu-ink); --ai-muted: var(--fu-muted); --ai-primary: var(--fu-accent); --ai-primary-hover: var(--fu-accent-hover); --ai-primary-soft: var(--fu-accent-soft);
+  }
+  body.finora-unified.sales-ai-page .page-main { padding: 0 !important; }
+
+  @media (max-width: 860px) {
+    body.finora-unified .fu-page-header,
+    body.finora-unified :is(#fdPage,#ordersFd) .fu-page-header { padding: 16px; min-height: 84px; border-radius: 16px; gap: 12px; }
+    body.finora-unified .fu-title,
+    body.finora-unified :is(#fdPage,#ordersFd) .fu-title { font-size: 20px !important; }
+    body.finora-unified .fu-page-header .fu-subtitle { font-size: 12px !important; }
+    body.finora-unified .fu-control,
+    body.finora-unified :is(#fdPage,#ordersFd) .fu-control { min-height: 44px !important; font-size: 14px !important; }
+    body.finora-unified .fu-compact-header .fu-title { font-size: 16px !important; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    body.finora-unified :is(.fu-control,.fu-card,.fu-stat) { transition: none !important; animation: none !important; }
+  }
+}
+@media print {
+  .fu-generated-header { display: none !important; }
+}
