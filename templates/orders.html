@@ -327,9 +327,6 @@
 .ofd .orders-status-tabs{gap:8px;margin-bottom:12px;}
 .ofd .orders-status-tabs a{border:0;background:transparent;border-radius:12px;padding:10px 16px;font-size:14px;font-weight:700;color:var(--ofd-muted,#667085);}
 .ofd .orders-status-tabs a[aria-current="page"]{background:var(--ofd-purple-soft,#f1eaff);color:var(--ofd-purple,#6c3fd1);}
-.ofd .orders-saved-filters-panel{font-size:13px;color:var(--ofd-muted,#667085);}
-.ofd .orders-saved-filters-panel summary{cursor:pointer;padding:4px 0;}
-.ofd .orders-saved-filters{margin-top:10px;}
 @media(max-width:860px){ .ofd .orders-status-tabs{flex-wrap:nowrap;} }
 </style>
 <!-- ==================== Status Tabs ==================== -->
@@ -8753,19 +8750,6 @@
         ensureEssentialColumnsVisible();
         if (ORDERS_GRID_LEGACY) {
           try { params.api.sizeColumnsToFit(); } catch (e) { /* ignore */ }
-        }
-        if (window.FinoraOrdersViews && document.getElementById('ordersWorkspace')) {
-          window.FinoraOrdersViews.init(document.getElementById('ordersWorkspace'), {
-            getGridState: () => ({ filters: gridApi.getFilterModel(), sort: ordersSelectedSort() }),
-            applyGridState: (state) => {
-              gridApi.setFilterModel(state.filters);
-              gridApi.applyColumnState({
-                state: state.sort ? [{ colId: state.sort.field, sort: state.sort.direction }] : [],
-                defaultState: { sort: null }
-              });
-              scheduleOrdersReload(1);
-            }
-          });
         }
         loadOrdersPage(1);
       },
