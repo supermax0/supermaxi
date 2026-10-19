@@ -22,6 +22,12 @@
     </div>
     <label class="settings-toggle"><input type="checkbox" id="organizedNavigation" {% if not navigation_available %}disabled{% endif %} {% if ui_flags.get('navigation_v2', False) == true %}checked{% endif %}><span class="settings-toggle-slider"></span></label>
   </div>
+  <div class="settings-switch-row">
+    <div class="settings-switch-label"><label for="showSidebarOrderStatuses"><strong>إظهار حالات الطلبات في القائمة الجانبية</strong></label>
+      <span>تم الطلب، معبأة، جاري الشحن، تم التوصيل، والملغاة. هذه الحالات متاحة أيضاً من داخل صفحة الطلبات.</span>
+    </div>
+    <label class="settings-toggle"><input type="checkbox" id="showSidebarOrderStatuses" {% if ui_flags.get('show_sidebar_order_statuses', False) == true %}checked{% endif %}><span class="settings-toggle-slider"></span></label>
+  </div>
 </div>
 
 <div class="settings-section-card">
@@ -108,6 +114,8 @@
 document.getElementById("saveAppearanceBtn").addEventListener("click", function () {
   const btn = this;
   btn.disabled = true;
+  const shortcuts = document.getElementById("showSidebarOrderStatuses");
+  const shortcutsChanged = shortcuts.checked !== shortcuts.defaultChecked;
 
   const payload = {
     default_theme: document.getElementById("defaultTheme").value,
@@ -116,6 +124,7 @@ document.getElementById("saveAppearanceBtn").addEventListener("click", function 
     ai_enabled: document.getElementById("aiEnabled").checked,
     ui_flags: {
       navigation_v2: document.getElementById("organizedNavigation").checked,
+      show_sidebar_order_statuses: document.getElementById("showSidebarOrderStatuses").checked,
       show_dash_cash_balance: document.getElementById("showDashCashBalance").checked,
       show_dash_period_profit: document.getElementById("showDashPeriodProfit").checked,
       show_dash_total_sales: document.getElementById("showDashTotalSales").checked,
@@ -139,6 +148,7 @@ document.getElementById("saveAppearanceBtn").addEventListener("click", function 
       btn.disabled = false;
       if (data && data.success) {
         showToast("تم حفظ إعدادات الواجهة بنجاح", "success");
+        if (shortcutsChanged) window.location.reload();
       } else {
         showToast("حدث خطأ أثناء الحفظ", "error");
       }

@@ -2603,6 +2603,7 @@ or request.path.startswith('/superadmin') %}
               <i class="fa fa-list"></i> {{ _('orders_nav_all') }}
             </a>
             {% endif %}
+            {% if _navigation_flags.get('show_sidebar_order_statuses', False) == true %}
             {% if (is_admin or (current_employee and current_employee.has_permission('view_orders_placed'))) and business_allows('orders_placed') %}
             <a href="/orders/ordered" class="{% if '/orders/ordered' in request.path %}active{% endif %}">
               <i class="fa fa-box-open"></i> {{ _('orders_status_ordered') }}
@@ -2627,6 +2628,7 @@ or request.path.startswith('/superadmin') %}
             <a href="/orders/cancelled" class="{% if '/orders/cancelled' in request.path %}active{% endif %}">
               <i class="fa fa-trash-alt"></i> {{ _('orders_nav_cancelled') }}
             </a>
+            {% endif %}
             {% endif %}
           </div>
         </div>

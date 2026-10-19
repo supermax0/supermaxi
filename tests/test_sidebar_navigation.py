@@ -103,5 +103,35 @@ def test_appearance_opt_in_and_rollback_never_change_money(safety, client):
         assert money_state(safety) == before
 
 
+def test_order_status_shortcuts_default_hidden_and_appearance_toggle_persists(safety, client):
+    from tests.test_page_read_safety import money_state
+    shortcuts = {"/orders/ordered", "/orders/packed", "/orders/shipping", "/orders/delivered", "/orders/cancelled"}
+    before = money_state(safety)
+
+    def verify(enabled):
+        for mode in ("classic", "organized"):
+            response = client.get("/orders/?navigation=" + mode)
+            assert response.status_code == 200
+            html = response.get_data(as_text=True)
+            nav = re.search(r'<nav class="menu"[^>]*>(.*?)</nav>', html, re.S)
+            assert nav
+            hrefs = {a["attrs"].get("href") for a in links(nav.group(1))}
+            assert (hrefs & shortcuts) == (shortcuts if enabled else set())
+            assert "/orders" in hrefs
+            # Status navigation within the order page remains accessible.
+            assert all('href="' + path + '"' in html for path in shortcuts)
+        appearance = client.get("/settings/appearance")
+        assert appearance.status_code == 200
+        switch = re.search(r'<input[^>]*id="showSidebarOrderStatuses"[^>]*>', appearance.get_data(as_text=True))
+        assert switch and ("checked" in switch.group(0)) == enabled
+        assert money_state(safety) == before
+
+    verify(False)
+    for enabled in (True, False):
+        response = client.post("/settings/appearance/update", json={"ui_flags": {"show_sidebar_order_statuses": enabled}})
+        assert response.status_code == 200 and response.json["success"]
+        verify(enabled)
+
+
 # Reuse the real isolated tenant fixture; no application/financial mocks.
 from tests.test_page_read_safety import safety, client  # noqa: E402,F401
