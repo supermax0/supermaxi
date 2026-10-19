@@ -1,172 +1,203 @@
-/* FINORA desktop workspace: violet glass, quiet surfaces and clear numeric hierarchy.
-   Scoped to the signed-in home; all original data, IDs and modal handlers stay in place. */
+/* Responsive FINORA home. Component containers measure the usable workspace,
+   independently of the sidebar. No container is placed around fixed dialogs. */
 body.page-dashboard {
-  --home-ink: #1e1b3a;
-  --home-muted: #827d9b;
-  --home-line: #e8e4f3;
+  --home-ink: #25213f;
+  --home-muted: #746d88;
+  --home-line: #e8e3f1;
   --home-surface: #fff;
-  --home-soft: #f7f5fc;
-  --home-violet: #7c4df6;
-  --dashboard-primary: #7c4df6;
+  --home-soft: #f8f6fc;
+  --home-violet: #7950df;
+  --dashboard-primary: #7950df;
   --dashboard-text: var(--home-ink);
   --dashboard-muted: var(--home-muted);
   --dashboard-border: var(--home-line);
   --dashboard-card: var(--home-surface);
   color: var(--home-ink);
-  background: #f5f4fb;
+  background: #f6f5fa;
 }
 body.page-dashboard .page-main {
-  background: radial-gradient(ellipse at 95% 0, #ece6ff88, transparent 42%), radial-gradient(ellipse at 0 50%, #e6f0ff66, transparent 44%), #f6f5fb;
-  padding: 28px !important;
+  background: radial-gradient(ellipse at 95% 0, #eee8ff88, transparent 48%), #f7f6fb;
+  padding: clamp(14px, 2vw, 28px) !important;
 }
-body.page-dashboard .dashboard-shell { width: 100%; min-width: 0; max-width: 1680px; margin-inline: auto; gap: 22px; }
-body.page-dashboard .dashboard-shell > * { min-width: 0; max-width: 100%; }
-body.page-dashboard .dashboard-shell, body.page-dashboard .dashboard-shell * { box-sizing: border-box; }
-body.page-dashboard .desktop-home-header { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 6px 2px 4px; }
-body.page-dashboard .desktop-home-eyebrow { display: flex; align-items: center; gap: 7px; color: var(--home-violet); font-size: 12px; font-weight: 700; }
-body.page-dashboard .desktop-home-eyebrow > span { width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 4px #7c4df60c; }
-body.page-dashboard .desktop-home-intro { min-width: 0; }
-body.page-dashboard .desktop-home-intro h1 { margin: 9px 0 5px; font-size: clamp(24px, 2.6vw, 32px); font-weight: 800; letter-spacing: -.8px; overflow-wrap: anywhere; line-height: 1.6; color: var(--home-ink); }
-body.page-dashboard .desktop-home-intro p { margin: 0; font-size: 13px; color: var(--home-muted); line-height: 1.8; }
-body.page-dashboard .desktop-home-tools { display: flex; flex-direction: column; align-items: end; gap: 12px; flex-shrink: 0; }
-body.page-dashboard .desktop-home-date { font-size: 12px; color: var(--home-muted); white-space: nowrap; }
-body.page-dashboard .desktop-home-period { width: auto !important; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 10px; min-height: 44px; padding: 10px 14px; border: 1px solid var(--home-line); border-radius: 13px; background: var(--home-surface); color: var(--home-ink); box-shadow: 0 3px 8px #30265b04; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700; }
-body.page-dashboard .desktop-home-period > svg:first-child { color: var(--home-violet); }
-body.page-dashboard .desktop-home-launcher { display: grid; grid-template-columns: repeat(auto-fit, minmax(165px, 1fr)); gap: 10px; padding: 10px; border: 1px solid #ffffffdd; border-radius: 21px; background: #ffffff85; box-shadow: 0 8px 30px #35207305; }
-body.page-dashboard .desktop-home-shortcut { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 76px; padding: 12px; border: 1px solid transparent; border-radius: 14px; color: var(--home-ink); text-decoration: none; transition: background .16s, border-color .16s, transform .16s; }
-body.page-dashboard .desktop-home-shortcut > span:nth-child(2) { display: flex; flex-direction: column; min-width: 0; gap: 4px; flex: 1; }
-body.page-dashboard .desktop-home-shortcut b { font-size: 13px; font-weight: 750; }
-body.page-dashboard .desktop-home-shortcut small { font-size: 10px; color: var(--home-muted); line-height: 1.6; }
-body.page-dashboard .desktop-home-shortcut > svg { color: #a49bbb; flex-shrink: 0; }
-body.page-dashboard .desktop-home-shortcut-icon { width: 41px; height: 41px; display: grid; place-items: center; border-radius: 12px; background: #f0ebff; color: #7c4df6; flex-shrink: 0; }
-body.page-dashboard .desktop-home-shortcut-icon.is-azure { background: #eaf1ff; color: #3b7df6; }
-body.page-dashboard .desktop-home-shortcut-icon.is-green { background: #e9f8f1; color: #16a36a; }
-body.page-dashboard .desktop-home-shortcut-icon.is-amber { background: #fff4e5; color: #cc842d; }
-body.page-dashboard .desktop-home-shortcut--primary { background: #f0ebff; border-color: #e5dcff; }
-body.page-dashboard .desktop-home-shortcut--primary .desktop-home-shortcut-icon { background: #7c4df6; color: #fff; box-shadow: 0 4px 10px #7c4df625; }
-body.page-dashboard .desktop-home-shortcut:hover { background: var(--home-surface); border-color: #d8cbfa; transform: translateY(-2px); }
-body.page-dashboard .desktop-home-section-label { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 4px 2px -8px; }
-body.page-dashboard .desktop-home-section-label h2 { margin: 0; font-size: 15px; font-weight: 800; }
-body.page-dashboard .desktop-home-section-label > span { font-size: 11px; color: var(--home-muted); }
-body.page-dashboard .dashboard-branch-banner { background: transparent; border: 0; border-bottom: 1px solid var(--home-line); border-radius: 0; box-shadow: none; padding: 0 0 13px; margin: 0 auto 16px; max-width: 1680px; }
-body.page-dashboard .dashboard-branch-banner__icon { width: 30px; height: 30px; flex-basis: 30px; border-radius: 9px; background: #ece6ff; color: var(--home-violet); }
-body.page-dashboard .dashboard-branch-banner__content { flex-direction: row; align-items: center; gap: 8px; font-size: 11px; }
-body.page-dashboard .dashboard-branch-banner strong { color: var(--home-ink); font-size: 12px; }
-body.page-dashboard .finora-summary-grid { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 12px; margin: 0; }
-body.page-dashboard .finora-stat-card,
-body.page-dashboard .finora-wide-card,
-body.page-dashboard .dashboard-order-grid .order-stat-link.finora-stat-card { border: 1px solid var(--home-line); border-radius: 18px; background: var(--home-surface); box-shadow: 0 4px 12px #2d1e5b03; padding: 18px; min-height: 146px; text-decoration: none; color: var(--home-ink); position: relative; overflow: hidden; }
-body.page-dashboard .finora-stat-card::before,
-body.page-dashboard .finora-wide-card::before { content: none; }
-body.page-dashboard .finora-stat-top { display: flex; align-items: flex-start; gap: 10px; justify-content: space-between; }
-body.page-dashboard .finora-stat-top > div { min-width: 0; flex: 1; }
-body.page-dashboard .finora-stat-label { color: #746e8b; font-size: 12px; font-weight: 650; line-height: 1.7; min-height: 35px; }
-body.page-dashboard .finora-stat-value { font-size: clamp(18px, 1.65vw, 25px); font-weight: 800; letter-spacing: -.4px; line-height: 1.4; margin-top: 10px; font-variant-numeric: tabular-nums; color: var(--home-ink); overflow-wrap: anywhere; }
-body.page-dashboard .finora-stat-value[data-dashboard-private] { letter-spacing: 1px; }
-body.page-dashboard .finora-stat-note { font-size: 10px; margin-top: 13px; line-height: 1.7; color: var(--home-muted); }
-body.page-dashboard .finora-stat-icon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 12px; font-size: 16px; flex-shrink: 0; }
-body.page-dashboard .finora-stat-icon.purple { background: #f0ebff; color: #7c4df6; }
-body.page-dashboard .finora-stat-icon.success { background: #e9f8f1; color: #16a36a; }
-body.page-dashboard .finora-stat-icon.warning { background: #fff3df; color: #d48c2b; }
-body.page-dashboard .finora-stat-icon.danger { background: #ffedf0; color: #dd5a74; }
-body.page-dashboard .finora-stat-icon.info { background: #eaf2ff; color: #4a87ea; }
-body.page-dashboard .finora-wide-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 12px; margin: -10px 0 0; }
-body.page-dashboard .finora-wide-card { min-height: 122px; padding: 18px 20px; }
-body.page-dashboard .finora-wide-card .finora-stat-label { min-height: 0; }
-body.page-dashboard .finora-wide-card .finora-stat-value { margin-top: 8px; font-size: 23px; }
-body.page-dashboard .finora-wide-card .finora-stat-note { margin-top: 7px; }
-body.page-dashboard .dashboard-section { margin: 0; min-width: 0; }
-body.page-dashboard .dashboard-section-head { margin: 4px 0 14px; align-items: center; }
-body.page-dashboard .dashboard-section-title { color: var(--home-ink); font-size: 16px; font-weight: 800; }
-body.page-dashboard .dashboard-section-subtitle { font-size: 11px; color: var(--home-muted); margin-top: 4px; }
-body.page-dashboard .dashboard-order-grid { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 12px; }
-body.page-dashboard .dashboard-order-grid .order-stat-link.finora-stat-card { min-height: 124px; padding: 16px; transition: transform .16s, border-color .16s, box-shadow .16s; }
-body.page-dashboard .dashboard-order-grid .order-stat-link:hover { transform: translateY(-3px); border-color: #cfc1f6; box-shadow: 0 8px 20px #6e44c910; }
-body.page-dashboard .dashboard-order-grid .finora-stat-label { min-height: 0; font-size: 11px; }
-body.page-dashboard .dashboard-order-grid .finora-stat-value { margin-top: 8px; font-size: 27px; }
-body.page-dashboard .dashboard-order-grid .finora-stat-note { margin-top: 8px; font-size: 10px; }
-body.page-dashboard .dashboard-order-grid .finora-stat-icon { width: 34px; height: 34px; border-radius: 10px; }
-body.page-dashboard .dashboard-quick-card { border: 1px solid var(--home-line); border-radius: 20px; padding: 24px; background: var(--home-surface); box-shadow: 0 4px 16px #2d1e5b03; }
-body.page-dashboard .dashboard-quick-card::before { content: none; }
-body.page-dashboard .dashboard-quick-card-grid { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 0; margin-top: 18px; border: 1px solid var(--home-line); border-radius: 14px; overflow: hidden; }
-body.page-dashboard .dashboard-quick-item { border: 0; border-inline-end: 1px solid var(--home-line); border-radius: 0; background: var(--home-soft); padding: 17px; min-width: 0; }
-body.page-dashboard .dashboard-quick-item:last-child { border-inline-end: 0; }
-body.page-dashboard .dashboard-quick-item-label { color: var(--home-muted); font-size: 10px; }
-body.page-dashboard .dashboard-quick-item-value { color: var(--home-ink); font-size: 18px; font-weight: 800; margin-top: 8px; overflow-wrap: anywhere; }
-body.page-dashboard .charts-container { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
-body.page-dashboard .chart-card { background: var(--home-surface); border: 1px solid var(--home-line); border-radius: 20px; padding: 22px; box-shadow: 0 4px 16px #2d1e5b03; min-width: 0; margin: 0; }
-body.page-dashboard .chart-card::before { content: none; }
-body.page-dashboard .chart-card h4 { color: var(--home-ink); font-size: 14px; font-weight: 750; margin: 0 0 14px; }
-body.page-dashboard .chart-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
-body.page-dashboard .chart-meta { background: var(--home-soft); border: 0; border-radius: 12px; margin: 0 0 18px; padding: 12px; }
-body.page-dashboard .chart-meta-label { font-size: 10px; color: var(--home-muted); }
-body.page-dashboard .chart-meta-value { color: var(--home-ink); font-size: 14px; }
-body.page-dashboard .dashboard-overdue-card { background: var(--home-surface); border: 1px solid var(--home-line); border-radius: 20px; box-shadow: none; }
-body.page-dashboard .dashboard-overdue-head { background: var(--home-surface); border-bottom: 1px solid var(--home-line); padding: 22px; }
-body.page-dashboard .dashboard-overdue-title { font-size: 16px; color: var(--home-ink); }
-body.page-dashboard .dashboard-overdue-table th { background: var(--home-soft); color: var(--home-muted); }
-body.page-dashboard .dashboard-overdue-table td { border-color: var(--home-line); color: var(--home-ink); }
-body.page-dashboard .dashboard-overdue-sub { color: var(--home-muted); }
-body.page-dashboard .dashboard-welcome { border: 1px solid var(--home-line); border-radius: 24px; background: var(--home-surface); padding: clamp(24px,6vw,64px); box-shadow: 0 12px 40px #46239008; }
+body.page-dashboard .dashboard-branch-banner { align-self: start; width: fit-content; max-width: 100%; gap: 8px; padding: 6px 10px; margin: 0 0 6px; background: #fff9; border: 1px solid var(--home-line); border-radius: 10px; box-shadow: none; }
+body.page-dashboard .dashboard-branch-banner__icon { width: 26px; height: 26px; flex-basis: 26px; border-radius: 8px; background: #f0eaff; color: var(--home-violet); font-size: 11px; }
+body.page-dashboard .dashboard-branch-banner__content { display: flex; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 4px 8px; font-size: 11px; }
+body.page-dashboard .dashboard-branch-banner strong { font-size: 12px; color: var(--home-ink); }
+#finoraDesktopHome { width: 100%; min-width: 0; max-width: 1640px; margin-inline: auto; gap: 22px; }
+#finoraDesktopHome, #finoraDesktopHome * { box-sizing: border-box; }
+#finoraDesktopHome > * { min-width: 0; max-width: 100%; }
+#finoraDesktopHome .desktop-home-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 18px; padding: 22px 24px; border: 1px solid #e7dff4; border-radius: 22px; background: linear-gradient(110deg, #ede7fc88, #ffffffd9 56%); box-shadow: 0 5px 18px #46306b04; }
+#finoraDesktopHome .desktop-home-intro { min-width: 0; flex: 1 1 260px; }
+#finoraDesktopHome .desktop-home-eyebrow { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--home-violet); font-weight: 700; }
+#finoraDesktopHome .desktop-home-eyebrow > span { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+#finoraDesktopHome .desktop-home-intro h1 { color: var(--home-ink); margin: 7px 0 4px; font-size: clamp(21px, 2vw, 29px); line-height: 1.5; font-weight: 800; letter-spacing: -.5px; overflow-wrap: anywhere; }
+#finoraDesktopHome .desktop-home-intro p { margin: 0; color: var(--home-muted); font-size: 12px; line-height: 1.8; }
+#finoraDesktopHome .desktop-home-tools { display: flex; flex-direction: column; align-items: end; gap: 10px; max-width: 100%; }
+#finoraDesktopHome .desktop-home-date { font-size: 12px; color: var(--home-muted); }
+#finoraDesktopHome .desktop-home-period { width: auto !important; max-width: 100%; display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px; min-height: 44px; border: 1px solid #ded4f0; border-radius: 12px; background: var(--home-surface); color: var(--home-ink); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+#finoraDesktopHome .desktop-home-period > span { min-width: 0; overflow-wrap: anywhere; }
+#finoraDesktopHome .desktop-home-period > svg { color: var(--home-violet); flex-shrink: 0; }
+#finoraDesktopHome .desktop-home-launcher-wrap { container: home-launcher / inline-size; }
+#finoraDesktopHome .desktop-home-launcher-wrap:not(:has(a)) { display: none; }
+#finoraDesktopHome .desktop-home-launcher { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; padding: 0; border: 0; background: none; box-shadow: none; }
+#finoraDesktopHome .desktop-home-shortcut { display: flex; align-items: center; gap: 11px; min-width: 0; min-height: 74px; padding: 14px; background: #fff; border: 1px solid var(--home-line); border-radius: 15px; text-decoration: none; color: var(--home-ink); transition: border-color .15s, box-shadow .15s, transform .15s; }
+#finoraDesktopHome .desktop-home-shortcut > span:nth-child(2) { display: flex; flex-direction: column; flex: 1; min-width: 0; gap: 4px; }
+#finoraDesktopHome .desktop-home-shortcut b { font-size: 13px; font-weight: 750; }
+#finoraDesktopHome .desktop-home-shortcut small { font-size: 11px; line-height: 1.5; color: var(--home-muted); }
+#finoraDesktopHome .desktop-home-shortcut > svg { color: #a69bb9; flex-shrink: 0; }
+#finoraDesktopHome .desktop-home-shortcut-icon { display: grid; place-items: center; width: 39px; height: 39px; border-radius: 11px; color: #7950df; background: #f0eaff; flex-shrink: 0; }
+#finoraDesktopHome .desktop-home-shortcut-icon.is-azure { background: #eaf2ff; color: #407de0; }
+#finoraDesktopHome .desktop-home-shortcut-icon.is-green { background: #e8f7f0; color: #238b68; }
+#finoraDesktopHome .desktop-home-shortcut-icon.is-amber { background: #fff2e1; color: #b77828; }
+#finoraDesktopHome .desktop-home-shortcut--primary { background: #f2edff; border-color: #ddd0fa; }
+#finoraDesktopHome .desktop-home-shortcut--primary .desktop-home-shortcut-icon { background: #7950df; color: #fff; }
+#finoraDesktopHome .desktop-home-shortcut:hover { border-color: #cbb6ef; box-shadow: 0 5px 15px #6b40ae0c; transform: translateY(-2px); }
+#finoraDesktopHome .desktop-home-shortcut:last-child:nth-child(odd) { grid-column: 1 / -1; }
+#finoraDesktopHome .home-finance-section { container: home-finance / inline-size; }
+#finoraDesktopHome .desktop-home-section-label { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 14px; }
+#finoraDesktopHome .desktop-home-section-label h2 { margin: 0; font-size: 16px; font-weight: 800; color: var(--home-ink); }
+#finoraDesktopHome .desktop-home-section-label > span { color: var(--home-muted); font-size: 11px; }
+#finoraDesktopHome .home-finance-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)) !important; gap: 12px; margin: 0; }
+#finoraDesktopHome .home-finance-grid > :is(.finora-stat-card,.finora-wide-card) { display: grid; grid-template-columns: minmax(0,1fr) auto; grid-template-rows: auto 1fr auto; grid-template-areas: "label icon" "value value" "note note"; align-content: start; gap: 12px 10px; padding: 18px; min-height: 162px; border: 1px solid var(--home-line); border-radius: 18px; background: var(--home-surface); color: var(--home-ink); box-shadow: 0 3px 12px #44315e03; min-width: 0; overflow: visible; transition: border-color .15s, box-shadow .15s; transform: none; }
+#finoraDesktopHome .home-finance-grid > .home-finance-featured { grid-column: 1 / -1; background: linear-gradient(120deg, #eee7fc, #faf8ff 72%); border-color: #dcd0f1; }
+#finoraDesktopHome .home-finance-grid .finora-stat-top, #finoraDesktopHome .home-finance-grid .finora-stat-top > div { display: contents; }
+#finoraDesktopHome .home-finance-grid .finora-stat-label { grid-area: label; min-height: 0; align-self: center; color: var(--home-muted); font-size: 12px; font-weight: 650; line-height: 1.6; }
+#finoraDesktopHome .home-finance-grid .finora-stat-value { grid-area: value; align-self: center; margin: 0; max-width: none; min-width: 0; font-size: clamp(20px,3cqi,29px); line-height: 1.45; font-weight: 800; letter-spacing: -.6px; font-variant-numeric: tabular-nums; color: var(--home-ink); white-space: normal; text-overflow: clip; overflow: visible; overflow-wrap: anywhere; text-align: start; direction: inherit; }
+#finoraDesktopHome .home-finance-grid .home-finance-featured .finora-stat-value { font-size: clamp(27px,4cqi,38px); color: #5930b3; }
+#finoraDesktopHome .home-finance-grid .finora-stat-note { grid-area: note; margin: 0; min-width: 0; font-size: 11px; line-height: 1.6; white-space: normal; color: var(--home-muted); }
+#finoraDesktopHome .finora-stat-icon { display: grid; place-items: center; grid-area: icon; width: 34px; height: 34px; border-radius: 11px; font-size: 15px; flex-shrink: 0; }
+#finoraDesktopHome .finora-stat-icon.purple { color: #7950df; background: #f0eaff; }
+#finoraDesktopHome .finora-stat-icon.success { color: #238b68; background: #e8f7f0; }
+#finoraDesktopHome .finora-stat-icon.warning { color: #b77828; background: #fff2e1; }
+#finoraDesktopHome .finora-stat-icon.danger { color: #c84c67; background: #fdebf0; }
+#finoraDesktopHome .finora-stat-icon.info { color: #407de0; background: #eaf2ff; }
+#finoraDesktopHome .home-finance-grid > *::before, #finoraDesktopHome .chart-card::before, #finoraDesktopHome .dashboard-quick-card::before { content: none; }
+#finoraDesktopHome .home-orders-section { container: home-orders / inline-size; }
+#finoraDesktopHome .dashboard-section { min-width: 0; margin: 0; }
+#finoraDesktopHome .dashboard-section-head { margin: 0 0 14px; }
+#finoraDesktopHome .dashboard-section-title { color: var(--home-ink); font-size: 16px; font-weight: 800; }
+#finoraDesktopHome .dashboard-section-subtitle { margin-top: 4px; font-size: 11px; color: var(--home-muted); }
+#finoraDesktopHome .dashboard-order-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)) !important; gap: 12px; }
+#finoraDesktopHome .dashboard-order-grid .order-stat-link { display: block; min-width: 0; padding: 17px; min-height: 116px; border: 1px solid var(--home-line); border-radius: 17px; background: var(--home-surface); box-shadow: 0 3px 12px #44315e03; color: var(--home-ink); text-decoration: none; transition: border-color .15s, box-shadow .15s; }
+#finoraDesktopHome .dashboard-order-grid .order-stat-link:hover { border-color: #cbb6ef; box-shadow: 0 5px 15px #6b40ae0c; transform: none; }
+#finoraDesktopHome .dashboard-order-grid .finora-stat-top { display: flex; align-items: start; justify-content: space-between; gap: 10px; }
+#finoraDesktopHome .dashboard-order-grid .finora-stat-top > div { min-width: 0; flex: 1; }
+#finoraDesktopHome .dashboard-order-grid .finora-stat-label { min-height: 0; font-size: 12px; font-weight: 650; color: var(--home-muted); line-height: 1.6; }
+#finoraDesktopHome .dashboard-order-grid .finora-stat-value { font-size: 28px; font-weight: 800; margin-top: 12px; line-height: 1.15; overflow-wrap: anywhere; color: var(--home-ink); }
+#finoraDesktopHome .home-orders-section .finora-stat-note { display: none; }
+#finoraDesktopHome .home-orders-section .order-stat-link:last-child:nth-child(odd) { grid-column: 1 / -1; }
+#finoraDesktopHome .dashboard-quick-card { container: home-quick / inline-size; border: 1px solid var(--home-line); border-radius: 20px; background: var(--home-surface); padding: 22px; box-shadow: 0 3px 12px #44315e03; }
+#finoraDesktopHome .dashboard-quick-card-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin-top: 16px; border: 0; border-radius: 0; overflow: visible; }
+#finoraDesktopHome .dashboard-quick-item { min-width: 0; background: var(--home-soft); border: 1px solid #efebf5; border-radius: 12px; padding: 15px; }
+#finoraDesktopHome .dashboard-quick-item-label { font-size: 11px; color: var(--home-muted); line-height: 1.6; }
+#finoraDesktopHome .dashboard-quick-item-value { margin-top: 8px; font-size: 18px; font-weight: 800; color: var(--home-ink); overflow-wrap: anywhere; }
+#finoraDesktopHome .dashboard-chart-section { container: home-charts / inline-size; }
+#finoraDesktopHome .charts-container { display: grid; grid-template-columns: minmax(0,1fr); gap: 14px; }
+#finoraDesktopHome .chart-card { min-width: 0; padding: 20px; border: 1px solid var(--home-line); border-radius: 19px; background: var(--home-surface); box-shadow: 0 3px 12px #44315e03; margin: 0; }
+#finoraDesktopHome .chart-card h4 { font-size: 14px; font-weight: 750; color: var(--home-ink); margin: 0 0 15px; }
+#finoraDesktopHome .chart-wrapper { min-width: 0; height: 260px; }
+#finoraDesktopHome .chart-meta { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; background: var(--home-soft); border: 0; border-radius: 11px; padding: 12px; margin-bottom: 16px; }
+#finoraDesktopHome .chart-meta-item { min-width: 0; }
+#finoraDesktopHome .chart-meta-label { color: var(--home-muted); font-size: 11px; }
+#finoraDesktopHome .chart-meta-value { color: var(--home-ink); font-size: 14px; overflow-wrap: anywhere; }
+#finoraDesktopHome .dashboard-overdue-card { background: var(--home-surface); border: 1px solid var(--home-line); border-radius: 19px; box-shadow: none; }
+#finoraDesktopHome .dashboard-overdue-head { background: var(--home-surface); border-bottom: 1px solid var(--home-line); padding: 20px; }
+#finoraDesktopHome .dashboard-overdue-title { color: var(--home-ink); font-size: 16px; }
+#finoraDesktopHome .dashboard-overdue-sub { color: var(--home-muted); }
+#finoraDesktopHome .dashboard-overdue-table-wrap { width: 100%; max-width: 100%; overflow-x: auto; }
+#finoraDesktopHome .dashboard-overdue-table th { color: var(--home-muted); background: var(--home-soft); }
+#finoraDesktopHome .dashboard-overdue-table td { border-color: var(--home-line); color: var(--home-ink); }
+body.page-dashboard .dashboard-welcome { background: var(--home-surface); border: 1px solid var(--home-line); border-radius: 22px; padding: clamp(24px,6vw,64px); }
 body.page-dashboard .dashboard-welcome-title { color: var(--home-ink); }
 body.page-dashboard .dashboard-welcome-subtitle { color: var(--home-muted); }
-body.page-dashboard .desktop-home-shortcut:focus-visible,
-body.page-dashboard .desktop-home-period:focus-visible { outline: 3px solid #7c4df677; outline-offset: 3px; }
-@media (max-width: 1200px) and (min-width: 701px) {
-  body.page-dashboard .finora-summary-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
-  body.page-dashboard .dashboard-order-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
-  body.page-dashboard .desktop-home-launcher { grid-template-columns: repeat(auto-fit,minmax(155px,1fr)); }
-  body.page-dashboard .dashboard-quick-card-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
-  body.page-dashboard .dashboard-quick-item:nth-child(2n) { border-inline-end: 0; }
+#finoraDesktopHome :is(.desktop-home-shortcut,.desktop-home-period,.order-stat-link):focus-visible { outline: 3px solid #7950df80; outline-offset: 3px; }
+@container home-finance (min-width: 600px) {
+  #finoraDesktopHome .home-finance-grid { grid-template-columns: repeat(3,minmax(0,1fr)) !important; }
+}
+@container home-finance (min-width: 900px) {
+  #finoraDesktopHome .home-finance-grid { grid-template-columns: repeat(4,minmax(0,1fr)) !important; }
+  #finoraDesktopHome .home-finance-grid > .home-finance-featured { grid-column: span 2; }
+}
+@container home-finance (max-width: 299px) {
+  #finoraDesktopHome .home-finance-grid { grid-template-columns: minmax(0,1fr) !important; }
+}
+@container home-launcher (min-width: 600px) {
+  #finoraDesktopHome .desktop-home-launcher { grid-template-columns: repeat(4,minmax(0,1fr)); }
+  #finoraDesktopHome .desktop-home-shortcut:last-child:nth-child(odd) { grid-column: auto; }
+  #finoraDesktopHome .desktop-home-launcher:has(> :nth-child(5):last-child) { grid-template-columns: repeat(6,minmax(0,1fr)); }
+  #finoraDesktopHome .desktop-home-launcher:has(> :nth-child(5):last-child) > * { grid-column: span 2; }
+  #finoraDesktopHome .desktop-home-launcher:has(> :nth-child(5):last-child) > :nth-child(n+4) { grid-column: span 3; }
+}
+@container home-launcher (min-width: 960px) {
+  #finoraDesktopHome .desktop-home-launcher:has(> :nth-child(5):last-child) { grid-template-columns: repeat(5,minmax(0,1fr)); }
+  #finoraDesktopHome .desktop-home-launcher:has(> :nth-child(5):last-child) > * { grid-column: auto; }
+}
+@container home-orders (min-width: 600px) {
+  #finoraDesktopHome .home-orders-section .dashboard-order-grid { grid-template-columns: repeat(6,minmax(0,1fr)) !important; }
+  #finoraDesktopHome .home-orders-section .order-stat-link { grid-column: span 2; }
+  #finoraDesktopHome .home-orders-section .order-stat-link:nth-child(n+4) { grid-column: span 3; }
+  #finoraDesktopHome .home-orders-section .order-stat-link:last-child:nth-child(odd) { grid-column: span 3; }
+  #finoraDesktopHome .home-orders-section .dashboard-order-grid:has(> :nth-child(4):last-child) { grid-template-columns: repeat(2,minmax(0,1fr)) !important; }
+  #finoraDesktopHome .home-orders-section .dashboard-order-grid:has(> :nth-child(4):last-child) > * { grid-column: auto; }
+}
+@container home-orders (min-width: 900px) {
+  #finoraDesktopHome .home-orders-section .dashboard-order-grid { grid-template-columns: repeat(5,minmax(0,1fr)) !important; }
+  #finoraDesktopHome .home-orders-section .order-stat-link,
+  #finoraDesktopHome .home-orders-section .order-stat-link:nth-child(n+4),
+  #finoraDesktopHome .home-orders-section .order-stat-link:last-child:nth-child(odd) { grid-column: auto; }
+}
+@container home-charts (min-width: 700px) {
+  #finoraDesktopHome .charts-container { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  #finoraDesktopHome .charts-container > :last-child { grid-column: 1 / -1; }
+}
+@container home-charts (min-width: 1150px) {
+  #finoraDesktopHome .charts-container { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  #finoraDesktopHome .charts-container > :last-child { grid-column: auto; }
+}
+@container home-quick (min-width: 850px) {
+  #finoraDesktopHome .dashboard-quick-card-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
 }
 @media (max-width: 700px) {
-  body.page-dashboard .page-main { padding: 16px !important; }
-  body.page-dashboard .dashboard-shell { gap: 18px; }
-  body.page-dashboard .desktop-home-header { flex-direction: column; align-items: stretch; gap: 14px; }
-  body.page-dashboard .desktop-home-tools { flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; }
-  body.page-dashboard .desktop-home-period { min-height: 40px; font-size: 11px; padding: 8px 11px; }
-  body.page-dashboard .desktop-home-date { font-size: 11px; }
-  body.page-dashboard .desktop-home-launcher { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 4px; padding: 6px; border-radius: 17px; }
-  body.page-dashboard .desktop-home-shortcut { min-height: 64px; padding: 9px; gap: 8px; }
-  body.page-dashboard .desktop-home-shortcut b { font-size: 12px; }
-  body.page-dashboard .desktop-home-shortcut small { font-size: 9px; }
-  body.page-dashboard .desktop-home-shortcut > svg { display: none; }
-  body.page-dashboard .desktop-home-shortcut-icon { width: 33px; height: 33px; border-radius: 10px; }
-  body.page-dashboard .desktop-home-shortcut-icon svg { width: 19px; }
-  body.page-dashboard .finora-summary-grid,
-  body.page-dashboard .dashboard-order-grid { grid-template-columns: repeat(2,minmax(0,1fr)) !important; gap: 10px; }
-  body.page-dashboard .finora-summary-grid .finora-stat-card { display: block; }
-  body.page-dashboard .finora-summary-grid .finora-stat-top { display: flex; }
-  body.page-dashboard .finora-summary-grid .finora-stat-top > div { display: block; }
-  body.page-dashboard .finora-summary-grid .finora-stat-value { max-width: none; margin-top: 8px; overflow: visible; text-overflow: clip; white-space: normal; text-align: start; direction: inherit; font-size: 20px; }
-  body.page-dashboard .finora-summary-grid .finora-stat-note { white-space: normal; margin-top: 9px; }
-  body.page-dashboard .finora-stat-card,
-  body.page-dashboard .dashboard-order-grid .order-stat-link.finora-stat-card { min-height: 130px; padding: 14px; border-radius: 16px; }
-  body.page-dashboard .finora-stat-top { flex-direction: column-reverse; gap: 8px; }
-  body.page-dashboard .finora-stat-label { min-height: 0; font-size: 11px; }
-  body.page-dashboard .finora-stat-value { font-size: 20px; margin-top: 8px; }
-  body.page-dashboard .finora-stat-icon { width: 31px; height: 31px; border-radius: 10px; font-size: 13px; }
-  body.page-dashboard .finora-stat-note { font-size: 9px; margin-top: 9px; }
-  body.page-dashboard .finora-wide-grid { gap: 10px; margin-top: -8px; }
-  body.page-dashboard .finora-wide-card { padding: 14px; min-height: 140px; border-radius: 16px; }
-  body.page-dashboard .finora-wide-card .finora-stat-value { font-size: 20px; }
-  body.page-dashboard .dashboard-quick-card { padding: 18px; }
-  body.page-dashboard .dashboard-quick-card-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
-  body.page-dashboard .dashboard-quick-item { padding: 13px; }
-  body.page-dashboard .dashboard-quick-item:nth-child(2n) { border-inline-end: 0; }
-  body.page-dashboard .dashboard-quick-item:nth-child(-n+2) { border-bottom: 1px solid var(--home-line); }
-  body.page-dashboard .dashboard-quick-item-value { font-size: 15px; }
-  body.page-dashboard .charts-container { grid-template-columns: minmax(0,1fr); }
-  body.page-dashboard .chart-card { padding: 16px; border-radius: 17px; }
-  body.page-dashboard .dashboard-branch-banner__content { flex-wrap: wrap; gap: 3px 8px; }
-  body.page-dashboard .dashboard-overdue-head { padding: 18px; }
+  body.page-dashboard .page-main { padding: 12px !important; }
+  body.page-dashboard .dashboard-branch-banner__label { display: none; }
+  #finoraDesktopHome { gap: 18px; }
+  #finoraDesktopHome .desktop-home-header { padding: 18px; gap: 14px; border-radius: 18px; }
+  #finoraDesktopHome .desktop-home-intro { flex-basis: 100%; }
+  #finoraDesktopHome .desktop-home-intro h1 { font-size: 22px; }
+  #finoraDesktopHome .desktop-home-intro p { font-size: 11px; }
+  #finoraDesktopHome .desktop-home-tools { flex-direction: row; flex-wrap: wrap; align-items: center; justify-content: space-between; width: 100%; gap: 8px; }
+  #finoraDesktopHome .desktop-home-date { font-size: 11px; }
+  #finoraDesktopHome .desktop-home-period { font-size: 11px; padding: 9px 11px; }
+  #finoraDesktopHome .desktop-home-launcher { gap: 8px; }
+  #finoraDesktopHome .desktop-home-shortcut { padding: 11px; gap: 9px; min-height: 70px; border-radius: 13px; }
+  #finoraDesktopHome .desktop-home-shortcut b { font-size: 12px; }
+  #finoraDesktopHome .desktop-home-shortcut small { font-size: 10px; }
+  #finoraDesktopHome .desktop-home-shortcut > svg { display: none; }
+  #finoraDesktopHome .desktop-home-shortcut-icon { width: 32px; height: 32px; border-radius: 10px; }
+  #finoraDesktopHome .desktop-home-shortcut-icon svg { width: 19px; height: 19px; }
+  #finoraDesktopHome .desktop-home-section-label h2 { font-size: 15px; }
+  #finoraDesktopHome .desktop-home-section-label > span { font-size: 10px; }
+  #finoraDesktopHome .home-finance-grid { gap: 10px; }
+  #finoraDesktopHome .home-finance-grid > :is(.finora-stat-card,.finora-wide-card) { min-height: 150px; padding: 14px; gap: 12px 7px; border-radius: 15px; }
+  #finoraDesktopHome .home-finance-grid .finora-stat-label { font-size: 12px; }
+  #finoraDesktopHome .home-finance-grid .finora-stat-value { font-size: 22px; }
+  #finoraDesktopHome .home-finance-grid .home-finance-featured .finora-stat-value { font-size: 30px; }
+  #finoraDesktopHome .home-finance-grid .finora-stat-note { font-size: 11px; }
+  #finoraDesktopHome .finora-stat-icon { width: 30px; height: 30px; font-size: 13px; border-radius: 9px; }
+  #finoraDesktopHome .dashboard-order-grid { gap: 10px; }
+  #finoraDesktopHome .dashboard-order-grid .order-stat-link { padding: 14px; min-height: 108px; border-radius: 15px; }
+  #finoraDesktopHome .dashboard-order-grid .finora-stat-label { font-size: 12px; }
+  #finoraDesktopHome .dashboard-order-grid .finora-stat-value { font-size: 26px; margin-top: 12px; }
+  #finoraDesktopHome .dashboard-quick-card { padding: 17px; border-radius: 17px; }
+  #finoraDesktopHome .dashboard-quick-item { padding: 12px; }
+  #finoraDesktopHome .dashboard-quick-item-value { font-size: 16px; }
+  #finoraDesktopHome .chart-card { padding: 16px; }
+  #finoraDesktopHome .dashboard-overdue-head { padding: 16px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  body.page-dashboard .desktop-home-shortcut,
-  body.page-dashboard .dashboard-order-grid .order-stat-link { transition: none; transform: none; }
+  #finoraDesktopHome :is(.desktop-home-shortcut,.order-stat-link) { transition: none; transform: none; }
 }
 @media print {
-  body.page-dashboard .desktop-home-launcher,
-  body.page-dashboard .desktop-home-tools { display: none; }
+  #finoraDesktopHome .desktop-home-launcher-wrap, #finoraDesktopHome .desktop-home-tools { display: none; }
   body.page-dashboard .page-main { background: #fff; }
 }

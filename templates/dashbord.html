@@ -2582,6 +2582,7 @@
     </div>
   </header>
 
+  <div class="desktop-home-launcher-wrap">
   <nav class="desktop-home-launcher" aria-label="اختصارات مساحة العمل">
     {% if show_pos and business_allows('pos') %}
     <a href="/pos" class="desktop-home-shortcut desktop-home-shortcut--primary"><span class="desktop-home-shortcut-icon">{{ home_icon('cart', 22) }}</span><span><b>نقطة البيع</b><small>ابدأ عملية بيع</small></span>{{ home_icon('external', 15) }}</a>
@@ -2599,9 +2600,21 @@
     <a href="/purchases/" class="desktop-home-shortcut"><span class="desktop-home-shortcut-icon is-amber">{{ home_icon('download', 22) }}</span><span><b>المشتريات</b><small>الموردون والفواتير</small></span>{{ home_icon('external', 15) }}</a>
     {% endif %}
   </nav>
+  </div>
 
-  <div class="desktop-home-section-label"><h2>الملخص المالي</h2><span>حسب الفترة المحددة</span></div>
-  <section class="finora-summary-grid" aria-label="ملخص مالي رئيسي">
+  <section class="home-finance-section" aria-labelledby="homeFinanceTitle">
+    <div class="desktop-home-section-label"><h2 id="homeFinanceTitle">الملخص المالي</h2><span>حسب الفترة المحددة</span></div>
+    <div class="finora-summary-grid home-finance-grid" aria-label="ملخص مالي رئيسي">
+    <div class="finora-stat-card home-finance-featured">
+      <div class="finora-stat-top">
+        <div>
+          <div class="finora-stat-label">المبيعات</div>
+          <div id="finoraSalesValue" class="finora-stat-value dashboard-private-value" data-dashboard-private="true">****</div>
+        </div>
+        <span class="finora-stat-icon success"><i class="fas fa-chart-line"></i></span>
+      </div>
+      <div class="finora-stat-note">حسب الفترة المحددة</div>
+    </div>
     <div class="finora-stat-card">
       <div class="finora-stat-top">
         <div>
@@ -2615,22 +2628,12 @@
     <div class="finora-stat-card">
       <div class="finora-stat-top">
         <div>
-          <div class="finora-stat-label">المبيعات</div>
-          <div id="finoraSalesValue" class="finora-stat-value dashboard-private-value" data-dashboard-private="true">****</div>
+          <div class="finora-stat-label">قيمة المخزون</div>
+          <div id="finoraInventoryValue" class="finora-stat-value dashboard-private-value" data-dashboard-private="true">****</div>
         </div>
-        <span class="finora-stat-icon success"><i class="fas fa-chart-line"></i></span>
+        <span class="finora-stat-icon info"><i class="fas fa-boxes-stacked"></i></span>
       </div>
-      <div class="finora-stat-note">حسب الفترة المحددة</div>
-    </div>
-    <div class="finora-stat-card">
-      <div class="finora-stat-top">
-        <div>
-          <div class="finora-stat-label">المشتريات غير المدفوعة</div>
-          <div id="finoraUnpaidPurchasesValue" class="finora-stat-value dashboard-private-value" data-dashboard-private="true">****</div>
-        </div>
-        <span class="finora-stat-icon warning"><i class="fas fa-file-circle-exclamation"></i></span>
-      </div>
-      <div class="finora-stat-note">المتبقي على فواتير الشراء</div>
+      <div class="finora-stat-note">إجمالي كلفة المنتجات المتوفرة</div>
     </div>
     <div class="finora-stat-card">
       <div class="finora-stat-top">
@@ -2645,16 +2648,13 @@
     <div class="finora-stat-card">
       <div class="finora-stat-top">
         <div>
-          <div class="finora-stat-label">قيمة المخزون</div>
-          <div id="finoraInventoryValue" class="finora-stat-value dashboard-private-value" data-dashboard-private="true">****</div>
+          <div class="finora-stat-label">المشتريات غير المدفوعة</div>
+          <div id="finoraUnpaidPurchasesValue" class="finora-stat-value dashboard-private-value" data-dashboard-private="true">****</div>
         </div>
-        <span class="finora-stat-icon info"><i class="fas fa-boxes-stacked"></i></span>
+        <span class="finora-stat-icon warning"><i class="fas fa-file-circle-exclamation"></i></span>
       </div>
-      <div class="finora-stat-note">إجمالي كلفة المنتجات المتوفرة</div>
+      <div class="finora-stat-note">المتبقي على فواتير الشراء</div>
     </div>
-  </section>
-
-  <section class="finora-wide-grid" aria-label="ملخص المصروفات والمرتجعات">
     <div class="finora-wide-card">
       <div class="finora-stat-top">
         <div>
@@ -2675,9 +2675,10 @@
       </div>
       <div class="finora-stat-note">طلبات مرتجعة أو ملغاة حسب بيانات الطلبات</div>
     </div>
+    </div>
   </section>
 
-  <section class="dashboard-section">
+  <section class="dashboard-section home-orders-section">
     <div class="dashboard-section-head">
       <div>
         <h2 class="dashboard-section-title">{% if is_beauty_center %}المواعيد والجلسات{% else %}متابعة الطلبات{% endif %}</h2>
@@ -5720,5 +5721,5 @@
 </script>
 
 {% endif %}
-<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard-desktop.css') }}?v=20261019a">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard-desktop.css') }}?v=20261019b">
 {% endblock %}
