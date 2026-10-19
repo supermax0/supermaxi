@@ -99,5 +99,19 @@ git pull
 source venv/bin/activate
 pip install -r requirements.txt
 deactivate
-sudo systemctl restart finora
+sudo systemctl reload finora
 ```
+
+التحديث العادي يبدّل عمّال Gunicorn مع إبقاء العملية الرئيسية والمنفذ يعملان؛
+يشترط تعطيل `preload_app`. تغييرات بيئة الخدمة أو Gunicorn تحتاج إعادة تشغيل مجدولة.
+
+لتفعيل إعادة التحميل على الخدمة الحالية `supermaxi.service` مرة واحدة:
+
+```bash
+sudo install -D -m 0644 deploy/supermaxi-graceful-reload.conf /etc/systemd/system/supermaxi.service.d/10-graceful-reload.conf
+sudo systemctl daemon-reload
+sudo systemctl show supermaxi.service -p CanReload --value
+sudo systemctl reload supermaxi.service
+```
+
+سلوك الإشارة `HUP` موثّق في [دليل Gunicorn](https://gunicorn.org/signals/).

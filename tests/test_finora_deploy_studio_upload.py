@@ -1,5 +1,6 @@
 import subprocess
 import zipfile
+import pytest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
@@ -266,4 +267,40 @@ def test_oversized_payload_stops_before_any_remote_action(tmp_path: Path) -> Non
     studio.run_ssh_script.assert_not_called()
     studio.upload_file_to_server.assert_not_called()
     studio.make_changed_files_archive.assert_not_called()
+    studio.set_busy.assert_called_once_with(False)
+
+
+@pytest.mark.parametrize("changed,expected", [
+    (["static/css/finora-theme.css"], 'systemctl reload-or-restart "$SERVICE_NAME"'),
+    (["requirements.txt"], 'systemctl restart "$SERVICE_NAME"'),
+])
+def test_smart_deploy_preserves_listener_for_code_updates(tmp_path: Path, changed, expected) -> None:
+    for rel in changed:
+        source = tmp_path / rel
+        source.parent.mkdir(parents=True, exist_ok=True)
+        source.write_bytes(b"isolated source")
+    archive = tmp_path / "deploy.tar.gz"
+    archive.write_bytes(b"isolated upload")
+    studio = object.__new__(FinoraDeployStudio)
+    studio.local_path_var = _Var(str(tmp_path))
+    studio.server_path_var = _Var("/srv/finora")
+    studio.nginx_service_var = _Var("nginx")
+    studio.gunicorn_bind_var = _Var("127.0.0.1:8000")
+    studio.config_data = {}
+    for name in ["append_log", "set_status", "set_busy", "save_config"]:
+        setattr(studio, name, Mock())
+    studio.validate_local_project_path = Mock(return_value=True)
+    studio.current_git_commit = Mock(return_value="commit")
+    studio.collect_safe_changed_paths = Mock(return_value=(changed, [], []))
+    studio.make_changed_files_archive = Mock(return_value=archive)
+    studio.upload_file_to_server = Mock(return_value=0)
+    studio.run_ssh_script = Mock(return_value=0)
+    studio._deploy_thread()
+    script = studio.run_ssh_script.call_args.args[0]
+    assert expected in script
+    alternative = ('systemctl restart "$SERVICE_NAME"' if "reload-or-restart" in expected
+                   else 'systemctl reload-or-restart "$SERVICE_NAME"')
+    assert alternative not in script
+    assert 'systemctl reload "$NGINX_SERVICE"' in script
+    assert studio.config_data["last_deployed_commit"] == "commit"
     studio.set_busy.assert_called_once_with(False)

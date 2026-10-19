@@ -3238,6 +3238,11 @@ fi
                 if needs_python_deps
                 else "echo '[SKIP] requirements.txt unchanged'"
             )
+            app_reload_step = (
+                'systemctl restart "$SERVICE_NAME"'
+                if needs_python_deps
+                else 'systemctl reload-or-restart "$SERVICE_NAME"'
+            )
             social_build_step = (
                 "(cd static/ai_agent_frontend && npm ci --no-audit --no-fund 2>/dev/null || npm install --no-audit --no-fund) && "
                 "(cd static/ai_agent_frontend && npm run build)"
@@ -3312,7 +3317,7 @@ echo "[5] Frontend builds if relevant..."
 {publisher_build_step}
 
 echo ""
-echo "[6] Restarting application safely..."
+echo "[6] Applying application update..."
 echo "Using service manager; no process-wide kill commands will be run."
 # This server historically had both finora.service and supermaxi.service
 # targeting the same Gunicorn port. Stop the non-canonical unit first so an
@@ -3322,7 +3327,7 @@ if [ "$SERVICE_NAME" = "supermaxi.service" ]; then
     systemctl disable --now finora.service 2>/dev/null || true
 fi
 echo ""
-systemctl restart "$SERVICE_NAME"
+{app_reload_step}
 
 echo ""
 echo "[7] Validating and reloading nginx..."
