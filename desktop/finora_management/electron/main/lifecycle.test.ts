@@ -5,11 +5,8 @@ const mocks = vi.hoisted(() => ({
   ask: vi.fn(),
   askSync: vi.fn(),
   flush: vi.fn(),
-  drafts: vi.fn(),
-  closePages: vi.fn(),
 }));
 vi.mock("electron", () => ({ dialog: { showMessageBox: mocks.ask, showMessageBoxSync: mocks.askSync } }));
-vi.mock("./connectedPages", () => ({ workspaceHasDrafts: mocks.drafts, closeWorkspaces: mocks.closePages }));
 vi.mock("./offlineRuntime", () => ({ flushOfflineWrites: mocks.flush }));
 function windowFixture() {
   const win = Object.assign(new EventEmitter(), {
@@ -22,7 +19,6 @@ function windowFixture() {
 }
 beforeEach(() => {
   vi.clearAllMocks();
-  mocks.drafts.mockResolvedValue(false);
   mocks.flush.mockResolvedValue(undefined);
   mocks.ask.mockResolvedValue({ response: 1 });
   mocks.askSync.mockReturnValue(0);
@@ -60,12 +56,11 @@ it("keeps the app open if flushing or launching the installer fails", async () =
   expect(win.close).not.toHaveBeenCalled();
   expect(mocks.ask).toHaveBeenCalled();
 });
-it("checks server workspaces and main-process saves before logout or restore", async () => {
+it("checks main-process saves before logout or restore", async () => {
   const win = windowFixture(),
     guard = protectWindow(win as unknown as BrowserWindow, () => true);
   expect(await guard.permit()).toBe(false);
   expect(mocks.askSync).not.toHaveBeenCalled();
   const other = protectWindow(windowFixture() as unknown as BrowserWindow);
-  mocks.drafts.mockResolvedValue(true);
-  expect(await other.permit()).toBe(false);
+  expect(await other.permit()).toBe(true);
 });

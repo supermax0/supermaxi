@@ -1142,14 +1142,13 @@ def test_online_pos_stock_preview_excludes_device_quota(ctx, colors):
             assert check_stock_rows([{**row, "variant_color": "أبيض"}], preferred_branch_id=branch).can_fulfill
 
 
-def test_desktop_workspace_capabilities_follow_actual_page_permissions(ctx):
+def test_withdrawn_desktop_workspaces_are_empty_for_existing_clients(ctx):
     admin = _client(ctx).get("/api/v1/desktop/workspace", headers=JSON)
     assert admin.status_code == 200
-    assert {"assets", "maintenance", "notes", "messages", "workspace", "storeSettings", "cameraAudit"}.issubset(admin.get_json()["pages"])
+    assert admin.get_json()["pages"] == []
     clerk = _client(ctx, "clerk_id", role="cashier").get("/api/v1/desktop/workspace", headers=JSON)
     assert clerk.status_code == 200
-    assert "storeSettings" not in clerk.get_json()["pages"]
-    assert "assets" not in clerk.get_json()["pages"]
+    assert clerk.get_json()["pages"] == []
 
 
 def test_recovery_quota_read_is_scoped_and_does_not_return_or_consume_stock(ctx):

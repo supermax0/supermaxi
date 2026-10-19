@@ -15,7 +15,7 @@ function removeProfile(directory: string) {
   rmSync(directory, { recursive: true, force: true });
 }
 
-test("responsive home, restricted workspaces, safe exit and encrypted backup restore", async () => {
+test("original shell without added pages, safe exit and encrypted backup restore", async () => {
   test.setTimeout(120_000);
   const stub = await startFinoraStub();
   const directory = mkdtempSync(path.join(os.tmpdir(), "finora-desktop-safety-"));
@@ -33,7 +33,8 @@ test("responsive home, restricted workspaces, safe exit and encrypted backup res
     await page.getByLabel("اسم المستخدم", { exact: true }).fill(STUB_CREDENTIALS.username);
     await page.getByLabel("كلمة المرور", { exact: true }).fill(STUB_CREDENTIALS.password);
     await page.getByRole("button", { name: "تسجيل الدخول", exact: true }).click();
-    await expect(page.getByRole("main", { name: "الرئيسية" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "النوافذ" })).toBeVisible();
+    await expect(page.getByRole("main", { name: "الرئيسية" })).toHaveCount(0);
     for (const [width, height] of [
       [1440, 900],
       [1024, 600],
@@ -48,37 +49,23 @@ test("responsive home, restricted workspaces, safe exit and encrypted backup res
       await page.waitForTimeout(250);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
       await expect(page.getByRole("button", { name: "الإعدادات", exact: true })).toBeInViewport();
-      await page.screenshot({ path: path.join(directory, `home-${width}.png`) });
+      await page.screenshot({ path: path.join(directory, `shell-${width}.png`) });
     }
     await page.getByRole("button", { name: "الإعدادات", exact: true }).click();
     await page.getByRole("button", { name: "النسخ والاستعادة", exact: true }).click();
     await page.getByRole("button", { name: "حفظ نسخة مشفّرة" }).scrollIntoViewIfNeeded();
     await expect(page.getByRole("button", { name: "حفظ نسخة مشفّرة" })).toBeInViewport();
     await page.getByRole("button", { name: "إغلاق الإعدادات" }).click();
-    const childPromise = app.waitForEvent("window");
-    await page.evaluate(() =>
-      (window as Window & { finoraDesktop?: FinoraDesktopBridge }).finoraDesktop?.pages?.open("notes"),
-    );
-    const child = await childPromise;
-    await child.waitForLoadState("domcontentloaded");
     expect(
-      await child.evaluate(() => ({
-        bridge: typeof (window as Window & { finoraDesktop?: FinoraDesktopBridge }).finoraDesktop,
-        require: typeof (window as unknown as { require?: unknown }).require,
-      })),
-    ).toEqual({ bridge: "undefined", require: "undefined" });
-    await child.getByLabel("ملاحظة").fill("تعديل لم يحفظ");
+      await page.evaluate(
+        () => "pages" in ((window as Window & { finoraDesktop?: FinoraDesktopBridge }).finoraDesktop ?? {}),
+      ),
+    ).toBe(false);
+    expect(stub.requests.some((request) => request.includes("/api/v1/desktop/workspace"))).toBe(false);
     await app.evaluate(({ dialog }) => {
       dialog.showMessageBoxSync = () => 0;
       dialog.showMessageBox = async () => ({ response: 0, checkboxChecked: false });
     });
-    expect(
-      await page.evaluate(() =>
-        (window as Window & { finoraDesktop?: FinoraDesktopBridge }).finoraDesktop?.lifecycle?.confirmLeave(),
-      ),
-    ).toBe(false);
-    await child.getByLabel("ملاحظة").fill("");
-    await child.close();
     await page.evaluate(() =>
       (window as Window & { finoraDesktop?: FinoraDesktopBridge }).finoraDesktop?.lifecycle?.activity({
         dirty: false,
@@ -96,13 +83,6 @@ test("responsive home, restricted workspaces, safe exit and encrypted backup res
         saving: false,
       }),
     );
-    await expect(
-      page.evaluate(() =>
-        (window as Window & { finoraDesktop?: FinoraDesktopBridge }).finoraDesktop?.pages?.open(
-          "storeSettings",
-        ),
-      ),
-    ).rejects.toThrow();
     const backupFile = path.join(directory, "saved.finorabackup");
     await app.evaluate(({ dialog }, file) => {
       dialog.showSaveDialog = async () => ({ canceled: false, filePath: file });
@@ -130,14 +110,15 @@ test("responsive home, restricted workspaces, safe exit and encrypted backup res
       ),
     );
     expect(restored).toEqual({ restored: true });
-    await expect(page.getByRole("main", { name: "الرئيسية" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "النوافذ" })).toBeVisible();
+    await expect(page.getByRole("main", { name: "الرئيسية" })).toHaveCount(0);
     expect(errors).toEqual([]);
     // Keep screenshots as explicit local QA artifacts, independent of the test profile.
     const { copyFileSync, mkdirSync } = await import("node:fs");
-    const artifacts = path.resolve(__dirname, "../../../.codex-tmp/desktop-0.8.0-layout");
+    const artifacts = path.resolve(__dirname, "../../../.codex-tmp/desktop-0.8.1-layout");
     mkdirSync(artifacts, { recursive: true });
     for (const width of [1440, 1024, 760])
-      copyFileSync(path.join(directory, `home-${width}.png`), path.join(artifacts, `home-${width}.png`));
+      copyFileSync(path.join(directory, `shell-${width}.png`), path.join(artifacts, `shell-${width}.png`));
   } finally {
     await app.evaluate(({ BrowserWindow }) => {
       for (const win of BrowserWindow.getAllWindows()) win.destroy();
@@ -164,7 +145,8 @@ test("recovers a missing Windows key into a new slot while preserving the origin
     await page.getByLabel("اسم المستخدم", { exact: true }).fill(STUB_CREDENTIALS.username);
     await page.getByLabel("كلمة المرور", { exact: true }).fill(STUB_CREDENTIALS.password);
     await page.getByRole("button", { name: "تسجيل الدخول", exact: true }).click();
-    await expect(page.getByRole("main", { name: "الرئيسية" })).toBeVisible();
+    await expect(page.getByRole("navigation", { name: "النوافذ" })).toBeVisible();
+    await expect(page.getByRole("main", { name: "الرئيسية" })).toHaveCount(0);
     const file = path.join(directory, "recover.finorabackup");
     await application.evaluate(({ dialog }, file) => {
       dialog.showSaveDialog = async () => ({ canceled: false, filePath: file });
@@ -182,7 +164,7 @@ test("recovers a missing Windows key into a new slot while preserving the origin
     writeFileSync(path.join(directory, "offline", "key.dpapi"), "invalid test DPAPI key");
     application = await launch();
     const recovered = await application.firstWindow();
-    await expect(recovered.getByRole("main", { name: "الرئيسية" })).toBeVisible();
+    await expect(recovered.getByRole("navigation", { name: "النوافذ" })).toBeVisible();
     const status = await recovered.evaluate(() =>
       (window as Window & { finoraDesktop?: FinoraDesktopBridge }).finoraDesktop?.offline?.status(),
     );
@@ -198,7 +180,7 @@ test("recovers a missing Windows key into a new slot while preserving the origin
         ),
       ),
     ).toEqual({ restored: true });
-    await expect(recovered.getByRole("main", { name: "الرئيسية" })).toBeVisible();
+    await expect(recovered.getByRole("navigation", { name: "النوافذ" })).toBeVisible();
     await expect
       .poll(
         async () =>

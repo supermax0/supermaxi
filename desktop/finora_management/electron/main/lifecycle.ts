@@ -1,5 +1,4 @@
 import { BrowserWindow, dialog } from "electron";
-import { closeWorkspaces, workspaceHasDrafts } from "./connectedPages";
 import { flushOfflineWrites } from "./offlineRuntime";
 
 export interface Activity {
@@ -18,7 +17,7 @@ export function protectWindow(win: BrowserWindow, isBusy: () => boolean = () => 
     const current = {
       ...activity,
       saving: activity.saving || isBusy(),
-      dirty: activity.dirty || (await workspaceHasDrafts()),
+      dirty: activity.dirty,
     };
     if (current.saving) {
       await dialog.showMessageBox(win, {
@@ -49,7 +48,6 @@ export function protectWindow(win: BrowserWindow, isBusy: () => boolean = () => 
       await flushOfflineWrites();
       if (beforeClose) await beforeClose();
       accepted = true;
-      closeWorkspaces();
       win.close();
       return true;
     } catch (error) {
@@ -104,7 +102,6 @@ export function protectWindow(win: BrowserWindow, isBusy: () => boolean = () => 
   return {
     refreshRestored() {
       activity = { dirty: false, saving: false };
-      closeWorkspaces();
       if (!win.isDestroyed()) win.reload();
     },
     leaving: () => negotiating,

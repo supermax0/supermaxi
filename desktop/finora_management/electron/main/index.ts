@@ -40,12 +40,6 @@ import { exportReport } from "./reportExport";
 
 import { windowGeometry } from "./windowGeometry";
 import { protectWindow } from "./lifecycle";
-import {
-  openWorkspace,
-  isWorkspaceMediaAllowed,
-  trackWorkspaceWrite,
-  finishWorkspaceWrite,
-} from "./connectedPages";
 import { backupProfile } from "./backupRuntime";
 import { checkUpdate, downloadUpdate, launchUpdate } from "./updates";
 
@@ -175,10 +169,6 @@ function registerIpc(): void {
   handle(IPC.reload, async (event) => {
     assertTrustedSender(event);
     await protection?.reload();
-  });
-  handle(IPC.pagesOpen, async (event, payload) => {
-    assertTrustedSender(event);
-    await openWorkspace(mainWindow, payload);
   });
   handle(IPC.updateCheck, (event) => {
     assertTrustedSender(event);
@@ -444,34 +434,22 @@ function hardenSessions(): void {
         return;
       }
       activeWriteRequests.add(details.id);
-      trackWorkspaceWrite(details.id, details.webContentsId);
     }
     callback({ cancel: false });
   });
   remote.webRequest.onCompleted((details) => {
     activeWriteRequests.delete(details.id);
-    finishWorkspaceWrite(details.id);
   });
   remote.webRequest.onErrorOccurred((details) => {
     activeWriteRequests.delete(details.id);
-    finishWorkspaceWrite(details.id);
   });
   for (const ses of [session.defaultSession, finoraSession()]) {
     ses.setPermissionCheckHandler(
       (wc, permission, requestingOrigin) =>
-        permission === "media" &&
-        !!wc &&
-        approvedMedia.has(wc.id) &&
-        (isWorkspaceMediaAllowed(wc.id, requestingOrigin) || trustedMedia(wc.id, requestingOrigin)),
+        permission === "media" && !!wc && approvedMedia.has(wc.id) && trustedMedia(wc.id, requestingOrigin),
     );
     ses.setPermissionRequestHandler((wc, permission, callback, details) => {
-      if (
-        permission !== "media" ||
-        !(
-          isWorkspaceMediaAllowed(wc.id, details.requestingUrl) || trustedMedia(wc.id, details.requestingUrl)
-        ) ||
-        !mainWindow
-      ) {
+      if (permission !== "media" || !trustedMedia(wc.id, details.requestingUrl) || !mainWindow) {
         callback(false);
         return;
       }

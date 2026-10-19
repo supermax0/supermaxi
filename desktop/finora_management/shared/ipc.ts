@@ -410,7 +410,6 @@ export interface FinoraDesktopBridge {
     activity(input: { dirty: boolean; saving: boolean }): Promise<void>;
     reload(): Promise<void>;
   };
-  pages?: { open(id: string): Promise<void> };
   updates?: {
     check(): Promise<{ current: string; latest: string; available: boolean; size: number }>;
     download(): Promise<{ ready: boolean }>;

@@ -1,6 +1,5 @@
-import { HomeDashboard } from "@/components/HomeDashboard";
-import { useConnectedWorkspaces } from "@/hooks/useConnectedWorkspaces";
 import { useOperationsNotifications } from "@/hooks/useOperationsNotifications";
+import { AnimatePresence, motion } from "framer-motion";
 import { LogOut, Maximize, Settings, type LucideIcon } from "lucide-react";
 import { useMemo } from "react";
 import { CommandPalette, type Command } from "@/components/CommandPalette";
@@ -9,6 +8,7 @@ import { TopNavigation } from "@/components/TopNavigation";
 import { useHotkeys } from "@/hooks/useHotkeys";
 import { useSignOut } from "@/hooks/useSignOut";
 import { desktopBridge } from "@/services/bridge";
+import { useSession } from "@/stores/session";
 import { overlayOpen, useUi } from "@/stores/ui";
 import { useWindowManager } from "@/stores/windowManager";
 import { WINDOWS } from "@/windows/registry";
@@ -17,12 +17,33 @@ import { useIdlePrefetch } from "@/hooks/useIdlePrefetch";
 import { openNavItem, useNavigation } from "@/navigation/useNavigation";
 import { WindowTransitionManager } from "@/windows/WindowTransitionManager";
 
+function IdleHint() {
+  const name = useSession((s) => s.session?.user.name);
+  const active = useWindowManager((s) => s.active);
+  return (
+    <AnimatePresence>
+      {active === null && (
+        <motion.div
+          className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2 text-center"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1, transition: { delay: 0.25, duration: 0.4 } }}
+          exit={{ opacity: 0, transition: { duration: 0.12 } }}
+        >
+          <p className="text-2xl font-semibold text-ink/80">{name ? `أهلاً ${name}` : "أهلاً بك"}</p>
+          <p className="text-sm text-ink-faint">
+            اختر نافذة من الشريط العلوي أو اضغط <kbd className="ltr-isolate font-semibold">Ctrl+K</kbd>
+          </p>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
 function windowCommand(icon: LucideIcon, id: string, label: string, run: () => void, hint?: string): Command {
   return { id, icon, label, run, hint };
 }
 
 export function Shell() {
-  useConnectedWorkspaces();
   useOperationsNotifications();
   const paletteOpen = useUi((s) => s.paletteOpen);
   const setPaletteOpen = useUi((s) => s.setPaletteOpen);
@@ -88,7 +109,7 @@ export function Shell() {
       <TopNavigation />
       <OfflineBanner />
       <div className="relative flex min-h-0 flex-1 flex-col">
-        <HomeDashboard />
+        <IdleHint />
         <WindowTransitionManager />
       </div>
       <CommandPalette open={paletteOpen} commands={commands} onClose={() => setPaletteOpen(false)} />

@@ -3,7 +3,6 @@ export const IPC = {
   confirmLeave: "app:confirm-leave",
   activity: "app:activity",
   reload: "app:reload",
-  pagesOpen: "app:pages-open",
   updateCheck: "app:update-check",
   updateDownload: "app:update-download",
   updateInstall: "app:update-install",

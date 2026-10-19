@@ -9,7 +9,6 @@ const bridge: FinoraDesktopBridge = {
     activity: (input) => ipcRenderer.invoke(IPC.activity, input),
     reload: () => ipcRenderer.invoke(IPC.reload),
   },
-  pages: { open: (id) => ipcRenderer.invoke(IPC.pagesOpen, id) },
   updates: {
     check: () => ipcRenderer.invoke(IPC.updateCheck),
     download: () => ipcRenderer.invoke(IPC.updateDownload),
