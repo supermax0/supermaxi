@@ -337,6 +337,7 @@
   <!-- 4) الأرباح والخسائر -->
   <section class="report-section" id="income-statement">
     <h2><span class="sec-num">2</span> قائمة الأرباح والخسائر (Income Statement)</h2>
+    <div class="workspace-table-scroll" role="region" aria-label="جدول التقرير المالي" tabindex="0">
     <table class="report-table">
       <thead><tr><th>البند</th><th>المبلغ (د.ع)</th></tr></thead>
       <tbody>
@@ -357,8 +358,10 @@
         <tr class="total-row"><td>صافي الربح / الخسارة</td><td class="amount {{ 'pos' if net_profit_period >= 0 else 'neg' }}">{{ money(net_profit_period) }}</td></tr>
       </tbody>
     </table>
+    </div>
     {% if expenses_breakdown %}
     <h3>تفصيل المصاريف حسب الفئة</h3>
+    <div class="workspace-table-scroll" role="region" aria-label="جدول التقرير المالي" tabindex="0">
     <table class="report-table">
       <thead><tr><th>الفئة</th><th>المبلغ (د.ع)</th><th>النسبة من المصاريف</th></tr></thead>
       <tbody>
@@ -372,6 +375,7 @@
       </tbody>
       <tfoot><tr><td>إجمالي المصاريف المسجّلة حسب الفئة</td><td class="amount">{{ money(expenses_period) }}</td><td class="amount">100%</td></tr></tfoot>
     </table>
+    </div>
     {% if non_cash_expenses_period or other_operating_expenses_period %}
     <p class="report-no-data">تفصيل الفئات أعلاه يخص سجلات المصاريف فقط؛ الاستهلاك ورسوم الجمعيات يظهران كسطرين مستقلين حتى لا يُحتسبا مرتين.</p>
     {% endif %}
@@ -402,6 +406,7 @@
       <i class="fas fa-circle-info"></i>
       <div>هذه لقطة للأرصدة الحالية وقت إنشاء التقرير، وليست أرصدة تاريخية في نهاية الفترة المختارة. صافي الأصول أدناه قيمة موازِنة محسوبة من الأصول ناقص الالتزامات، وليس رصيداً مستقلاً من ميزان مراجعة عام.</div>
     </div>
+    <div class="workspace-table-scroll" role="region" aria-label="جدول التقرير المالي" tabindex="0">
     <table class="report-table">
       <thead><tr><th>البند</th><th>المبلغ (د.ع)</th></tr></thead>
       <tbody>
@@ -456,6 +461,7 @@
         <tr class="total-row"><td>صافي الأصول (الأصول − الالتزامات)</td><td class="amount {{ 'neg' if equity < 0 else '' }}">{{ money(equity) }}</td></tr>
       </tbody>
     </table>
+    </div>
     <div class="balance-check">
       <i class="fas fa-calculator"></i> فحص الجمع: إجمالي الأصول ({{ money(total_assets) }}) = إجمالي الالتزامات ({{ money(total_liabilities) }}) + صافي الأصول ({{ money(equity) }}).
     </div>
@@ -464,6 +470,7 @@
   <!-- 7) التدفق النقدي -->
   <section class="report-section" id="cash-flow">
     <h2><span class="sec-num">5</span> قائمة التدفق النقدي (Cash Flow)</h2>
+    <div class="workspace-table-scroll" role="region" aria-label="جدول التقرير المالي" tabindex="0">
     <table class="report-table">
       <thead><tr><th>البند</th><th>المبلغ (د.ع)</th></tr></thead>
       <tbody>
@@ -477,8 +484,10 @@
         {% endif %}
       </tbody>
     </table>
+    </div>
     {% if cash_flow_breakdown %}
     <h3>تفصيل حركة الخزينة حسب السبب</h3>
+    <div class="workspace-table-scroll" role="region" aria-label="جدول التقرير المالي" tabindex="0">
     <table class="report-table">
       <thead><tr><th>النوع</th><th>السبب</th><th>المبلغ (د.ع)</th></tr></thead>
       <tbody>
@@ -491,6 +500,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
     {% endif %}
     <p class="report-no-data">الحركة مأخوذة من دفتر الخزينة حسب تاريخ القبض أو الصرف، وتشمل تحصيلات فواتير قديمة ودفعات الموردين والمشتريات والأصول والمصاريف. التحويلات الداخلية بين الصندوق والبنوك مستبعدة.</p>
   </section>
@@ -498,6 +508,7 @@
   <!-- 8) التحليل المالي -->
   <section class="report-section" id="ratios">
     <h2><span class="sec-num">6</span> التحليل المالي والنسب</h2>
+    <div class="workspace-table-scroll" role="region" aria-label="جدول التقرير المالي" tabindex="0">
     <table class="report-table">
       <thead><tr><th>المؤشر</th><th>القيمة</th><th>الدلالة</th></tr></thead>
       <tbody>
@@ -509,12 +520,14 @@
         <tr><td>نسبة الالتزامات إلى الأصول</td><td class="amount">{{ (debt_to_assets_pct ~ '%') if debt_to_assets_pct is not none else '—' }}</td><td>إجمالي الالتزامات ÷ إجمالي الأصول</td></tr>
       </tbody>
     </table>
+    </div>
   </section>
 
   <!-- 9) الأفضل مبيعاً -->
   <section class="report-section" id="rankings">
     <h2><span class="sec-num">7</span> أفضل المنتجات مبيعاً</h2>
     {% if top_products %}
+    <div class="workspace-table-scroll" role="region" aria-label="جدول التقرير المالي" tabindex="0">
     <table class="report-table">
       <thead><tr><th>#</th><th>المنتج</th><th>الكمية</th><th>الإيراد (د.ع)</th><th>الربح الإجمالي (د.ع)</th></tr></thead>
       <tbody>
@@ -523,6 +536,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
     {% else %}<p class="report-no-data">لا توجد مبيعات للفترة.</p>{% endif %}
   </section>
 
@@ -530,6 +544,7 @@
   <section class="report-section">
     <h2><span class="sec-num">8</span> أفضل العملاء</h2>
     {% if top_customers %}
+    <div class="workspace-table-scroll" role="region" aria-label="جدول التقرير المالي" tabindex="0">
     <table class="report-table">
       <thead><tr><th>#</th><th>العميل</th><th>عدد الفواتير</th><th>إجمالي المشتريات (د.ع)</th></tr></thead>
       <tbody>
@@ -538,6 +553,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
     {% else %}<p class="report-no-data">لا توجد بيانات عملاء للفترة.</p>{% endif %}
   </section>
 
@@ -545,6 +561,7 @@
   <section class="report-section">
     <h2><span class="sec-num">9</span> أفضل الموظفين</h2>
     {% if top_employees %}
+    <div class="workspace-table-scroll" role="region" aria-label="جدول التقرير المالي" tabindex="0">
     <table class="report-table">
       <thead><tr><th>#</th><th>الموظف</th><th>عدد الفواتير</th><th>إجمالي المبيعات (د.ع)</th><th>الربح الإجمالي قبل المصاريف (د.ع)</th></tr></thead>
       <tbody>
@@ -553,6 +570,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
     {% else %}<p class="report-no-data">لا توجد بيانات موظفين للفترة.</p>{% endif %}
   </section>
 
@@ -560,6 +578,7 @@
   <section class="report-section">
     <h2><span class="sec-num">10</span> أفضل البيجات</h2>
     {% if top_pages %}
+    <div class="workspace-table-scroll" role="region" aria-label="جدول التقرير المالي" tabindex="0">
     <table class="report-table">
       <thead><tr><th>#</th><th>البيج</th><th>عدد الفواتير</th><th>إجمالي المبيعات (د.ع)</th><th>الربح الإجمالي قبل المصاريف (د.ع)</th></tr></thead>
       <tbody>
@@ -568,6 +587,7 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
     {% else %}<p class="report-no-data">لا توجد بيانات بيجات للفترة.</p>{% endif %}
   </section>
 
@@ -575,6 +595,7 @@
   <section class="report-section">
     <h2><span class="sec-num">11</span> أرصدة الموردين المستحقة</h2>
     {% if top_suppliers %}
+    <div class="workspace-table-scroll" role="region" aria-label="جدول التقرير المالي" tabindex="0">
     <table class="report-table">
       <thead><tr><th>#</th><th>المورد</th><th>إجمالي الفواتير/الافتتاحي (د.ع)</th><th>المسدد/المسوّى (د.ع)</th><th>المتبقي كالتزام (د.ع)</th></tr></thead>
       <tbody>
@@ -583,12 +604,14 @@
         {% endfor %}
       </tbody>
     </table>
+    </div>
     {% else %}<p class="report-no-data">لا توجد أرصدة مستحقة للموردين.</p>{% endif %}
   </section>
 
   <!-- 14) المخزون -->
   <section class="report-section" id="inventory-section">
     <h2><span class="sec-num">12</span> المخزون</h2>
+    <div class="workspace-table-scroll" role="region" aria-label="جدول التقرير المالي" tabindex="0">
     <table class="report-table">
       <tbody>
         <tr><td>إجمالي قيمة المخزون</td><td class="amount">{{ money(inventory_value) }} د.ع</td></tr>
@@ -596,6 +619,7 @@
         <tr><td>منتجات نشطة نافدة</td><td class="amount">{{ zero_stock_count }}</td></tr>
       </tbody>
     </table>
+    </div>
     {% if low_stock_count > 0 or zero_stock_count > 0 %}
     <p class="report-note">يُنصح بمراجعة صفحة المخزون لتفاصيل المواد الناقصة والراكدة.</p>
     {% endif %}

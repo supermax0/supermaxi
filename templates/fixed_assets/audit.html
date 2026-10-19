@@ -30,7 +30,8 @@
       <button type="submit">تطبيق</button>
     </form>
     {% if asset %}<p>عرض سجل الأصل: <strong>{{ asset.asset_code }}</strong></p>{% endif %}
-    <table class="fa-table">
+    <div class="workspace-table-scroll" role="region" aria-label="جدول الأصول" tabindex="0">
+  <table class="fa-table">
       <thead>
         <tr><th>التاريخ</th><th>العملية</th><th>الملخص</th><th>المستخدم</th><th>قبل</th><th>بعد</th></tr>
       </thead>
@@ -49,6 +50,7 @@
         {% endfor %}
       </tbody>
     </table>
+  </div>
   </div>
 </div>
 {% endblock %}

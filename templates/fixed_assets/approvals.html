@@ -18,7 +18,8 @@
   <div class="fa-card">
     <h3 style="margin-top:0;">طلبات بانتظار الموافقة <span class="badge">{{ pending|length }}</span></h3>
     {% if not can_approve %}<p style="color:var(--text-muted);">عرض فقط — ليس لديك صلاحية الموافقة.</p>{% endif %}
-    <table class="fa-table">
+    <div class="workspace-table-scroll" role="region" aria-label="جدول الأصول" tabindex="0">
+  <table class="fa-table">
       <thead>
         <tr><th>التاريخ</th><th>النوع</th><th>الأصل</th><th>التفاصيل</th><th>مقدّم الطلب</th><th>إجراء</th></tr>
       </thead>
@@ -60,9 +61,11 @@
       </tbody>
     </table>
   </div>
+  </div>
   <div class="fa-card">
     <h3 style="margin-top:0;">آخر الطلبات المعالجة</h3>
-    <table class="fa-table">
+    <div class="workspace-table-scroll" role="region" aria-label="جدول الأصول" tabindex="0">
+  <table class="fa-table">
       <thead><tr><th>التاريخ</th><th>النوع</th><th>الأصل</th><th>الحالة</th><th>المعالج</th></tr></thead>
       <tbody>
         {% for r in recent %}
@@ -76,6 +79,7 @@
         {% else %}<tr><td colspan="5">لا يوجد سجل.</td></tr>{% endfor %}
       </tbody>
     </table>
+  </div>
   </div>
 </div>
 {% endblock %}

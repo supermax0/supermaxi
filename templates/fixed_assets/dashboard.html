@@ -28,6 +28,7 @@
     <div class="fa-kpi"><div class="label">مباعة / تالفة</div><div class="value">{{ stats.sold_count }} / {{ stats.scrapped_count }}</div></div>
   </div>
   <h3 style="margin: 0 0 12px;">آخر الحركات</h3>
+  <div class="workspace-table-scroll" role="region" aria-label="جدول الأصول" tabindex="0">
   <table class="fa-table">
     <thead><tr><th>التاريخ</th><th>الأصل</th><th>نوع الحركة</th><th>المبلغ</th><th>ملاحظات</th></tr></thead>
     <tbody>
@@ -44,5 +45,6 @@
       {% endfor %}
     </tbody>
   </table>
+  </div>
 </div>
 {% endblock %}

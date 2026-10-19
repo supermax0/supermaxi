@@ -82,6 +82,7 @@
     </div>
   </div>
   <h3>آخر عمليات البيع والإتلاف</h3>
+  <div class="workspace-table-scroll" role="region" aria-label="جدول الأصول" tabindex="0">
   <table class="fa-table">
     <thead><tr><th>النوع</th><th>الأصل</th><th>التاريخ</th><th>المبلغ</th><th>ق.د.</th><th>ربح</th><th>خسارة</th></tr></thead>
     <tbody>
@@ -98,6 +99,7 @@
       {% else %}<tr><td colspan="7">لا توجد عمليات بعد.</td></tr>{% endfor %}
     </tbody>
   </table>
+  </div>
 </div>
 <script>
 document.querySelectorAll('.tab').forEach(t => t.addEventListener('click', function(){

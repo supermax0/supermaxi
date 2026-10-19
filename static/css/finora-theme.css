@@ -158,3 +158,175 @@
 .vis-modal .vis-box {
   border-radius: var(--radius-xl) !important;
 }
+
+/* Keep wide table content inside its page, including older flex children. */
+body.finora-app main.page-main,
+body.finora-app main.page-main > :is(div, section, article, form, main) {
+  min-width: 0;
+  max-width: 100%;
+}
+body.finora-app .page-main :is(.mnt-page, .fa-page, .daily-archive, .report-page) {
+  width: 100%;
+  box-sizing: border-box;
+}
+body.finora-app :is(.fa-grid, .mnt-grid-2, .mnt-grid-3) > * { min-width: 0; }
+body.finora-app :is(.fa-field, .mnt-field) :is(input, select, textarea) { box-sizing: border-box; min-width: 0; }
+body.finora-app .report-page .custom-range { flex-wrap: wrap; min-width: 0; }
+body.finora-app .report-page :is(.kpi-value, .rh-info) { min-width: 0; overflow-wrap: anywhere; }
+body.finora-app .report-page .charts-grid { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); }
+body.finora-app .report-page :is(.chart-box, .chart-canvas-wrap) { min-width: 0; max-width: 100%; }
+body.finora-app .report-page canvas { max-width: 100%; }
+body.finora-app .daily-archive .archive-btn.primary { background: var(--primary); border-color: var(--primary); }
+body.finora-app .daily-archive :is(.archive-head, .archive-table-wrap) { border-radius: 18px; box-shadow: var(--shadow-card); }
+body.finora-app .workspace-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overscroll-behavior-x: contain;
+}
+body.finora-app .workspace-table-scroll:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+}
+body.finora-app .workspace-table-scroll table {
+  margin: 0;
+}
+body.finora-app .page-main :is(.mnt-card, .mnt-kpi, .fa-kpi, .fa-card) {
+  border-color: var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-card);
+}
+body.finora-app .page-main :is(.fa-kpi .value, .mnt-kpi strong) {
+  overflow-wrap: anywhere;
+  font-variant-numeric: tabular-nums;
+}
+body.finora-app .fa-nav {
+  gap: 8px;
+}
+body.finora-app .fa-nav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  box-sizing: border-box;
+}
+body.finora-app #fdPage .fd-kpi-value {
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+/* Module headers use the same quiet violet surface as the new home. */
+body.finora-app .ins-wrap {
+  --ins-blue: var(--primary);
+  --ins-blue-soft: var(--primary-soft);
+  --ins-navy: var(--text-main);
+  --ins-text: var(--text-main);
+  --ins-border: var(--border);
+  --ins-shadow: var(--shadow-card);
+  width: 100%;
+  max-width: 1420px;
+  padding-top: 0;
+}
+body.finora-app :is(.ins-dashboard-hero, .rc-hero) {
+  background: linear-gradient(120deg, #eee7fc, #faf8ff 72%);
+  border: 1px solid #dcd0f1;
+  color: var(--text-main);
+  box-shadow: var(--shadow-card);
+}
+body.finora-app :is(.ins-dashboard-hero, .rc-hero) h1 { color: var(--text-main); }
+body.finora-app :is(.ins-dashboard-hero, .rc-hero) p { color: var(--text-muted); }
+body.finora-app .ins-dashboard-hero .ins-eyebrow { color: var(--primary); }
+body.finora-app .ins-dashboard-hero .ins-btn.ghost { color: var(--primary) !important; background: var(--surface); border-color: var(--border); }
+body.finora-app .rc-hero .rc-btn-primary { color: var(--primary); box-shadow: var(--shadow-card); }
+body.finora-app .ins-dashboard-hero__art > svg { stroke: var(--primary); filter: none; }
+body.finora-app .ins-module-brand__icon { background: var(--primary); box-shadow: none; }
+body.finora-app .ins-nav a.active { background: var(--primary-soft); color: var(--primary); box-shadow: none; }
+body.finora-app .ins-stat strong { white-space: normal; overflow-wrap: anywhere; }
+body.finora-app .ins-dashboard-hero__actions { flex-wrap: wrap; }
+
+/* Earlier page-specific dark backgrounds survived the desktop theme. */
+body.finora-app .agent-pending-page :is(.card, .stat-box) {
+  background: var(--surface);
+  color: var(--text-main);
+}
+body.finora-app .agent-pending-page .stat-box {
+  background: var(--primary-soft);
+  border: 1px solid var(--border);
+}
+body.finora-app .agent-pending-page .stats-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+}
+body.finora-app .epw-cards,
+body.finora-app .templates-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+}
+body.finora-app .fm-app .fm-tabs {
+  overflow-x: auto;
+  flex-wrap: nowrap;
+}
+body.finora-app .fm-app .fm-tabs > button { flex-shrink: 0; }
+
+/* Action labels must not shrink while the surrounding tool strip scrolls. */
+body.finora-app #ordersFd .ofd-tools-row > :is(.ofd-btn, .ofd-pop-wrap) {
+  flex-shrink: 0;
+}
+body.finora-app .notes-toolbar .notes-mobile-tools-toggle {
+  width: auto;
+  flex-shrink: 0;
+}
+@media (min-width: 721px) {
+  body.finora-app .notes-toolbar .notes-mobile-tools-toggle { display: none !important; }
+}
+
+/* Fixed feedback stays centered even when a page also defines right: 20px. */
+body.finora-app .team-admin-page .toast-container,
+body.finora-app .page-main #toastContainer.toast-container {
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: calc(100vw - 32px);
+}
+
+/* The sidebar reduces tablet workspace width; reserve room for the title. */
+@media (min-width: 769px) and (max-width: 1199px) {
+  body.finora-app:not(.page-dashboard) .topbar { gap: 12px; }
+  body.finora-app:not(.page-dashboard) .topbar-left { min-width: 0; flex: 1 1 auto; }
+  body.finora-app:not(.page-dashboard) .topbar .page-title { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body.finora-app:not(.page-dashboard) .topbar-actions { min-width: 0; flex: 0 0 auto; gap: 10px; }
+  body.finora-app:not(.page-dashboard) .branch-picker-wrap { margin-inline-end: 0 !important; }
+  body.finora-app:not(.page-dashboard) .global-branch-control { display: flex; align-items: center; gap: 8px; }
+  body.finora-app:not(.page-dashboard) .dashboard-top-quick-actions .dq-label { display: none !important; }
+  body.finora-app:not(.page-dashboard) .topbar .dq-btn { width: 44px; min-width: 44px; height: 44px; }
+  body.finora-app:not(.page-dashboard) #headerUserName { max-width: 100px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+}
+
+@media (max-width: 1024px) {
+  body.finora-app .fa-page .fa-kpi-grid,
+  body.finora-app .report-page .kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  body.finora-app .mnt-page :is(.mnt-grid-2, .mnt-grid-3) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  body.finora-app .report-page .report-header { flex-wrap: wrap; }
+  body.finora-app .report-page .charts-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 600px) {
+  body.finora-app .report-page .kpi-grid { grid-template-columns: minmax(0, 1fr); }
+  body.finora-app .mnt-page :is(.mnt-grid-2, .mnt-grid-3),
+  body.finora-app .fa-page .fa-grid { grid-template-columns: minmax(0, 1fr); }
+  body.finora-app .page-main :is(.mnt-card, .fa-card) { padding: 14px; }
+  body.finora-app .page-main :is(.mnt-btn, .mnt-tab-btn, .tr-btn, .fa-btn) {
+    min-height: 44px;
+    box-sizing: border-box;
+  }
+  body.finora-app .mnt-tabs { flex-wrap: wrap; }
+  body.finora-app .fa-nav { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 6px; }
+  body.finora-app .fa-nav a { flex: 0 0 auto; min-height: 44px; }
+  body.finora-app .ins-dashboard-hero { min-height: 0; padding: 22px 18px; }
+  body.finora-app .sound-preset-chip { white-space: normal; height: auto; min-height: 44px; flex-wrap: wrap; }
+}
+@media print {
+  body.finora-app .workspace-table-scroll { overflow: visible; border: 0; }
+}

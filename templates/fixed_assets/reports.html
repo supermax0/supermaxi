@@ -38,6 +38,7 @@
   </div>
   {% endif %}
   <h3>{{ data.title }}</h3>
+  <div class="workspace-table-scroll" role="region" aria-label="جدول الأصول" tabindex="0">
   <table class="fa-table">
     {% if report_type == 'register' %}
     <thead><tr><th>الكود</th><th>الاسم</th><th>التصنيف</th><th>التكلفة</th><th>مجمع الاستهلاك</th><th>ق.د.</th><th>الحالة</th><th>الموقع</th><th>المسؤول</th></tr></thead>
@@ -80,5 +81,6 @@
     <tbody>{% for r in data.rows %}<tr><td>{{ r.asset }}</td><td>{{ r.issue }}</td></tr>{% else %}<tr><td colspan="2">لا توجد مشاكل — ممتاز!</td></tr>{% endfor %}</tbody>
     {% endif %}
   </table>
+  </div>
 </div>
 {% endblock %}

@@ -56,7 +56,8 @@
   </div>
   <div class="fa-card">
     <h3 style="margin-top:0;">الحركات</h3>
-    <table class="fa-table">
+    <div class="workspace-table-scroll" role="region" aria-label="جدول الأصول" tabindex="0">
+  <table class="fa-table">
       <thead><tr><th>التاريخ</th><th>النوع</th><th>المبلغ</th><th>ق.د. قبل</th><th>ق.د. بعد</th><th>ملاحظات</th></tr></thead>
       <tbody>
         {% for m in movements %}
@@ -71,6 +72,7 @@
       </tbody>
     </table>
   </div>
+  </div>
   {% if disposal %}
   <div class="fa-card">
     <h3 style="margin-top:0;">{{ disposal.type_label() }}</h3>
@@ -79,7 +81,8 @@
   {% endif %}
   <div class="fa-card">
     <h3 style="margin-top:0;">جدول الاستهلاك</h3>
-    <table class="fa-table">
+    <div class="workspace-table-scroll" role="region" aria-label="جدول الأصول" tabindex="0">
+  <table class="fa-table">
       <thead><tr><th>السنة</th><th>الشهر</th><th>مبلغ الاستهلاك</th><th>مجمع قبل</th><th>مجمع بعد</th><th>ق.د. بعد</th><th>الحالة</th></tr></thead>
       <tbody>
         {% for d in depreciations %}
@@ -95,9 +98,11 @@
       </tbody>
     </table>
   </div>
+  </div>
   <div class="fa-card">
     <h3 style="margin-top:0;">الصيانة والتحسينات</h3>
-    <table class="fa-table">
+    <div class="workspace-table-scroll" role="region" aria-label="جدول الأصول" tabindex="0">
+  <table class="fa-table">
       <thead><tr><th>التاريخ</th><th>النوع</th><th>المبلغ</th><th>رأسمالي</th><th>الوصف</th></tr></thead>
       <tbody>
         {% for m in maintenances %}
@@ -111,9 +116,11 @@
       </tbody>
     </table>
   </div>
+  </div>
   <div class="fa-card">
     <h3 style="margin-top:0;">القيود المحاسبية</h3>
-    <table class="fa-table">
+    <div class="workspace-table-scroll" role="region" aria-label="جدول الأصول" tabindex="0">
+  <table class="fa-table">
       <thead><tr><th>رقم القيد</th><th>التاريخ</th><th>الوصف</th><th>مدين</th><th>دائن</th><th>المبلغ</th></tr></thead>
       <tbody>
         {% for j in journals %}
@@ -129,10 +136,12 @@
       </tbody>
     </table>
   </div>
+  </div>
   {% if audit_logs %}
   <div class="fa-card">
     <h3 style="margin-top:0;">سجل التدقيق <a href="/assets/audit?asset_id={{ asset.id }}" style="font-size:13px;">عرض الكل</a></h3>
-    <table class="fa-table">
+    <div class="workspace-table-scroll" role="region" aria-label="جدول الأصول" tabindex="0">
+  <table class="fa-table">
       <thead><tr><th>التاريخ</th><th>العملية</th><th>الملخص</th></tr></thead>
       <tbody>
         {% for log in audit_logs %}
@@ -144,6 +153,7 @@
         {% endfor %}
       </tbody>
     </table>
+  </div>
   </div>
   {% endif %}
   <div class="fa-card">
@@ -161,7 +171,8 @@
       </div>
       <button type="submit" class="fa-btn" style="background:var(--primary);">رفع مرفق</button>
     </form>
-    <table class="fa-table">
+    <div class="workspace-table-scroll" role="region" aria-label="جدول الأصول" tabindex="0">
+  <table class="fa-table">
       <thead><tr><th>النوع</th><th>الملف</th><th>التاريخ</th><th>إجراء</th></tr></thead>
       <tbody>
         {% for att in attachments %}
@@ -178,6 +189,7 @@
         {% else %}<tr><td colspan="4">لا توجد مرفقات.</td></tr>{% endfor %}
       </tbody>
     </table>
+  </div>
   </div>
 </div>
 {% endblock %}
