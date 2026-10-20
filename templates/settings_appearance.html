@@ -11,6 +11,13 @@
 </div>
 
 <div class="settings-section-card">
+  <div class="settings-section-header"><h2>تنسيق التاريخ والوقت</h2><p>يُطبّق على الموقع والتطبيق والفواتير والتقارير والطباعة لكل مستخدمي الشركة، بتوقيت بغداد.</p></div>
+  <label class="settings-field" for="timeFormat"><span>تنسيق الساعة</span>
+    <select id="timeFormat"><option value="12" {% if finora_time_format == '12' %}selected{% endif %}>12 ساعة — 07:30 م</option><option value="24" {% if finora_time_format == '24' %}selected{% endif %}>24 ساعة — 19:30</option></select>
+  </label>
+</div>
+
+<div class="settings-section-card">
   <div class="settings-section-header">
     <h2><i class="fas fa-list"></i> ترتيب القائمة</h2>
     <p>تجميع الصفحات حسب العمل، مع بحث ومفضلة. أطفئ الخيار للرجوع إلى القائمة السابقة.</p>
@@ -123,6 +130,7 @@ document.getElementById("saveAppearanceBtn").addEventListener("click", function 
     default_currency: document.getElementById("defaultCurrency").value,
     ai_enabled: document.getElementById("aiEnabled").checked,
     ui_flags: {
+      time_format: document.getElementById("timeFormat").value,
       navigation_v2: document.getElementById("organizedNavigation").checked,
       show_sidebar_order_statuses: document.getElementById("showSidebarOrderStatuses").checked,
       show_dash_cash_balance: document.getElementById("showDashCashBalance").checked,
@@ -147,6 +155,7 @@ document.getElementById("saveAppearanceBtn").addEventListener("click", function 
     .then(data => {
       btn.disabled = false;
       if (data && data.success) {
+        window.FinoraTime?.setFormat(document.getElementById("timeFormat").value);
         showToast("تم حفظ إعدادات الواجهة بنجاح", "success");
         if (shortcutsChanged) window.location.reload();
       } else {

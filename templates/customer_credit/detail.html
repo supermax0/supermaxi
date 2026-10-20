@@ -345,7 +345,7 @@
       const inst = instById(pay.installment_id);
       const ref = [p ? planName(p) : "", inst ? "قسط #" + inst.sequence : ""].filter(Boolean).join(" · ");
       return `<tr${pay.plan_id ? ` data-ccd-plan="${pay.plan_id}" style="cursor:pointer"` : ""}>
-        <td class="fd-td-title" data-label="${L.date}"><b dir="ltr">${F.esc(pay.created_at || "—")}</b></td>
+        <td class="fd-td-title" data-label="${L.date}"><b dir="ltr">${F.esc(window.FinoraTime.dateTime(pay.created_at))}</b></td>
         <td data-label="${L.amount}"><b class="fd-qty--ok">${F.money(pay.amount)}</b></td>
         <td data-label="البند / القسط" class="fd-col-opt${ref ? "" : " fd-td-blank"}">${F.dash(ref)}</td>
         <td data-label="${L.note}" class="${F.blank(pay.note) ? "fd-td-blank" : ""}">${F.dash(pay.note)}</td>
@@ -502,7 +502,7 @@
     lines.push("");
     lines.push(["{{ _('customer_credit_payments_title') }}"].map(cell).join(","));
     lines.push([L.date, L.amount, L.note].map(cell).join(","));
-    ccd.payments.forEach(x => lines.push([x.created_at, x.amount, x.note].map(cell).join(",")));
+    ccd.payments.forEach(x => lines.push([window.FinoraTime.dateTime(x.created_at), x.amount, x.note].map(cell).join(",")));
     const blob = new Blob(["﻿" + lines.join("\n")], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);

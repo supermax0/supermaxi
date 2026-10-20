@@ -29,7 +29,7 @@
   {% for order in orders %}
   <article class="pd-card">
     <h2><a href="/orders?q={{ order.id }}">طلب #{{ order.id }}</a> · {{ '{:,}'.format(order.total) }} د.ع</h2>
-    <div class="pd-meta">{{ order.customer }} · {{ order.employee }} · {{ order.status }} · {{ order.created_at }}</div>
+    <div class="pd-meta">{{ order.customer }} · {{ order.employee }} · {{ order.status }} · {{ order.created_at|finora_datetime }}</div>
     {% if order.thread and order.thread.messages %}
     <div class="pd-thread">
       {% for row in order.thread.messages %}

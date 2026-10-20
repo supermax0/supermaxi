@@ -372,7 +372,7 @@
           {% if order_accounting_impact %}
             {% for row in order_accounting_impact %}
             <tr>
-              <td class="fd-td-title acc-order-id" data-label="الطلب"><b>#{{ row.invoice_id }}</b><small dir="ltr">{{ row.created_at.strftime("%Y-%m-%d") if row.created_at else "" }}</small></td>
+              <td class="fd-td-title acc-order-id" data-label="الطلب"><b>#{{ row.invoice_id }}</b><small dir="ltr">{{ (row.created_at|finora_datetime("%Y-%m-%d")) if row.created_at else "" }}</small></td>
               <td class="fd-col-opt2{% if not row.customer_name %} fd-td-blank{% endif %}" data-label="الزبون">{{ row.customer_name or "—" }}</td>
               <td class="fd-cell-amount" data-label="قيمة البيع"><span dir="ltr">{{ "{:,.0f}".format(row.sale_value) }}</span></td>
               <td class="fd-col-opt fd-cell-muted" data-label="تكلفة المخزون"><span dir="ltr">{{ "{:,.0f}".format(row.stock_cost) }}</span></td>
@@ -523,8 +523,8 @@
    "account_id": {{ t.treasury_account_id or 'null' }},
    "account": {{ (t.treasury_account.name if t.treasury_account else _('treasury_cash'))|tojson }},
    "transfer_id": {{ t.treasury_transfer_id or 'null' }},
-   "date": {{ (t.created_at.strftime('%Y-%m-%d') if t.created_at else '')|tojson }},
-   "time": {{ (t.created_at.strftime('%H:%M') if t.created_at else '')|tojson }}}{% if not loop.last %},{% endif %}
+   "date": {{ (t.created_at|finora_datetime('%Y-%m-%d') if t.created_at else '')|tojson }},
+   "time": {{ (t.created_at|finora_datetime('%H:%M') if t.created_at else '')|tojson }}}{% if not loop.last %},{% endif %}
   {% endfor %}
 ]</script>
 

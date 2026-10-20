@@ -1,6 +1,7 @@
 ﻿<!doctype html>
 <html lang="ar" dir="rtl">
 <head>
+  {% include 'partials/time_format_bootstrap.html' %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <script src="/static/js/no-zoom.js"></script>
@@ -49,7 +50,7 @@
       </div>
       <h1>إيصال جلسة</h1>
       <div class="muted">جلسة رقم #{{ appointment.id }}</div>
-      <div class="muted">{{ appointment.completed_at.strftime('%Y-%m-%d %H:%M') if appointment.completed_at else appointment.appointment_at.strftime('%Y-%m-%d %H:%M') }}</div>
+      <div class="muted">{{ (appointment.completed_at|finora_datetime('%Y-%m-%d %H:%M')) if appointment.completed_at else (appointment.appointment_at|finora_datetime('%Y-%m-%d %H:%M', local=True)) }}</div>
     </div>
     <div class="line"></div>
     <div class="row"><span>العميل</span><b>{{ appointment.customer.name }}</b></div>
@@ -76,7 +77,7 @@
 {{ (invoice_settings.store_name if invoice_settings and invoice_settings.store_name else 'BEAUTY CENTER') }}
 RECEIPT
 Session #{{ appointment.id }}
-Date: {{ appointment.completed_at.strftime('%Y-%m-%d %H:%M') if appointment.completed_at else appointment.appointment_at.strftime('%Y-%m-%d %H:%M') }}
+Date: {{ (appointment.completed_at|finora_datetime('%Y-%m-%d %H:%M')) if appointment.completed_at else (appointment.appointment_at|finora_datetime('%Y-%m-%d %H:%M', local=True)) }}
 {% if invoice_settings and invoice_settings.phone1 %}Phone: {{ invoice_settings.phone1 }}
 {% endif %}------------------------------
 Customer: {{ appointment.customer.name }}

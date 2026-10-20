@@ -1,3 +1,4 @@
+import { useTimeFormat } from "@/stores/displayTime";
 import { auditRequired } from "@shared/inventoryAudit";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -24,7 +25,7 @@ import { TablePagination } from "@/components/TablePagination";
 import { useBarcodeScanner } from "@/hooks/useBarcodeScanner";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { toast } from "@/stores/toasts";
-import { formatNumber } from "@/utils/format";
+import { formatNumber, formatDateTime } from "@/utils/format";
 import { AuditDetails } from "./AuditDetails";
 import { AuditSheet } from "./AuditSheet";
 import { AuditRecovery } from "./AuditRecovery";
@@ -85,6 +86,7 @@ function Quantity({
   disabled: boolean;
   label?: string;
 }) {
+  useTimeFormat();
   return (
     <div
       className="flex min-h-11 items-center overflow-hidden rounded-control border border-line bg-white"
@@ -142,6 +144,7 @@ export function AuditWorkspace({
   active?: boolean;
   onBusyChange?(value: boolean): void;
 }) {
+  useTimeFormat();
   const queryClient = useQueryClient();
   const [cameraOpen, setCameraOpen] = useState(false),
     [scanMode, setScanMode] = useState<"select" | "count">("select");
@@ -892,9 +895,7 @@ export function AuditWorkspace({
                 <span className="mt-1 block text-xs text-ink-soft">
                   {row.locations.map((loc) => loc.name).join("، ")} · {row.created_by_name}
                 </span>
-                <span className="mt-1 block text-xs text-ink-soft">
-                  {new Date(row.created_at).toLocaleString("ar-IQ")}
-                </span>
+                <span className="mt-1 block text-xs text-ink-soft">{formatDateTime(row.created_at)}</span>
               </span>
               <span className="shrink-0 text-end">
                 <span className={`rounded-full px-2 py-1 text-xs ${stateTone(row.status)}`}>

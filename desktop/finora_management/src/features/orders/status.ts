@@ -1,3 +1,5 @@
+import { formatTime } from "@/utils/format";
+
 /**
  * Display mapping for FINORA's stored order status values (utils/order_status.py).
  * Keys are FINORA's values; labels/colors are presentation only.
@@ -75,14 +77,11 @@ export const STATUS_TARGETS = [
 ] as const;
 export const RETURN_TARGET = { value: "__return__", label: "راجع (إرجاع المخزون)" } as const;
 
-/** Stored UTC → Baghdad calendar date and an Arabic 12-hour clock. */
+/** Stored UTC → Baghdad calendar date and the company display clock. */
 const orderDateFormatter = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Asia/Baghdad",
   day: "2-digit",
   month: "2-digit",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: true,
 });
 
 export function formatOrderDate(value: string): string {
@@ -95,5 +94,5 @@ export function formatOrderDate(value: string): string {
   if (Number.isNaN(timestamp.getTime())) return value;
   const parts = orderDateFormatter.formatToParts(timestamp);
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
-  return `${part("day")}/${part("month")} ${part("hour")}:${part("minute")} ${part("dayPeriod").toLowerCase() === "am" ? "ص" : "م"}`;
+  return `${part("day")}/${part("month")} ${formatTime(timestamp)}`;
 }

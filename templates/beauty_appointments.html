@@ -69,7 +69,7 @@
       <tbody>
       {% for a in appointments %}
         <tr>
-          <td>{{ a.appointment_at.strftime('%Y-%m-%d %H:%M') }}</td>
+          <td>{{ (a.appointment_at|finora_datetime('%Y-%m-%d %H:%M', local=True)) }}</td>
           <td>{{ a.customer.name }}<br><small class="beauty-inline-note">{{ a.customer.phone }}</small></td>
           <td>{{ a.service.name }}<br><small class="beauty-inline-note">{{ "{:,}".format(a.service_price or a.service.price or 0) }} د.ع</small></td>
           <td>

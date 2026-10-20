@@ -938,7 +938,7 @@
                         {% if tenant.business_type == 'starter_business' %}إدارة أعمال مبسّطة{% elif tenant.business_type == 'beauty_center' %}مركز تجميل{% elif tenant.business_type == 'wholesale' %}تجارة الجملة{% elif tenant.business_type == 'food_wholesale_retail' %}مواد غذائية – جملة ومفرد{% elif tenant.business_type == 'hr_management' %}إدارة الموارد البشرية{% elif tenant.business_type == 'clinics' %}عيادات Finora{% else %}شركة عامة{% endif %}
                     </span>
                 </td>
-                <td class="tenant-cell--created" data-label="تاريخ التسجيل" style="color: var(--text-muted);">{{ tenant.created_at.strftime('%Y-%m-%d') }}</td>
+                <td class="tenant-cell--created" data-label="تاريخ التسجيل" style="color: var(--text-muted);">{{ (tenant.created_at|finora_datetime('%Y-%m-%d')) }}</td>
                 <td class="tenant-cell--end" data-label="انتهاء الاشتراك" style="font-weight: 800;">
                     <i class="far fa-calendar-alt"
                         style="color: var(--primary); margin-left: 6px; font-size: 13px;"></i>
@@ -1896,6 +1896,6 @@
         });
     });
 </script>
-<script src="{{ url_for('static', filename='js/superadmin_features.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/superadmin_features.js') }}?v=20261021-time-format" defer></script>
 {% endblock %}
 

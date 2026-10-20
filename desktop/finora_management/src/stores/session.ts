@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { FinoraSession, Permission } from "@/api/finora";
+import { useDisplayTime } from "./displayTime";
 
 export type SignedOutReason = "signed_out" | "expired" | "password_change_required" | null;
 
@@ -16,9 +17,11 @@ export const useSession = create<SessionState>()((set) => ({
   session: null,
   reason: null,
   signedIn(session) {
+    useDisplayTime.getState().setFormat(session.display_time_format ?? "12");
     set({ status: "signed_in", session, reason: null });
   },
   signedOut(reason) {
+    useDisplayTime.getState().setFormat("12");
     set({ status: "signed_out", session: null, reason });
   },
 }));

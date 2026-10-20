@@ -1,3 +1,4 @@
+import { useTimeFormat } from "@/stores/displayTime";
 import { useId, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Wallet, ArrowDownLeft, ArrowUpRight } from "lucide-react";
@@ -10,7 +11,7 @@ import { StatCard } from "@/components/StatCard";
 import { FeatureHelp } from "@/components/FeatureHelp";
 import { TablePagination } from "@/components/TablePagination";
 import { toast } from "@/stores/toasts";
-import { formatNumber } from "@/utils/format";
+import { formatNumber, formatDateTime } from "@/utils/format";
 
 const button = "h-10 rounded-control border border-line bg-white px-4 text-sm text-ink disabled:opacity-50";
 const input = "h-11 w-full rounded-control border border-line bg-white px-3 text-sm text-ink";
@@ -22,6 +23,7 @@ type Pending = {
 };
 
 export function CashShifts({ meta, online }: { meta?: FinanceMeta; online: boolean }) {
+  useTimeFormat();
   const cache = useQueryClient();
   const formId = useId();
   const [status, setStatus] = useState("");
@@ -255,10 +257,7 @@ export function CashShifts({ meta, online }: { meta?: FinanceMeta; online: boole
             <DetailRow label="الصندوق" children={row.account_name} />
             <DetailRow label="الوردية" children={row.name} />
             <DetailRow label="فتحها" children={row.opened_by} />
-            <DetailRow
-              label="وقت الافتتاح"
-              children={new Date(`${row.opened_at}Z`).toLocaleString("ar-IQ", { timeZone: "Asia/Baghdad" })}
-            />
+            <DetailRow label="وقت الافتتاح" children={formatDateTime(`${row.opened_at}Z`)} />
             <DetailRow label="الافتتاح المحاسبي" children={money(row.opening_ledger)} />
             <DetailRow label="الافتتاح الفعلي" children={money(row.opening_actual)} />
             <DetailRow label="فرق الافتتاح" children={money(row.opening_variance)} />

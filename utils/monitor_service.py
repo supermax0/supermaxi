@@ -1,6 +1,7 @@
 """مركز المراقبة الموحّد — تجميع بيانات الألسنة الثلاثة."""
 from __future__ import annotations
 
+from utils.time_format import format_timestamp
 from datetime import date, datetime, timedelta
 from typing import Any
 
@@ -88,7 +89,7 @@ def get_watchdog_saved_alerts(limit: int = 15) -> list[dict[str, Any]]:
                 "priority": a.priority,
                 "is_read": bool(a.is_read),
                 "created_at": a.created_at.isoformat() if a.created_at else None,
-                "created_display": a.created_at.strftime("%Y-%m-%d %H:%M") if a.created_at else "—",
+                "created_display": format_timestamp(a.created_at) if a.created_at else "—",
             }
             for a in rows
         ]
@@ -344,7 +345,7 @@ def build_performance_monitor_data(
             "returned_count": returned_count,
             "return_rate": _rate(returned_count, orders_count),
             "last_order_at": last_order_at,
-            "last_order_display": last_order_at.strftime("%Y-%m-%d %H:%M") if last_order_at else "لا يوجد",
+            "last_order_display": format_timestamp(last_order_at) if last_order_at else "لا يوجد",
             "status": "ضعيف" if reasons else "طبيعي",
             "status_class": "danger" if reasons else "success",
             "reason": "، ".join(reasons) if reasons else "الأداء ضمن الحد",

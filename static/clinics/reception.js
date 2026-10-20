@@ -130,10 +130,10 @@
         ${drag ? `draggable="true" data-wait-id="${a.id}"` : ""}>
         <div class="cx-rec-card__top">
           <div class="cx-rec-card__time">
-            ${col === "upcoming" ? `<strong>${ctx.esc(a.start_time || "—")}</strong> ${ctx.badge(a.status)}` : ""}
-            ${col === "waiting" ? `<span>وصل ${ctx.esc((a.arrived_at || a.checked_in_at || "").slice(11, 16) || "—")}</span>` : ""}
-            ${col === "in_consultation" ? `<span>بدأ ${ctx.esc((a.visit_started_at || "").slice(11, 16) || "—")}</span>` : ""}
-            ${col === "checkout" ? `<span>انتهت ${ctx.esc((a.visit_completed_at || "").slice(11, 16) || "—")}</span>` : ""}
+            ${col === "upcoming" ? `<strong>${ctx.esc(window.FinoraTime.clock(a.start_time || "—"))}</strong> ${ctx.badge(a.status)}` : ""}
+            ${col === "waiting" ? `<span>وصل ${ctx.esc(window.FinoraTime.time((a.arrived_at || a.checked_in_at || "")) || "—")}</span>` : ""}
+            ${col === "in_consultation" ? `<span>بدأ ${ctx.esc(window.FinoraTime.time((a.visit_started_at || "")) || "—")}</span>` : ""}
+            ${col === "checkout" ? `<span>انتهت ${ctx.esc(window.FinoraTime.time((a.visit_completed_at || "")) || "—")}</span>` : ""}
           </div>
           <div class="cx-rec-card__badges">
             ${isEmerg ? '<span class="cx-rec-tag cx-rec-tag--em">طوارئ</span>' : ""}
@@ -681,7 +681,7 @@
         ${appt ? `
         <div class="cx-rec-drawer__section">
           <h4>موعد اليوم</h4>
-          <p>${ctx.esc(appt.start_time || "")} · ${ctx.esc(appt.doctor_name || "")}</p>
+          <p>${ctx.esc(window.FinoraTime.clock(appt.start_time || ""))} · ${ctx.esc(appt.doctor_name || "")}</p>
           <p>${ctx.esc(appt.service_name || appt.notes || "")}</p>
           <p>${ctx.badge(appt.status)}${appt.wait_minutes ? ` · انتظار ${appt.wait_minutes} د` : ""}</p>
         </div>` : ""}

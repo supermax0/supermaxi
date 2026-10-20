@@ -54,7 +54,7 @@
       <tbody>
       {% for a in all_summary.rows[:30] %}
         <tr>
-          <td>{{ a.completed_at.strftime('%Y-%m-%d %H:%M') if a.completed_at else '—' }}</td>
+          <td>{{ (a.completed_at|finora_datetime('%Y-%m-%d %H:%M')) if a.completed_at else '—' }}</td>
           <td>{{ a.customer.name }}</td>
           <td>{{ a.service.name }}</td>
           <td>{{ "{:,}".format(a.total_amount or 0) }}</td>
@@ -78,7 +78,7 @@
       <thead><tr><th>التاريخ</th><th>النوع</th><th>المبلغ</th><th>الملاحظة</th></tr></thead>
       <tbody>
       {% for tx in cash_movements %}
-        <tr><td>{{ tx.created_at.strftime('%Y-%m-%d %H:%M') if tx.created_at else '—' }}</td><td>{{ tx.type }}</td><td>{{ "{:,}".format(tx.amount or 0) }}</td><td>{{ tx.note }}</td></tr>
+        <tr><td>{{ (tx.created_at|finora_datetime('%Y-%m-%d %H:%M')) if tx.created_at else '—' }}</td><td>{{ tx.type }}</td><td>{{ "{:,}".format(tx.amount or 0) }}</td><td>{{ tx.note }}</td></tr>
       {% else %}
         <tr><td colspan="4" style="text-align:center;color:var(--text-muted)">لا توجد حركات صندوق للجلسات.</td></tr>
       {% endfor %}

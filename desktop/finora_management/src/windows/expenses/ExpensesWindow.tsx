@@ -1,3 +1,4 @@
+import { useTimeFormat } from "@/stores/displayTime";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CalendarClock,
@@ -72,6 +73,7 @@ function exportRows(rows: ExpenseRow[]) {
 }
 
 export function ExpensesWindow() {
+  useTimeFormat();
   const active = useWindowManager((s) => s.active === "expenses");
   const allowed = useCan("view_expenses");
   const online = useConnection((s) => s.status === "online");

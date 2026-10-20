@@ -14,7 +14,7 @@
     if (!value) return "بدون تاريخ محفوظ";
     const parsed = new Date(value);
     if (Number.isNaN(parsed.getTime())) return text(value);
-    return parsed.toLocaleString("ar-IQ", {
+    return window.FinoraTime.format(parsed, {
       year: "numeric", month: "2-digit", day: "2-digit",
       hour: "2-digit", minute: "2-digit"
     });

@@ -1,4 +1,5 @@
 """One saved-result report for print/PDF and XLSX, with identical branch/cost permissions."""
+from utils.time_format import format_timestamp
 from io import BytesIO
 import json
 from datetime import datetime
@@ -34,7 +35,7 @@ def print_page(row):
 def format_time(value):
     if not value:
         return "لم يجرد"
-    return datetime.fromisoformat(value.replace("Z", "+00:00")).strftime("%Y/%m/%d %H:%M:%S") + " UTC"
+    return format_timestamp(value, "%Y/%m/%d %H:%M:%S") + " بتوقيت بغداد"
 
 
 def spreadsheet(row):

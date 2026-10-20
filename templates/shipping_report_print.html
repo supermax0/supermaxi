@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+  {% include 'partials/time_format_bootstrap.html' %}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>كشف {{ report.report_number }} — {{ agent_label }}</title>
@@ -332,8 +333,8 @@
       <section class="report-meta">
         <p><strong>المندوب:</strong> {{ agent_label }}</p>
         <p><strong>رقم الكشف:</strong> <span class="ltr">{{ report.report_number }}</span></p>
-        <p><strong>تاريخ الكشف:</strong> {{ report.created_at.strftime('%Y/%m/%d %H:%M') if report.created_at else "—" }}</p>
-        <p><strong>تاريخ الطباعة:</strong> {{ generated_at.strftime('%Y/%m/%d %H:%M') }}</p>
+        <p><strong>تاريخ الكشف:</strong> {{ (report.created_at|finora_datetime('%Y/%m/%d %H:%M')) if report.created_at else "—" }}</p>
+        <p><strong>تاريخ الطباعة:</strong> {{ (generated_at|finora_datetime('%Y/%m/%d %H:%M')) }}</p>
       </section>
     </header>
 

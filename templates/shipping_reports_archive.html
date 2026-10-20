@@ -188,7 +188,7 @@
         <td><strong>#{{ report.report_number }}</strong></td>
         <td>{{ report.orders_count }}</td>
         <td style="color: var(--archive-success); font-weight: 600;">{{ "{:,.0f}".format(report.total_amount) }} د.ع</td>
-        <td>{{ report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else "—" }}</td>
+        <td>{{ (report.created_at|finora_datetime('%Y-%m-%d %H:%M')) if report.created_at else "—" }}</td>
         <td>{{ report.created_by or "—" }}</td>
         <td>
           <a href="/delivery/report/{{ report.id }}/print?autoprint=1" class="btn-print" target="_blank" rel="noopener">🖨️ طباعة مع المنتجات</a>

@@ -350,7 +350,7 @@
         ${kv("{{ _('agents_th_total_amount') }}", `<b>${F.money(a.total_amount)}</b>`)}
         ${kv("الكشوف", F.num(a.reports_count))}
         ${kv("اسم المستخدم", a.username ? `<span dir="ltr">${F.esc(a.username)}</span>` : "—")}
-        ${a.created_at ? kv("تاريخ الإضافة", `<span dir="ltr">${F.esc(a.created_at)}</span>`) : ""}
+        ${a.created_at ? kv("تاريخ الإضافة", `<span dir="ltr">${F.esc(window.FinoraTime.dateTime(a.created_at))}</span>`) : ""}
         ${F.blank(a.notes) ? "" : kv("ملاحظات", F.esc(a.notes))}
       </div>
       <div class="fd-detail-actions">

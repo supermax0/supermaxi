@@ -121,6 +121,7 @@ export const ADMIN_SESSION = {
     "view_reports",
     "view_financial",
     "view_expenses",
+    "manage_settings",
     "view_accounts",
     "pay_orders",
     "can_manage_suppliers",
@@ -155,11 +156,23 @@ export function createFinoraFixture() {
     purchaseRow(47, { tab: "draft", status: "draft", supplier: "مستودع النور" }),
   ];
   const calls: FinoraRequest[] = [];
+  let displayTimeFormat = "12";
 
   const handler = (request: FinoraRequest): FinoraResponse => {
     calls.push(request);
     const { path } = request;
-    if (path.startsWith("/api/v1/desktop/auth/")) return ok({ ok: true, session: ADMIN_SESSION });
+    if (path.startsWith("/api/v1/desktop/auth/"))
+      return ok({ ok: true, session: { ...ADMIN_SESSION, display_time_format: displayTimeFormat } });
+    if (path === "/api/v1/desktop/display-preferences") {
+      if (
+        request.method === "POST" &&
+        request.body &&
+        typeof request.body === "object" &&
+        !Array.isArray(request.body)
+      )
+        displayTimeFormat = String(request.body.time_format);
+      return ok({ ok: true, time_format: displayTimeFormat, timezone: "Asia/Baghdad" });
+    }
     if (path === "/orders/data") {
       const search = String(request.query?.search ?? "");
       const rows = orders.filter(

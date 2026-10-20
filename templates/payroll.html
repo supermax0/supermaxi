@@ -298,7 +298,7 @@
 #fdPage table.payroll-table td {background:transparent;color:var(--fd-text);height:58px;border-color:var(--fd-border);}
 @media(max-width:600px){ #fdPage .payroll-summary{grid-template-columns:1fr;}#fdPage .payroll-tabs{overflow:auto;flex-wrap:nowrap;}#fdPage .payroll-tab{flex-shrink:0;}}
 </style>
-<script src="{{ url_for('static', filename='js/payroll.js') }}?v=20261019-design"></script>
+<script src="{{ url_for('static', filename='js/payroll.js') }}?v=20261021-time-format"></script>
 <script src="/static/js/finora-ui.js?v=20261018c"></script>
 <script>
 function filterPayrollTable(){ const q=document.getElementById('paySearch').value.trim().toLowerCase();document.querySelectorAll('#fdPage .payroll-panel tbody tr').forEach(row=>{row.hidden=!!q&&!row.textContent.toLowerCase().includes(q);}); }

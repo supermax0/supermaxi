@@ -1,3 +1,5 @@
+import { useTimeFormat } from "@/stores/displayTime";
+import { formatDateTime } from "@/utils/format";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Cloud, RefreshCw, Download, PackageCheck } from "lucide-react";
 import { desktopBridge } from "@/services/bridge";
@@ -15,6 +17,7 @@ const labels = {
   cancelled: "طلب محلي ملغى",
 };
 export function OfflineSettingsSection() {
+  useTimeFormat();
   const status = useOffline((s) => s.status);
   const online = useConnection((s) => s.status === "online");
   const client = useQueryClient();
@@ -60,9 +63,7 @@ export function OfflineSettingsSection() {
       void client.invalidateQueries();
     },
   });
-  const stamp = status.lastCachedAt
-    ? new Date(status.lastCachedAt).toLocaleString("ar-IQ")
-    : "لم تُحمّل بيانات بعد";
+  const stamp = status.lastCachedAt ? formatDateTime(status.lastCachedAt) : "لم تُحمّل بيانات بعد";
   return (
     <>
       <SectionCard icon={Download} title="نسخة البيانات للأوفلاين">
@@ -72,7 +73,7 @@ export function OfflineSettingsSection() {
               <p>{snapshot?.capturedAt ? "النسخة المحلية مكتملة" : "نزّل البيانات قبل العمل بدون نت"}</p>
               <p className="mt-1 text-xs text-ink-faint">
                 {snapshot?.capturedAt
-                  ? new Date(snapshot.capturedAt).toLocaleString("ar-IQ")
+                  ? formatDateTime(snapshot.capturedAt)
                   : "تشمل السجلات والتفاصيل المتاحة لصلاحياتك في هذا الفرع."}
               </p>
             </div>
@@ -280,7 +281,7 @@ export function OfflineSettingsSection() {
                       ? "أُلغي الطلب المحلي المرفوض"
                       : "بانتظار التأكيد المركزي"
                   : formatIqd(operation.total)}{" "}
-                · {new Date(operation.createdAt).toLocaleString("ar-IQ")}
+                · {formatDateTime(operation.createdAt)}
               </p>
               <p dir="ltr" className="mt-1 truncate text-left text-[10px] text-ink-faint">
                 {operation.invoiceNo ?? operation.id}

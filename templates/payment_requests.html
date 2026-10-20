@@ -174,7 +174,7 @@
                 <td class="cell-amount">
                     {{ "{:,.0f}".format(req.amount) }} د.ع
                     <div style="color:var(--muted); font-size:12px; font-weight:400"><i class="far fa-clock"
-                            style="margin-left:4px;"></i>{{ req.created_at.strftime('%Y-%m-%d %H:%M') }}</div>
+                            style="margin-left:4px;"></i>{{ (req.created_at|finora_datetime('%Y-%m-%d %H:%M')) }}</div>
                 </td>
                 <td>
                     <a href="/static/{{ req.receipt_image_path }}" target="_blank" class="view-receipt">

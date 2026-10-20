@@ -2,6 +2,7 @@
 <html lang="ar" dir="rtl">
 
 <head>
+  {% include 'partials/time_format_bootstrap.html' %}
   <meta charset="UTF-8">
   <title>POS</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
@@ -3081,7 +3082,7 @@
       // تاريخ الطباعة
       const now = new Date()
       const dateStr = now.toLocaleDateString('ar-IQ', { year: 'numeric', month: 'long', day: 'numeric' })
-      const timeStr = now.toLocaleTimeString('ar-IQ', { hour: '2-digit', minute: '2-digit' })
+      const timeStr = window.FinoraTime.format(now, { hour: '2-digit', minute: '2-digit' })
       printDate.textContent = `${dateStr} - ${timeStr}`
 
       // إنشاء جدول الطباعة

@@ -11,6 +11,7 @@ import {
 } from "react";
 import { cn } from "@/utils/cn";
 import { Checkbox } from "./Checkbox";
+import { useTimeFormat } from "@/stores/displayTime";
 
 export interface Column<T> {
   id: string;
@@ -70,6 +71,7 @@ function RowView<T extends { id: number }>({
   onOpen,
   rowActions,
 }: RowProps<T>) {
+  useTimeFormat();
   return (
     <tr
       data-row={row.id}

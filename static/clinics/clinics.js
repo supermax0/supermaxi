@@ -942,7 +942,7 @@
   function ticketHtml(a) {
     return `
       <article class="cx-ticket" style="--ticket-color:${esc(a.doctor_color || "#0d9488")}">
-        <div class="cx-ticket__time">${esc(a.start_time)}${a.queue_number ? ` · #${a.queue_number}` : ""}</div>
+        <div class="cx-ticket__time">${esc(window.FinoraTime.clock(a.start_time))}${a.queue_number ? ` · #${a.queue_number}` : ""}</div>
         <div class="cx-ticket__name">${esc(a.patient_name)}</div>
         <div class="cx-ticket__meta">
           ${esc(a.doctor_name || "بدون طبيب")}<br>
@@ -1147,7 +1147,7 @@
         <tbody>
           ${rows.map((a) => `
             <tr>
-              <td>${esc(a.appointment_date)} ${esc(a.start_time)}</td>
+              <td>${esc(a.appointment_date)} ${esc(window.FinoraTime.clock(a.start_time))}</td>
               <td><a href="/clinics/patients/${a.patient_id}">${esc(a.patient_name)}</a></td>
               <td>${esc(a.doctor_name || "—")}</td>
               <td>${esc(a.service_name || "—")}</td>
@@ -1166,7 +1166,7 @@
               const cell = rows.filter((a) => a.appointment_date === d && (a.start_time || "").startsWith(String(h).padStart(2, "0")));
               return `<div class="cx-cal__cell" data-drop-date="${d}" data-drop-hour="${h}">
                 ${cell.map((a) => `<button type="button" class="cx-cal__event" draggable="true" data-id="${a.id}" data-date="${esc(a.appointment_date)}" data-time="${esc(a.start_time)}" style="border-color:${esc(a.doctor_color || "#0d9488")}">
-                  <b>${esc(a.start_time)}</b> ${esc(a.patient_name)}
+                  <b>${esc(window.FinoraTime.clock(a.start_time))}</b> ${esc(a.patient_name)}
                 </button>`).join("")}
               </div>`;
             }).join("");
@@ -1344,7 +1344,7 @@
       h1{margin:0 0 4px;font-size:1.4rem} h2{margin:18px 0 8px;font-size:1rem}
       table{width:100%;border-collapse:collapse;margin-top:8px} th,td{padding:8px;border-bottom:1px solid #ddd;text-align:right;font-size:13px}
       .meta{color:#555;font-size:13px;margin-bottom:16px} .foot{margin-top:24px;font-size:12px;color:#666}</style></head><body>
-      ${bodyHtml}<div class="foot">طباعة من Finora Clinics · ${new Date().toLocaleString("ar-IQ")}</div></body></html>`);
+      ${bodyHtml}<div class="foot">طباعة من Finora Clinics · ${window.FinoraTime.dateTime(Date.now())}</div></body></html>`);
     w.document.close();
     w.focus();
     w.print();
@@ -1619,7 +1619,7 @@
       const leaveRows = data.leaves || [];
       const commission = d.commission_pct ?? finance.legacy_commission_pct ?? 0;
       const attendanceToday = hr && hr.today_attendance
-        ? `${esc(hr.today_attendance.status_label)} ${esc(hr.today_attendance.check_in || "")}`
+        ? `${esc(hr.today_attendance.status_label)} ${esc(window.FinoraTime.clock(hr.today_attendance.check_in || ""))}`
         : "لا يوجد تسجيل";
 
       if (tab === "finance") {
@@ -1655,7 +1655,7 @@
         return `
           <section class="cx-doc-drawer__section"><div class="cx-card__head"><h3>الحضور</h3><a href="${esc(data.links.hr_attendance)}">فتح الحضور</a></div>
             ${attendanceRows.length ? `<div class="cx-table-wrap"><table class="cx-table cx-doc-mini-table"><thead><tr><th>التاريخ</th><th>دخول</th><th>خروج</th><th>الحالة</th></tr></thead><tbody>
-              ${attendanceRows.map((row) => `<tr><td>${esc(row.date)}</td><td dir="ltr">${esc(row.check_in || "—")}</td><td dir="ltr">${esc(row.check_out || "—")}</td><td>${esc(row.status_label || row.status)}</td></tr>`).join("")}
+              ${attendanceRows.map((row) => `<tr><td>${esc(row.date)}</td><td dir="ltr">${esc(window.FinoraTime.clock(row.check_in || "—"))}</td><td dir="ltr">${esc(window.FinoraTime.clock(row.check_out || "—"))}</td><td>${esc(row.status_label || row.status)}</td></tr>`).join("")}
             </tbody></table></div>` : `<div class="cx-empty cx-doc-empty"><i class="fa fa-clock"></i><b>لا سجلات حضور</b></div>`}
           </section>
           <section class="cx-doc-drawer__section"><div class="cx-card__head"><h3>الإجازات</h3><a href="${esc(data.links.hr_leave)}">فتح الإجازات</a></div>
@@ -1682,7 +1682,7 @@
             <div><span>المكتملة</span><b>${d.completed_count}</b></div>
             <div><span>المنتظرون</span><b>${d.waiting_count}</b></div>
           </div>
-          <p class="cx-doc-current"><b>المريض الحالي:</b> ${esc(today.current_patient || "لا يوجد")}${today.started_at ? ` · بدأ ${esc(new Date(today.started_at).toLocaleTimeString("ar-IQ", { hour: "2-digit", minute: "2-digit" }))}` : ""}<br><b>التالي:</b> ${esc(today.next_patient || "لا يوجد")}</p>
+          <p class="cx-doc-current"><b>المريض الحالي:</b> ${esc(today.current_patient || "لا يوجد")}${today.started_at ? ` · بدأ ${esc(window.FinoraTime.format(today.started_at, { hour: "2-digit", minute: "2-digit" }))}` : ""}<br><b>التالي:</b> ${esc(today.next_patient || "لا يوجد")}</p>
         </section>
         <section class="cx-doc-drawer__section">
           <div class="cx-card__head"><h3>الموارد البشرية</h3>${hr ? `<a href="${esc(data.links.hr_employee)}">فتح ملف HR</a>` : ""}</div>
@@ -2046,7 +2046,7 @@
             (o) => `
           <div class="cx-feed__item" style="margin-bottom:10px">
             <strong>${esc(o.patient_name)}</strong> · ${esc(o.status)} · ${esc(o.priority)}
-            <small>${esc((o.ordered_at || "").replace("T", " ").slice(0, 16))}</small>
+            <small>${esc(window.FinoraTime.dateTime((o.ordered_at || "")))}</small>
             ${(o.items || [])
               .map(
                 (it) => `
@@ -2244,7 +2244,7 @@
                   (s) => `
                 <tr>
                   <td>${esc(s.doctor_name)}</td><td>${esc(s.weekday_label)}</td>
-                  <td>${esc(s.start_time)}</td><td>${esc(s.end_time)}</td>
+                  <td>${esc(window.FinoraTime.clock(s.start_time))}</td><td>${esc(window.FinoraTime.clock(s.end_time))}</td>
                   <td><button class="cx-btn cx-btn--sm cx-btn--danger" data-del="${s.id}">حذف</button></td>
                 </tr>`
                 )
@@ -2529,7 +2529,7 @@
           ${(data.recent_messages || []).map((m) => `
             <div class="cx-feed__item">
               <strong>${esc(m.template_key)}</strong> → ${esc(m.recipient)} · ${esc(m.status)}
-              <small>${esc((m.sent_at || m.created_at || "").replace("T"," ").slice(0,16))}</small>
+              <small>${esc(window.FinoraTime.dateTime((m.sent_at || m.created_at || "")))}</small>
             </div>`).join("") || '<div class="cx-empty">لا رسائل بعد</div>'}
         </div>
       </article>

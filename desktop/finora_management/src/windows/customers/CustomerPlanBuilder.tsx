@@ -1,3 +1,5 @@
+import { useTimeFormat } from "@/stores/displayTime";
+import { formatDateTime } from "@/utils/format";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { CalendarClock, RefreshCw, X } from "lucide-react";
@@ -74,6 +76,7 @@ export function partitionPreview(
 }
 
 export function CustomerPlanBuilder(props: Props) {
+  useTimeFormat();
   const { onClose } = props;
   const [generation, setGeneration] = useState(0);
   const panel = useRef<HTMLDivElement>(null);
@@ -197,6 +200,7 @@ function BuilderForm({
   onReload,
   ...props
 }: Props & { initial: Source; onReload(): Promise<void> }) {
+  useTimeFormat();
   const cache = useQueryClient();
   const [count, setCount] = useState(3);
   const [first, setFirst] = useState(today);
@@ -442,7 +446,7 @@ function BuilderForm({
                     ) : (
                       <span>{voucher.number}</span>
                     )}
-                    <span className="ltr-isolate text-ink-soft">{voucher.date}</span>
+                    <span className="ltr-isolate text-ink-soft">{formatDateTime(voucher.date)}</span>
                     <span className="ltr-isolate font-semibold">{formatIqd(voucher.amount)}</span>
                     <span className={voucher.reversed ? "text-ink-faint" : "text-success"}>
                       {voucher.reversed ? "معكوس" : "مرحّل"}
@@ -576,7 +580,7 @@ function BuilderForm({
                           <td className="px-3 py-3">
                             {initial.historical ? "تحصيل سابق" : `#${row.number}`}
                           </td>
-                          <td className="px-3 py-3">{row.date}</td>
+                          <td className="px-3 py-3">{formatDateTime(row.date)}</td>
                           <td className="ltr-isolate px-3 py-3">{formatIqd(row.total)}</td>
                           <td className="ltr-isolate px-3 py-3">{formatIqd(row.paid)}</td>
                           <td className="px-3 py-3 text-ink-faint">
@@ -589,7 +593,7 @@ function BuilderForm({
                           <td className="px-3 py-3">
                             #{Math.max(0, ...initial.fixed.map((item) => item.number)) + index + 1}
                           </td>
-                          <td className="px-3 py-3">{row.date}</td>
+                          <td className="px-3 py-3">{formatDateTime(row.date)}</td>
                           <td className="ltr-isolate px-3 py-3 font-semibold text-violet-deep">
                             {formatIqd(row.total)}
                           </td>

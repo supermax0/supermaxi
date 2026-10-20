@@ -4,7 +4,7 @@
 <main class="ins-wrap">
   {% include "installments/admin/_nav.html" %}
   <div class="ins-heading">
-    <div><a href="{{ url_for('installments_admin.applications') }}">→ الطلبات</a><h1>{{ application.application_number }}</h1><p class="ins-muted">قُدّم في {{ application.created_at.strftime('%Y-%m-%d %H:%M') }}</p></div>
+    <div><a href="{{ url_for('installments_admin.applications') }}">→ الطلبات</a><h1>{{ application.application_number }}</h1><p class="ins-muted">قُدّم في {{ (application.created_at|finora_datetime('%Y-%m-%d %H:%M')) }}</p></div>
     <span class="ins-badge {{ application.status }}">{{ status_labels.get(application.status, application.status) }}</span>
   </div>
   <div id="actionMessage" role="status"></div>
@@ -25,7 +25,7 @@
   <div class="ins-table-wrap"><table class="ins-table"><thead><tr><th>المنتج</th><th>المدة</th><th>الكمية</th><th>النقدي</th><th>الدفعة الأولى</th><th>الإجمالي</th></tr></thead><tbody>{% for item in application.items %}<tr><td>{{ item.product_name_snapshot or item.product.name }}<small class="ins-muted"><br>{{ item.sku_snapshot or '' }}</small></td><td>{{ item.months_snapshot }} شهر</td><td>{{ item.quantity }}</td><td class="ins-money">{{ item.cash_price|toLocaleString }}</td><td class="ins-money">{{ item.down_payment|toLocaleString }}</td><td class="ins-money">{{ item.installment_total|toLocaleString }}</td></tr>{% endfor %}</tbody></table></div>
   <section class="ins-grid ins-section-gap">
     <article class="ins-card"><h2>المستندات</h2><form action="{{ url_for('installments_admin.upload_application_document',application_id=application.id) }}" method="post" enctype="multipart/form-data" class="ins-inline-form"><label>النوع<select name="document_type"><option value="national_id">البطاقة الوطنية</option><option value="residence_card">بطاقة السكن</option><option value="salary_proof">إثبات الدخل</option><option value="guarantor">مستند الكفيل</option><option value="other">أخرى</option></select></label><label>الملف<input type="file" name="file" accept="image/jpeg,image/png,application/pdf" required></label><button class="ins-btn">رفع المستند</button></form><ul class="ins-list">{% for doc in application.documents %}<li><a href="{{ url_for('static',filename=doc.file_path) }}" target="_blank" rel="noopener">{{ doc.document_type }} — {{ doc.original_name }}</a></li>{% else %}<li class="ins-muted">لا توجد مستندات</li>{% endfor %}</ul></article>
-    <article class="ins-card"><h2>سجل النشاط</h2><ol class="ins-timeline">{% for activity in application.activities|reverse %}<li><strong>{{ activity.action }}</strong><small>{{ activity.created_at.strftime('%Y-%m-%d %H:%M') }}</small>{% if activity.note %}<p>{{ activity.note }}</p>{% endif %}</li>{% else %}<li>لا يوجد نشاط</li>{% endfor %}</ol></article>
+    <article class="ins-card"><h2>سجل النشاط</h2><ol class="ins-timeline">{% for activity in application.activities|reverse %}<li><strong>{{ activity.action }}</strong><small>{{ (activity.created_at|finora_datetime('%Y-%m-%d %H:%M')) }}</small>{% if activity.note %}<p>{{ activity.note }}</p>{% endif %}</li>{% else %}<li>لا يوجد نشاط</li>{% endfor %}</ol></article>
   </section>
 </main>
 {% endblock %}

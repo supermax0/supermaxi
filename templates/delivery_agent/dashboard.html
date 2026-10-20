@@ -1,6 +1,7 @@
 ﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+  {% include 'partials/time_format_bootstrap.html' %}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#F8FAFD">
@@ -424,6 +425,6 @@
   <script type="application/json" id="da-orders">{{ orders|tojson }}</script>
   <script type="application/json" id="da-contacts">{{ chat_contacts|tojson }}</script>
   <script src="/static/delivery_agent/map.js"></script>
-  <script src="/static/delivery_agent/agent.js?v=20261015-2"></script>
+  <script src="/static/delivery_agent/agent.js?v=20261021-time-format"></script>
 </body>
 </html>

@@ -250,7 +250,7 @@
       <span class="rh-badge">تقرير مالي شامل</span>
       <div><strong>الفترة:</strong> {{ period_label }}</div>
       <div>من {{ date_from.strftime('%Y-%m-%d') if date_from else '—' }} إلى {{ date_to.strftime('%Y-%m-%d') if date_to else '—' }}</div>
-      <div>أُنشئ: {% if report_generated_at %}{{ report_generated_at.strftime('%Y-%m-%d %H:%M') }}{% endif %}</div>
+      <div>أُنشئ: {% if report_generated_at %}{{ (report_generated_at|finora_datetime('%Y-%m-%d %H:%M')) }}{% endif %}</div>
     </div>
   </header>
 

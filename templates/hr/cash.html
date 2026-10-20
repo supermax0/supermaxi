@@ -75,7 +75,7 @@
       <tbody>
         {% for move in movements %}
         <tr>
-          <td>{{ move.created_at.strftime('%Y-%m-%d %H:%M') if move.created_at else '—' }}</td>
+          <td>{{ (move.created_at|finora_datetime('%Y-%m-%d %H:%M')) if move.created_at else '—' }}</td>
           <td>{{ 'إيداع' if move.type == 'deposit' else 'سحب' if move.type == 'withdraw' else (move.type or '—') }}</td>
           <td>{{ move.note or '—' }}</td>
           <td class="{{ 'hr-positive' if move.type == 'deposit' else 'hr-negative' }}">{{ "{:,}".format(move.amount or 0) }}</td>

@@ -33,7 +33,7 @@
   function localDateTime(iso) {
     if (!iso) return "غير محدد";
     try {
-      return new Date(iso).toLocaleString("ar-IQ", {
+      return window.FinoraTime.format(iso, {
         year: "numeric",
         month: "short",
         day: "numeric",

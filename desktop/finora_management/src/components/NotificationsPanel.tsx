@@ -1,3 +1,4 @@
+import { useTimeFormat } from "@/stores/displayTime";
 import { BellOff, CheckCircle2, Info, TriangleAlert, type LucideIcon } from "lucide-react";
 import { useNotifications, type NotificationTone } from "@/stores/notifications";
 import { cn } from "@/utils/cn";
@@ -13,6 +14,7 @@ const TONE_ICON: Record<NotificationTone, { icon: LucideIcon; className: string 
 };
 
 export function NotificationsPanel() {
+  useTimeFormat();
   const items = useNotifications((s) => s.items);
   const clear = useNotifications((s) => s.clear);
 

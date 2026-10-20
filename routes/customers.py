@@ -1,3 +1,4 @@
+from utils.time_format import format_timestamp
 from datetime import datetime
 from io import BytesIO
 from zipfile import ZipFile
@@ -363,7 +364,7 @@ def export_customers():
             "المحافظة": c.city or "",
             "العنوان": c.address or "",
             "ملاحظات": c.notes or "",
-            "تاريخ الإضافة": c.created_at.strftime("%Y-%m-%d %H:%M") if c.created_at else "",
+            "تاريخ الإضافة": format_timestamp(c.created_at) if c.created_at else "",
         })
 
     df = pd.DataFrame(rows)

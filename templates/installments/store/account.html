@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
+  {% include 'partials/time_format_bootstrap.html' %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>حسابي | {{ settings.store_name if settings else 'Finora' }}</title>
@@ -75,7 +76,7 @@
                 <article class="store-account-order">
                   <div class="store-account-order__head"><div><small>رقم الطلب</small><strong dir="ltr">{{ application.application_number }}</strong></div><span class="is-{{ application.status }}">{{ status_labels.get(application.status, application.status) }}</span></div>
                   <div class="store-account-order__products">{% for item in application.items %}<span>{{ item.product_name_snapshot or 'منتج أقساط' }} <b>× {{ item.quantity }}</b></span>{% endfor %}</div>
-                  <dl><div><dt>تاريخ الطلب</dt><dd>{{ application.created_at.strftime('%Y/%m/%d') }}</dd></div><div><dt>إجمالي التقسيط</dt><dd>{{ application.items|sum(attribute='installment_total')|toLocaleString }} {{ settings.currency }}</dd></div>{% if application.contract %}<div><dt>رقم العقد</dt><dd dir="ltr">{{ application.contract.contract_number }}</dd></div><div><dt>المتبقي</dt><dd>{{ application.contract.remaining_amount|toLocaleString }} {{ settings.currency }}</dd></div>{% endif %}</dl>
+                  <dl><div><dt>تاريخ الطلب</dt><dd>{{ (application.created_at|finora_datetime('%Y/%m/%d')) }}</dd></div><div><dt>إجمالي التقسيط</dt><dd>{{ application.items|sum(attribute='installment_total')|toLocaleString }} {{ settings.currency }}</dd></div>{% if application.contract %}<div><dt>رقم العقد</dt><dd dir="ltr">{{ application.contract.contract_number }}</dd></div><div><dt>المتبقي</dt><dd>{{ application.contract.remaining_amount|toLocaleString }} {{ settings.currency }}</dd></div>{% endif %}</dl>
                   {% if application.status == 'rejected' and application.rejection_reason %}<p class="store-account-order__note">سبب الرفض: {{ application.rejection_reason }}</p>{% endif %}
                 </article>
               {% else %}

@@ -1,6 +1,7 @@
 ﻿<!DOCTYPE html>
 <html dir="rtl" lang="ar">
 <head>
+  {% include 'partials/time_format_bootstrap.html' %}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <script src="/static/js/no-zoom.js"></script>
@@ -372,7 +373,7 @@
     
     function renderReport(data) {
       const reportNumber = "RPT-" + new Date().getTime().toString().slice(-6);
-      const printDate = new Date().toLocaleDateString("ar-IQ") + " - " + new Date().toLocaleTimeString("ar-IQ");
+      const printDate = new Date().toLocaleDateString("ar-IQ") + " - " + window.FinoraTime.time(Date.now());
       const hasAgentName = {% if agent_name %}true{% else %}false{% endif %};
       
       document.getElementById('reportNumber').textContent = reportNumber;

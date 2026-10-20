@@ -58,7 +58,9 @@ def dashboard():
     dist_dir = _ai_agent_dist_dir()
     index_file = dist_dir / "index.html"
     if index_file.exists():
-        return send_from_directory(str(dist_dir), "index.html")
+        html = index_file.read_text(encoding="utf-8")
+        html = html.replace("<head>", "<head>" + render_template("partials/time_format_bootstrap.html"), 1)
+        return current_app.response_class(html, mimetype="text/html")
 
     # Fallback when dist is missing locally
     return render_template("social_ai/dashboard.html")

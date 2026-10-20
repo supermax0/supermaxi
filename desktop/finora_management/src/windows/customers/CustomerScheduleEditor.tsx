@@ -1,3 +1,5 @@
+import { useTimeFormat } from "@/stores/displayTime";
+import { formatDateTime } from "@/utils/format";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { CalendarClock, RefreshCw, X } from "lucide-react";
@@ -15,12 +17,6 @@ import { CustomerPlanBuilder } from "./CustomerPlanBuilder";
 
 const field =
   "h-10 w-full rounded-control border border-line bg-white px-3 text-sm outline-none focus:border-violet/50 disabled:bg-surface-sunken disabled:text-ink-faint";
-const historyTime = new Intl.DateTimeFormat("ar-IQ-u-nu-latn", {
-  dateStyle: "short",
-  timeStyle: "short",
-  hour12: true,
-  timeZone: "Asia/Baghdad",
-});
 
 export function CustomerScheduleEditor({
   customerId,
@@ -31,6 +27,7 @@ export function CustomerScheduleEditor({
   planId: number;
   onClose(): void;
 }) {
+  useTimeFormat();
   const [generation, setGeneration] = useState(0);
   const [partition, setPartition] = useState(false);
   const loadingPanel = useRef<HTMLDivElement>(null);
@@ -134,6 +131,7 @@ function ScheduleForm({
   onReload(): Promise<void>;
   onPartition(): void;
 }) {
+  useTimeFormat();
   const cache = useQueryClient();
   const online = useConnection((state) => state.status === "online");
   const [source, setSource] = useState(initial);
@@ -424,8 +422,7 @@ function ScheduleForm({
                     <article key={entry.id} className="rounded-control bg-surface-sunken p-3 text-sm">
                       <p className="font-semibold text-ink">{entry.reason}</p>
                       <p className="my-1 text-xs text-ink-faint">
-                        {entry.actor} ·{" "}
-                        <time dateTime={entry.date}>{historyTime.format(new Date(entry.date))}</time>
+                        {entry.actor} · <time dateTime={entry.date}>{formatDateTime(entry.date)}</time>
                       </p>
                       {entry.after
                         .filter((row) => {
@@ -436,8 +433,9 @@ function ScheduleForm({
                           const before = entry.before.find((item) => item.id === row.id);
                           return (
                             <p key={row.id} className="text-xs leading-6 text-ink-soft">
-                              {before ? `قسط #${row.number}` : `قسط جديد #${row.number}`}: {before?.date} ←{" "}
-                              {row.date} · {formatIqd(before?.total ?? 0)} ← {formatIqd(row.total)}
+                              {before ? `قسط #${row.number}` : `قسط جديد #${row.number}`}:{" "}
+                              {formatDateTime(before?.date)} ← {formatDateTime(row.date)} ·{" "}
+                              {formatIqd(before?.total ?? 0)} ← {formatIqd(row.total)}
                             </p>
                           );
                         })}

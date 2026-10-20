@@ -29,7 +29,7 @@
 <script src="/static/js/barcode-scanner.js"></script>
 <script src="/static/js/delivery-fee-pay-modal.js?v=20260824-mobile-pay"></script>
 <script src="/static/js/return-stock-modal.js"></script>
-<script src="/static/js/stock-trace.js?v=20260803a"></script>
+<script src="/static/js/stock-trace.js?v=20261021-time-format"></script>
 <script src="/static/js/order-stock-shortage.js?v=20260815a"></script>
 <script src="/static/js/orders-columns.js?v=20261019a"></script>
 
@@ -7190,7 +7190,7 @@
     const normalized = String(value).endsWith('Z') ? String(value) : String(value) + 'Z';
     const date = new Date(normalized);
     if (Number.isNaN(date.getTime())) return escapeHtml(value);
-    return date.toLocaleString('ar-IQ', {
+    return window.FinoraTime.format(date, {
       year: 'numeric',
       month: '2-digit',
       day: '2-digit',
@@ -7397,7 +7397,7 @@
       '<div class="od-card od-card--order">' +
       odCardTitle('od-card__title-icon--order', '🚚', '{{ _("orders_details_order_section") }}') +
       '<div class="od-fields">' +
-      odField('{{ _("orders_details_order_date") }}', order.created_at) +
+      odField('{{ _("orders_details_order_date") }}', window.FinoraTime.dateTime(order.created_at)) +
       odField('{{ _("orders_details_order_status") }}', displayStatusForDetails, { pill: true, pillKind: isStockLocked ? 'warning' : odStatusKind(order.status) }) +
       odField('{{ _("orders_details_payment_status") }}', order.payment, { pill: true, pillKind: odPaymentKind(order.payment) }) +
       (isFoodOrder ? odField('نوع البيع', order.food_sale_mix || '—', { pill: true, pillKind: 'info' }) : '') +
@@ -7498,7 +7498,7 @@
       '<div class="od-modal-header">' +
       '<div class="od-modal-header__main">' +
       '<h2 class="od-modal-title"><span>📋</span><span>{{ _("orders_details_title") }}</span><span class="od-modal-order-id">#' + order.id + '</span></h2>' +
-      '<div class="od-modal-subtitle">{{ _("orders_details_order_date") }}: ' + escapeHtml(order.created_at || '—') + '</div>' +
+      '<div class="od-modal-subtitle">{{ _("orders_details_order_date") }}: ' + escapeHtml(window.FinoraTime.dateTime(order.created_at)) + '</div>' +
       '<div class="od-modal-badges">' + headerBadges + '</div>' +
       '</div>' +
       '<button type="button" class="od-close-btn" onclick="this.closest(\'.modal\').remove()" aria-label="إغلاق">✕</button>' +

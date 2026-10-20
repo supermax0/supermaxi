@@ -77,7 +77,7 @@
     if (!iso) return "—";
     const d = new Date(iso);
     if (Number.isNaN(d.getTime())) return "—";
-    return d.toLocaleString("en-IQ", { dateStyle: "short", timeStyle: "short" });
+    return window.FinoraTime.format(d, { dateStyle: "short", timeStyle: "short" });
   }
 
   function renderKpis(kpis) {
@@ -643,7 +643,7 @@
       const rows = data.rows || [];
       const header = ["invoice_no", "created_at", "customer_name", "sale_type", "payment_method", "total", "remaining", "status"];
       const lines = [header.join(",")].concat(rows.map((r) => [
-        r.invoice_no, r.created_at, `"${(r.customer_name || "").replace(/"/g, '""')}"`,
+        r.invoice_no, `"${window.FinoraTime.dateTime(r.created_at)}"`, `"${(r.customer_name || "").replace(/"/g, '""')}"`,
         r.sale_type_label, r.payment_method, r.net_total || r.total, r.remaining, r.status_label,
       ].join(",")));
       const blob = new Blob(["\ufeff" + lines.join("\n")], { type: "text/csv;charset=utf-8" });

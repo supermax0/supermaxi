@@ -247,10 +247,8 @@ def financial_control_comparison_print():
 
 
 def _financial_control_print_time(value):
-    from datetime import datetime, timezone
-    from zoneinfo import ZoneInfo
-    return datetime.fromisoformat(value).replace(tzinfo=timezone.utc).astimezone(
-        ZoneInfo("Asia/Baghdad")).strftime("%Y-%m-%d %H:%M:%S")
+    from utils.time_format import format_timestamp
+    return format_timestamp(value, "%Y-%m-%d %H:%M:%S")
 
 
 @finance_bp.get("/api/finance/cash-shifts/<int:row_id>")
@@ -261,12 +259,10 @@ def cash_shift_details(row_id):
 @finance_bp.get("/accounts/finance/cash-shifts/<int:row_id>/print")
 def print_cash_shift(row_id):
     require("finance.print")
-    from datetime import datetime, timezone
-    from zoneinfo import ZoneInfo
+    from utils.time_format import format_timestamp
     data = cash_shifts.details(row_id)
     for field in ("opened_at", "closed_at"):
-        data[field + "_local"] = datetime.fromisoformat(data[field]).replace(tzinfo=timezone.utc).astimezone(
-            ZoneInfo("Asia/Baghdad")).strftime("%Y-%m-%d %H:%M:%S") if data[field] else "—"
+        data[field + "_local"] = format_timestamp(data[field], "%Y-%m-%d %H:%M:%S") if data[field] else "—"
     return render_template("finance/cash_shift_print.html", data=data)
 
 

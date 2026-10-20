@@ -78,7 +78,7 @@
         body: JSON.stringify(payload),
       });
       controller.dirty = JSON.stringify(currentDraftPayload()) !== snapshot;
-      setSaveState("saved", `تم الحفظ · ${new Date().toLocaleTimeString("ar-IQ", { hour: "2-digit", minute: "2-digit" })}`);
+      setSaveState("saved", `تم الحفظ · ${window.FinoraTime.format(Date.now(), { hour: "2-digit", minute: "2-digit" })}`);
       if (manual) ctx.showNotice("تم حفظ المسودة", false);
       return true;
     }).catch((error) => {
@@ -134,7 +134,7 @@
   function fmtTime(iso) {
     if (!iso) return "—";
     try {
-      return new Date(iso).toLocaleTimeString("ar-IQ", { hour: "2-digit", minute: "2-digit" });
+      return window.FinoraTime.format(iso, { hour: "2-digit", minute: "2-digit" });
     } catch {
       return "—";
     }
@@ -184,7 +184,7 @@
   }
 
   function clockNow() {
-    return new Date().toLocaleString("ar-IQ", {
+    return window.FinoraTime.format(Date.now(), {
       weekday: "long",
       year: "numeric",
       month: "long",
@@ -235,7 +235,7 @@
           <div class="cx-ws-card__label">التالي في الانتظار</div>
           ${next ? `
             <strong>${esc(next.patient_name)}</strong>
-            <small>${esc(next.patient_file || "")} · ${esc(next.start_time || "—")}</small>
+            <small>${esc(next.patient_file || "")} · ${esc(window.FinoraTime.clock(next.start_time || "—"))}</small>
             <p class="cx-ws-muted">${next.wait_minutes != null ? `ينتظر ${next.wait_minutes} د` : "في الانتظار"} · ${esc(next.status === "arrived" ? "وصل" : "لم يصل بعد")}</p>
           ` : `<p class="cx-ws-muted">لا يوجد مريض تالٍ</p>`}
         </article>
@@ -247,7 +247,7 @@
                 <span class="cx-ws-qnum">${i + 1}</span>
                 <div>
                   <strong>${esc(a.patient_name)}</strong>
-                  <small>${esc(a.start_time || "—")} · ${esc(a.patient_file || "")}</small>
+                  <small>${esc(window.FinoraTime.clock(a.start_time || "—"))} · ${esc(a.patient_file || "")}</small>
                 </div>
               </li>`).join("") || `<li class="cx-ws-muted">لا مرضى بانتظار</li>`}
           </ol>
@@ -599,7 +599,7 @@
         <div class="cx-ws-doctor-state">
           <div class="cx-ws-now">
             <small>${esc(clockNow().split("،").slice(0, 2).join("،"))}</small>
-            <strong id="cxWsClock">${esc(new Date().toLocaleTimeString("ar-IQ", { hour: "2-digit", minute: "2-digit" }))}</strong>
+            <strong id="cxWsClock">${esc(window.FinoraTime.format(Date.now(), { hour: "2-digit", minute: "2-digit" }))}</strong>
           </div>
           <span class="cx-ws-status ${isOpen ? "is-live" : ""}">${isOpen ? "مع مريض حالياً" : "بانتظار"}</span>
           <div class="cx-ws-doctor-name">
@@ -731,7 +731,7 @@
                   <span class="cx-ws-qnum">${i + 1}</span>
                   <div>
                     <strong>${esc(a.patient_name)}</strong>
-                    <small>${esc(a.start_time || "—")} · ${esc(a.patient_file || "")} · ينتظر ${a.wait_minutes != null ? a.wait_minutes + " د" : "—"}</small>
+                    <small>${esc(window.FinoraTime.clock(a.start_time || "—"))} · ${esc(a.patient_file || "")} · ينتظر ${a.wait_minutes != null ? a.wait_minutes + " د" : "—"}</small>
                   </div>
                 </li>`).join("") || `<li class="cx-ws-muted">لا مرضى في الطابور حالياً</li>`}
             </ol>
@@ -1841,7 +1841,7 @@
       if (clockHandle) clearInterval(clockHandle);
       clockHandle = setInterval(() => {
         const el = document.getElementById("cxWsClock");
-        if (el) el.textContent = new Date().toLocaleTimeString("ar-IQ", { hour: "2-digit", minute: "2-digit" });
+        if (el) el.textContent = window.FinoraTime.format(Date.now(), { hour: "2-digit", minute: "2-digit" });
       }, 60000);
     }
 
@@ -1882,7 +1882,7 @@
                 <span class="cx-ws-qnum">${i + 1}</span>
                 <div>
                   <strong>${ctx.esc(a.patient_name)}</strong>
-                  <small>${ctx.esc(a.start_time || "—")} · ${ctx.esc(a.patient_file || "")}</small>
+                  <small>${ctx.esc(window.FinoraTime.clock(a.start_time || "—"))} · ${ctx.esc(a.patient_file || "")}</small>
                 </div>
               </li>`
             )

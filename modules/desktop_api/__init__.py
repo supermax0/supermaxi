@@ -27,6 +27,7 @@ def init_desktop_api(app: Flask) -> None:
     from modules.desktop_api import shipping_center_finance  # noqa: F401 — statements, receipts, returns inspection
     from modules.desktop_api import shipping_center_insights  # noqa: F401 — missing orders and overdue follow-up
     from modules.desktop_api import branches  # noqa: F401 — branches & warehouses (multi-branch management)
+    from modules.desktop_api import display_preferences  # noqa: F401 — company display clock
     from modules.desktop_api import branch_cash  # noqa: F401 — branch cash transfers (request / approve / receive)
     from modules.desktop_api import permissions  # noqa: F401 — permissions administration
     from modules.desktop_api import workspace  # noqa: F401 — authenticated desktop workspaces

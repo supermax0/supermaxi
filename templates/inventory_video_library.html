@@ -282,7 +282,7 @@
             <div class="vl-name">${escapeHtml(item.name)}</div>
             <div class="vl-meta">
               <span>${escapeHtml(String(item.size_mb || 0))} MB</span>
-              <span>${escapeHtml(item.modified_at || "")}</span>
+              <span>${escapeHtml(window.FinoraTime.dateTime(item.modified_at))}</span>
             </div>
             <input class="vl-url" type="text" readonly value="${escapeAttr(item.absolute_url)}">
             <div class="vl-row">

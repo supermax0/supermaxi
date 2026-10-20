@@ -1363,15 +1363,15 @@
   </div>
   {% endif %}
 </main>
-<script src="{{ url_for('static', filename='food/food.js') }}?v=food-en-nums-20260829"></script>
-{% if food_page == 'cashier' %}<script src="{{ url_for('static', filename='food/pos.js') }}?v=food-en-nums-20260829"></script>{% endif %}
-{% if food_page == 'orders' %}<script src="{{ url_for('static', filename='food/invoices.js') }}?v=food-en-nums-20260829"></script>{% endif %}
-{% if food_page == 'purchases' %}<script src="{{ url_for('static', filename='food/purchases.js') }}?v=food-en-nums-20260829"></script>{% endif %}
+<script src="{{ url_for('static', filename='food/food.js') }}?v=20261021-time-format"></script>
+{% if food_page == 'cashier' %}<script src="{{ url_for('static', filename='food/pos.js') }}?v=20261021-time-format"></script>{% endif %}
+{% if food_page == 'orders' %}<script src="{{ url_for('static', filename='food/invoices.js') }}?v=20261021-time-format"></script>{% endif %}
+{% if food_page == 'purchases' %}<script src="{{ url_for('static', filename='food/purchases.js') }}?v=20261021-time-format"></script>{% endif %}
 {% if food_page == 'purchases_new' %}<script src="{{ url_for('static', filename='food/purchases_form.js') }}?v=food-en-nums-20260829"></script>{% endif %}
-{% if food_page in ['customers', 'suppliers'] %}<script src="{{ url_for('static', filename='food/parties.js') }}?v=food-en-nums-20260829"></script>{% endif %}
+{% if food_page in ['customers', 'suppliers'] %}<script src="{{ url_for('static', filename='food/parties.js') }}?v=20261021-time-format"></script>{% endif %}
 {% if food_page == 'dashboard' %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="{{ url_for('static', filename='food/dashboard.js') }}?v=food-en-nums-20260829"></script>
+<script src="{{ url_for('static', filename='food/dashboard.js') }}?v=20261021-time-format"></script>
 {% endif %}
 {% if food_page == 'reports' %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>

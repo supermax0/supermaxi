@@ -18,4 +18,12 @@ class DynamicTenantSession(Session):
         # Route to Core database
         return super().get_bind(mapper=mapper, clause=clause, **kw)
 
-db = SQLAlchemy(session_options={'class_': DynamicTenantSession})
+class FinoraSQLAlchemy(SQLAlchemy):
+    def init_app(self, app):
+        super().init_app(app)
+        # All app factories, including module-only hosts, share display settings.
+        from utils.time_format import install_time_format
+        install_time_format(app)
+
+
+db = FinoraSQLAlchemy(session_options={'class_': DynamicTenantSession})

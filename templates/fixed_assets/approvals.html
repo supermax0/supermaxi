@@ -26,7 +26,7 @@
       <tbody>
         {% for r in pending %}
         <tr>
-          <td>{{ r.created_at.strftime('%Y-%m-%d %H:%M') if r.created_at else '—' }}</td>
+          <td>{{ (r.created_at|finora_datetime('%Y-%m-%d %H:%M')) if r.created_at else '—' }}</td>
           <td>{{ r.type_label() }}</td>
           <td>
             {% if r.asset %}<a href="/assets/{{ r.asset.id }}">{{ r.asset.asset_code }}</a> — {{ r.asset.name }}{% else %}—{% endif %}
@@ -70,7 +70,7 @@
       <tbody>
         {% for r in recent %}
         <tr>
-          <td>{{ r.updated_at.strftime('%Y-%m-%d %H:%M') if r.updated_at else '—' }}</td>
+          <td>{{ (r.updated_at|finora_datetime('%Y-%m-%d %H:%M')) if r.updated_at else '—' }}</td>
           <td>{{ r.type_label() }}</td>
           <td>{{ r.asset.asset_code if r.asset else '—' }}</td>
           <td>{{ r.status_label() }}{% if r.rejection_reason %} — {{ r.rejection_reason }}{% endif %}</td>

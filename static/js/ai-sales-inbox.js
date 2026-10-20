@@ -125,10 +125,10 @@
     const sameDay = parsed.toDateString() === now.toDateString();
     const yesterday = new Date(now);
     yesterday.setDate(now.getDate() - 1);
-    const clock = parsed.toLocaleTimeString("ar-IQ", { hour: "2-digit", minute: "2-digit" });
+    const clock = window.FinoraTime.time(parsed);
     if (sameDay) return clock;
     if (parsed.toDateString() === yesterday.toDateString()) return `أمس ${clock}`;
-    return parsed.toLocaleString("ar-IQ", {
+    return window.FinoraTime.format(parsed, {
       day: "numeric",
       month: "short",
       hour: "2-digit",
@@ -137,7 +137,7 @@
   };
   const fullTime = value => {
     const parsed = parseDate(value);
-    return parsed ? parsed.toLocaleString("ar-IQ", { dateStyle: "full", timeStyle: "short" }) : "";
+    return parsed ? window.FinoraTime.format(parsed, { dateStyle: "full", timeStyle: "short" }) : "";
   };
   const fileSize = value => {
     const bytes = Number(value || 0);

@@ -32,7 +32,7 @@
 
   function fmtTime(v) {
     if (!v.started_at) return "—";
-    const t = v.started_at.replace("T", " ").slice(11, 16);
+    const t = window.FinoraTime.time(v.started_at);
     const d = v.visit_date || "";
     const today = new Date().toISOString().slice(0, 10);
     if (d === today) return t;
@@ -116,7 +116,7 @@
   function doctorBanner(ctx) {
     const cur = ctx.data?.current_visit;
     if (!cur) return "";
-    const started = cur.started_at ? cur.started_at.replace("T", " ").slice(11, 16) : "—";
+    const started = cur.started_at ? window.FinoraTime.time(cur.started_at) : "—";
     return `
       <article class="cx-vis-current">
         <div>
@@ -273,7 +273,7 @@
             </div>
           </div>
           <div class="cx-vis-drawer__field"><span>الطبيب</span><b>${ctx.esc(v.doctor_name || "—")}</b></div>
-          <div class="cx-vis-drawer__field"><span>التاريخ والوقت</span><b>${ctx.esc(v.visit_date || "")} ${ctx.esc((v.started_at || "").replace("T", " ").slice(11, 16))}</b></div>
+          <div class="cx-vis-drawer__field"><span>التاريخ والوقت</span><b>${ctx.esc(v.visit_date || "")} ${ctx.esc(window.FinoraTime.time((v.started_at || "")))}</b></div>
           <div class="cx-vis-drawer__field"><span>نوع الزيارة</span><b>${ctx.esc(v.visit_type || "—")}</b></div>
           <div class="cx-vis-drawer__field"><span>مدة الزيارة</span><b data-drawer-duration>${ctx.esc(fmtDuration(v))}</b></div>
           <div class="cx-vis-progress">${progressHtml(detail)}</div>

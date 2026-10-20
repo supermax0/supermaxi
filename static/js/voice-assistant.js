@@ -1611,7 +1611,7 @@ class VoiceAssistant {
             
             // التاريخ
             if (this.matchCommand(q, ['تاريخ', 'تاريخ الطلب', 'متى', 'date', 'متى الطلب', 'تاريخ الفاتورة'])) {
-                const date = order.created_at || 'غير محدد';
+                const date = order.created_at ? window.FinoraTime.dateTime(order.created_at) : 'غير محدد';
                 const answer = `تاريخ الطلب رقم ${orderId} هو ${date}`;
                 this.speak(answer, 0.85);
                 this.showToast(`📅 ${answer}`, 'info');

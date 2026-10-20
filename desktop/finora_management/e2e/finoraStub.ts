@@ -40,6 +40,7 @@ const SESSION = {
     "edit_price",
     "edit_current_stock",
     "view_expenses",
+    "manage_settings",
     "can_see_shipping",
     "can_manage_shipping",
   ],
@@ -131,6 +132,7 @@ export async function startFinoraStub(
   } = {},
 ): Promise<FinoraStub> {
   let productSaveAttempts = 0;
+  let displayTimeFormat = "12";
   const saveProduct = async (res: ServerResponse, productId: number) => {
     productSaveAttempts++;
     if (options.productSaveDelayMs)
@@ -245,13 +247,16 @@ export async function startFinoraStub(
         return send(
           res,
           200,
-          { ok: true, session: activeSession },
+          { ok: true, session: { ...activeSession, display_time_format: displayTimeFormat } },
           { "Set-Cookie": `session=${id}; HttpOnly; Path=/; SameSite=Lax; Max-Age=604800` },
         );
       }
       if (req.method === "GET" && path === "/api/v1/desktop/auth/session") {
         return sessionOf(req)
-          ? send(res, 200, { ok: true, session: activeSession })
+          ? send(res, 200, {
+              ok: true,
+              session: { ...activeSession, display_time_format: displayTimeFormat },
+            })
           : send(res, 401, {
               ok: false,
               error: "انتهت الجلسة، سجّل الدخول من جديد",
@@ -273,6 +278,10 @@ export async function startFinoraStub(
       if (!sessionOf(req)) {
         res.writeHead(302, { Location: "/login" });
         return res.end();
+      }
+      if (path === "/api/v1/desktop/display-preferences") {
+        if (req.method === "POST") displayTimeFormat = String((await readJson(req)).time_format);
+        return send(res, 200, { ok: true, time_format: displayTimeFormat, timezone: "Asia/Baghdad" });
       }
       if (path === "/api/v1/desktop/workspace/shipping")
         return send(res, 200, { ok: true, open_manifests: options.workspace ? 1 : 0 });

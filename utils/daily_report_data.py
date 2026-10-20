@@ -75,7 +75,8 @@ def _movement_minute(movement: dict) -> int:
 
 
 def _movement_time_label(movement: dict) -> str:
-    return business_datetime(_movement_datetime(movement.get("datetime") or movement.get("date"))).strftime("%H:%M")
+    from utils.time_format import format_clock
+    return format_clock(business_datetime(_movement_datetime(movement.get("datetime") or movement.get("date"))))
 
 
 def _summarize_by_reason(movements: list[dict]) -> list[dict]:

@@ -35,6 +35,9 @@ import { SoundSettingsSection } from "./SoundSettingsSection";
 import { AssistantSettingsSection } from "./AssistantSettingsSection";
 
 import { RecoverySettingsSection, UpdateSettingsSection } from "./RecoverySettingsSection";
+import { useDisplayPreferences } from "@/hooks/useDisplayPreferences";
+import { useDisplayTime, useTimeFormat, type TimeFormat } from "@/stores/displayTime";
+import { toast } from "@/stores/toasts";
 
 type SectionId =
   | "account"
@@ -93,21 +96,70 @@ function AccountSection() {
 }
 
 function AppearanceSection() {
+  const display = useDisplayPreferences();
+  const queryClient = useQueryClient();
+  const timeFormat = useTimeFormat();
+  const canManage = useCan("manage_settings");
+  const saveTime = useMutation({
+    mutationFn: (value: TimeFormat) => finora.displayPreferences.set(value),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: display.queryKey });
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(display.queryKey, data);
+      useDisplayTime.getState().setFormat(data.time_format);
+      toast.success("تم حفظ تنسيق الوقت للموقع والتطبيق والفواتير");
+    },
+    onError: () => toast.error("تعذر حفظ تنسيق الوقت؛ بقي الإعداد السابق"),
+  });
   const motionPref = usePreferences((s) => s.motion);
   const setMotion = usePreferences((s) => s.setMotion);
   return (
-    <SectionCard title="الحركة" icon={Palette}>
-      <SettingRow
-        title="تقليل الحركة"
-        hint="يلغي تحريك النوافذ ويُبقي التلاشي فقط. يتبع إعداد Windows تلقائياً عند إيقافه."
-      >
-        <Switch
-          label="تقليل الحركة"
-          checked={motionPref === "reduced"}
-          onChange={(on) => setMotion(on ? "reduced" : "system")}
-        />
-      </SettingRow>
-    </SectionCard>
+    <>
+      <SectionCard title="تنسيق التاريخ والوقت" icon={Palette}>
+        <SettingRow
+          title="تنسيق الساعة"
+          hint={
+            canManage
+              ? "يُحفظ للشركة ويُطبّق على الموقع والتطبيق والفواتير والتقارير والطباعة، بتوقيت بغداد."
+              : "إعداد موحّد للشركة؛ تغييره يحتاج صلاحية إدارة الإعدادات."
+          }
+        >
+          <div role="radiogroup" aria-label="تنسيق الساعة" className="flex gap-2">
+            {(["12", "24"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                role="radio"
+                aria-checked={timeFormat === value}
+                disabled={!canManage || saveTime.isPending}
+                onClick={() => saveTime.mutate(value)}
+                className={cn(
+                  "rounded-control border px-3 py-2 text-sm disabled:opacity-50",
+                  timeFormat === value
+                    ? "border-violet bg-violet-soft text-violet-deep"
+                    : "border-line bg-white",
+                )}
+              >
+                {value === "12" ? "12 ساعة — 07:30 م" : "24 ساعة — 19:30"}
+              </button>
+            ))}
+          </div>
+        </SettingRow>
+      </SectionCard>
+      <SectionCard title="الحركة" icon={Palette}>
+        <SettingRow
+          title="تقليل الحركة"
+          hint="يلغي تحريك النوافذ ويُبقي التلاشي فقط. يتبع إعداد Windows تلقائياً عند إيقافه."
+        >
+          <Switch
+            label="تقليل الحركة"
+            checked={motionPref === "reduced"}
+            onChange={(on) => setMotion(on ? "reduced" : "system")}
+          />
+        </SettingRow>
+      </SectionCard>
+    </>
   );
 }
 

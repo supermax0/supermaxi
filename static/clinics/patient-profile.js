@@ -172,7 +172,7 @@
           content.innerHTML = cards(
             (base.appointments || []).map(
               (a) =>
-                `<strong>${esc(a.appointment_date)} · ${esc(a.start_time)}</strong><small>${esc(a.doctor_name || "—")} · ${esc(a.status)}</small>`
+                `<strong>${esc(a.appointment_date)} · ${esc(window.FinoraTime.clock(a.start_time))}</strong><small>${esc(a.doctor_name || "—")} · ${esc(a.status)}</small>`
             )
           );
         } else if (active === "visits") {
@@ -190,7 +190,7 @@
           content.innerHTML = cards(
             (data.items || []).map(
               (item) =>
-                `<strong>${esc(item.file_name)}</strong><small>${esc(item.category)} · ${esc(item.uploaded_at)}</small><a class="cx-btn cx-btn--sm" href="${item.url}">تنزيل</a>`
+                `<strong>${esc(item.file_name)}</strong><small>${esc(item.category)} · ${esc(window.FinoraTime.dateTime(item.uploaded_at))}</small><a class="cx-btn cx-btn--sm" href="${item.url}">تنزيل</a>`
             )
           );
         } else if (active === "invoices") {
@@ -337,7 +337,7 @@
           content.innerHTML = cards(
             rows.map((item) => {
               const value = item.data || item;
-              return `<strong>${esc(value.title || value.procedure_name || value.medicine_name || value.modality || value.status || item.type || sectionLabels[active])}</strong><small>${esc(item.at || value.created_at || value.ordered_at || value.due_date || "")}</small>`;
+              return `<strong>${esc(value.title || value.procedure_name || value.medicine_name || value.modality || value.status || item.type || sectionLabels[active])}</strong><small>${esc(window.FinoraTime.dateTime(item.at || value.created_at || value.ordered_at || value.due_date || ""))}</small>`;
             })
           );
         }
@@ -359,7 +359,7 @@
             balanceTile = `<div class="cx-summary-tile${bal > 0 ? " cx-summary-tile--warn" : ""}"><span>الرصيد</span><strong>${money(statement.outstanding_balance)}</strong></div>`;
           }
           const nextText = next
-            ? `${esc(next.appointment_date)}${next.start_time ? " · " + esc(next.start_time) : ""}`
+            ? `${esc(next.appointment_date)}${next.start_time ? " · " + esc(window.FinoraTime.clock(next.start_time)) : ""}`
             : "—";
           content.innerHTML = `<div class="cx-pp-overview"><div class="cx-summary-grid"><div class="cx-summary-tile"><span>رقم الملف</span><strong>${esc(p.file_number)}</strong></div><div class="cx-summary-tile"><span>الاسم</span><strong>${esc(p.full_name)}</strong></div><div class="cx-summary-tile"><span>العمر</span><strong>${p.age ?? "—"}</strong></div><div class="cx-summary-tile"><span>الهاتف</span><strong dir="ltr">${esc(p.phone || "—")}</strong></div><div class="cx-summary-tile cx-summary-tile--accent"><span>الموعد القادم</span><strong>${nextText}</strong></div><div class="cx-summary-tile"><span>آخر زيارة</span><strong>${esc(last?.visit_date || "—")}</strong></div>${balanceTile}</div><div class="cx-pp-flags">${flagCard("allergy", "الحساسية", "fa-triangle-exclamation", esc(p.allergies || ""))}${flagCard("chronic", "الأمراض المزمنة", "fa-heart-pulse", esc(p.chronic_conditions || ""))}${flagCard("alert", "تنبيهات مهمة", "fa-bell", esc(p.notes || ""))}</div></div>`;
           return;

@@ -9,7 +9,7 @@
 
   function fmtClock(iso) {
     if (!iso) return "";
-    return iso.replace("T", " ").slice(11, 16) || iso.replace("T", " ").slice(0, 16);
+    return window.FinoraTime.time(iso) || window.FinoraTime.dateTime(iso);
   }
 
   function dayKey(iso) {

@@ -38,7 +38,7 @@
     const d = lv.visit_date;
     let main = d;
     if (d === today && lv.started_at) {
-      main = `اليوم ${lv.started_at.slice(11, 16)}`;
+      main = `اليوم ${window.FinoraTime.time(lv.started_at)}`;
     } else {
       try {
         main = new Date(d + "T12:00:00").toLocaleDateString("ar-IQ", {
@@ -75,7 +75,7 @@
         dayLabel = d;
       }
     }
-    return `${dayLabel} ${na.start_time || ""}`.trim();
+    return `${dayLabel} ${window.FinoraTime.clock(na.start_time || "")}`.trim();
   }
 
   function allergyIcon(p, ctx) {
@@ -310,7 +310,7 @@
         </header>
         <div class="cx-pat-drawer__body">
           <div class="cx-pat-drawer__field"><span>التاريخ</span><b>${ctx.esc(appt.appointment_date || "—")}</b></div>
-          <div class="cx-pat-drawer__field"><span>الوقت</span><b>${ctx.esc(appt.start_time || "—")}</b></div>
+          <div class="cx-pat-drawer__field"><span>الوقت</span><b>${ctx.esc(window.FinoraTime.clock(appt.start_time || "—"))}</b></div>
           <div class="cx-pat-drawer__field"><span>الطبيب</span><b>${ctx.esc(appt.doctor_name || "—")}</b></div>
           <div class="cx-pat-drawer__field"><span>الخدمة</span><b>${ctx.esc(appt.service_name || "—")}</b></div>
           <div class="cx-pat-drawer__field"><span>الحالة</span><b>${ctx.esc(apptStatusLabel(appt.status))}</b></div>

@@ -57,7 +57,7 @@
         </div>
         <ul class="sm-order__items">{% for item in order.items %}<li>{{ item.product_name }}{% if item.variant_color %} <span class="sm-muted">— {{ item.variant_color }}</span>{% endif %} <span class="sm-muted">× {{ item.quantity }}</span></li>{% endfor %}</ul>
         <div class="sm-order__foot">
-          <span class="sm-muted">{{ order.created_at.strftime('%Y/%m/%d') if order.created_at else '' }}</span>
+          <span class="sm-muted">{{ (order.created_at|finora_datetime('%Y/%m/%d')) if order.created_at else '' }}</span>
           <b>{{ order.total|toLocaleString }} د.ع</b>
           {% if track_urls.get(order.id) %}<a class="sm-link" href="{{ track_urls[order.id] }}">تفاصيل وتتبع</a>{% endif %}
         </div>
@@ -72,7 +72,7 @@
       <article class="sm-order">
         <div class="sm-order__head"><b dir="ltr">{{ application.application_number }}</b><span class="sm-badge">{{ installment_status_labels.get(application.status, application.status) }}</span></div>
         <ul class="sm-order__items">{% for item in application.items %}<li>{{ item.product_name_snapshot or 'منتج' }} <span class="sm-muted">× {{ item.quantity }}</span></li>{% endfor %}</ul>
-        <div class="sm-order__foot"><span class="sm-muted">{{ application.created_at.strftime('%Y/%m/%d') if application.created_at else '' }}</span></div>
+        <div class="sm-order__foot"><span class="sm-muted">{{ (application.created_at|finora_datetime('%Y/%m/%d')) if application.created_at else '' }}</span></div>
       </article>
       {% endfor %}
       {% endif %}

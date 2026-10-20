@@ -127,7 +127,7 @@
       <span class="fd-pill fd-pill--{{ pill_tone }}">{{ icon('check-circle', 16) }} {{ audit_status_label }}</span>
       {% if audit %}
         <span class="dr-audit-meta">
-          آخر تدقيق: {{ audit.reviewed_at.strftime("%Y-%m-%d %H:%M") if audit.reviewed_at else "-" }}
+          آخر تدقيق: {{ (audit.reviewed_at|finora_datetime("%Y-%m-%d %H:%M")) if audit.reviewed_at else "-" }}
           {% if audit.reviewer %} - {{ audit.reviewer.name }}{% endif %}
         </span>
       {% endif %}

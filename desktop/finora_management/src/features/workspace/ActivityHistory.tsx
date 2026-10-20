@@ -1,3 +1,5 @@
+import { useTimeFormat } from "@/stores/displayTime";
+import { formatDateTime } from "@/utils/format";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft } from "lucide-react";
 import { useState } from "react";
@@ -7,6 +9,7 @@ import { toast } from "@/stores/toasts";
 import { openWorkspaceTarget } from "./navigation";
 import { Skeleton, Retry, Empty } from "./WorkspacePrimitives";
 export function ActivityHistory({ identity, onClose }: { identity: string; onClose(): void }) {
+  useTimeFormat();
   const [pages, setPages] = useState<Awaited<ReturnType<typeof workspaceApi.activity>>["value"]["rows"]>([]);
   const [before, setBefore] = useState(0);
   const query = useQuery({
@@ -61,7 +64,7 @@ export function ActivityHistory({ identity, onClose }: { identity: string; onClo
                 {row.target.entityId ? ` #${row.target.entityId}` : ""}
               </strong>
               <small>
-                {row.actor} · {new Date(row.at).toLocaleString("ar-IQ")}
+                {row.actor} · {formatDateTime(row.at)}
               </small>
             </span>
             <ChevronLeft size={15} />

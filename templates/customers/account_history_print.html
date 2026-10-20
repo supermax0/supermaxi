@@ -1,5 +1,6 @@
 <!doctype html>
-<html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>كشف الحساب التاريخي</title>
+<html lang="ar" dir="rtl"><head>
+  {% include 'partials/time_format_bootstrap.html' %}<meta charset="utf-8"><title>كشف الحساب التاريخي</title>
 <style>
 @page { size: A4 landscape; margin: 12mm; }
 * { box-sizing: border-box; } body { color: #24213f; font: 12px Arial,sans-serif; margin: 0; }
@@ -22,7 +23,7 @@ th,td { text-align: right; padding: 9px 6px; border-bottom: 1px solid #ddd5ee; }
 <div>رصيد نهاية الفترة<strong class="number">{{ '{:,}'.format(summary.closing_net) if summary.closing_net is not none else 'غير مثبت' }}</strong></div></div>
 <p class="note {{ '' if coverage.complete else 'warning' }}">{% if coverage.complete %}السجل يطابق الرصيد الحالي. يظهر الرصيد على آخر حركة في كل يوم؛ لا يفترض ترتيباً داخل اليوم بين مستندات مؤرخة باليوم فقط.{% else %}التاريخ المتاح غير مكتمل؛ الأرصدة التاريخية غير مثبتة. تظهر الحركات الموثقة فقط دون اختراع تاريخ أو رصيد افتتاحي. أصل غير مكتمل: {{ coverage.missing_origins }} · مستندات مؤرشفة: {{ coverage.archived_documents }} · حركات غير مؤرخة: {{ coverage.undated_movements }} · فرق دين غير موزع: {{ coverage.unplaced_debt }}.{% endif %}</p>
 <table><thead><tr><th>التاريخ</th><th>الحركة / المستند</th><th>تغير الدين</th><th>تغير المقدم</th><th>حركة النقد</th><th>رصيد نهاية اليوم</th></tr></thead><tbody>
-{% for row in rows %}<tr><td>{{ row.date or 'غير محدد' }}</td><td>{{ row.description }}<div class="muted">{{ row.document }}</div></td>
+{% for row in rows %}<tr><td>{{ row.date|finora_datetime if row.date else 'غير محدد' }}</td><td>{{ row.description }}<div class="muted">{{ row.document }}</div></td>
 <td class="number">{{ '{:,}'.format(row.debt_change) }}</td><td class="number">{{ '{:,}'.format(row.advance_change) }}</td>
 <td class="number">{{ '{:,}'.format(row.cash) if row.cash is not none else 'غير محدد' }}</td>
 <td class="number">{{ '{:,}'.format(row.net_balance) if row.net_balance is not none else '—' }}</td></tr>

@@ -280,7 +280,7 @@
                 </div>
               </div>
             </td>
-            <td>{{ r.created_at }}</td>
+            <td>{{ r.created_at|finora_datetime }}</td>
             <td>
               <div class="status-stack">
                 <span class="badge badge-delivered">{{ r.delivered_count or 0 }} واصل</span>

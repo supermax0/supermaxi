@@ -1,3 +1,4 @@
+import { useTimeFormat } from "@/stores/displayTime";
 import { auditRequired } from "@shared/inventoryAudit";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ExternalLink, RefreshCw, SearchCheck } from "lucide-react";
@@ -7,7 +8,7 @@ import type { AuditCommand, AuditCommandResult, AuditLine, AuditSession } from "
 import { FeatureHelp } from "@/components/FeatureHelp";
 import { ProductThumb } from "@/components/ProductThumb";
 import { auditImageUrl, auditActionLabels, auditMovementLabels } from "./auditUi";
-import { formatNumber } from "@/utils/format";
+import { formatNumber, formatDateTime } from "@/utils/format";
 import { useWindowManager } from "@/stores/windowManager";
 import { useOrderNavigation } from "@/stores/orderNavigation";
 import { AuditSheet } from "./AuditSheet";
@@ -55,6 +56,7 @@ export function AuditDetails({
     complete?: (result: AuditCommandResult) => void,
   ): void;
 }) {
+  useTimeFormat();
   const [transferPeer, setTransferPeer] = useState(""),
     [transferQty, setTransferQty] = useState(""),
     [transferAck, setTransferAck] = useState(false),
@@ -473,7 +475,7 @@ export function AuditDetails({
                       </strong>
                     </div>
                     <p className="mt-1 text-xs text-ink-soft">
-                      {new Date(move.created_at).toLocaleString("ar-IQ")} ·{" "}
+                      {formatDateTime(move.created_at)} ·{" "}
                       {move.before === null ? "رصيد قبل/بعد غير مثبت" : `${move.before} ← ${move.after}`}
                     </p>
                     <p className="mt-1 text-xs">{move.reason}</p>
@@ -503,10 +505,7 @@ export function AuditDetails({
                   <p>تكلفة الوحدة: {formatNumber(selected.product.unit_cost)} د.ع</p>
                 )}
                 <p className="mt-2 text-xs text-ink-soft">
-                  آخر عد:{" "}
-                  {selected.counted_at
-                    ? new Date(selected.counted_at).toLocaleString("ar-IQ")
-                    : "لم يثبت العد"}
+                  آخر عد: {selected.counted_at ? formatDateTime(selected.counted_at) : "لم يثبت العد"}
                 </p>
               </section>
               <h4 className="text-sm font-semibold">سجل العد والمراجعة</h4>
@@ -563,9 +562,7 @@ export function AuditDetails({
               {history.data?.items.map((event) => (
                 <div key={event.id} className="rounded-panel border border-line p-3 text-xs">
                   <strong>{event.actor_name}</strong>
-                  <span className="ms-2 text-ink-soft">
-                    {new Date(event.created_at).toLocaleString("ar-IQ")}
-                  </span>
+                  <span className="ms-2 text-ink-soft">{formatDateTime(event.created_at)}</span>
                   <p className="mt-1">
                     {auditActionLabels[event.action] ?? "إجراء جرد"}
                     {event.detail.before !== undefined

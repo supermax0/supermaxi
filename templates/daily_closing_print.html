@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
+  {% include 'partials/time_format_bootstrap.html' %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>{{ report.session.report_number }} — التقرير اليومي</title>
@@ -17,7 +18,7 @@
 <body>
   <div class="screen-actions"><button onclick="window.print()">طباعة / حفظ PDF</button><button onclick="window.close()">إغلاق</button></div>
   <div class="page-header"><div><span class="brand">FINORA</span><span class="header-title"> · التقرير اليومي</span></div><div class="header-meta"><span>{{ report.session.business_date }} · {{ report.session.branch_name }}<br>{{ report.session.report_number }}</span><span class="page-number"></span></div></div>
-  <div class="page-footer"><span>تم إنشاء التقرير بواسطة Finora · {{ printed_at.strftime('%Y-%m-%d %H:%M') }} · {{ printed_by }}</span><span>{{ report.session.report_number }}</span></div>
+  <div class="page-footer"><span>تم إنشاء التقرير بواسطة Finora · {{ (printed_at|finora_datetime('%Y-%m-%d %H:%M')) }} · {{ printed_by }}</span><span>{{ report.session.report_number }}</span></div>
   <main class="print-sheet">
     <div class="first-page">
     <section class="report-cover keep-together">
@@ -50,7 +51,7 @@
     {% if 'inventory' in sections %}<section class="section"><h2 class="section-title">الجرد اليومي</h2>{% if report.inventory_counts %}<table><thead><tr><th>المادة</th><th>أول الفترة</th><th>الداخل</th><th>الخارج</th><th>النظام</th><th>الفعلي</th><th>الفرق</th></tr></thead><tbody>{% for row in report.inventory_counts %}<tr><td>{{ row.product_name }}</td><td>{{ row.opening }}</td><td>{{ row.incoming }}</td><td>{{ row.outgoing }}</td><td>{{ row.expected }}</td><td>{{ row.actual if row.actual is not none else '—' }}</td><td class="{% if row.variance and row.variance < 0 %}negative{% elif row.variance and row.variance > 0 %}positive{% endif %}">{% if row.variance is none %}—{% elif row.variance > 0 %}+{{ row.variance }}{% else %}{{ row.variance }}{% endif %}</td></tr>{% endfor %}</tbody></table>{% else %}<div class="empty">لم يتم تنفيذ جرد مواد ضمن هذه اليومية.</div>{% endif %}</section>{% endif %}
     {% if mode == 'detailed' and 'audit' in sections %}<section class="section"><h2 class="section-title">ملخص سجل التغييرات</h2><table><thead><tr><th>الوقت</th><th>الإجراء</th><th>المستخدم</th><th>السبب</th></tr></thead><tbody>{% for row in audit_rows %}<tr><td>{{ format_local_datetime(row.created_at) }}</td><td>{{ row.action }}</td><td>{{ row.user_name or row.user_id or 'النظام' }}</td><td>{{ row.reason or '—' }}</td></tr>{% else %}<tr><td colspan="4" class="empty">لا توجد تغييرات مسجلة.</td></tr>{% endfor %}</tbody></table></section>{% endif %}
     {% if 'notes' in sections %}<section class="section keep-together"><h2 class="section-title">الملاحظات</h2><div class="notes">{{ report.session.notes or 'لا توجد ملاحظات.' }}</div></section>{% endif %}
-    {% if 'signatures' in sections %}<section class="signatures"><h2 class="section-title">اعتماد التقرير</h2><div class="signature-grid"><div class="signature-box"><strong>الموظف المسؤول</strong><div class="signature-line">الاسم: ______________________________</div><div class="signature-line">التوقيع: ____________________________</div></div><div class="signature-box"><strong>المدير</strong><div class="signature-line">الاسم: ______________________________</div><div class="signature-line">التوقيع: ____________________________</div></div></div><div class="signature-line">التاريخ: ____________________</div><h3>ملاحظات المدير</h3><div class="manager-notes"></div><div class="final-footer"><span>تم إنشاء التقرير بواسطة Finora · {{ printed_at.strftime('%Y-%m-%d %H:%M') }} · {{ printed_by }}</span><span>{{ report.session.report_number }}</span></div></section>{% endif %}
+    {% if 'signatures' in sections %}<section class="signatures"><h2 class="section-title">اعتماد التقرير</h2><div class="signature-grid"><div class="signature-box"><strong>الموظف المسؤول</strong><div class="signature-line">الاسم: ______________________________</div><div class="signature-line">التوقيع: ____________________________</div></div><div class="signature-box"><strong>المدير</strong><div class="signature-line">الاسم: ______________________________</div><div class="signature-line">التوقيع: ____________________________</div></div></div><div class="signature-line">التاريخ: ____________________</div><h3>ملاحظات المدير</h3><div class="manager-notes"></div><div class="final-footer"><span>تم إنشاء التقرير بواسطة Finora · {{ (printed_at|finora_datetime('%Y-%m-%d %H:%M')) }} · {{ printed_by }}</span><span>{{ report.session.report_number }}</span></div></section>{% endif %}
   </main>
   {% if auto_print %}<script>window.addEventListener("load",()=>setTimeout(()=>window.print(),350));</script>{% endif %}
 </body>

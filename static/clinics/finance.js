@@ -143,7 +143,7 @@
         (p) => `
       <div class="cx-fin-timeline__item">
         <strong>${ctx.money(p.amount)}</strong>
-        <span>${ctx.esc(UI.PAYMENT_METHODS[p.method] || p.method)} · ${ctx.esc((p.paid_at || "").replace("T", " ").slice(0, 16))}</span>
+        <span>${ctx.esc(UI.PAYMENT_METHODS[p.method] || p.method)} · ${ctx.esc(window.FinoraTime.dateTime((p.paid_at || "")))}</span>
         <small>${ctx.esc(p.notes || "")}</small>
       </div>`
       )
@@ -530,7 +530,7 @@
               : [{ id: "cxCashOpen", label: "فتح جلسة", icon: "fa-unlock", primary: true }],
           })}
           <div class="cx-fin-kpis">${UI.kpisHtml(kpis)}</div>
-          ${open ? `<article class="cx-fin-session"><strong>جلسة مفتوحة</strong><span>افتتاح ${ctx.esc(open.opened_at?.replace("T", " ").slice(0, 16) || "")}</span><span>افتتاحي ${ctx.money(open.opening_cash)}</span></article>` : UI.emptyHtml("لا توجد جلسة صندوق مفتوحة", "فتح جلسة", "cxCashOpen")}
+          ${open ? `<article class="cx-fin-session"><strong>جلسة مفتوحة</strong><span>افتتاح ${ctx.esc(window.FinoraTime.dateTime(open.opened_at) || "")}</span><span>افتتاحي ${ctx.money(open.opening_cash)}</span></article>` : UI.emptyHtml("لا توجد جلسة صندوق مفتوحة", "فتح جلسة", "cxCashOpen")}
           ${UI.tableCard(
             `<table class="cx-table"><thead><tr><th>التاريخ</th><th>افتتاحي</th><th>متوقع</th><th>إغلاق</th><th>الحالة</th><th></th></tr></thead>
             <tbody>${list.map((s) => `<tr><td>${ctx.esc(s.business_date)}</td><td class="cx-money">${ctx.money(s.opening_cash)}</td><td class="cx-money">${s.expected_cash == null ? "—" : ctx.money(s.expected_cash)}</td><td class="cx-money">${s.closing_cash == null ? "—" : ctx.money(s.closing_cash)}</td><td>${ctx.esc(s.status)}</td><td>${s.status === "open" ? `<button class="cx-btn cx-btn--sm" data-close="${s.id}">إغلاق</button>` : "—"}</td></tr>`).join("")}</tbody></table>`,

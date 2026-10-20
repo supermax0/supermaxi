@@ -195,7 +195,7 @@
       {% else %}
       <span>{{ filter_label }}: {{ selected_filter_label }}</span>
       {% endif %}
-      <span><i class="fas fa-clock"></i> الإصدار: {{ generated_at.strftime('%Y-%m-%d %H:%M') }}</span>
+      <span><i class="fas fa-clock"></i> الإصدار: {{ (generated_at|finora_datetime('%Y-%m-%d %H:%M')) }}</span>
     </div>
     {% if rows %}
     <div class="dr-table-wrap">

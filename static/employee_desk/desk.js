@@ -456,7 +456,7 @@
         ? orders.map((row) => `
           <div class="ed-order">
             <b>${esc(row.label)}</b>
-            <div class="ed-grow"><span class="date">${esc(row.date)}</span></div>
+            <div class="ed-grow"><span class="date">${esc(window.FinoraTime.dateTime(row.date))}</span></div>
             <span class="ed-tag muted">${esc(row.status || "—")}</span>
             <b>${esc(row.total_label)}</b>
           </div>`).join("")

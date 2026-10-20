@@ -499,7 +499,7 @@
                 {{ o.payment_status }}
               </span>
             </td>
-            <td style="font-size: 12px; color: var(--delivery-muted);">{{ o.created_at.strftime('%Y-%m-%d %H:%M') if
+            <td style="font-size: 12px; color: var(--delivery-muted);">{{ (o.created_at|finora_datetime('%Y-%m-%d %H:%M')) if
               o.created_at else "—" }}</td>
             <td>
               <button class="btn-premium btn-secondary" style="padding: 6px 12px; font-size: 11px;"

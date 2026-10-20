@@ -1,4 +1,5 @@
-<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>{{ audit.number }} — جرد المخزون</title>
+<!doctype html><html lang="ar" dir="rtl"><head>
+  {% include 'partials/time_format_bootstrap.html' %}<meta charset="utf-8"><title>{{ audit.number }} — جرد المخزون</title>
 <style>*{box-sizing:border-box}body{font-family:Finora,Tahoma,sans-serif;color:#252142;margin:24px;font-size:12px}h1{font-size:22px;margin:0 0 8px;color:#7138db}.note{padding:12px;background:#f6f3ff;border:1px solid #e3d9ff;border-radius:10px;line-height:1.8}.stats{display:flex;gap:12px;margin:16px 0}.stats span{background:#f6f3ff;padding:10px;border-radius:8px}table{width:100%;border-collapse:collapse}th,td{padding:9px;border:1px solid #e5def5;text-align:right}th{background:#f6f3ff}tr{break-inside:avoid}thead{display:table-header-group}.num{direction:ltr;text-align:center}footer{margin-top:16px;color:#666}@page{size:A4 landscape;margin:12mm}@media print{body{margin:0}.actions{display:none}}</style></head><body>
 <h1>FINORA · تقرير جرد المخزون</h1><p>{{ audit.number }} · {{ audit.title }} · {{ state }}</p>
 <p>بدأه: {{ audit.created_by_name }} · <bdi dir="ltr">{{ format_time(audit.created_at) }}</bdi>{% if audit.posted_at %} · الترحيل: <bdi dir="ltr">{{ format_time(audit.posted_at) }}</bdi>{% endif %}</p>

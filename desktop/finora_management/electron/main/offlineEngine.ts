@@ -545,9 +545,14 @@ export class OfflineEngine {
     return { id, localInvoiceNo, total: input.total };
   }
 
-  async posReceipt(
-    id: string,
-  ): Promise<{ number: string; sale: PosSale; names: string[]; created: number; invoice: string | null }> {
+  async posReceipt(id: string): Promise<{
+    number: string;
+    sale: PosSale;
+    names: string[];
+    created: number;
+    invoice: string | null;
+    timeFormat?: "12" | "24";
+  }> {
     await this.store.settled();
     const context = this.context();
     if (!context?.session.permissions.includes("print_pos_invoice"))
@@ -562,6 +567,7 @@ export class OfflineEngine {
     if (!receipt) throw new Error("رقم الإيصال المحلي غير موجود.");
     return {
       number: String(receipt.receipt),
+      timeFormat: context.session.display_time_format ?? "12",
       sale,
       created: Number(row.created),
       invoice: row.invoice ? String(row.invoice) : null,

@@ -48,7 +48,7 @@
       <tbody>
       {% for a in appointments_today %}
         <tr>
-          <td>{{ a.appointment_at.strftime('%H:%M') }}</td>
+          <td>{{ (a.appointment_at|finora_datetime('%H:%M', local=True)) }}</td>
           <td>{{ a.customer.name }}</td>
           <td>{{ a.service.name }}</td>
           <td><span class="status-pill">{{ a.status }}</span></td>

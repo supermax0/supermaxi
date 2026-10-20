@@ -52,8 +52,8 @@
   function timeOf(iso) {
     if (!iso) return "—";
     const s = String(iso);
-    if (s.length >= 16) return s.slice(11, 16);
-    return s;
+    if (s.length >= 16) return window.FinoraTime.time(s);
+    return window.FinoraTime.clock(s);
   }
 
   function ticketLabel(n) {

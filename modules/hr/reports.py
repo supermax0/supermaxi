@@ -1,4 +1,5 @@
 """Permission-scoped HR exports using the same data and approval snapshots as the screen."""
+from utils.time_format import format_timestamp
 from io import BytesIO
 from datetime import datetime
 from flask import abort, render_template, send_file
@@ -69,7 +70,7 @@ def export_report(kind, format_, args):
     if kind == "statement":
         from .statements import statement
         statement_data=statement(query,paginate=False)
-        rows=[{**r,"date":datetime.fromisoformat(r["date"].replace("Z","+00:00")).astimezone(BAGHDAD).strftime("%Y-%m-%d %H:%M"),"source":r["document"]["number"]} for r in statement_data["rows"]]
+        rows=[{**r,"date":format_timestamp(r["date"]),"source":r["document"]["number"]} for r in statement_data["rows"]]
     elif kind == "settlement":
         from .employees import details
         employee=person(integer(args.get("person_id"),minimum=1))
@@ -118,7 +119,7 @@ def export_report(kind, format_, args):
             breakdown.append({"title":"تفصيل البدلات والاستقطاعات والسلف","columns":["البيان","النوع","المبلغ"],"rows":entries})
     data = [[LABELS.get(str(r.get(key, "")), r.get(key, "")) if key in ("status", "state", "kind") else
              r.get("detail", {}).get("title", "") if key == "title" else r.get(key, "") for key, _ in columns] for r in rows]
-    generated = datetime.now(BAGHDAD).strftime("%Y-%m-%d %H:%M")
+    generated = format_timestamp(datetime.now(BAGHDAD))
     audit("report.export", kind, detail={"format": format_, "rows": len(rows), "filters": query})
     from extensions import db
     db.session.commit()

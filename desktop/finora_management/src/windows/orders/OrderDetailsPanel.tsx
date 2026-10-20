@@ -1,3 +1,4 @@
+import { useTimeFormat } from "@/stores/displayTime";
 import { Banknote, Ban, ExternalLink, History, Pencil, Printer, UserRound, Undo2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { OrderRow } from "@/api/finora/orders";
@@ -38,6 +39,7 @@ interface OrderDetailsPanelProps {
 type PanelTab = "details" | "history";
 
 function HistoryList({ orderId, active }: { orderId: number | null; active: boolean }) {
+  useTimeFormat();
   const history = useOrderHistory(orderId, active);
   if (history.isLoading) return <p className="py-6 text-center text-sm text-ink-faint">جارٍ تحميل السجل…</p>;
   if (history.error)
@@ -70,6 +72,7 @@ function HistoryList({ orderId, active }: { orderId: number | null; active: bool
 }
 
 function AssignButton({ label, onClick }: { label: string; onClick(): void }) {
+  useTimeFormat();
   return (
     <button
       type="button"
@@ -100,6 +103,7 @@ export function OrderDetailsPanel({
   onPrint,
   onClose,
 }: OrderDetailsPanelProps) {
+  useTimeFormat();
   const details = useOrderDetails(orderId);
   const order = details.data?.order;
   const [tab, setTab] = useState<PanelTab>("details");

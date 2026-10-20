@@ -1,3 +1,4 @@
+from utils.time_format import format_timestamp
 import json
 import os
 from io import BytesIO
@@ -83,7 +84,8 @@ def smart_audit_app():
     source = Path(current_app.static_folder) / "finora-inventory-audit" / "audit.html"
     if not source.is_file():
         return jsonify(success=False, error="واجهة الجرد تحتاج بناء أصول الويب من النسخة المحدثة"), 503
-    return send_file(source, mimetype="text/html")
+    html = source.read_text(encoding="utf-8").replace("<head>", "<head>" + render_template("partials/time_format_bootstrap.html"), 1)
+    return current_app.response_class(html, mimetype="text/html")
 
 
 @inventory_bp.before_request
@@ -718,7 +720,7 @@ def _build_inventory_audit_workbook(branch=None, *, all_branches=False):
     ws.row_dimensions[1].height = 30
 
     ws.merge_cells(start_row=2, start_column=1, end_row=2, end_column=len(headers))
-    ws["A2"] = f"الفرع: {scope} | تاريخ الإنشاء: {datetime.now().strftime('%Y-%m-%d %H:%M')} | اكتب العدد الفعلي في العمود الأصفر."
+    ws["A2"] = f"الفرع: {scope} | تاريخ الإنشاء: {format_timestamp(datetime.utcnow())} | اكتب العدد الفعلي في العمود الأصفر."
     ws["A2"].fill = note_fill
     ws["A2"].font = Font(color="1E3A8A", bold=True)
     ws["A2"].alignment = Alignment(horizontal="center")

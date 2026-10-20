@@ -823,7 +823,7 @@
       </style></head>
       <body>
         <div class="header"><h1>كشف طلبات ${F.esc(companyName)}</h1>
-          <div class="header-info"><span>تاريخ الطباعة: ${now.toLocaleDateString("ar-IQ")} - ${now.toLocaleTimeString("ar-IQ")}</span><span>نظام المحاسبة</span></div></div>
+          <div class="header-info"><span>تاريخ الطباعة: ${now.toLocaleDateString("ar-IQ")} - ${window.FinoraTime.time(now)}</span><span>نظام المحاسبة</span></div></div>
         <table><thead><tr><th>#</th><th>{{ _('shipping_orders_th_customer') }}</th><th>{{ _('shipping_orders_th_phone') }}</th><th>{{ _('shipping_orders_th_amount') }}</th><th>المتبقي</th><th>{{ _('shipping_orders_th_status') }}</th></tr></thead>
           <tbody>${body}<tr class="total-row"><td colspan="3">المجموع (${F.num(currentOrders.length)} طلب)</td><td>${F.num(total)} ${T.iqd}</td><td>${F.num(remaining)} ${T.iqd}</td><td></td></tr></tbody></table>
         <div class="footer"><p>تم إنشاء هذا التقرير تلقائياً من نظام المحاسبة</p></div>

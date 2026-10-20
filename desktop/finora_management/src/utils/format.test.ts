@@ -1,4 +1,17 @@
 import { formatClockTime, formatDateTime, formatTime } from "./format";
+import { useDisplayTime } from "@/stores/displayTime";
+
+afterEach(() => useDisplayTime.getState().setFormat("12"));
+
+it("applies the company 24-hour preference without changing dates or local appointment hours", () => {
+  useDisplayTime.getState().setFormat("24");
+  expect(formatDateTime("2026-10-19 21:00:00")).toBe("2026-10-20 00:00");
+  expect(formatDateTime("2026-10-20T09:00:00Z")).toBe("2026-10-20 12:00");
+  expect(formatDateTime("2026-10-20T19:30:00+03:00")).toBe("2026-10-20 19:30");
+  expect(formatTime(new Date("2026-10-20T16:30:00Z"))).toBe("19:30");
+  expect(formatClockTime("22:00")).toBe("22:00");
+  expect(formatDateTime("2026-10-20")).toBe("2026-10-20");
+});
 
 it("shows midnight, noon and evening in Baghdad with Arabic day periods", () => {
   expect(formatDateTime("2026-10-19 21:00:00")).toBe("2026-10-20 12:00 ص");

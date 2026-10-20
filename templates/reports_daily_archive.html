@@ -167,7 +167,7 @@
             <td>{{ money(audit.actual_cash_count) if audit.actual_cash_count is not none else "-" }}</td>
             <td class="{% if audit.difference > 0 %}diff-positive{% elif audit.difference < 0 %}diff-negative{% endif %}">{{ money(audit.difference) }}</td>
             <td>{{ audit.reviewer.name if audit.reviewer else "-" }}</td>
-            <td>{{ audit.reviewed_at.strftime("%Y-%m-%d %H:%M") if audit.reviewed_at else "-" }}</td>
+            <td>{{ (audit.reviewed_at|finora_datetime("%Y-%m-%d %H:%M")) if audit.reviewed_at else "-" }}</td>
             <td class="note">{{ audit.notes or "-" }}</td>
             <td><a class="archive-btn" href="/reports/daily?date={{ audit.report_date.isoformat() }}"><i class="fa fa-eye"></i> عرض</a></td>
           </tr>

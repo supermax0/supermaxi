@@ -234,7 +234,7 @@
       </div>
       <div class="trf-meta-item">
         <span>تاريخ الإنشاء</span>
-        <strong>{{ transfer.created_at.strftime('%Y-%m-%d %H:%M') if transfer.created_at else '—' }}</strong>
+        <strong>{{ (transfer.created_at|finora_datetime('%Y-%m-%d %H:%M')) if transfer.created_at else '—' }}</strong>
       </div>
       <div class="trf-meta-item">
         <span>أنشأه</span>
@@ -243,13 +243,13 @@
       {% if transfer.sent_at %}
       <div class="trf-meta-item">
         <span>تاريخ الترحيل</span>
-        <strong>{{ transfer.sent_at.strftime('%Y-%m-%d %H:%M') }}</strong>
+        <strong>{{ (transfer.sent_at|finora_datetime('%Y-%m-%d %H:%M')) }}</strong>
       </div>
       {% endif %}
       {% if transfer.received_at %}
       <div class="trf-meta-item">
         <span>تاريخ الاستلام</span>
-        <strong>{{ transfer.received_at.strftime('%Y-%m-%d %H:%M') }}</strong>
+        <strong>{{ (transfer.received_at|finora_datetime('%Y-%m-%d %H:%M')) }}</strong>
       </div>
       {% endif %}
     </div>

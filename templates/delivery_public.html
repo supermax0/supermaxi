@@ -1,6 +1,7 @@
 ﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+  {% include 'partials/time_format_bootstrap.html' %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <script src="/static/js/no-zoom.js"></script>
@@ -271,7 +272,7 @@
                         <td><strong>#{{ report.report_number }}</strong></td>
                         <td>{{ report.orders_count }}</td>
                         <td style="color: var(--success); font-weight: 600;">{{ "{:,.0f}".format(report.total_amount) }} د.ع</td>
-                        <td>{{ report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else "—" }}</td>
+                        <td>{{ (report.created_at|finora_datetime('%Y-%m-%d %H:%M')) if report.created_at else "—" }}</td>
                         <td>{{ report.created_by or "—" }}</td>
                         <td>
                             <a href="/delivery/report/{{ report.id }}?token={{ access_token }}" class="btn btn-primary" target="_blank">👁️ عرض</a>
@@ -325,7 +326,7 @@
                                 {{ order.payment_status }}
                             </span>
                         </td>
-                        <td>{{ order.created_at.strftime('%Y-%m-%d %H:%M') if order.created_at else "—" }}</td>
+                        <td>{{ (order.created_at|finora_datetime('%Y-%m-%d %H:%M')) if order.created_at else "—" }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

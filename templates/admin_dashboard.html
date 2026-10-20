@@ -79,7 +79,7 @@
                             <td><span class="request-id">#{{ req.id }}</span></td>
                             <td><div class="request-company"><span>{{ req.tenant_name[:1]|upper }}</span><b>{{ req.tenant_name }}</b></div></td>
                             <td><strong class="request-amount">{{ "{:,.0f}".format(req.amount) }} <small>د.ع</small></strong></td>
-                            <td><time datetime="{{ req.created_at.isoformat() }}">{{ req.created_at.strftime('%Y-%m-%d') }}<small>{{ req.created_at.strftime('%H:%M') }}</small></time></td>
+                            <td><time datetime="{{ req.created_at.isoformat() }}">{{ (req.created_at|finora_datetime('%Y-%m-%d')) }}<small>{{ (req.created_at|finora_datetime('%H:%M')) }}</small></time></td>
                             <td><span class="status-badge status-{{ req.status }}"><i class="fas fa-circle"></i>{% if req.status == 'pending' %}قيد الانتظار{% elif req.status == 'approved' %}مكتمل{% else %}مرفوض{% endif %}</span></td>
                             <td><a href="/superadmin/requests" class="request-open" aria-label="فتح الطلب #{{ req.id }}"><i class="fas fa-chevron-left"></i></a></td>
                         </tr>
@@ -145,7 +145,7 @@
     var page = document.getElementById("dashboardPage");
     if (!page) return;
     var time = document.getElementById("dashboardUpdateTime");
-    if (time) time.textContent = new Intl.DateTimeFormat("ar-IQ", { weekday: "long", hour: "2-digit", minute: "2-digit" }).format(new Date());
+    if (time) time.textContent = window.FinoraTime.format(new Date(), { weekday: "long", hour: "2-digit", minute: "2-digit" });
 
     var analyticsNode = document.getElementById("landingVisitAnalyticsData");
     var analytics = { periods: {}, daily: [], average_7d: 0, best_day: null };

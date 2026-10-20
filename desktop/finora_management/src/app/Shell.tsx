@@ -18,12 +18,14 @@ import { openNavItem, useNavigation } from "@/navigation/useNavigation";
 import { WindowTransitionManager } from "@/windows/WindowTransitionManager";
 import { SmartWorkspace } from "@/features/workspace/SmartWorkspace";
 import { useWorkspaceLifecycle } from "@/features/workspace/useWorkspaceLifecycle";
+import { useDisplayPreferences } from "@/hooks/useDisplayPreferences";
 
 function windowCommand(icon: LucideIcon, id: string, label: string, run: () => void, hint?: string): Command {
   return { id, icon, label, run, hint };
 }
 
 export function Shell() {
+  useDisplayPreferences(true);
   useWorkspaceLifecycle();
   useOperationsNotifications();
   const paletteOpen = useUi((s) => s.paletteOpen);

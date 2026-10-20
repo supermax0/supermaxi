@@ -542,7 +542,7 @@ function renderSeriesMembers(members) {
       ? '<span class="st posted">مخصوم</span>'
       : '<span class="st">مجدول</span>';
     const rep = m.repeat_index && m.repeat_total ? ` · تكرار ${m.repeat_index}/${m.repeat_total}` : '';
-    return `<div class="exp-series-member"><div>${m.expense_date || '—'}${rep}${m.post_time ? ' · ' + m.post_time : ''}</div><div>${F.num(m.amount)} · ${st}</div></div>`;
+    return `<div class="exp-series-member"><div>${m.expense_date || '—'}${rep}${m.post_time ? ' · ' + window.FinoraTime.clock(m.post_time) : ''}</div><div>${F.num(m.amount)} · ${st}</div></div>`;
   }).join('');
 }
 

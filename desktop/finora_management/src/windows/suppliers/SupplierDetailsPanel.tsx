@@ -1,3 +1,4 @@
+import { useTimeFormat } from "@/stores/displayTime";
 import {
   ArrowUpLeft,
   Building2,
@@ -24,7 +25,7 @@ import { IconButton } from "@/components/IconButton";
 import { DetailRow } from "@/components/SidePanel";
 import { StatusBadge } from "@/components/StatusBadge";
 import { cn } from "@/utils/cn";
-import { formatNumber } from "@/utils/format";
+import { formatNumber, formatDateTime } from "@/utils/format";
 import { formatIqd } from "@/utils/money";
 import { toast } from "@/stores/toasts";
 import { useOffline } from "@/stores/offline";
@@ -40,6 +41,7 @@ const TABS = [
 type DetailTab = (typeof TABS)[number]["id"];
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
+  useTimeFormat();
   return (
     <section className="overflow-hidden rounded-panel border border-line/50 bg-white/75">
       <h3 className="border-b border-line/50 bg-surface-sunken/65 px-4 py-3 text-[13px] font-bold text-ink">
@@ -61,6 +63,7 @@ function SmallStat({
   value: ReactNode;
   tone: "violet" | "azure" | "success" | "warning";
 }) {
+  useTimeFormat();
   const colors = {
     violet: "bg-violet-soft text-violet-deep",
     azure: "bg-azure-soft text-azure",
@@ -81,6 +84,7 @@ function SmallStat({
 }
 
 function EmptyRecords({ children }: { children: ReactNode }) {
+  useTimeFormat();
   return (
     <div className="rounded-panel border border-dashed border-line bg-white/50 px-4 py-12 text-center">
       <FileText size={30} className="mx-auto mb-3 text-ink-faint/60" />
@@ -90,6 +94,7 @@ function EmptyRecords({ children }: { children: ReactNode }) {
 }
 
 function InvoiceRecords({ details, sales = false }: { details: SupplierDetails; sales?: boolean }) {
+  useTimeFormat();
   if (sales)
     return details.sales.length === 0 ? (
       <EmptyRecords>لا توجد مبيعات لهذا المورد</EmptyRecords>
@@ -104,7 +109,7 @@ function InvoiceRecords({ details, sales = false }: { details: SupplierDetails; 
               </span>
             </div>
             <p className="mt-2 text-xs text-ink-soft">{s.products_label}</p>
-            <p className="ltr-isolate mt-3 text-xs text-ink-faint">{s.date}</p>
+            <p className="ltr-isolate mt-3 text-xs text-ink-faint">{formatDateTime(s.date)}</p>
           </div>
         ))}
       </div>
@@ -124,7 +129,7 @@ function InvoiceRecords({ details, sales = false }: { details: SupplierDetails; 
           </div>
           <p className="mt-2 text-xs leading-5 text-ink-soft">{p.products_label}</p>
           <div className="mt-3 flex items-center justify-between gap-2 border-t border-line/60 pt-3">
-            <span className="ltr-isolate text-xs text-ink-faint">{p.date}</span>
+            <span className="ltr-isolate text-xs text-ink-faint">{formatDateTime(p.date)}</span>
             <span className="ltr-isolate font-semibold">{formatIqd(p.grand_total)}</span>
           </div>
           {p.status !== "cancelled" && p.status !== "draft" && (
@@ -142,6 +147,7 @@ function InvoiceRecords({ details, sales = false }: { details: SupplierDetails; 
 }
 
 function Statement({ details }: { details: SupplierDetails }) {
+  useTimeFormat();
   const records = [
     ...details.purchases
       .filter((p) => p.status !== "draft" && p.status !== "cancelled")
@@ -190,7 +196,7 @@ function Statement({ details }: { details: SupplierDetails }) {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold">{r.label}</p>
                 <p className="ltr-isolate mt-1 text-[11px] text-ink-faint">
-                  {r.reference} · {r.date}
+                  {r.reference} · {formatDateTime(r.date)}
                 </p>
               </div>
               <span className={cn("ltr-isolate text-sm font-semibold", r.tone)}>
@@ -227,6 +233,7 @@ export function SupplierDetailsPanel({
   onPurchase(s: SupplierRow): void;
   onSell(): void;
 }) {
+  useTimeFormat();
   const [tab, setTab] = useState<DetailTab>("overview");
   const offlineAvailable = useOffline((s) => s.status.available);
   const s = data?.supplier;
@@ -474,6 +481,7 @@ export function SupplierDetailsPanel({
 }
 
 function SummaryValue({ label, value, color }: { label: string; value: number; color: string }) {
+  useTimeFormat();
   return (
     <div className="min-w-0 border-e border-white/80 px-1.5 last:border-0">
       <p className={cn("text-[10px]", color)}>{label}</p>

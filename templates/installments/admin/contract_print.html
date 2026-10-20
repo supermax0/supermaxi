@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
 <head>
+  {% include 'partials/time_format_bootstrap.html' %}
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>عقد {{ contract.contract_number }}</title>
@@ -86,10 +87,10 @@
         {% if settings and settings.logo_path %}<img src="{{ url_for('static', filename=settings.logo_path) }}" alt="شعار المتجر">{% else %}<span class="brand-mark">F</span>{% endif %}
         <div><h1>{{ settings.store_name if settings else 'متجر الأقساط' }}</h1><p>{{ settings.address if settings and settings.address else 'عنوان الطرف الأول يثبت عند التوقيع' }}{% if settings and settings.contact_phone %} - {{ settings.contact_phone }}{% endif %}</p></div>
       </div>
-      <div class="meta"><span>عقد بيع بالتقسيط</span><strong>{{ contract.contract_number }}</strong><small>تاريخ التحرير: {{ contract.created_at.strftime('%Y-%m-%d') }} | الحالة: {{ contract_status_label }}</small></div>
+      <div class="meta"><span>عقد بيع بالتقسيط</span><strong>{{ contract.contract_number }}</strong><small>تاريخ التحرير: {{ (contract.created_at|finora_datetime('%Y-%m-%d')) }} | الحالة: {{ contract_status_label }}</small></div>
     </header>
 
-    <section class="title"><h2>عقد بيع وشراء بالتقسيط</h2><p>تعد البيانات المالية وجدول الاستحقاقات والشروط أدناه أجزاءً متكاملة من هذا العقد.</p><span class="status">نسخة صادرة: {{ issued_at.strftime('%Y-%m-%d %H:%M') }}</span></section>
+    <section class="title"><h2>عقد بيع وشراء بالتقسيط</h2><p>تعد البيانات المالية وجدول الاستحقاقات والشروط أدناه أجزاءً متكاملة من هذا العقد.</p><span class="status">نسخة صادرة: {{ (issued_at|finora_datetime('%Y-%m-%d %H:%M')) }}</span></section>
 
     <section class="parties">
       <article class="party">

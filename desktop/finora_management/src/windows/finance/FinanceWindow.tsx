@@ -1,3 +1,4 @@
+import { useTimeFormat } from "@/stores/displayTime";
 import { useAssistantDraftFields } from "@/features/assistant/draftQueue";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWorkspaceHistory, useWorkspaceRequest } from "@/features/workspace/navigation";
@@ -26,7 +27,7 @@ import { useWindowManager } from "@/stores/windowManager";
 import { useFinanceNavigation, type CustomerCollection } from "@/stores/financeNavigation";
 import { useConnection } from "@/stores/connection";
 import { toast } from "@/stores/toasts";
-import { formatNumber } from "@/utils/format";
+import { formatNumber, formatDateTime } from "@/utils/format";
 import { cn } from "@/utils/cn";
 import { CashShifts } from "./CashShifts";
 import { FinancialControl } from "./FinancialControl";
@@ -92,6 +93,7 @@ const auditLabels: Record<string, string> = {
   close: "إغلاق العقد",
 };
 function Field({ label, help, children }: { label: string; help?: string; children: ReactNode }) {
+  useTimeFormat();
   const id = useId();
   return (
     <div className="grid min-w-0 gap-2 text-sm text-ink-soft [&>input]:w-full [&>select]:w-full [&>textarea]:w-full">
@@ -104,6 +106,7 @@ function Field({ label, help, children }: { label: string; help?: string; childr
   );
 }
 function Badge({ status }: { status: string }) {
+  useTimeFormat();
   return (
     <span
       className={cn(
@@ -121,6 +124,7 @@ function Badge({ status }: { status: string }) {
 }
 
 export function FinanceWindow() {
+  useTimeFormat();
   const active = useWindowManager((s) => s.active === "finance");
   const online = useConnection((s) => s.status === "online");
   const cache = useQueryClient();
@@ -949,7 +953,7 @@ export function FinanceWindow() {
                 )}
                 {v.audit?.map((a, i) => (
                   <p className="mt-3 text-xs text-ink-faint" key={i}>
-                    {auditLabels[a.action] || "عملية موثقة"} · {a.at} · مستخدم #{a.created_by}
+                    {auditLabels[a.action] || "عملية موثقة"} · {formatDateTime(a.at)} · مستخدم #{a.created_by}
                   </p>
                 ))}
               </>
@@ -1008,7 +1012,7 @@ export function FinanceWindow() {
                   </DetailRow>
                 ))}
                 {l.payments?.map((p, i) => (
-                  <DetailRow key={i} label={`قسط ${p.date}`}>
+                  <DetailRow key={i} label={`قسط ${formatDateTime(p.date)}`}>
                     <button
                       className="text-violet"
                       onClick={() => setSelected({ type: "voucher", id: p.voucher_id })}
@@ -1023,7 +1027,7 @@ export function FinanceWindow() {
               <>
                 <DetailRow label="الرصيد الحالي">{money(a.balance)}</DetailRow>
                 {a.movements.map((r) => (
-                  <DetailRow key={r.key} label={`${r.date} · ${r.note}`}>
+                  <DetailRow key={r.key} label={`${formatDateTime(r.date)} · ${r.note}`}>
                     <span className={r.amount >= 0 ? "text-success" : "text-danger"}>
                       {money(r.amount)}
                       <small className="block text-ink-faint">رصيد: {money(r.balance_after)}</small>
@@ -1105,6 +1109,7 @@ function PartyStatement({
   onClose(): void;
   onVoucher(id: number): void;
 }) {
+  useTimeFormat();
   const statement = useQuery({
     queryKey: ["finance", "party-statement", type, id],
     queryFn: () => finora.finance.party(type, id),
@@ -1159,6 +1164,7 @@ function LedgerReview({
   journal: ReactNode;
   canPrint: boolean;
 }) {
+  useTimeFormat();
   const [report, setReport] = useState("journal");
   const operational = [
     "customer-aging",
@@ -1345,6 +1351,7 @@ function Attachments({
   canUpload: boolean;
   onSaved(): void;
 }) {
+  useTimeFormat();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const download = async (id: number) => {
@@ -1432,6 +1439,7 @@ function FinanceEditor({
   onClose(): void;
   onSaved(): void;
 }) {
+  useTimeFormat();
   const [form, setForm] = useState<Record<string, string>>({
     category: initialCategory ?? "expense",
     direction: "borrowed",
@@ -1835,6 +1843,7 @@ function FinanceEditor({
 }
 
 function ReconciliationReview() {
+  useTimeFormat();
   const rows = useQuery({
     queryKey: ["finance", "reconciliations"],
     queryFn: () => finora.finance.reconciliations(),
@@ -1880,7 +1889,7 @@ function ReconciliationReview() {
           {r.lines.map((l) => (
             <div key={l.id} className="mt-3 grid gap-2 border-t border-line pt-3 text-xs">
               <span>
-                {l.date} · {money(l.amount)} · {l.reference}
+                {formatDateTime(l.date)} · {money(l.amount)} · {l.reference}
               </span>
               {l.ledger_key ? (
                 <span className="text-success">✓ مطابق</span>
@@ -1899,7 +1908,7 @@ function ReconciliationReview() {
                       )
                       .map((c) => (
                         <option value={c.key} key={c.key}>
-                          {c.date} · {c.note}
+                          {formatDateTime(c.date)} · {c.note}
                         </option>
                       ))}
                   </select>
@@ -1945,6 +1954,7 @@ function OperationPanel({
   onClose(): void;
   onSaved(): void;
 }) {
+  useTimeFormat();
   const [reason, setReason] = useState("");
   const [amount, setAmount] = useState("");
   const [principal, setPrincipal] = useState("");
@@ -2141,6 +2151,7 @@ function OperationPanel({
 }
 
 function SettingsPanel({ meta, onClose, onSaved }: { meta: FinanceMeta; onClose(): void; onSaved(): void }) {
+  useTimeFormat();
   const settings = useQuery({ queryKey: ["finance", "settings"], queryFn: () => finora.finance.settings() });
   const preview = useQuery({ queryKey: ["finance", "migration"], queryFn: () => finora.finance.migration() });
   const [changes, setChanges] = useState<Record<string, boolean | number>>({});
@@ -2330,6 +2341,7 @@ function SettingsPanel({ meta, onClose, onSaved }: { meta: FinanceMeta; onClose(
 }
 
 function PeriodControls() {
+  useTimeFormat();
   const [period, setPeriod] = useState(isoToday().slice(0, 7));
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);

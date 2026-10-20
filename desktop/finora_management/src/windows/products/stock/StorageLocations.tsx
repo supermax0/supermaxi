@@ -1,3 +1,4 @@
+import { useTimeFormat } from "@/stores/displayTime";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { ArrowLeftRight, Building2, RefreshCw } from "lucide-react";
@@ -13,7 +14,7 @@ import { SidePanel } from "@/components/SidePanel";
 import { TablePagination } from "@/components/TablePagination";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { toast } from "@/stores/toasts";
-import { formatNumber } from "@/utils/format";
+import { formatNumber, formatDateTime } from "@/utils/format";
 import { stockButton, stockPrimary, stockMoney } from "./StockForms";
 import { StorageForm, storageKinds, type StorageFormMode } from "./StorageForm";
 
@@ -32,6 +33,7 @@ export function StorageLocations({
   onBusyChange(busy: boolean): void;
   onActivity(id: number): void;
 }) {
+  useTimeFormat();
   const client = useQueryClient();
   const [view, setView] = useState<"stocks" | "transfers" | "locations">("stocks");
   const [placeKey, setPlaceKey] = useState("");
@@ -400,9 +402,7 @@ export function StorageLocations({
             </p>
             {meta.data?.show_cost && <p>قيمة القطع {stockMoney(detail.data.cost)}</p>}
             <p>{detail.data.reason}</p>
-            <p className="text-xs text-ink-faint">
-              {new Date(detail.data.created_at).toLocaleString("ar-IQ")}
-            </p>
+            <p className="text-xs text-ink-faint">{formatDateTime(detail.data.created_at)}</p>
             {detail.data.can_send &&
               (!detail.data.source?.basis_valid || detail.data.source.movable < detail.data.quantity) && (
                 <p role="alert" className="rounded-control bg-warning-soft p-3 text-sm">

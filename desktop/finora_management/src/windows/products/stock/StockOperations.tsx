@@ -1,3 +1,4 @@
+import { useTimeFormat } from "@/stores/displayTime";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeftRight,
@@ -29,7 +30,7 @@ import { SidePanel } from "@/components/SidePanel";
 import { TablePagination } from "@/components/TablePagination";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { toast } from "@/stores/toasts";
-import { formatNumber } from "@/utils/format";
+import { formatNumber, formatDateTime } from "@/utils/format";
 import { StockForms, stockButton, stockPrimary, stockMoney, type StockForm } from "./StockForms";
 import { StorageLocations } from "./StorageLocations";
 
@@ -70,6 +71,7 @@ export function StockOperations({
   onActivity(id: number): void;
   initialTarget?: StockTarget;
 }) {
+  useTimeFormat();
   const client = useQueryClient();
   const [storageBusy, setStorageBusy] = useState(false);
   const [kind, setKind] = useState<StockLedger>(initialTarget?.kind ?? "branch"),
@@ -357,7 +359,7 @@ export function StockOperations({
       cell: (row) => (row.after == null ? "—" : formatNumber(row.after)),
     },
     { id: "note", header: "السبب", cell: (row) => row.note },
-    { id: "date", header: "التاريخ", cell: (row) => new Date(row.created_at).toLocaleString("ar-IQ") },
+    { id: "date", header: "التاريخ", cell: (row) => formatDateTime(row.created_at) },
   ];
   const list =
     view === "transfers"
@@ -462,7 +464,7 @@ export function StockOperations({
                       : row.request.path.includes("/locations")
                         ? "مخزن"
                         : "تحويل مخزون"}{" "}
-                  · {new Date(row.created).toLocaleString("ar-IQ")}
+                  · {formatDateTime(row.created)}
                 </span>
                 <button
                   className={stockButton}

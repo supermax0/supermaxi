@@ -1,3 +1,4 @@
+import { useTimeFormat } from "@/stores/displayTime";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { ArrowRight, Equal, Minus, Plus } from "lucide-react";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
@@ -41,6 +42,7 @@ interface Metric {
 }
 
 function Metrics({ items }: { items: Metric[] }) {
+  useTimeFormat();
   return (
     <div className="grid grid-cols-2 gap-2.5 md:grid-cols-3 xl:grid-cols-5">
       {items.map((m) => (
@@ -86,6 +88,7 @@ function Panel({
   actions?: ReactNode;
   className?: string;
 }) {
+  useTimeFormat();
   return (
     <section
       aria-label={title}
@@ -111,6 +114,7 @@ function Pills<T extends string>({
   onChange(v: T): void;
   label: string;
 }) {
+  useTimeFormat();
   return (
     <div
       role="radiogroup"
@@ -137,6 +141,7 @@ function Pills<T extends string>({
 }
 
 function Bars({ rows, empty = "لا توجد بيانات" }: { rows: BreakdownRow[]; empty?: string }) {
+  useTimeFormat();
   const max = Math.max(1, ...rows.map((r) => r.amount));
   if (rows.length === 0) return <p className="py-6 text-center text-sm text-ink-faint">{empty}</p>;
   return (
@@ -176,6 +181,7 @@ function EntityLink({
   id: number | null | undefined;
   children: ReactNode;
 }) {
+  useTimeFormat();
   if (!id) return <>{children}</>;
   return (
     <button
@@ -207,6 +213,7 @@ function Table<T>({
   rowKey(row: T, index: number): string;
   footer?: ReactNode;
 }) {
+  useTimeFormat();
   return (
     <div className="min-w-0">
       <div className="overflow-x-auto rounded-control ring-1 ring-line/60">
@@ -265,6 +272,7 @@ const STATE_TONES: Record<string, string> = {
 };
 
 function StateBadge({ state }: { state: string }) {
+  useTimeFormat();
   return (
     <span
       className={cn(
@@ -345,6 +353,7 @@ interface ViewProps<K extends ReportSection> {
 }
 
 function SalesView({ data, options, setOptions }: ViewProps<"sales">) {
+  useTimeFormat();
   const m = data.metrics;
   return (
     <>
@@ -416,6 +425,7 @@ function SalesView({ data, options, setOptions }: ViewProps<"sales">) {
 }
 
 function ProfitView({ data, options, setOptions }: ViewProps<"profit">) {
+  useTimeFormat();
   const st = data.statement;
   const prev = data.previous;
   const lines: Array<{
@@ -551,6 +561,7 @@ function ProfitView({ data, options, setOptions }: ViewProps<"profit">) {
 }
 
 function ExpensesView({ data, options, setOptions }: ViewProps<"expenses">) {
+  useTimeFormat();
   return (
     <>
       <Metrics
@@ -622,6 +633,7 @@ function ExpensesView({ data, options, setOptions }: ViewProps<"expenses">) {
 }
 
 function CashView({ data, setOptions }: ViewProps<"cash">) {
+  useTimeFormat();
   const m = data.metrics;
   return (
     <>
@@ -738,6 +750,7 @@ function CashView({ data, setOptions }: ViewProps<"cash">) {
 }
 
 function CustomersView({ data, options, setOptions }: ViewProps<"customers">) {
+  useTimeFormat();
   const m = data.metrics;
   const tab = data.tab;
   return (
@@ -878,6 +891,7 @@ function CustomersView({ data, options, setOptions }: ViewProps<"customers">) {
 }
 
 function PurchasesView({ data, options, setOptions }: ViewProps<"purchases">) {
+  useTimeFormat();
   const m = data.metrics;
   type PurchaseRow = Extract<PurchasesReport["rows"][number], { purchase_id: number }>;
   type SupplierRow = Extract<PurchasesReport["rows"][number], { balance: number }>;
@@ -1001,6 +1015,7 @@ function cellText(value: string | number | null | undefined): string {
 }
 
 function InventoryView({ data, options, setOptions }: ViewProps<"inventory">) {
+  useTimeFormat();
   const m = data.metrics;
   const [search, setSearch] = useState(options.search ?? "");
   useEffect(() => {
@@ -1201,6 +1216,7 @@ function InventoryView({ data, options, setOptions }: ViewProps<"inventory">) {
 }
 
 function InvoicesView({ data, options, setOptions }: ViewProps<"invoices">) {
+  useTimeFormat();
   const m = data.metrics;
   return (
     <>
@@ -1245,6 +1261,7 @@ function InvoicesView({ data, options, setOptions }: ViewProps<"invoices">) {
 }
 
 function EmployeesView({ data, options, setOptions }: ViewProps<"employees">) {
+  useTimeFormat();
   const columns: Array<Column<EmployeesReport["rows"][number]>> = [
     {
       id: "name",
@@ -1312,6 +1329,7 @@ function EmployeesView({ data, options, setOptions }: ViewProps<"employees">) {
 }
 
 function CashflowView({ data, options, setOptions }: ViewProps<"cashflow">) {
+  useTimeFormat();
   const f = data.flow;
   return (
     <>
@@ -1405,15 +1423,19 @@ const VIEWS: { [K in ReportSection]: (props: ViewProps<K>) => ReactNode } = {
 };
 
 function EquityView({ data }: ViewProps<"equity">) {
+  useTimeFormat();
   const pos = data.position;
-  const LineRow = ({ label, amount, strong }: { label: string; amount: number; strong?: boolean }) => (
-    <tr className={cn("border-t border-line/50", strong && "bg-violet-soft/40 font-bold")}>
-      <td className="px-2 py-2">{label}</td>
-      <td className="px-2 py-2">
-        <Money value={amount} />
-      </td>
-    </tr>
-  );
+  const LineRow = ({ label, amount, strong }: { label: string; amount: number; strong?: boolean }) => {
+    useTimeFormat();
+    return (
+      <tr className={cn("border-t border-line/50", strong && "bg-violet-soft/40 font-bold")}>
+        <td className="px-2 py-2">{label}</td>
+        <td className="px-2 py-2">
+          <Money value={amount} />
+        </td>
+      </tr>
+    );
+  };
   return (
     <>
       <Metrics
@@ -1524,6 +1546,7 @@ export function SectionReport({
   onBack(): void;
   onOptions(options: SectionOptions): void;
 }) {
+  useTimeFormat();
   const [options, setOptionsState] = useState<SectionOptions>({});
   const setOptions = useMemo(
     () => (patch: SectionOptions) =>

@@ -8,6 +8,7 @@
 
 from __future__ import annotations
 
+from utils.time_format import format_timestamp
 import time
 from datetime import date, datetime, timedelta
 from typing import Any
@@ -667,8 +668,8 @@ def build_operational_monitor_data(
                     "employee": (inv.employee_name or "—").strip(),
                     "total_display": _fmt_money(inv.total),
                     "shipping_company": shipping_companies.get(inv.shipping_company_id, "غير محدد"),
-                    "created_display": (inv.created_at or now).strftime("%Y-%m-%d %H:%M"),
-                    "last_update_display": ref.strftime("%Y-%m-%d %H:%M") if ref else "—",
+                    "created_display": format_timestamp(inv.created_at or now),
+                    "last_update_display": format_timestamp(ref) if ref else "—",
                     "days_in_status": days_in_status,
                     "status_class": "danger" if days_in_status >= 10 else "warning",
                     "order_url": f"/orders/{inv.id}",
@@ -695,7 +696,7 @@ def build_operational_monitor_data(
                     "customer": (inv.customer_name or "—").strip(),
                     "employee": (inv.employee_name or "—").strip(),
                     "total_display": _fmt_money(inv.total),
-                    "created_display": ref.strftime("%Y-%m-%d %H:%M"),
+                    "created_display": format_timestamp(ref),
                     "age_days": age_days,
                     "status_class": "danger" if age_days >= 7 else ("warning" if age_days >= 3 else "success"),
                     "order_url": f"/orders/{inv.id}",

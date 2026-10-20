@@ -88,7 +88,7 @@
             <div class="cx-feed">${ecgs
               .map(
                 (e) =>
-                  `<article class="cx-feed__item"><strong>${esc((e.recorded_at || "").slice(0, 16))}</strong>
+                  `<article class="cx-feed__item"><strong>${esc(window.FinoraTime.dateTime((e.recorded_at || "")))}</strong>
                   <small>معدل ${esc(e.heart_rate ?? "—")} · نظم ${esc(e.rhythm || "—")}</small>
                   <p>${esc(e.interpretation || "")}</p>
                   ${
@@ -106,7 +106,7 @@
             <div class="cx-feed">${echos
               .map(
                 (e) =>
-                  `<article class="cx-feed__item"><strong>${esc((e.recorded_at || "").slice(0, 16))} · EF ${esc(e.lvef_percent ?? "—")}</strong>
+                  `<article class="cx-feed__item"><strong>${esc(window.FinoraTime.dateTime((e.recorded_at || "")))} · EF ${esc(e.lvef_percent ?? "—")}</strong>
                   <p>${esc(e.impression || "")}</p>
                   ${
                     canEdit

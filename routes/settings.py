@@ -1,3 +1,4 @@
+from utils.time_format import format_timestamp
 from contextlib import contextmanager
 
 from flask import Blueprint, render_template, request, jsonify, send_from_directory, session, g, redirect, current_app
@@ -779,9 +780,14 @@ def storefront_api_key_revoke(key_id: int):
 @settings_bp.route("/appearance/update", methods=["POST"])
 def update_appearance_settings():
     """تحديث إعدادات الواجهة العامة"""
+    if not session.get("user_id") or not getattr(g, "tenant", None):
+        return jsonify(success=False, error="سجّل الدخول لتعديل الإعدادات"), 401
     try:
-        settings = SystemSettings.get_settings()
         data = request.get_json(force=True) or {}
+        ui_updates = data.get("ui_flags") or {}
+        if isinstance(ui_updates, dict) and "time_format" in ui_updates and ui_updates["time_format"] not in ("12", "24"):
+            return jsonify(success=False, error="اختر تنسيق الوقت 12 أو 24 ساعة"), 400
+        settings = SystemSettings.get_settings()
 
         # Basic scalar fields
         if "default_theme" in data:
@@ -808,6 +814,7 @@ def update_appearance_settings():
         settings.updated_at = datetime.utcnow()
         db.session.commit()
 
+        g.pop("_time_format_memo", None)
         return jsonify({"success": True, "message": "تم حفظ إعدادات الواجهة بنجاح"})
     except Exception as e:
         db.session.rollback()
@@ -1155,7 +1162,7 @@ def preview_invoice():
                     "city": sample_order.customer.city if sample_order.customer else "بغداد"
                 },
                 "employee_name": sample_order.employee_name or "موظف تجريبي",
-                "created_at": sample_order.created_at.strftime('%d/%m/%Y %I:%M %p') if sample_order.created_at else ""
+                "created_at": format_timestamp(sample_order.created_at, "%d/%m/%Y %H:%M") if sample_order.created_at else ""
             },
             "items": [
                 {

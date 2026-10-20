@@ -72,7 +72,7 @@ function statusBadge(status) {
 function fmtDate(value) {
     if (!value) return "—";
     try {
-        return new Date(value).toLocaleString("ar-SA", {
+        return window.FinoraTime.format(value, {
             year: "numeric",
             month: "short",
             day: "numeric",

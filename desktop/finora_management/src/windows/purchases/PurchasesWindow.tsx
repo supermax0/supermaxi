@@ -1,3 +1,4 @@
+import { useTimeFormat } from "@/stores/displayTime";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   PackagePlus,
@@ -32,7 +33,7 @@ import { PURCHASE_TAB_STYLES } from "@/features/purchases/status";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { canMutate, useConnection } from "@/stores/connection";
 import { toast } from "@/stores/toasts";
-import { formatNumber } from "@/utils/format";
+import { formatNumber, formatDateTime } from "@/utils/format";
 import { formatIqd } from "@/utils/money";
 import { useComposer } from "@/features/purchases/composer";
 import { useWindowManager } from "@/stores/windowManager";
@@ -57,6 +58,7 @@ interface Draft {
 const EMPTY: Draft = { supplierId: "", dateFrom: "", dateTo: "" };
 
 export function PurchasesWindow() {
+  useTimeFormat();
   const online = useConnection((s) => s.status === "online");
   const active = useWindowManager((s) => s.active === "purchases");
   const hasDraft = useComposer((s) => s.lines.length > 0 || s.supplier !== null);
@@ -216,7 +218,7 @@ export function PurchasesWindow() {
         id: "date",
         header: "التاريخ",
         width: "112px",
-        cell: (row) => <span className="ltr-isolate text-ink-soft">{row.date}</span>,
+        cell: (row) => <span className="ltr-isolate text-ink-soft">{formatDateTime(row.date)}</span>,
       },
       {
         id: "items",

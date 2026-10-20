@@ -530,7 +530,7 @@
             const events = await api(`/clinics/api/patients/${pid}/dental-tooth-events?tooth_number=${encodeURIComponent(toothNumber)}&limit=100`);
             timeline.innerHTML = (events || []).map((event) => `<div class="cx-feed__item">
               <strong>${esc(event.condition_label_ar)}</strong>
-              <small>${esc((event.event_date || "").replace("T", " ").slice(0, 16))} · زيارة #${esc(event.visit_id || "—")} · ${event.event_type === "finding_resolved" ? "تم إنهاء الحالة" : event.is_active ? "حالة فعالة" : "تغيير مسجل"}</small>
+              <small>${esc(window.FinoraTime.dateTime((event.event_date || "")))} · زيارة #${esc(event.visit_id || "—")} · ${event.event_type === "finding_resolved" ? "تم إنهاء الحالة" : event.is_active ? "حالة فعالة" : "تغيير مسجل"}</small>
               ${event.notes ? `<p>${esc(event.notes)}</p>` : ""}
             </div>`).join("") || '<p class="cx-muted">لا توجد أحداث مسجلة لهذا السن.</p>';
             timeline.hidden = false;

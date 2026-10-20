@@ -2,6 +2,7 @@
 <html lang="ar" dir="rtl">
 
 <head>
+  {% include 'partials/time_format_bootstrap.html' %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>فاتورة #{{ order.id }}</title>
@@ -460,7 +461,7 @@
         </section>
 
         <div class="receipt-stamp">
-            <span>{{ order.created_at.strftime('%Y/%m/%d %I:%M %p') if order.created_at else '' }}</span>
+            <span>{{ (order.created_at|finora_datetime('%Y/%m/%d %I:%M %p')) if order.created_at else '' }}</span>
             <span>SP{{ order.id }}</span>
         </div>
 

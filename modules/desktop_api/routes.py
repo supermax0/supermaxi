@@ -35,6 +35,7 @@ DESKTOP_PERMISSIONS: tuple[str, ...] = (
     "can_see_orders_delivered",
     "can_see_orders_returned",
     "manage_orders",
+    "manage_settings",
     "delete_orders",
     "return_orders",
     "pay_orders",
@@ -106,6 +107,7 @@ def _tenant_info(core_tenant) -> dict[str, Any]:
 
 
 def _session_payload(emp: Employee, tenant: dict[str, Any]) -> dict[str, Any]:
+    from utils.time_format import get_time_format
     from utils.branch_context import current_branch_id, init_branch_context
     from utils.branch_migration import get_default_branch
 
@@ -131,6 +133,7 @@ def _session_payload(emp: Employee, tenant: dict[str, Any]) -> dict[str, Any]:
         "permissions": [name for name in DESKTOP_PERMISSIONS if (hr_can(name) if name.startswith("hr.") else employee_can(emp, name))],
         "session_max_age_seconds": int(lifetime.total_seconds()),
         "offline_pos_enabled": db.session.connection().dialect.name == "sqlite",
+        "display_time_format": get_time_format(),
         "hr_scope_revision": access_revision(emp),
     }
 

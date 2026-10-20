@@ -306,7 +306,7 @@
   const drawing = setupDrawing();
   async function showHistory() {
     const data = await api(`/notes/api/${state.activeId}/revisions`), list = $("#notesHistoryList");
-    list.innerHTML = data.revisions.length ? data.revisions.map((r,i)=>`<div class="notes-history-item"><i class="fas fa-clock-rotate-left"></i><div><b>${escapeHtml(r.title)}</b><small>${new Intl.DateTimeFormat("ar-IQ",{dateStyle:"medium",timeStyle:"short"}).format(new Date(r.created_at))}</small></div><button data-restore-index="${i}">استعادة</button></div>`).join("") : '<div class="notes-list-empty">لا توجد نسخ سابقة بعد</div>';
+    list.innerHTML = data.revisions.length ? data.revisions.map((r,i)=>`<div class="notes-history-item"><i class="fas fa-clock-rotate-left"></i><div><b>${escapeHtml(r.title)}</b><small>${window.FinoraTime.format(new Date(r.created_at), {dateStyle:"medium",timeStyle:"short"})}</small></div><button data-restore-index="${i}">استعادة</button></div>`).join("") : '<div class="notes-list-empty">لا توجد نسخ سابقة بعد</div>';
     list._revisions = data.revisions; $("#notesHistoryModal").hidden = false;
   }
   async function deleteCurrent() {

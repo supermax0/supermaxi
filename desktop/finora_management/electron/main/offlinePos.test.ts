@@ -245,3 +245,15 @@ it("escapes stored customer, product and colour strings in the printable receipt
   expect(html).toContain("&lt;script&gt;");
   expect(html).toContain("default-src 'none'");
 });
+
+it("prints offline receipts using the last verified company clock", () => {
+  const receipt = {
+    number: "OFF-TIME",
+    sale: input,
+    names: ["منتج"],
+    created: Date.parse("2026-10-21T16:30:00Z"),
+    invoice: null,
+  };
+  expect(receiptHtml({ ...receipt, timeFormat: "12" })).toContain("٧:٣٠:٠٠ م");
+  expect(receiptHtml({ ...receipt, timeFormat: "24" })).toContain("١٩:٣٠:٠٠");
+});

@@ -965,7 +965,7 @@
 <script type="application/json" id="cashData">[
   {% for m in movements|reverse %}
   {"i": {{ loop.index0 }}, "date": {{ (m.date|string)|tojson }},
-   "time": {{ (m.datetime.strftime('%H:%M') if m.datetime and m.datetime.strftime('%H:%M') != '00:00' else '')|tojson }},
+   "time": {{ (m.datetime|finora_datetime('%H:%M') if m.datetime and m.datetime.strftime('%H:%M') != '00:00' else '')|tojson }},
    "type": {{ m.type|tojson }}, "reason": {{ (m.reason or '')|tojson }},
    "amount": {{ m.amount|int }}, "balance_after": {{ m.balance_after|int }},
    "ref_type": {{ (m.reference_type or '')|tojson }}, "ref_id": {{ m.reference_id|int if m.reference_id else 'null' }},
@@ -1085,7 +1085,7 @@
     const shownOf = CASH_TOTAL_COUNT > cashData.length ? ` (آخر ${F.num(cashData.length)} من ${F.num(CASH_TOTAL_COUNT)})` : "";
     byId("cashRange").innerHTML = "عرض " + F.num(from) + "–" + F.num(Math.min(rows.length, (cashPage + 1) * size)) + " من <b>" + F.num(rows.length) + "</b> حركة" + shownOf;
     byId("cashPager").innerHTML = F.pagerHtml(cashPage, pages, "data-cash-page");
-    byId("cashPrintInfo").textContent = F.num(rows.length) + " حركة · قبض " + F.num(tin) + " · صرف " + F.num(tout) + " · " + new Date().toLocaleString("ar-IQ");
+    byId("cashPrintInfo").textContent = F.num(rows.length) + " حركة · قبض " + F.num(tin) + " · صرف " + F.num(tout) + " · " + window.FinoraTime.dateTime(Date.now());
 
     const tbody = byId("cashBody");
     if (!pageRows.length) {

@@ -1,3 +1,4 @@
+import { useTimeFormat } from "@/stores/displayTime";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, Phone, Truck, UserRound, X } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -17,7 +18,7 @@ import { SearchBox } from "@/components/SearchBox";
 import { TablePagination } from "@/components/TablePagination";
 import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { cn } from "@/utils/cn";
-import { formatNumber } from "@/utils/format";
+import { formatNumber, formatDateTime } from "@/utils/format";
 import { supplierPrimary } from "../suppliers/SupplierDialogs";
 import { DuplicateAgents } from "./DuplicateAgents";
 import { CarrierSettingsForm, ReceiptsList, StatementView } from "./Finance";
@@ -48,6 +49,7 @@ export function PartiesSection({
   meta?: ShippingMeta;
   onPortalSettlement?(agentId: number): void;
 }) {
+  useTimeFormat();
   const [searchText, setSearchText] = useState("");
   const search = useDebouncedValue(searchText, 150);
   const [activeId, setActiveId] = useState<number | null>(null);
@@ -191,6 +193,7 @@ function PartyProfile({
   meta?: ShippingMeta;
   onPortalSettlement?(agentId: number): void;
 }) {
+  useTimeFormat();
   const [tab, setTab] = useState<ProfileTab>("orders");
   const details = useQuery({
     queryKey: ["shipping", owner, id],
@@ -337,7 +340,7 @@ function PartyProfile({
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium">{s.note || s.action}</p>
                       <p className="ltr-isolate text-right text-[11px] text-ink-faint">
-                        {s.date}
+                        {formatDateTime(s.date)}
                         {s.invoice_id ? ` · #${s.invoice_id}` : ""}
                       </p>
                     </div>
@@ -354,6 +357,7 @@ function PartyProfile({
 }
 
 function PartyOrders({ owner, id, stats }: { owner: Owner; id: number; stats?: BucketStats }) {
+  useTimeFormat();
   const [bucket, setBucket] = useState<OrderBucket>("all");
   const [searchText, setSearchText] = useState("");
   const search = useDebouncedValue(searchText, 250);
@@ -428,6 +432,7 @@ function PartyOrders({ owner, id, stats }: { owner: Owner; id: number; stats?: B
 }
 
 export function ManifestMiniList({ rows, onOpen }: { rows: ManifestSummary[]; onOpen(id: number): void }) {
+  useTimeFormat();
   if (rows.length === 0) return <p className="py-8 text-center text-[13px] text-ink-faint">لا توجد كشوف</p>;
   return (
     <ul className="space-y-1.5">

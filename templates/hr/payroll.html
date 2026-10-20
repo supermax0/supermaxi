@@ -136,7 +136,7 @@
           <td>{{ row.employee.name if row.employee else ('موظف #' ~ row.payment.payee_id) }}</td>
           <td><strong>{{ "{:,}".format(row.payment.amount or 0) }}</strong></td>
           <td>{{ row.method_label }}</td>
-          <td>{{ row.payment.paid_at.strftime('%Y-%m-%d %H:%M') if row.payment.paid_at else '—' }}</td>
+          <td>{{ (row.payment.paid_at|finora_datetime('%Y-%m-%d %H:%M')) if row.payment.paid_at else '—' }}</td>
           <td><a class="hr-btn hr-btn-dark" href="{{ url_for('hr.salary_voucher', payment_id=row.payment.id) }}" target="_blank"><i class="fa-solid fa-print"></i> طباعة</a></td>
         </tr>
         {% else %}

@@ -1,3 +1,4 @@
+import { useTimeFormat } from "@/stores/displayTime";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftRight, Check, HandCoins, Loader2, Plus, X } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -13,7 +14,7 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useConnection } from "@/stores/connection";
 import { toast } from "@/stores/toasts";
 import { cn } from "@/utils/cn";
-import { formatNumber } from "@/utils/format";
+import { formatNumber, formatDateTime } from "@/utils/format";
 import { Money } from "../shipping/shared";
 import {
   SupplierModal,
@@ -39,6 +40,7 @@ const TONE: Record<string, string> = {
 
 /** Cash moves between branches by a document: request → approval → receipt confirmation (one posting). */
 export function CashTransfers({ enabled }: { enabled: boolean }) {
+  useTimeFormat();
   const client = useQueryClient();
   const online = useConnection((s) => s.status === "online");
   const [filter, setFilter] = useState<Filter>("open");
@@ -266,7 +268,7 @@ export function CashTransfers({ enabled }: { enabled: boolean }) {
                     }[e.action] ?? e.action}
                   </p>
                   <p className="text-ink-faint">
-                    {e.name} · <span className="ltr-isolate">{e.at}</span>
+                    {e.name} · <span className="ltr-isolate">{formatDateTime(e.at)}</span>
                   </p>
                   {e.reason && <p className="mt-1 text-ink-soft">{e.reason}</p>}
                 </li>
@@ -313,6 +315,7 @@ export function CashTransfers({ enabled }: { enabled: boolean }) {
 }
 
 function CashComposer({ onClose, onDone }: { onClose(): void; onDone(): void }) {
+  useTimeFormat();
   const online = useConnection((s) => s.status === "online");
   const meta = useQuery({ queryKey: ["branches", "cash", "meta"], queryFn: () => finora.branchCash.meta() });
   const [operationId] = useState(() => crypto.randomUUID());

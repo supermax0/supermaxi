@@ -14,49 +14,49 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='clinics/gynecology-tools.css') }}?v=clinics-theme-20261003a">
 <link rel="stylesheet" href="{{ url_for('static', filename='clinics/internal-medicine-tools.css') }}?v=clinics-theme-20261003a">
 <link rel="stylesheet" href="{{ url_for('static', filename='clinics/cardiology-tools.css') }}?v=clinics-theme-20261003a">
-<script src="{{ url_for('static', filename='clinics/dental-chart.js') }}?v=clinics-patient-chart-20260914"></script>
+<script src="{{ url_for('static', filename='clinics/dental-chart.js') }}?v=20261021-time-format"></script>
 <script src="{{ url_for('static', filename='clinics/dental-treatment-plan.js') }}?v=clinics-dental-workspace-v29"></script>
-<script src="{{ url_for('static', filename='clinics/dental-platform.js') }}?v=clinics-dental-workspace-v29"></script>
+<script src="{{ url_for('static', filename='clinics/dental-platform.js') }}?v=20261021-time-format"></script>
 <script src="{{ url_for('static', filename='clinics/pediatric-tools.js') }}?v=clinics-v23-ped"></script>
 <script src="{{ url_for('static', filename='clinics/gynecology-tools.js') }}?v=clinics-v24-gyn"></script>
 <script src="{{ url_for('static', filename='clinics/internal-medicine-tools.js') }}?v=clinics-v25-im"></script>
-<script src="{{ url_for('static', filename='clinics/cardiology-tools.js') }}?v=clinics-v26-cardio"></script>
+<script src="{{ url_for('static', filename='clinics/cardiology-tools.js') }}?v=20261021-time-format"></script>
 {% endif %}
 {% if clinics_page == 'communications' %}
 <link rel="stylesheet" href="{{ url_for('static', filename='clinics/communications.css') }}?v=clinics-theme-20261003a">
-<script src="{{ url_for('static', filename='clinics/communications.js') }}?v=20260907-followup-fix"></script>
+<script src="{{ url_for('static', filename='clinics/communications.js') }}?v=20261021-time-format"></script>
 {% endif %}
 {% if clinics_page == 'dashboard' %}
-<script src="{{ url_for('static', filename='clinics/dashboard.js') }}?v=clinics-dash-head-20260912a"></script>
+<script src="{{ url_for('static', filename='clinics/dashboard.js') }}?v=20261021-time-format"></script>
 {% elif clinics_page == 'activity' %}
-<script src="{{ url_for('static', filename='clinics/activity.js') }}?v=clinics-20260911a"></script>
+<script src="{{ url_for('static', filename='clinics/activity.js') }}?v=20261021-time-format"></script>
 {% elif clinics_page == 'reception' %}
-<script src="{{ url_for('static', filename='clinics/reception.js') }}?v=clinics-page-head-20260913a"></script>
+<script src="{{ url_for('static', filename='clinics/reception.js') }}?v=20261021-time-format"></script>
 {% elif clinics_page == 'appointments' %}
-<script src="{{ url_for('static', filename='clinics/appointments.js') }}?v=clinics-20260901e"></script>
+<script src="{{ url_for('static', filename='clinics/appointments.js') }}?v=20261021-time-format"></script>
 {% elif clinics_page == 'queue' %}
-<script src="{{ url_for('static', filename='clinics/queue.js') }}?v=clinics-queue-layout-20260911a"></script>
+<script src="{{ url_for('static', filename='clinics/queue.js') }}?v=20261021-time-format"></script>
 {% elif clinics_page == 'patients' %}
-<script src="{{ url_for('static', filename='clinics/patients.js') }}?v=clinics-20260901h"></script>
+<script src="{{ url_for('static', filename='clinics/patients.js') }}?v=20261021-time-format"></script>
 {% elif clinics_page == 'patient_detail' %}
-<script src="{{ url_for('static', filename='clinics/patient-profile.js') }}?v=clinics-patient-chart-20260914"></script>
+<script src="{{ url_for('static', filename='clinics/patient-profile.js') }}?v=20261021-time-format"></script>
 {% elif clinics_page == 'visits' %}
-<script src="{{ url_for('static', filename='clinics/visits.js') }}?v=clinics-svc-filter-20260907a"></script>
+<script src="{{ url_for('static', filename='clinics/visits.js') }}?v=20261021-time-format"></script>
 {% elif clinics_page in ['billing','expenses','cash','settlements'] %}
 <script src="{{ url_for('static', filename='clinics/finance-shared.js') }}?v=clinics-20260901j"></script>
-<script src="{{ url_for('static', filename='clinics/finance.js') }}?v=clinics-20260901j"></script>
+<script src="{{ url_for('static', filename='clinics/finance.js') }}?v=20261021-time-format"></script>
 {% elif clinics_page == 'display' %}
-<script src="{{ url_for('static', filename='clinics/display.js') }}?v=clinics-20260901h"></script>
+<script src="{{ url_for('static', filename='clinics/display.js') }}?v=20261021-time-format"></script>
 {% elif clinics_page == 'attachments' %}
 <script src="{{ url_for('static', filename='clinics/attachments.js') }}?v=clinics-20260901a"></script>
 {% elif clinics_page == 'clinical' %}
-<script src="{{ url_for('static', filename='clinics/clinical.js') }}?v=clinics-v20-print"></script>
+<script src="{{ url_for('static', filename='clinics/clinical.js') }}?v=20261021-time-format"></script>
 {% elif clinics_page in ['inventory','suppliers'] %}
-<script src="{{ url_for('static', filename='clinics/inventory.js') }}?v=clinics-20260902s"></script>
-<script src="{{ url_for('static', filename='clinics/purchases.js') }}?v=clinics-20260902s"></script>
+<script src="{{ url_for('static', filename='clinics/inventory.js') }}?v=20261021-time-format"></script>
+<script src="{{ url_for('static', filename='clinics/purchases.js') }}?v=20261021-time-format"></script>
 {% elif clinics_page == 'purchases' %}
-<script src="{{ url_for('static', filename='clinics/inventory.js') }}?v=clinics-20260902d"></script>
-<script src="{{ url_for('static', filename='clinics/purchases.js') }}?v=clinics-20260902s"></script>
+<script src="{{ url_for('static', filename='clinics/inventory.js') }}?v=20261021-time-format"></script>
+<script src="{{ url_for('static', filename='clinics/purchases.js') }}?v=20261021-time-format"></script>
 {% elif clinics_page == 'specialties' %}
 <script src="{{ url_for('static', filename='clinics/specialty-builder.js') }}?v=clinics-v18"></script>
 {% elif clinics_page == 'services' %}
@@ -64,7 +64,7 @@
 {% elif clinics_page == 'staff' %}
 <script src="{{ url_for('static', filename='clinics/staff.js') }}?v=clinics-staff-20260916-tutor"></script>
 {% elif clinics_page in ['labs','radiology','followups','procedures'] %}
-<script src="{{ url_for('static', filename='clinics/clinical_ops.js') }}?v=clinics-rad-upload-20260911a"></script>
+<script src="{{ url_for('static', filename='clinics/clinical_ops.js') }}?v=20261021-time-format"></script>
 {% elif clinics_page == 'reports' %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="{{ url_for('static', filename='clinics/reports.js') }}?v=clinics-theme-20261003a"></script>
@@ -402,9 +402,9 @@
 {% if clinics_page == 'doctor' %}
 <script src="{{ url_for('static', filename='clinics/doctor-specialty-packs.js') }}?v=clinics-specialty-packs-20260906a"></script>
 <script src="{{ url_for('static', filename='clinics/prescription-print.js') }}?v=clinics-rx-print-20260908c"></script>
-<script src="{{ url_for('static', filename='clinics/doctor.js') }}?v=clinics-critical-fixes-20260915"></script>
+<script src="{{ url_for('static', filename='clinics/doctor.js') }}?v=20261021-time-format"></script>
 {% endif %}
-<script src="{{ url_for('static', filename='clinics/clinics.js') }}?v=clinics-theme-20261003a"></script>
+<script src="{{ url_for('static', filename='clinics/clinics.js') }}?v=20261021-time-format"></script>
 {# Rendered only when the tenant has the AI Tutor feature; nothing is emitted otherwise. #}
 {% if feature_enabled('clinic_ai_tutor') %}
 <script type="module" src="{{ url_for('static', filename='ai-tutor/loader.js') }}?v=tutor-layout-20261003"></script>

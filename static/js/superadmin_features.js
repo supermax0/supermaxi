@@ -24,7 +24,7 @@
     }
 
     function fmt(iso) {
-        return iso ? iso.replace('T', ' ').slice(0, 16) : '—';
+        return iso ? window.FinoraTime.dateTime(iso) : '—';
     }
 
     function stateLabel(state) {

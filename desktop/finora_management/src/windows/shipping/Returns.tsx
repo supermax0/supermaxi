@@ -1,3 +1,4 @@
+import { useTimeFormat } from "@/stores/displayTime";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ClipboardCheck, Loader2, PackageOpen, ScanLine } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -11,7 +12,7 @@ import { useDebouncedValue } from "@/hooks/useDebouncedValue";
 import { useConnection } from "@/stores/connection";
 import { toast } from "@/stores/toasts";
 import { cn } from "@/utils/cn";
-import { formatNumber } from "@/utils/format";
+import { formatNumber, formatDateTime } from "@/utils/format";
 import {
   SupplierModal,
   supplierInput,
@@ -34,6 +35,7 @@ const STATE_TONE: Record<ReturnState, string> = {
 
 /** طلب راجع ← بانتظار الاستلام ← تم استلام البضاعة ← فحص المنتج ← إغلاق المرتجع */
 export function ReturnsSection({ enabled, canManage }: { enabled: boolean; canManage: boolean }) {
+  useTimeFormat();
   const client = useQueryClient();
   const online = useConnection((s) => s.status === "online");
   const [tab, setTab] = useState<Tab>("awaiting");
@@ -208,6 +210,7 @@ export function ReturnsSection({ enabled, canManage }: { enabled: boolean; canMa
 }
 
 function InspectionDialog({ id, canManage, onClose }: { id: number; canManage: boolean; onClose(): void }) {
+  useTimeFormat();
   const client = useQueryClient();
   const online = useConnection((s) => s.status === "online");
   const details = useQuery({
@@ -321,7 +324,7 @@ function InspectionDialog({ id, canManage, onClose }: { id: number; canManage: b
               <div>
                 <dt className="text-[11px] text-ink-faint">أغلقه</dt>
                 <dd>
-                  {item.closed_by} <span className="ltr-isolate">{item.closed_at}</span>
+                  {item.closed_by} <span className="ltr-isolate">{formatDateTime(item.closed_at)}</span>
                 </dd>
               </div>
               <div>

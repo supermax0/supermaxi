@@ -1,3 +1,5 @@
+import { useTimeFormat } from "@/stores/displayTime";
+import { formatDateTime } from "@/utils/format";
 import { useQuery } from "@tanstack/react-query";
 import { FileCheck2 } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -32,6 +34,7 @@ export function ManifestsSection({
   onOpen(id: number): void;
   initialState?: ManifestFilters["state"];
 }) {
+  useTimeFormat();
   const [state, setState] = useState<ManifestFilters["state"]>(settlementsOnly ? "executed" : initialState);
   const [kind, setKind] = useState<ManifestFilters["kind"]>(settlementsOnly ? "settlement" : "");
   const [carrierId, setCarrierId] = useState("");
@@ -93,7 +96,7 @@ export function ManifestsSection({
         minTableWidth: 780,
         cell: (m) => (
           <div className="text-[12px]">
-            <p className="ltr-isolate text-right">{m.created_at.slice(0, 16).replace("T", " ")}</p>
+            <p className="ltr-isolate text-right">{formatDateTime(m.created_at)}</p>
             <p className="text-[11px] text-ink-faint">{m.created_by}</p>
           </div>
         ),

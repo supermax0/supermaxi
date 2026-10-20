@@ -27,8 +27,10 @@ import { inventoryActivity } from "./inventoryActivity";
 import { stockOperations } from "./stockOperations";
 import { cashShifts } from "./cashShifts";
 import { financialControl } from "./financialControl";
+import { displayPreferences } from "./displayPreferences";
 
 export const finora = {
+  displayPreferences,
   auth,
   orders,
   pos,

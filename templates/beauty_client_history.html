@@ -20,7 +20,7 @@
       <thead><tr><th>التاريخ</th><th>الخدمة</th><th>الحالة</th><th>ملاحظات</th></tr></thead>
       <tbody>
       {% for a in appointments %}
-        <tr><td>{{ a.appointment_at.strftime('%Y-%m-%d %H:%M') }}</td><td>{{ a.service.name }}</td><td>{{ a.status }}</td><td>{{ a.notes or '—' }}</td></tr>
+        <tr><td>{{ (a.appointment_at|finora_datetime('%Y-%m-%d %H:%M', local=True)) }}</td><td>{{ a.service.name }}</td><td>{{ a.status }}</td><td>{{ a.notes or '—' }}</td></tr>
       {% else %}
         <tr><td colspan="4" style="text-align:center;color:var(--text-muted)">لا توجد خدمات.</td></tr>
       {% endfor %}
@@ -35,7 +35,7 @@
       <thead><tr><th>التاريخ</th><th>الملاحظة</th><th>المنتجات</th></tr></thead>
       <tbody>
       {% for n in notes %}
-        <tr><td>{{ n.created_at.strftime('%Y-%m-%d %H:%M') }}</td><td>{{ n.note or '—' }}</td><td>{{ n.products_used_json or '—' }}</td></tr>
+        <tr><td>{{ (n.created_at|finora_datetime('%Y-%m-%d %H:%M')) }}</td><td>{{ n.note or '—' }}</td><td>{{ n.products_used_json or '—' }}</td></tr>
       {% else %}
         <tr><td colspan="3" style="text-align:center;color:var(--text-muted)">لا توجد ملاحظات.</td></tr>
       {% endfor %}

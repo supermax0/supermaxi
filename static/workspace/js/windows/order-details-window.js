@@ -14,7 +14,7 @@ const OrderDetailsWindow = {
     if (!value) return "—";
     const parsed = new Date(String(value).replace(" ", "T"));
     if (Number.isNaN(parsed.getTime())) return this._esc(value);
-    return parsed.toLocaleString("ar-IQ", {
+    return window.FinoraTime.format(parsed, {
       year: "numeric",
       month: "2-digit",
       day: "2-digit",

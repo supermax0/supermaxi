@@ -1,3 +1,5 @@
+import { useTimeFormat } from "@/stores/displayTime";
+import { formatDateTime } from "@/utils/format";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ShieldAlert, ShieldCheck } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -24,6 +26,7 @@ const SOURCE: Record<string, string> = {
 
 /** Permissions: roles + per-employee exceptions (deny beats grant beats role). General admin only. */
 export function PermissionsWindow() {
+  useTimeFormat();
   const active = useWindowManager((s) => s.active === "permissions");
   const [tab, setTab] = useState<Tab>("employees");
   return (
@@ -65,6 +68,7 @@ export function PermissionsWindow() {
 }
 
 function EmployeesTab({ enabled }: { enabled: boolean }) {
+  useTimeFormat();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<number | null>(null);
   const list = useQuery({
@@ -120,6 +124,7 @@ function EmployeeItem({
   current: boolean;
   onPick(): void;
 }) {
+  useTimeFormat();
   return (
     <li>
       <button
@@ -150,6 +155,7 @@ function EmployeeItem({
 }
 
 function EmployeeEditor({ id, enabled }: { id: number; enabled: boolean }) {
+  useTimeFormat();
   const online = useConnection((s) => s.status === "online");
   const client = useQueryClient();
   const detail = useQuery({
@@ -304,6 +310,7 @@ function GroupPanel({
   draft: Record<string, Choice>;
   onChoose(name: string, choice: Choice, original: Choice): void;
 }) {
+  useTimeFormat();
   const allowedCount = group.permissions.filter((p) => byName.get(p.name)?.allowed).length;
   return (
     <details className="rounded-panel bg-white/85 ring-1 ring-line/60">
@@ -375,6 +382,7 @@ function GroupPanel({
 }
 
 function AuditTab({ enabled }: { enabled: boolean }) {
+  useTimeFormat();
   const audit = useQuery({
     queryKey: ["permissions", "audit"],
     queryFn: () => finora.permissions.audit(),
@@ -389,7 +397,7 @@ function AuditTab({ enabled }: { enabled: boolean }) {
             <span>
               {r.summary} <span className="text-ink-faint">— {r.by}</span>
             </span>
-            <span className="ltr-isolate text-[12px] text-ink-faint">{r.at}</span>
+            <span className="ltr-isolate text-[12px] text-ink-faint">{formatDateTime(r.at)}</span>
           </li>
         ))}
       </ul>

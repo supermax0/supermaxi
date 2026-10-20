@@ -75,7 +75,7 @@
         {% for p in closed_periods %}
         <tr>
           <td data-label="{{ _('fa_settings_period') }}">{{ p.period_label() }}</td>
-          <td data-label="{{ _('fa_settings_closed_at') }}">{{ p.closed_at.strftime('%Y-%m-%d %H:%M') if p.closed_at else '—' }}</td>
+          <td data-label="{{ _('fa_settings_closed_at') }}">{{ (p.closed_at|finora_datetime('%Y-%m-%d %H:%M')) if p.closed_at else '—' }}</td>
           <td data-label="{{ _('fa_settings_closed_by') }}">{{ p.closer.name if p.closer else '—' }}</td>
           <td data-label="{{ _('fa_settings_notes') }}">{{ p.notes or '—' }}</td>
           <td data-label="">

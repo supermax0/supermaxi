@@ -1,3 +1,4 @@
+import { useTimeFormat } from "@/stores/displayTime";
 import { useId, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Wallet, Landmark, ChartNoAxesCombined, Scale } from "lucide-react";
@@ -10,7 +11,7 @@ import { FeatureHelp } from "@/components/FeatureHelp";
 import { TablePagination } from "@/components/TablePagination";
 import { useWindowManager } from "@/stores/windowManager";
 import { toast } from "@/stores/toasts";
-import { formatNumber } from "@/utils/format";
+import { formatNumber, formatDateTime } from "@/utils/format";
 
 const button = "h-10 rounded-control border border-line bg-white px-3 text-sm text-ink disabled:opacity-50";
 const input = "h-11 w-full rounded-control border border-line bg-white px-3 text-sm text-ink";
@@ -32,6 +33,7 @@ export function FinancialControl({
   onAccount: (id: number) => void;
   onLoans: () => void;
 }) {
+  useTimeFormat();
   const cache = useQueryClient(),
     formId = useId();
   const [tab, setTab] = useState<"current" | "snapshots">("current");
@@ -343,8 +345,7 @@ export function FinancialControl({
                 {
                   id: "date",
                   header: "الوقت",
-                  cell: (row) =>
-                    new Date(`${row.created_at}Z`).toLocaleString("ar-IQ", { timeZone: "Asia/Baghdad" }),
+                  cell: (row) => formatDateTime(`${row.created_at}Z`),
                 },
                 { id: "net", header: "صافي الأصول بعد قياس السيولة", cell: (row) => money(row.net_assets) },
                 { id: "issues", header: "ملاحظات القياس", cell: (row) => row.coverage_issues_count },

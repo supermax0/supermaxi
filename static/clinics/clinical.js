@@ -88,7 +88,7 @@
       const clinic=app?.bootstrap?.settings||{};
       const clinicName=clinic.clinic_name||"Finora Clinics";
       const clinicSub=[clinic.organization_mode_label,clinic.clinic_type_label,clinic.phone,clinic.address].filter(Boolean).join(" · ");
-      const now=new Date().toLocaleString("ar-IQ");
+      const now=window.FinoraTime.dateTime(Date.now());
       const age=p.age!=null?`${p.age} سنة`:"—";
       const meds=(overview.prescriptions||[]).flatMap(x=>x.items||[]);
       const vitals=overview.vitals;
@@ -267,7 +267,7 @@
       <i class="fa fa-chevron-left" aria-hidden="true"></i>
     </button>`;
   }function bind(root,s,ctx){root.querySelectorAll("[data-patient]").forEach(b=>b.onclick=()=>{s.patientId=b.dataset.patient;history.replaceState(null,"",`/clinics/clinical?patient_id=${s.patientId}`);ctx.render()})}
-  function currentVisit(v,e){if(!v)return"";return `<div class="cx-cl-current"><span class="cx-cl-pulse"></span><div><strong>زيارة جارية الآن</strong><small>${e(v.doctor_name||"بدون طبيب")} · بدأت ${v.started_at?new Date(v.started_at).toLocaleTimeString("ar-IQ",{hour:"2-digit",minute:"2-digit"}):"الآن"}</small></div><a class="cx-btn cx-btn--primary" href="/clinics/doctor/${v.id}">فتح الزيارة الحالية</a></div>`}
+  function currentVisit(v,e){if(!v)return"";return `<div class="cx-cl-current"><span class="cx-cl-pulse"></span><div><strong>زيارة جارية الآن</strong><small>${e(v.doctor_name||"بدون طبيب")} · بدأت ${v.started_at?window.FinoraTime.format(v.started_at, {hour:"2-digit",minute:"2-digit"}):"الآن"}</small></div><a class="cx-btn cx-btn--primary" href="/clinics/doctor/${v.id}">فتح الزيارة الحالية</a></div>`}
   function body(tab,d,e,s){if(tab==="vitals")return vitalTrends(d,e);if(tab==="overview")return overview(d,e);if(tab==="timeline")return timeline(d,e,s);if(tab==="visits")return visits(d,e);if(tab==="diagnoses")return diagnoses(d,e);if(tab==="prescriptions")return prescriptions(d,e);if(tab==="labs")return labs(d,e);if(tab==="radiology")return radiology(d,e);return attachments(d,e)}
   function overview(d,e){
     const p=d.patient,v=d.vitals;

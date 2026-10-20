@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+  {% include 'partials/time_format_bootstrap.html' %}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>كشف نقل مخزون {{ transfer.transfer_no or transfer.id }}</title>
@@ -105,7 +106,7 @@
         <strong>{{ system_settings.company_name }}</strong><br>
         {% endif %}
         رقم النقل: <strong>{{ transfer.transfer_no or ('#' ~ transfer.id) }}</strong><br>
-        التاريخ: {{ transfer.created_at.strftime('%Y-%m-%d %H:%M') if transfer.created_at else '—' }}<br>
+        التاريخ: {{ (transfer.created_at|finora_datetime('%Y-%m-%d %H:%M')) if transfer.created_at else '—' }}<br>
         الحالة: <span class="status-badge">{{ status_label }}</span>
       </div>
     </div>
@@ -129,13 +130,13 @@
       {% if transfer.sent_at %}
       <div class="meta-item">
         <strong>تاريخ الترحيل</strong>
-        {{ transfer.sent_at.strftime('%Y-%m-%d %H:%M') }}
+        {{ (transfer.sent_at|finora_datetime('%Y-%m-%d %H:%M')) }}
       </div>
       {% endif %}
       {% if transfer.received_at %}
       <div class="meta-item">
         <strong>تاريخ الاستلام</strong>
-        {{ transfer.received_at.strftime('%Y-%m-%d %H:%M') }}
+        {{ (transfer.received_at|finora_datetime('%Y-%m-%d %H:%M')) }}
       </div>
       {% endif %}
     </div>

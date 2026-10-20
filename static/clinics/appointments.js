@@ -148,7 +148,7 @@
         </div>
       </div>
       <div class="cx-appt-drawer__fields">
-        ${drawerField("الوقت", ctx.esc(appt.start_time || "—"))}
+        ${drawerField("الوقت", ctx.esc(window.FinoraTime.clock(appt.start_time || "—")))}
         ${drawerField("التاريخ", ctx.esc(fmtDateShort(appt.appointment_date)))}
         ${drawerField("الطبيب", ctx.esc(appt.doctor_name || "—"))}
         ${drawerField("الخدمة", ctx.esc(appt.service_name || "—"))}
@@ -295,7 +295,7 @@
     return `
       <button type="button" class="cx-appt-card cx-appt-card--${cls}${selected}" data-appt-pick="${a.id}" data-finora-action="${openAction(a.status)}"
         title="${ctx.esc(a.patient_name)} · ${ctx.esc(a.patient_phone || "")} · ${ctx.esc(a.service_name || "")} · ${ctx.esc(a.doctor_name || "")} · ${a.duration_minutes || 30} دقيقة · ${ctx.esc(ctx.statusLabel(a.status))}">
-        <span class="cx-appt-card__time">${ctx.esc(a.start_time)}</span>
+        <span class="cx-appt-card__time">${ctx.esc(window.FinoraTime.clock(a.start_time))}</span>
         <strong>${ctx.esc(a.patient_name)}</strong>
         ${!compact ? `<span>${ctx.esc(a.service_name || "")}</span>` : ""}
         <span class="cx-appt-card__badge">${ctx.badge(a.status)}</span>
@@ -326,7 +326,7 @@
                   const menuId = `am-${a.id}`;
                   return `
                 <tr data-appt-row="${a.id}" class="${selectedApptId && String(selectedApptId) === String(a.id) ? "is-selected" : ""}">
-                  <td><b>${ctx.esc(a.start_time)}</b><small>${ctx.esc(a.appointment_date)}</small></td>
+                  <td><b>${ctx.esc(window.FinoraTime.clock(a.start_time))}</b><small>${ctx.esc(a.appointment_date)}</small></td>
                   <td><button type="button" class="cx-link-btn" data-appt-pick="${a.id}">${ctx.esc(a.patient_name)}</button></td>
                   <td>${ctx.esc(a.patient_phone || "—")}</td>
                   <td>${ctx.esc(a.doctor_name || "—")}</td>
@@ -357,7 +357,7 @@
       lines.push(
         [
           a.appointment_date,
-          a.start_time,
+          window.FinoraTime.clock(a.start_time),
           a.patient_name,
           a.patient_phone || "",
           a.doctor_name || "",
@@ -523,7 +523,7 @@
         const isNow = Boolean(nowLine && (slotLabel === nowLine || (slotLabel <= nowLine && nextSlot && nextSlot > nowLine)));
         return `
         <div class="cx-appt-row ${isNow ? "is-now" : ""}">
-          <div class="cx-appt-row__time">${slotLabel}</div>
+          <div class="cx-appt-row__time">${window.FinoraTime.clock(slotLabel)}</div>
           ${doctors
             .map((doc) => {
               const cell = appts.filter(
@@ -554,7 +554,7 @@
             ${agendaAppts.length
               ? agendaAppts.map((a) => `
                 <button type="button" class="cx-appt-agenda__item cx-appt-card--${statusClass(a.status)}" data-appt-pick="${a.id}" data-finora-action="${openAction(a.status)}">
-                  <time>${ctx.esc(a.start_time)}</time>
+                  <time>${ctx.esc(window.FinoraTime.clock(a.start_time))}</time>
                   <span><strong>${ctx.esc(a.patient_name)}</strong><small>${ctx.esc(a.doctor_name || "")} · ${ctx.esc(a.service_name || "")}</small></span>
                   ${ctx.badge(a.status)}
                 </button>`).join("")
@@ -588,7 +588,7 @@
                     .map(
                       (a) =>
                         `<button type="button" class="cx-cal__event cx-appt-card--${statusClass(a.status)}" draggable="true" data-appt-drag="${a.id}" data-date="${ctx.esc(a.appointment_date)}" data-time="${ctx.esc(a.start_time)}" data-appt-pick="${a.id}" style="border-color:${ctx.esc(a.doctor_color || "#0d9488")}" title="${ctx.esc(a.patient_name)} · ${ctx.esc(a.patient_phone || "")} · ${ctx.esc(a.service_name || "")}">
-                          <b>${ctx.esc(a.start_time)}</b><strong>${ctx.esc(a.patient_name)}</strong><small>${ctx.esc(a.dental_label || a.service_name || "")}${!a.dental_label && a.tooth_number ? ` · السن ${ctx.esc(a.tooth_number)}` : ""} · ${a.duration_minutes || 30}د</small>
+                          <b>${ctx.esc(window.FinoraTime.clock(a.start_time))}</b><strong>${ctx.esc(a.patient_name)}</strong><small>${ctx.esc(a.dental_label || a.service_name || "")}${!a.dental_label && a.tooth_number ? ` · السن ${ctx.esc(a.tooth_number)}` : ""} · ${a.duration_minutes || 30}د</small>
                         </button>`
                     )
                     .join("")}</div>`;
@@ -813,7 +813,7 @@
     line.style.display = "block";
     line.style.top = `${Math.round(top)}px`;
     const label = line.querySelector(".cx-appt-now-line__label");
-    const timeStr = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+    const timeStr = window.FinoraTime.time(now);
     if (label) label.textContent = timeStr;
     else line.innerHTML = `<span class="cx-appt-now-line__label">${timeStr}</span>`;
   }

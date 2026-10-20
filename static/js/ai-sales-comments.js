@@ -14,7 +14,7 @@
     return data;
   }
   function escapeHtml(value) { return String(value || "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c])); }
-  function formatTime(value) { if (!value) return ""; const date = new Date(value); return Number.isNaN(date.getTime()) ? "" : new Intl.DateTimeFormat("ar-IQ", { dateStyle:"medium", timeStyle:"short" }).format(date); }
+  function formatTime(value) { if (!value) return ""; const date = new Date(value); return Number.isNaN(date.getTime()) ? "" : window.FinoraTime.format(date, { dateStyle:"medium", timeStyle:"short" }); }
   function initial(name) { return String(name || "م").trim().charAt(0).toUpperCase(); }
   function toast(message, type = "") { const el = $("commentsToast"); el.textContent = message; el.className = `comments-toast ${type}`; el.hidden = false; clearTimeout(el._timer); el._timer = setTimeout(() => { el.hidden = true; }, 4500); }
   function selectedChannel() { return state.channels.find(row => row.id === Number($("pageSelect").value)) || null; }

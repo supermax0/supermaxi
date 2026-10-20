@@ -1,3 +1,4 @@
+import { useTimeFormat } from "@/stores/displayTime";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Clock3, RefreshCw } from "lucide-react";
 import type { SavedCustomerCommand } from "@shared/customerRecovery";
@@ -7,7 +8,7 @@ import { SidePanel } from "@/components/SidePanel";
 import { useConnection } from "@/stores/connection";
 import { useSession } from "@/stores/session";
 import { toast } from "@/stores/toasts";
-import { formatNumber } from "@/utils/format";
+import { formatNumber, formatDateTime } from "@/utils/format";
 import { useState } from "react";
 
 const button =
@@ -40,6 +41,7 @@ export function CustomerRecovery({
   onRecovered(id: number): void;
   editing?: boolean;
 }) {
+  useTimeFormat();
   const [open, setOpen] = useState(false);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const online = useConnection((s) => s.status === "online");
@@ -247,9 +249,7 @@ export function CustomerRecovery({
                       </table>
                     </div>
                   )}
-                  <p className="my-3 text-xs text-ink-faint">
-                    محفوظ {new Date(item.created).toLocaleString("ar-IQ")}
-                  </p>
+                  <p className="my-3 text-xs text-ink-faint">محفوظ {formatDateTime(item.created)}</p>
                   {items.length > 1 && (
                     <button
                       className={button}

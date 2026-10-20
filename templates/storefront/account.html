@@ -61,7 +61,7 @@
           <article class="store-account-order">
             <div class="store-account-order__head"><div><small>رقم الطلب</small><strong dir="ltr">#{{ order.id }}</strong></div><span>{{ cash_status_labels.get(order.status, order.status or 'تم الطلب') }}</span></div>
             <div class="store-account-order__products">{% for item in order.items %}<span>{{ item.product_name }} <b>× {{ item.quantity }}</b></span>{% endfor %}</div>
-            <dl><div><dt>تاريخ الطلب</dt><dd>{{ order.created_at.strftime('%Y/%m/%d') if order.created_at else '—' }}</dd></div><div><dt>المبلغ</dt><dd>{{ order.total|toLocaleString }} د.ع</dd></div><div><dt>الدفع</dt><dd>{{ order.payment_status or 'عند الاستلام' }}</dd></div></dl>
+            <dl><div><dt>تاريخ الطلب</dt><dd>{{ (order.created_at|finora_datetime('%Y/%m/%d')) if order.created_at else '—' }}</dd></div><div><dt>المبلغ</dt><dd>{{ order.total|toLocaleString }} د.ع</dd></div><div><dt>الدفع</dt><dd>{{ order.payment_status or 'عند الاستلام' }}</dd></div></dl>
           </article>
         {% else %}
           <div class="store-account-empty"><span>▤</span><h3>لا توجد طلبات نقدية بعد</h3><p>أضف المنتجات إلى السلة وأكمل الطلب، وسيظهر هنا تلقائياً.</p><a href="{{ url_for('storefront.store_index', tenant_slug=shop_tenant_slug) }}">استعرض المنتجات</a></div>
@@ -73,7 +73,7 @@
           <article class="store-account-order">
             <div class="store-account-order__head"><div><small>رقم طلب التقسيط</small><strong dir="ltr">{{ application.application_number }}</strong></div><span class="is-{{ application.status }}">{{ installment_status_labels.get(application.status, application.status) }}</span></div>
             <div class="store-account-order__products">{% for item in application.items %}<span>{{ item.product_name_snapshot or 'منتج أقساط' }} <b>× {{ item.quantity }}</b></span>{% endfor %}</div>
-            <dl><div><dt>تاريخ الطلب</dt><dd>{{ application.created_at.strftime('%Y/%m/%d') if application.created_at else '—' }}</dd></div><div><dt>المدينة</dt><dd>{{ application.city or '—' }}</dd></div></dl>
+            <dl><div><dt>تاريخ الطلب</dt><dd>{{ (application.created_at|finora_datetime('%Y/%m/%d')) if application.created_at else '—' }}</dd></div><div><dt>المدينة</dt><dd>{{ application.city or '—' }}</dd></div></dl>
           </article>
         {% else %}
           <div class="store-account-empty cash-account-empty-small"><span>◫</span><h3>لا توجد طلبات تقسيط</h3><p>أي طلب تقدمه في متجر الأقساط سيظهر هنا بنفس الحساب.</p></div>

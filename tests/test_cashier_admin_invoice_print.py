@@ -8,6 +8,7 @@ from tests.test_desktop_product_colors import inventory  # noqa: F401
 
 @pytest.mark.parametrize("actor", ["cashier", "admin"])
 def test_checkout_single_and_batch_print_with_product_options(inventory, monkeypatch, actor):
+    from datetime import datetime
     from flask import current_app, session
     from extensions import db
     from models.customer import Customer
@@ -63,6 +64,7 @@ def test_checkout_single_and_batch_print_with_product_options(inventory, monkeyp
     assert first.total == 475 and first.discount_amount == 25
     first.paid_amount = 100
     first.payment_status = "جزئي"
+    first.created_at = datetime(2026, 10, 21, 16, 30)
     db.session.commit()
     before_stock = (product.quantity, stock.quantity)
     artifacts = Path(__file__).parent / "_artifacts"
@@ -82,6 +84,12 @@ def test_checkout_single_and_batch_print_with_product_options(inventory, monkeyp
                 assert result.count('class="invoice-frame-wrap"') == 2
                 assert "225.00" in result
             (artifacts / f"invoice-print-{actor}-{mode}.html").write_text(result, encoding="utf-8")
+            from utils.time_format import set_time_format
+            for clock_mode, clock_label in (("24", "19:30"), ("12", "07:30 م")):
+                set_time_format(clock_mode)
+                clock_result = view()
+                assert clock_label in clock_result
+                assert "475.00" in clock_result and "375.00" in clock_result
     assert (product.quantity, stock.quantity) == before_stock
     (artifacts / f"invoice-print-{actor}-expected.json").write_text(json.dumps({
         "ids": ids, "product": product.name, "option": option, "totals": [475, 225], "due": 375,

@@ -319,7 +319,7 @@
 
   function updateLastRefresh() {
     const el = document.getElementById('monitorLastUpdate');
-    if (el) el.textContent = 'آخر تحديث: ' + new Date().toLocaleTimeString('ar-IQ');
+    if (el) el.textContent = 'آخر تحديث: ' + window.FinoraTime.time(Date.now());
   }
   function initCharts() {
     if (window.__financialChartData && document.getElementById('financialMonitorChart')) {

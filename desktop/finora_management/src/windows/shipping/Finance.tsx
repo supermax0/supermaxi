@@ -1,3 +1,4 @@
+import { useTimeFormat } from "@/stores/displayTime";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Printer, ReceiptText, Save } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -12,7 +13,7 @@ import { desktopBridge } from "@/services/bridge";
 import { useConnection } from "@/stores/connection";
 import { toast } from "@/stores/toasts";
 import { cn } from "@/utils/cn";
-import { formatNumber } from "@/utils/format";
+import { formatNumber, formatDateTime } from "@/utils/format";
 import { supplierInput, supplierPrimary } from "../suppliers/SupplierDialogs";
 import { Metric, Money, money } from "./shared";
 
@@ -24,6 +25,7 @@ export function printReceipt(id: number) {
 
 /** Account statement of a carrier / agent: what it owes us (debit) against fees and receipts (credit). */
 export function StatementView({ owner, id }: { owner: "carriers" | "agents"; id: number }) {
+  useTimeFormat();
   const statement = useQuery({
     queryKey: ["shipping", owner, id, "statement"],
     queryFn: () => finora.shipping.statement(owner, id),
@@ -70,7 +72,7 @@ export function StatementView({ owner, id }: { owner: "carriers" | "agents"; id:
               <td className="py-2">
                 <p className="font-medium text-ink">{line.label}</p>
                 <p className="ltr-isolate text-right text-[10px] text-ink-faint">
-                  {line.manifest_number} · {line.date}
+                  {line.manifest_number} · {formatDateTime(line.date)}
                 </p>
               </td>
               <td className="ltr-isolate py-2 text-right">{line.debit ? formatNumber(line.debit) : "—"}</td>
@@ -94,6 +96,7 @@ export function ReceiptsList({
   compact?: boolean;
   enabled?: boolean;
 }) {
+  useTimeFormat();
   const [searchText, setSearchText] = useState("");
   const search = useDebouncedValue(searchText, 250);
   const receipts = useQuery({
@@ -153,7 +156,7 @@ export function ReceiptsList({
         id: "date",
         header: "التاريخ",
         width: "14%",
-        cell: (r) => <span className="ltr-isolate text-[12px]">{r.date}</span>,
+        cell: (r) => <span className="ltr-isolate text-[12px]">{formatDateTime(r.date)}</span>,
       },
     ],
     [],
@@ -186,7 +189,7 @@ export function ReceiptsList({
             <div className="min-w-0 flex-1">
               <p className="ltr-isolate truncate text-right font-bold">{r.number}</p>
               <p className="text-[11px] text-ink-faint">
-                {r.date} · {formatNumber(r.allocations.length)} طلب
+                {formatDateTime(r.date)} · {formatNumber(r.allocations.length)} طلب
               </p>
             </div>
             <Money value={r.amount} className="font-semibold" />
@@ -231,6 +234,7 @@ export function CarrierSettingsForm({
   canManage: boolean;
   treasuryAccounts: ShippingMeta["treasury_accounts"];
 }) {
+  useTimeFormat();
   const client = useQueryClient();
   const online = useConnection((s) => s.status === "online");
   const settings = useQuery({
@@ -330,7 +334,7 @@ export function CarrierSettingsForm({
       <p className="col-span-2 text-[11px] leading-5 text-ink-faint">
         أجرة التوصيل تُخصم من التحصيل مرة واحدة لكل طلب. أجرة المرتجع تُخصم من صافي الكشف وتُسجَّل مصروف توصيل
         عند الاعتماد.
-        {form.updated_by && ` آخر تعديل: ${form.updated_by} ${form.updated_at}`}
+        {form.updated_by && ` آخر تعديل: ${form.updated_by} ${formatDateTime(form.updated_at)}`}
       </p>
       {canManage && (
         <div className="col-span-2 flex justify-end">

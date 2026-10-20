@@ -143,7 +143,7 @@
       <div class="report-header">
         <div>
           <div class="report-number">📋 {{ report.report_number }}</div>
-          <div class="report-date">{{ report.created_at.strftime("%Y-%m-%d %H:%M") if report.created_at else "" }}</div>
+          <div class="report-date">{{ (report.created_at|finora_datetime("%Y-%m-%d %H:%M")) if report.created_at else "" }}</div>
         </div>
         <div class="report-actions">
           <button class="btn btn-primary" onclick="viewReport({{ report.id }})">👁️ عرض</button>
@@ -275,7 +275,7 @@ function printReport(id) {
 
 function printReportWindow(data) {
   const printDate = new Date().toLocaleDateString("ar-IQ");
-  const printTime = new Date().toLocaleTimeString("ar-IQ");
+  const printTime = window.FinoraTime.time(Date.now());
   
   let printContent = `
     <div style="margin-bottom:30px">

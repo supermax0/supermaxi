@@ -611,7 +611,7 @@
             <td><strong>{{ report.report_number }}</strong></td>
             <td>{{ report.orders_count }}</td>
             <td class="total-cell">{{ "{:,.0f}".format(report.total_amount) }} د.ع</td>
-            <td>{{ report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else '—' }}</td>
+            <td>{{ (report.created_at|finora_datetime('%Y-%m-%d %H:%M')) if report.created_at else '—' }}</td>
             <td>{{ rd.progress_label if rd else '—' }}</td>
             <td>
               {% if report.is_executed %}
@@ -677,7 +677,7 @@
         <div class="report-m-meta">
           <div class="report-m-meta-item">
             <div class="label">التاريخ</div>
-            <div class="value">{{ report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else '—' }}</div>
+            <div class="value">{{ (report.created_at|finora_datetime('%Y-%m-%d %H:%M')) if report.created_at else '—' }}</div>
           </div>
           <div class="report-m-meta-item">
             <div class="label">التقدم</div>

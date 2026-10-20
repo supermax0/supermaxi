@@ -1,6 +1,7 @@
 ﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+  {% include 'partials/time_format_bootstrap.html' %}
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <script src="/static/js/no-zoom.js"></script>
@@ -20,7 +21,7 @@
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <link rel="stylesheet" href="/static/css/saas-admin.css">
     <link rel="stylesheet" href="/static/css/stock-trace.css?v=20260803a">
-    <script src="/static/js/stock-trace.js?v=20260803a" defer></script>
+    <script src="/static/js/stock-trace.js?v=20261021-time-format" defer></script>
     <style>
         * {
             margin: 0;
@@ -352,7 +353,7 @@
                 </div>
                 <div class="info-item">
                     <div class="label">التاريخ</div>
-                    <div class="value">{{ report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else "—" }}</div>
+                    <div class="value">{{ (report.created_at|finora_datetime('%Y-%m-%d %H:%M')) if report.created_at else "—" }}</div>
                 </div>
                 <div class="info-item">
                     <div class="label">أنشأه</div>
@@ -446,7 +447,7 @@
                             </select>
                         </td>
                         {% endif %}
-                        <td>{{ order.created_at }}</td>
+                        <td>{{ order.created_at|finora_datetime }}</td>
                     </tr>
                     {% endfor %}
                     <tr class="total-summary-row" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(5, 150, 105, 0.2)); font-weight: 700;">

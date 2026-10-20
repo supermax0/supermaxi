@@ -1,4 +1,5 @@
 """Read-only inventory evidence, without reconstructing undocumented balances."""
+from utils.time_format import format_timestamp
 import csv
 import io
 import json
@@ -289,7 +290,7 @@ def _report():
     if not data["available"]:
         raise AuditError("سجل الحركة غير مهيأ؛ لا يوجد تقرير مؤكد للطباعة", "unavailable", 409)
     for row in data["items"]:
-        row["local_time"] = (datetime.fromisoformat(row["created_at"].removesuffix("Z")) + timedelta(hours=3)).strftime("%Y-%m-%d %H:%M")
+        row["local_time"] = format_timestamp(row["created_at"])
     return user, data
 
 

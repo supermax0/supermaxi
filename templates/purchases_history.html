@@ -357,7 +357,7 @@
       <tr><td>${esc(it.product || "—")}${it.color ? ` <span class="fd-muted">(${esc(it.color)})</span>` : ""}</td>
       <td>${fmtNum(it.quantity)}</td><td>${fmt(it.unit_cost)}</td><td><b>${fmt(it.line_total)}</b></td></tr>`).join("");
     const payments = (p.payments || []).map(pay => `
-      <tr><td><span dir="ltr">${esc(pay.paid_at || "—")}</span></td><td>${esc(pay.account_name || pay.payment_method || "—")}</td><td><b>${fmt(pay.amount)}</b></td></tr>`).join("");
+      <tr><td><span dir="ltr">${esc(window.FinoraTime.dateTime(pay.paid_at))}</span></td><td>${esc(pay.account_name || pay.payment_method || "—")}</td><td><b>${fmt(pay.amount)}</b></td></tr>`).join("");
     const attachments = (p.attachments || []).map(att => `<a class="fd-btn fd-btn--sm" href="${esc(att.url)}" target="_blank" rel="noopener">${esc(att.name || "مرفق")}</a>`).join("");
     const due = Number(p.remaining_total) || 0;
 

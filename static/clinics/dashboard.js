@@ -189,7 +189,7 @@
               .map(
                 (a) => `
               <tr>
-                <td><strong>${ctx.esc(a.start_time)}</strong></td>
+                <td><strong>${ctx.esc(window.FinoraTime.clock(a.start_time))}</strong></td>
                 <td><a href="/clinics/patients/${a.patient_id}" class="cx-link">${ctx.esc(a.patient_name)}</a></td>
                 <td>${ctx.esc(a.doctor_name || "—")}</td>
                 <td>${ctx.badge(a.status)}</td>
@@ -425,7 +425,7 @@
           </div>`
           : `<div class="cx-empty">لا يوجد مريض حالياً عند الطبيب</div>`}
         ${next
-          ? `<div class="cx-doctor-now__next"><span>المريض التالي:</span> <strong>${ctx.esc(next.patient_name)}</strong> · ${ctx.esc(next.start_time)}</div>`
+          ? `<div class="cx-doctor-now__next"><span>المريض التالي:</span> <strong>${ctx.esc(next.patient_name)}</strong> · ${ctx.esc(window.FinoraTime.clock(next.start_time))}</div>`
           : ""}
       </article>`;
   }

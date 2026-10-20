@@ -39,7 +39,7 @@
                         <span style="color:#16A34A;font-weight:700">✓ نشط</span>
                         {% else %}—{% endif %}
                     </td>
-                    <td style="padding:12px 8px">{{ ann.last_sent_at.strftime('%Y-%m-%d %H:%M') if ann.last_sent_at else '—' }}</td>
+                    <td style="padding:12px 8px">{{ (ann.last_sent_at|finora_datetime('%Y-%m-%d %H:%M')) if ann.last_sent_at else '—' }}</td>
                     <td style="padding:12px 8px">{{ ann.send_count or 0 }}</td>
                     <td style="padding:12px 8px">
                         <div style="display:flex;flex-wrap:wrap;gap:6px">
@@ -86,7 +86,7 @@
             <tbody>
                 {% for log in recent_logs %}
                 <tr style="border-bottom:1px solid var(--border)">
-                    <td style="padding:10px 8px">{{ log.sent_at.strftime('%Y-%m-%d %H:%M') if log.sent_at else '—' }}</td>
+                    <td style="padding:10px 8px">{{ (log.sent_at|finora_datetime('%Y-%m-%d %H:%M')) if log.sent_at else '—' }}</td>
                     <td style="padding:10px 8px">{{ log.tenant_slug }}</td>
                     <td style="padding:10px 8px;direction:ltr;text-align:right">{{ log.email }}</td>
                     <td style="padding:10px 8px;color:{% if log.success %}#16A34A{% else %}#DC2626{% endif %}">

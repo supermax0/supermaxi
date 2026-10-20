@@ -8,6 +8,7 @@ export const PERMISSIONS = [
   "can_see_orders_delivered",
   "can_see_orders_returned",
   "manage_orders",
+  "manage_settings",
   "delete_orders",
   "return_orders",
   "pay_orders",
@@ -120,6 +121,7 @@ export const sessionSchema = z.object({
   session_max_age_seconds: z.number().int().nonnegative(),
   hr_scope_revision: z.string().optional(),
   offline_pos_enabled: z.boolean().optional(),
+  display_time_format: z.enum(["12", "24"]).optional(),
 });
 export type FinoraSession = z.infer<typeof sessionSchema>;
 

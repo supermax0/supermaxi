@@ -1,6 +1,7 @@
 <!doctype html>
 <html lang="ar" dir="rtl">
-<head><meta charset="utf-8"><title>حركات التحصيل — {{ customer.name }}</title>
+<head>
+  {% include 'partials/time_format_bootstrap.html' %}<meta charset="utf-8"><title>حركات التحصيل — {{ customer.name }}</title>
 <style>
 @page { size:A4 landscape; margin:12mm; } * { box-sizing:border-box; }
 body { margin:0; color:#25213d; background:#f7f5fc; font:12px Tahoma,Arial,sans-serif; line-height:1.7; }

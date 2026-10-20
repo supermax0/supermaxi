@@ -5,7 +5,7 @@
 
 <!-- مكتبة الباركود -->
 <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
-<script src="/static/js/stock-trace.js?v=20260803a"></script>
+<script src="/static/js/stock-trace.js?v=20261021-time-format"></script>
 <link rel="stylesheet" href="/static/css/stock-trace.css?v=20260803a">
 <script type="application/json" id="stockTraceMap">{{ (stock_trace_map or {})|tojson }}</script>
 
@@ -663,7 +663,7 @@
     </div>
     <div class="info-item">
       <div class="label">التاريخ</div>
-      <div class="value">{{ report.created_at.strftime('%Y-%m-%d %H:%M') if report.created_at else "—" }}</div>
+      <div class="value">{{ (report.created_at|finora_datetime('%Y-%m-%d %H:%M')) if report.created_at else "—" }}</div>
     </div>
     <div class="info-item">
       <div class="label">أنشأه</div>
@@ -947,7 +947,7 @@ document.addEventListener('DOMContentLoaded', function() {
           {% endif %}
         </td>
         {% endif %}
-        <td class="is-center date-cell">{{ order.created_at or "—" }}</td>
+        <td class="is-center date-cell">{{ order.created_at|finora_datetime if order.created_at else "—" }}</td>
       </tr>
       {% endfor %}
       <tr class="total-summary-row">

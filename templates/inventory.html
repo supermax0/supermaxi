@@ -2943,7 +2943,7 @@
       month: 'long',
       day: 'numeric'
     });
-    const printTime = now.toLocaleTimeString('ar-IQ', {
+    const printTime = window.FinoraTime.format(now, {
       hour: '2-digit',
       minute: '2-digit'
     });

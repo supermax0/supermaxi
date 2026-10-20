@@ -2102,7 +2102,7 @@ export const App: React.FC = () => {
                                     </span>
                                     {c.timestamp && (
                                       <span className="text-[9px] text-slate-500">
-                                        {new Date(c.timestamp).toLocaleString()}
+                                        {window.FinoraTime.dateTime(c.timestamp)}
                                       </span>
                                     )}
                                   </div>

@@ -5,7 +5,7 @@
   const state = {tab:"inbox", selected:null, snapshot:null, conversations:[], templates:[], filter:{status:"",channel:"",q:""}, pollTimer:null, lastFingerprint:""};
   const q = (s, r=document) => r.querySelector(s);
   const qa = (s, r=document) => [...r.querySelectorAll(s)];
-  const fmt = v => v ? new Date(v).toLocaleString("ar-IQ", {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}) : "";
+  const fmt = v => v ? window.FinoraTime.format(v, {month:"short",day:"numeric",hour:"2-digit",minute:"2-digit"}) : "";
 
   function fillPlaceholders(body, conversation) {
     const s = state.snapshot?.settings || {};

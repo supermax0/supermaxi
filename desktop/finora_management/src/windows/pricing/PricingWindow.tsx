@@ -1,3 +1,5 @@
+import { useTimeFormat } from "@/stores/displayTime";
+import { formatDateTime } from "@/utils/format";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { finora, toFinoraError } from "@/api/finora";
@@ -30,6 +32,7 @@ const fail = (e: unknown) => toast.error(toFinoraError(e).message);
 
 /** Selling prices: margin rules, bulk changes previewed then approved, dated promotions, full history. */
 export function PricingWindow() {
+  useTimeFormat();
   const active = useWindowManager((s) => s.active === "pricing");
   const [tab, setTab] = useState<Tab>("rules");
   return (
@@ -90,6 +93,7 @@ const EMPTY: PriceRuleInput = {
 };
 
 function RulesTab({ enabled }: { enabled: boolean }) {
+  useTimeFormat();
   const client = useQueryClient();
   const rules = useQuery({ queryKey: ["pricing", "rules"], queryFn: () => finora.pricing.rules(), enabled });
   const [editing, setEditing] = useState<{ id: number | null; form: PriceRuleInput } | null>(null);
@@ -269,6 +273,7 @@ function RulesTab({ enabled }: { enabled: boolean }) {
 }
 
 function BulkTab() {
+  useTimeFormat();
   const client = useQueryClient();
   const canApprove = useSession((s) => s.session?.permissions.includes("pricing.approve") ?? false);
   const [batch, setBatch] = useState<PriceBatch | null>(null);
@@ -426,6 +431,7 @@ function BulkTab() {
 }
 
 function PromotionsTab({ enabled }: { enabled: boolean }) {
+  useTimeFormat();
   const client = useQueryClient();
   const list = useQuery({
     queryKey: ["pricing", "promotions"],
@@ -525,8 +531,7 @@ function PromotionsTab({ enabled }: { enabled: boolean }) {
               {p.regular_price ? ` (بدل ${formatNumber(p.regular_price)})` : ""}
             </span>
             <span className="text-ink-faint">
-              {p.starts_at.slice(0, 16).replace("T", " ")} ← {p.ends_at.slice(0, 16).replace("T", " ")} ·{" "}
-              {STATUS[p.status]}
+              {formatDateTime(p.starts_at)} ← {formatDateTime(p.ends_at)} · {STATUS[p.status]}
             </span>
             {(p.status === "scheduled" || p.status === "running") && (
               <button type="button" className={supplierSecondary} onClick={() => cancel.mutate(p.id)}>
@@ -541,6 +546,7 @@ function PromotionsTab({ enabled }: { enabled: boolean }) {
 }
 
 function HistoryTab({ enabled }: { enabled: boolean }) {
+  useTimeFormat();
   const rows = useQuery({
     queryKey: ["pricing", "history"],
     queryFn: () => finora.pricing.history(),
@@ -566,7 +572,7 @@ function HistoryTab({ enabled }: { enabled: boolean }) {
                 {h.reason ? ` — ${h.reason}` : ""})
               </span>
             </span>
-            <span className="text-ink-faint">{h.at.slice(0, 16).replace("T", " ")}</span>
+            <span className="text-ink-faint">{formatDateTime(h.at)}</span>
           </li>
         ))}
         {rows.data && rows.data.rows.length === 0 && <li className="text-ink-faint">لا تغييرات بعد</li>}

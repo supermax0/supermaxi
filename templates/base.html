@@ -3,6 +3,7 @@
 <html lang="{{ current_lang or 'ar' }}" dir="{% if (current_lang or 'ar') in ['ar', 'ku'] %}rtl{% else %}ltr{% endif %}">
 
 <head>
+  {% include 'partials/time_format_bootstrap.html' %}
   <meta charset="UTF-8">
   {# Phase 8A privacy hardening: the authenticated clinic app never loads Google Ads / remarketing. Marketing
      pages, the public site and login (none of which set is_clinics_business) keep the tag. #}

@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="{{ current_lang or 'ar' }}" dir="{{ 'rtl' if (current_lang or 'ar') == 'ar' else 'ltr' }}">
 <head>
+  {% include 'partials/time_format_bootstrap.html' %}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{{ _('dashboard_overdue_print_title') }}</title>
@@ -268,7 +269,7 @@
         <h1 class="title">{{ _('dashboard_overdue_print_title') }}</h1>
       </div>
       <div class="meta">
-        <div>{{ _('dashboard_overdue_print_date') }}: <strong>{{ printed_at.strftime('%Y-%m-%d %H:%M') }}</strong></div>
+        <div>{{ _('dashboard_overdue_print_date') }}: <strong>{{ (printed_at|finora_datetime('%Y-%m-%d %H:%M')) }}</strong></div>
         {% if employee_name %}
         <div>{{ _('dashboard_overdue_print_by') }}: <strong>{{ employee_name }}</strong></div>
         {% endif %}

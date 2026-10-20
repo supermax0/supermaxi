@@ -1,3 +1,4 @@
+import { useTimeFormat } from "@/stores/displayTime";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ChevronDown, Clock3, FileText, Pencil, Plus, RefreshCw, UsersRound, Wallet } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -22,7 +23,7 @@ import { CustomerScheduleEditor } from "./CustomerScheduleEditor";
 import { CustomerTransactions } from "./CustomerTransactions";
 import { CustomerPlanBuilder } from "./CustomerPlanBuilder";
 import { toast } from "@/stores/toasts";
-import { formatNumber } from "@/utils/format";
+import { formatNumber, formatDateTime } from "@/utils/format";
 import { cn } from "@/utils/cn";
 
 const money = (value: number) => `${formatNumber(value)} د.ع`;
@@ -50,6 +51,7 @@ function CustomerDetails({
   onClose(): void;
   onEdit(row: CustomerRow): void;
 }) {
+  useTimeFormat();
   const canOpenOrders = useCan("can_see_orders");
   const canViewFinance = useCan("finance.view");
   const canCollect = useCan("finance.create");
@@ -302,7 +304,7 @@ function CustomerDetails({
                     </span>
                   </div>
                   <p className="text-xs text-ink-soft">
-                    الاستحقاق: {item.date}
+                    الاستحقاق: {formatDateTime(item.date)}
                     {item.invoice_id ? ` · فاتورة #${item.invoice_id}` : " · دين مستقل"}
                   </p>
                   <DetailRow label="قيمة القسط">{money(item.total)}</DetailRow>
@@ -384,6 +386,7 @@ function CustomerDetails({
 }
 
 export function CustomersWindow() {
+  useTimeFormat();
   const active = useWindowManager((s) => s.active === "customers");
   const [searchText, setSearchText] = useState("");
   const q = useDebouncedValue(searchText, 250);

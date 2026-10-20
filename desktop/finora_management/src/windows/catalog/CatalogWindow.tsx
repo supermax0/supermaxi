@@ -1,3 +1,5 @@
+import { useTimeFormat } from "@/stores/displayTime";
+import { formatDateTime } from "@/utils/format";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { finora, toFinoraError } from "@/api/finora";
@@ -16,6 +18,7 @@ type Tab = "entries" | "smart" | "import" | "requests";
 
 /** Master catalogue: models, photos and specs — separate from stock. Nothing here creates quantities or prices. */
 export function CatalogWindow() {
+  useTimeFormat();
   const active = useWindowManager((s) => s.active === "catalog");
   const isAdmin = useSession((s) => s.session?.user.role === "admin");
   const client = useQueryClient();
@@ -130,6 +133,7 @@ function EntriesList({
   onOpen(id: number): void;
   onNew(): void;
 }) {
+  useTimeFormat();
   const [q, setQ] = useState("");
   const list = useQuery({
     queryKey: ["catalog", "entries", q],
@@ -190,6 +194,7 @@ function EntriesList({
 }
 
 function RequestsTab({ enabled }: { enabled: boolean }) {
+  useTimeFormat();
   const rows = useQuery({
     queryKey: ["catalog", "requests"],
     queryFn: () => finora.catalog.requests(),
@@ -207,7 +212,7 @@ function RequestsTab({ enabled }: { enabled: boolean }) {
               <strong>{r.product}</strong> — {r.customer_name} <span dir="ltr">{r.phone}</span>
               {r.city ? ` · ${r.city}` : ""}
             </span>
-            <span className="text-ink-faint">{r.created_at.slice(0, 16).replace("T", " ")}</span>
+            <span className="text-ink-faint">{formatDateTime(r.created_at)}</span>
             {r.note && <span className="w-full text-ink-soft">{r.note}</span>}
           </li>
         ))}

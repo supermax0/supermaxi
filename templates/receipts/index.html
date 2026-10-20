@@ -550,7 +550,7 @@
       }
       return `<tr>
         <td><a href="${esc(detail)}">${esc(r.ref || '—')}</a></td>
-        <td>${esc(r.date || '—')}</td>
+        <td>${esc(window.FinoraTime.dateTime(r.date))}</td>
         <td>${esc(r.kind_label || KIND_LABEL[r.kind] || r.kind)}</td>
         <td>${esc(r.party_name || '—')}</td>
         <td>${dir}</td>
@@ -572,7 +572,7 @@
       }
       return `<div class="rc-card-item">
         <div class="top"><span>${esc(r.ref || '—')}</span><span>${fmt(r.amount)} د.ع</span></div>
-        <div class="meta">${esc(r.kind_label || '')} — ${esc(r.party_name || '')} — ${esc(r.date || '')}</div>
+        <div class="meta">${esc(r.kind_label || '')} — ${esc(r.party_name || '')} — ${esc(window.FinoraTime.dateTime(r.date))}</div>
         <div class="meta" style="margin-top:8px"><div class="rc-actions">${actions}</div></div>
       </div>`;
     }).join('');

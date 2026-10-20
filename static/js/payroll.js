@@ -190,7 +190,7 @@
           const exp = r.expense_id
             ? `<a href="/expenses">#${r.expense_id}</a>`
             : "—";
-          const date = r.paid_at ? r.paid_at.slice(0, 16).replace("T", " ") : "—";
+          const date = r.paid_at ? window.FinoraTime.dateTime(r.paid_at) : "—";
           return `<tr>
             <td>${date}</td>
             <td>${r.payee_name}</td>
@@ -480,7 +480,7 @@
 
     if (titleEl) titleEl.textContent = data.title || `طلبات شهر ${data.month}`;
     if (periodEl) periodEl.textContent = formatStatementPeriodLabel(data.year, data.month);
-    if (printedAtEl) printedAtEl.textContent = new Date().toLocaleString("ar-IQ");
+    if (printedAtEl) printedAtEl.textContent = window.FinoraTime.dateTime(Date.now());
     if (summaryEl) {
       summaryEl.textContent = `الموظفون: ${(data.rows || []).length} — الكلي: ${fmt(
         totals.total_orders

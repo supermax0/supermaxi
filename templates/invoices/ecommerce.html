@@ -2,6 +2,7 @@
 <html lang="ar" dir="rtl">
 
 <head>
+  {% include 'partials/time_format_bootstrap.html' %}
     {% from 'partials/invoice_qrcode.html' import invoice_qr_block with context %}
     <meta charset="UTF-8">
     <title>فاتورة رقم #{{ order.id }}</title>
@@ -551,7 +552,7 @@
                 <div class="invoice-meta">
                     <div class="invoice-label">فاتورة طلب</div>
                     <div class="invoice-number">#{{ order.id }}</div>
-                    <div class="invoice-date">{{ order.created_at.strftime('%Y/%m/%d') if order.created_at else '' }}</div>
+                    <div class="invoice-date">{{ (order.created_at|finora_datetime('%Y/%m/%d')) if order.created_at else '' }}</div>
                 </div>
             </div>
 

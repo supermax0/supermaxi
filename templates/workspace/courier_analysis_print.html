@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+  {% include 'partials/time_format_bootstrap.html' %}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>كشف تسديد {{ courier_company }} — {{ report_number }}</title>
@@ -290,7 +291,7 @@
       <section class="report-meta">
         <p><strong>شركة النقل:</strong> {{ courier_company }}</p>
         <p><strong>رقم الكشف:</strong> <span class="ltr">{{ report_number }}</span></p>
-        <p><strong>تاريخ الطباعة:</strong> {{ generated_at.strftime("%Y/%m/%d %H:%M") }}</p>
+        <p><strong>تاريخ الطباعة:</strong> {{ (generated_at|finora_datetime("%Y/%m/%d %H:%M")) }}</p>
       </section>
     </header>
 

@@ -1,6 +1,7 @@
 ﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+  {% include 'partials/time_format_bootstrap.html' %}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <script src="/static/js/no-zoom.js"></script>
@@ -271,7 +272,7 @@
         if (!value) return "-";
         const d = new Date(value);
         if (Number.isNaN(d.getTime())) return value;
-        return d.toLocaleString("ar-IQ");
+        return window.FinoraTime.dateTime(d);
       }
 
       function renderStats() {

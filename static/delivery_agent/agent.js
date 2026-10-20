@@ -498,7 +498,7 @@
     if (!iso) return "";
     var date = new Date(iso);
     if (isNaN(date.getTime())) return "";
-    return date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+    return window.FinoraTime.format(date, { hour: "2-digit", minute: "2-digit" });
   }
 
   function loadConversations(silent) {

@@ -1,6 +1,7 @@
 ﻿<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
+  {% include 'partials/time_format_bootstrap.html' %}
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <script src="/static/js/no-zoom.js"></script>
@@ -503,8 +504,8 @@
           <span class="summary-value">{{ "{:,.2f}".format(due) }} د.ع</span>
         </div>
         <div class="summary-date">
-          {% set order_date = order.created_at.strftime('%d/%m/%Y') if order.created_at else '' %}
-          {% set order_time = order.created_at.strftime('%I:%M %p') if order.created_at else '' %}
+          {% set order_date = order.created_at|finora_datetime('%d/%m/%Y') if order.created_at else '' %}
+          {% set order_time = order.created_at|finora_datetime('%H:%M') if order.created_at else '' %}
           {{ order_time }} {{ order_date }}
         </div>
       </div>

@@ -1,3 +1,4 @@
+import { useTimeFormat } from "@/stores/displayTime";
 import {
   Ban,
   Banknote,
@@ -108,6 +109,7 @@ type Pending =
 const NONE = "none";
 
 export function OrdersWindow() {
+  useTimeFormat();
   const active = useWindowManager((s) => s.active === "orders");
   const permissions = useSession((s) => s.session?.permissions);
   const canManage = useCan("manage_orders");

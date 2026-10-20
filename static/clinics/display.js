@@ -16,7 +16,7 @@
 
   function fmtClock() {
     try {
-      return new Date().toLocaleTimeString("ar-IQ", { hour: "2-digit", minute: "2-digit" });
+      return window.FinoraTime.format(Date.now(), { hour: "2-digit", minute: "2-digit" });
     } catch {
       return "";
     }

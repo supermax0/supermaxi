@@ -16,7 +16,7 @@
       <tbody>
       {% for a in appointments %}
         <tr>
-          <td>{{ a.completed_at.strftime('%Y-%m-%d %H:%M') if a.completed_at else '—' }}</td>
+          <td>{{ (a.completed_at|finora_datetime('%Y-%m-%d %H:%M')) if a.completed_at else '—' }}</td>
           <td><a href="{{ url_for('beauty.client_history', customer_id=a.customer_id) }}">{{ a.customer.name }}</a></td>
           <td>{{ a.service.name }}</td>
           <td>{{ "{:,}".format(a.total_amount or 0) }}</td>

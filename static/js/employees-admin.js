@@ -1012,7 +1012,7 @@ function __t(k) { return (window.EMP_I18N && window.EMP_I18N[k]) || ''; }
       periodEl.textContent = formatCommissionPeriodLabel(data.year, data.month);
     }
     if (printedAtEl) {
-      printedAtEl.textContent = new Date().toLocaleString('ar-IQ');
+      printedAtEl.textContent = window.FinoraTime.dateTime(Date.now());
     }
     if (summaryEl) {
       summaryEl.textContent = __t('employees_commission_statement_total')

@@ -1,3 +1,4 @@
+import { useTimeFormat } from "@/stores/displayTime";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Download, ExternalLink, History, Printer, RefreshCw, X } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -16,7 +17,7 @@ import { useOrderNavigation } from "@/stores/orderNavigation";
 import { usePurchaseNavigation } from "@/stores/purchaseNavigation";
 import { useWindowManager } from "@/stores/windowManager";
 import { toast } from "@/stores/toasts";
-import { formatNumber } from "@/utils/format";
+import { formatNumber, formatDateTime } from "@/utils/format";
 import { formatIqd } from "@/utils/money";
 
 const kinds: Record<string, string> = {
@@ -30,12 +31,7 @@ const kinds: Record<string, string> = {
   trade_in: "استبدال",
   purchase_return: "مرتجع شراء",
 };
-const stamp = new Intl.DateTimeFormat("ar-IQ-u-nu-latn", {
-  timeZone: "Asia/Baghdad",
-  dateStyle: "short",
-  timeStyle: "short",
-  hour12: true,
-});
+
 const button =
   "flex min-h-10 items-center justify-center gap-2 rounded-control border border-line bg-white px-3 text-sm text-ink-soft hover:bg-violet-soft disabled:opacity-40";
 const value = (number: number | null) => (number === null ? "—" : formatNumber(number));
@@ -63,6 +59,7 @@ export function StockActivity({
   onAudit(id: number): void;
   onStockDocument?(document: "transfers" | "writeoffs", id: number): void;
 }) {
+  useTimeFormat();
   const [text, setText] = useState(""),
     [branch, setBranch] = useState(""),
     [direction, setDirection] = useState("");
@@ -203,7 +200,7 @@ export function StockActivity({
         width: "23%",
         cell: (row) => (
           <span dir="ltr" className="ltr-isolate text-xs">
-            {stamp.format(new Date(row.created_at))}
+            {formatDateTime(row.created_at)}
           </span>
         ),
       },
@@ -375,7 +372,7 @@ export function StockActivity({
                 ["الفرع", selected.branch_name],
                 ["اللون / المقاس", selected.variant || "بدون متغير"],
                 ["المنفذ", selected.actor_name ?? "غير مسجل"],
-                ["الوقت", stamp.format(new Date(selected.created_at))],
+                ["الوقت", formatDateTime(selected.created_at)],
                 ["قبل الحركة", value(selected.before)],
                 ["بعد الحركة", value(selected.after)],
               ].map(([label, content]) => (

@@ -1422,7 +1422,7 @@
   function markUpdated() {
     const el = document.getElementById("execLastUpdated");
     if (!el) return;
-    el.textContent = "آخر تحديث: " + new Date().toLocaleTimeString("ar-IQ", {
+    el.textContent = "آخر تحديث: " + window.FinoraTime.format(Date.now(), {
       hour: "2-digit",
       minute: "2-digit",
       numberingSystem: "latn",

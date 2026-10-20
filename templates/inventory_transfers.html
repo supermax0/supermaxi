@@ -106,7 +106,7 @@
             <td class="tr-num">{{ line_count }}</td>
             <td class="tr-num">{{ total_qty }}</td>
             <td><span class="status-pill status-{{ t.status }}">{{ status_labels.get(t.status, t.status) }}</span></td>
-            <td>{{ t.created_at.strftime('%Y-%m-%d %H:%M') if t.created_at else '-' }}</td>
+            <td>{{ (t.created_at|finora_datetime('%Y-%m-%d %H:%M')) if t.created_at else '-' }}</td>
             <td>
               <a href="{{ url_for('stock_transfers.transfers_view', transfer_id=t.id) }}">عرض</a>
               ·

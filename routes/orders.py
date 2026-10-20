@@ -4376,7 +4376,8 @@ def export_pdf():
     settings = InvoiceSettings.get_settings()
     now = datetime.now()
     export_date = now.strftime("%Y-%m-%d")
-    export_datetime = now.strftime("%Y-%m-%d %H:%M")
+    from utils.time_format import format_timestamp
+    export_datetime = format_timestamp(now)
 
     return render_template(
         "orders_export_pdf.html",

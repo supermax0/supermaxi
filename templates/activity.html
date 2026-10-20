@@ -746,7 +746,7 @@
     if (!iso) return '—';
     try {
       const d = new Date(iso);
-      return d.toLocaleString('ar-IQ', { dateStyle: 'short', timeStyle: 'short' });
+      return window.FinoraTime.format(d, { dateStyle: 'short', timeStyle: 'short' });
     } catch (e) { return iso; }
   }
 

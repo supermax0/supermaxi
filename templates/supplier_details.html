@@ -1032,7 +1032,7 @@ document.addEventListener('DOMContentLoaded', function () {
           {% for pay in payment_rows %}
           <tr>
             <td data-label="التاريخ" dir="ltr">
-              {{ pay.created_at.strftime("%Y-%m-%d") if pay.created_at else "—" }}
+              {{ (pay.created_at|finora_datetime("%Y-%m-%d")) if pay.created_at else "—" }}
             </td>
             <td data-label="رقم المستند">{{ pay.document_number or "—" }}</td>
             <td data-label="المبلغ السابق" dir="ltr">{{ fmt_money(pay.balance_before) }}</td>

@@ -24,6 +24,7 @@ from models.stock_movement import StockMovement
 from models.supplier import Supplier
 from models.treasury_account import TreasuryAccount
 from utils.cash_calculations import _effective_paid_amount
+from utils.time_format import format_timestamp
 
 
 VALID_REPORT_TYPES = {"sales", "materials", "delivery", "inventory", "suppliers"}
@@ -378,7 +379,7 @@ def _invoice_rows(
             "payment_method": payment_label,
             "payment_method_key": _payment_filter_key(payment_label),
             "employee": invoice.employee_name or employee_names.get(invoice.employee_id, "—"),
-            "date": invoice.created_at.strftime("%Y-%m-%d %H:%M") if invoice.created_at else "—",
+            "date": format_timestamp(invoice.created_at) if invoice.created_at else "—",
         }
         if include_agent:
             row.update({
@@ -568,7 +569,7 @@ def _materials_sales_report(
             "cost": _money(cost_value),
             "profit": _money(sales_value - cost_value),
             "customer": invoice.customer_name or "—",
-            "date": invoice.created_at.strftime("%Y-%m-%d %H:%M") if invoice.created_at else "—",
+            "date": format_timestamp(invoice.created_at) if invoice.created_at else "—",
         })
 
     def selected_label(options, selected):
@@ -795,7 +796,7 @@ def _supplier_report(date_from: date, date_to: date, supplier_id: int | None) ->
             "remaining": _money(remaining),
             "payment_method": _purchase_payment_label(purchase, paid, remaining, purchase_methods),
             "employee": employee_names.get(purchase.created_by_employee_id, "—"),
-            "date": purchase.purchase_date.strftime("%Y-%m-%d") if purchase.purchase_date else (purchase.created_at.strftime("%Y-%m-%d %H:%M") if purchase.created_at else "—"),
+            "date": purchase.purchase_date.strftime("%Y-%m-%d") if purchase.purchase_date else (format_timestamp(purchase.created_at) if purchase.created_at else "—"),
         })
 
     return {

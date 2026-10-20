@@ -28,12 +28,14 @@ def display_datetime(value):
     if not value:
         return ""
     local = business_datetime(value)
-    return f"{local:%Y-%m-%d} {display_time(local)}"
+    from utils.time_format import format_timestamp
+    return format_timestamp(local, local=True)
 
 
 def display_time(value):
     """Format an already-local wall clock without shifting its scheduled hour."""
-    return f"{value.hour % 12 or 12:02d}:{value.minute:02d} {'ص' if value.hour < 12 else 'م'}"
+    from utils.time_format import format_clock
+    return format_clock(value)
 
 
 def utc_period_filter(column, date_from=None, date_to=None):

@@ -62,10 +62,10 @@
 
   function mobileTimeLabel() {
     try {
-      return new Intl.DateTimeFormat("ar-IQ", {
+      return window.FinoraTime.format(new Date(), {
         hour: "numeric",
         minute: "2-digit",
-      }).format(new Date());
+      });
     } catch (_) {
       return "الآن";
     }
@@ -711,7 +711,7 @@
   function restoredTimeLabel(raw) {
     if (!raw) return "";
     try {
-      return new Intl.DateTimeFormat("ar-IQ", { hour: "numeric", minute: "2-digit" }).format(new Date(raw));
+      return window.FinoraTime.format(new Date(raw), { hour: "numeric", minute: "2-digit" });
     } catch (_) {
       return "";
     }

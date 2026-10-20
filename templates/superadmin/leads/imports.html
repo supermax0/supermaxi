@@ -37,7 +37,7 @@
                     <tr>
                         <td><strong>{{ b.filename }}</strong></td>
                         <td>{{ import_status_badge(b.status) }}</td>
-                        <td>{{ b.created_at.strftime('%Y-%m-%d %H:%M') if b.created_at else '' }}</td>
+                        <td>{{ (b.created_at|finora_datetime('%Y-%m-%d %H:%M')) if b.created_at else '' }}</td>
                         <td><a href="{{ url_for('superadmin_leads.import_wizard', batch_id=b.id) }}" class="lc-link-btn"><i class="fas fa-play"></i> متابعة</a></td>
                     </tr>
                     {% else %}

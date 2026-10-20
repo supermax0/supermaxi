@@ -207,7 +207,7 @@ const InventoryForensicsWindow = {
   _unitStatus(status) { return ({ in_stock: "بالمخزون", sold_or_out: "خرج/بيع", transferred: "قيد النقل", unverified_extra: "زيادة غير موثقة", missing_unexplained: "مفقودة", unknown_out: "خروج بلا دخول" })[status] || status; },
   _fmt(value) { return Number(value || 0).toLocaleString("en-US"); },
   _signed(value) { const n = Number(value || 0); return `${n > 0 ? "+" : ""}${this._fmt(n)}`; },
-  _date(value) { if (!value) return "—"; try { return new Intl.DateTimeFormat("ar-IQ", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value)); } catch (_) { return String(value); } },
+  _date(value) { if (!value) return "—"; try { return window.FinoraTime.format(new Date(value), { dateStyle: "medium", timeStyle: "short" }); } catch (_) { return String(value); } },
   _esc(value) { const node = document.createElement("div"); node.textContent = String(value ?? ""); return node.innerHTML; },
 };
 

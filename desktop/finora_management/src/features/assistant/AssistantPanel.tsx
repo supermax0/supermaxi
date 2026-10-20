@@ -1,3 +1,5 @@
+import { useTimeFormat } from "@/stores/displayTime";
+import { formatTime } from "@/utils/format";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -45,6 +47,7 @@ import { PreparedDraftCard } from "./drafts";
 import "./assistant.css";
 
 function AssistantSources({ sources, expanded = false }: { sources: AssistantSource[]; expanded?: boolean }) {
+  useTimeFormat();
   return (
     <div className="assistant-sources">
       {sources.map((source, i) => (
@@ -52,9 +55,7 @@ function AssistantSources({ sources, expanded = false }: { sources: AssistantSou
           <summary>
             <FileText size={14} />
             {source.title}
-            <small>
-              {new Date(source.at).toLocaleTimeString("ar-IQ", { hour: "2-digit", minute: "2-digit" })}
-            </small>
+            <small>{formatTime(source.at)}</small>
           </summary>
           <p className="assistant-muted">
             مصدر: أدوات فينورا الأصلية · النطاق الحالي · {new Date(source.at).toLocaleDateString("ar-IQ")}
@@ -96,6 +97,7 @@ function AssistantSources({ sources, expanded = false }: { sources: AssistantSou
   );
 }
 function Proposal({ proposal }: { proposal: AssistantProposal }) {
+  useTimeFormat();
   if (proposal.kind === "prepare") return <PreparedDraftCard proposal={proposal} />;
   return (
     <button
@@ -110,6 +112,7 @@ function Proposal({ proposal }: { proposal: AssistantProposal }) {
   );
 }
 function GuideBrowser() {
+  useTimeFormat();
   const [query, setQuery] = useState("");
   const active = useWindowManager((s) => s.active);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -173,6 +176,7 @@ function GuideBrowser() {
   );
 }
 function DataSearch() {
+  useTimeFormat();
   const [query, setQuery] = useState("");
   const [kind, setKind] = useState("search_customer");
   const [busy, setBusy] = useState(false);
@@ -254,6 +258,7 @@ function DataSearch() {
   );
 }
 function Composer() {
+  useTimeFormat();
   const busy = useAssistant((s) => s.busy),
     settings = useAssistant((s) => s.settings),
     prompt = useAssistant((s) => s.prompt);
@@ -432,6 +437,7 @@ function Composer() {
   );
 }
 export function AssistantShell() {
+  useTimeFormat();
   const state = useAssistant();
   const session = useSession((s) => s.session);
   const identity = useWorkspace((s) => s.identity);
@@ -638,11 +644,7 @@ export function AssistantShell() {
                       className={`assistant-message assistant-message-${message.role}`}
                     >
                       <small>
-                        {message.role === "user" ? "أنت" : "فينورا"} ·{" "}
-                        {new Date(message.at).toLocaleTimeString("ar-IQ", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                        {message.role === "user" ? "أنت" : "فينورا"} · {formatTime(message.at)}
                         {message.restored ? " · محفوظة، حدّث الأرقام قبل الاعتماد عليها" : ""}
                       </small>
                       <div className="assistant-message-text" dir="auto">

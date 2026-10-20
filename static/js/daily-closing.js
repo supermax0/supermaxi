@@ -33,7 +33,7 @@
     document.querySelectorAll(".js-local-time").forEach(node => {
       const raw = node.dataset.time; if (!raw) return;
       const value = new Date(raw.endsWith("Z") ? raw : `${raw}Z`);
-      if (!Number.isNaN(value.getTime())) node.textContent = value.toLocaleString("ar-IQ", { dateStyle: "short", timeStyle: "short" });
+      if (!Number.isNaN(value.getTime())) node.textContent = window.FinoraTime.format(value, { dateStyle: "short", timeStyle: "short" });
     });
   }
   localTimes();
@@ -146,7 +146,7 @@
     try {
       const result = await api(`${base}/stock-details?product_id=${stockDetailState.productId}&category=${encodeURIComponent(stockDetailState.category)}&page=${page}&per_page=30`);
       stockDetailState.page = result.page; stockDetailState.pages = result.pages;
-      body.innerHTML = result.rows.map(row => `<tr><td>${new Date(`${row.time}Z`).toLocaleString("ar-IQ")}</td><td>${escapeHtml(row.movement_type)}</td><td>${row.quantity}</td><td>${escapeHtml(row.reference_type)}</td><td>#${escapeHtml(row.reference_id)}</td></tr>`).join("") || '<tr><td colspan="5" class="dc-empty">لا توجد تفاصيل.</td></tr>';
+      body.innerHTML = result.rows.map(row => `<tr><td>${window.FinoraTime.dateTime(`${row.time}Z`)}</td><td>${escapeHtml(row.movement_type)}</td><td>${row.quantity}</td><td>${escapeHtml(row.reference_type)}</td><td>#${escapeHtml(row.reference_id)}</td></tr>`).join("") || '<tr><td colspan="5" class="dc-empty">لا توجد تفاصيل.</td></tr>';
       document.getElementById("stockDetailPageInfo").textContent = `${result.total} حركة · صفحة ${result.page} من ${result.pages}`;
       document.getElementById("stockDetailPrev").disabled = result.page <= 1;
       document.getElementById("stockDetailNext").disabled = result.page >= result.pages;

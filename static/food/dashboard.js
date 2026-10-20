@@ -358,7 +358,7 @@
       return;
     }
     $("#fdActivity").innerHTML = rows.map((row) => {
-      const time = row.at ? new Date(row.at).toLocaleTimeString("ar-IQ-u-nu-latn", { hour: "numeric", minute: "2-digit", hour12: true }) : "—";
+      const time = row.at ? window.FinoraTime.format(row.at, { hour: "numeric", minute: "2-digit", hour12: true }) : "—";
       const sign = row.direction === "out" ? "-" : "+";
       return `<a class="fd-time-item" href="${esc(row.href || "#")}">
         <time>${esc(time)}</time>
@@ -440,7 +440,7 @@
       : `${period.start} → ${period.end}`;
     $("#fdDateLabel").textContent = dateLabel;
     const stamp = period.generated_at
-      ? new Date(period.generated_at).toLocaleTimeString(arLatn, { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true })
+      ? window.FinoraTime.format(period.generated_at, { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true })
       : "—";
     $("#fdLastUpdated").textContent = `آخر تحديث ${stamp}`;
   }

@@ -587,7 +587,7 @@
               <div class="analytics-title">{{ item.title }}</div>
               <div class="analytics-description">{{ item.description }}</div>
               <div class="analytics-meta">
-                <span>📅 {{ item.created_at.strftime('%Y-%m-%d %H:%M') if item.created_at else '—' }}</span>
+                <span>📅 {{ (item.created_at|finora_datetime('%Y-%m-%d %H:%M')) if item.created_at else '—' }}</span>
                 {% if item.affected_count > 0 %}
                 <span>📦 {{ item.affected_count }} عنصر</span>
                 {% endif %}
@@ -946,7 +946,7 @@ function generateReport(type) {
       updateLoaderState(null);
       speak('تم إنشاء التقرير بنجاح! سيتم فتح نافذة الطباعة.');
 
-      const reportDate = new Date().toLocaleString('ar-SA', {
+      const reportDate = window.FinoraTime.format(Date.now(), {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -1157,7 +1157,7 @@ function generateReport(type) {
           
           <div style="margin-top: 60px; padding-top: 30px; border-top: 2px solid rgba(59, 130, 246, 0.3); text-align: center; color: #94a3b8; font-size: 14px;">
             <p>تم إنشاء هذا التقرير تلقائياً بواسطة المساعد الذكي - Finora</p>
-            <p style="margin-top: 8px;">${new Date().toLocaleString('ar-SA')}</p>
+            <p style="margin-top: 8px;">${window.FinoraTime.dateTime(Date.now())}</p>
           </div>
         </body>
         </html>
@@ -1303,7 +1303,7 @@ function loadAnalytics() {
                 <div class="analytics-title">${item.title || ''}</div>
                 <div class="analytics-description">${item.description || ''}</div>
                 <div class="analytics-meta">
-                  <span>📅 ${item.created_at ? new Date(item.created_at).toLocaleString('ar') : '—'}</span>
+                  <span>📅 ${item.created_at ? window.FinoraTime.dateTime(item.created_at) : '—'}</span>
                   ${item.affected_count > 0 ? `<span>📦 ${item.affected_count} عنصر</span>` : ''}
                   ${item.estimated_impact > 0 ? `<span>💰 ${item.estimated_impact.toLocaleString()} د.ع</span>` : ''}
                 </div>
