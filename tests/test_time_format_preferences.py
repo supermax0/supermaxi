@@ -6,6 +6,24 @@ import pytest
 from tests.test_reports_v2 import ctx, TENANT, OTHER_TENANT, _client  # noqa: F401
 
 
+def test_custom_html_hosts_get_one_clock_bootstrap_but_json_and_fragments_stay_unchanged():
+    from flask import Flask, jsonify
+    from utils.time_format import install_time_format
+    app = Flask("clock-host-test")
+    install_time_format(app)
+    app.add_url_rule("/custom", "custom", view_func=lambda: "<html><head></head><body>Invoice</body></html>")
+    app.add_url_rule("/ready", "ready", view_func=lambda: "<html><head><script>window.FINORA_TIME_CONFIG = {};</script></head></html>")
+    app.add_url_rule("/fragment", "fragment", view_func=lambda: "<div>22:00</div>")
+    app.add_url_rule("/json", "json", view_func=lambda: jsonify(timestamp="2026-10-21T16:30:00Z"))
+    client = app.test_client()
+    custom = client.get("/custom").get_data(as_text=True)
+    assert custom.count("window.FINORA_TIME_CONFIG") == 1 and '"format": "12"' in custom
+    assert 'time-format.js?v=20261021a' in custom
+    assert client.get("/ready").get_data(as_text=True).count("window.FINORA_TIME_CONFIG") == 1
+    assert client.get("/fragment").get_data(as_text=True) == "<div>22:00</div>"
+    assert client.get("/json").get_json() == {"timestamp": "2026-10-21T16:30:00Z"}
+
+
 def test_legacy_settings_without_ui_flags_do_not_break_pages_or_write_schema(ctx):
     from flask import g
     from sqlalchemy import create_engine, inspect

@@ -102,3 +102,18 @@ def install_time_format(app):
     def time_context():
         return {"finora_time_format": get_time_format(),
                 "finora_time_authenticated": bool(has_request_context() and session.get("user_id") and session.get("tenant_slug") == getattr(g, "tenant", None))}
+
+    @app.after_request
+    def bootstrap_legacy_html(response):
+        # Also cover custom/legacy HTML hosts and pages served during a rolling update.
+        if response.direct_passthrough or response.mimetype != "text/html" or response.headers.get("Content-Encoding"):
+            return response
+        html = response.get_data(as_text=True)
+        head = re.search(r"<head(?:\s[^>]*)?>", html, re.I)
+        if not head or "window.FINORA_TIME_CONFIG" in html:
+            return response
+        context = time_context()
+        config = json.dumps({"format": context["finora_time_format"], "authenticated": context["finora_time_authenticated"]})
+        bootstrap = f'<script>window.FINORA_TIME_CONFIG = {config};</script><script src="/static/js/time-format.js?v=20261021a"></script>'
+        response.set_data(html[:head.end()] + bootstrap + html[head.end():])
+        return response
