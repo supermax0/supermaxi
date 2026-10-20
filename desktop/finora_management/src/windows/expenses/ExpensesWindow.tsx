@@ -35,6 +35,7 @@ import { cn } from "@/utils/cn";
 import { formatNumber } from "@/utils/format";
 import { supplierPrimary, supplierSecondary } from "../suppliers/SupplierDialogs";
 import { ExpenseComposer } from "./ExpenseComposer";
+import { useWorkspaceHistory, useWorkspaceRequest } from "@/features/workspace/navigation";
 
 const TAB_LABELS: Record<ExpenseTab, string> = { all: "الكل", posted: "مخصومة", scheduled: "مجدولة" };
 const BAR_COLORS = ["bg-violet", "bg-maroon", "bg-azure", "bg-cyan", "bg-warning", "bg-success"];
@@ -87,6 +88,12 @@ export function ExpensesWindow() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [composerOpen, setComposerOpen] = useState(false);
+  useWorkspaceRequest("expenses", (target, action) => {
+    if (action === "expense") setComposerOpen(true);
+    if (target.tab && ["all", "posted", "scheduled"].includes(target.tab)) setTab(target.tab as ExpenseTab);
+    if (target.page) setPage(target.page);
+  });
+  useWorkspaceHistory({ window: "expenses", tab, page });
   const [toDelete, setToDelete] = useState<ExpenseRow | null>(null);
 
   const query = useMemo<ExpensesQuery>(

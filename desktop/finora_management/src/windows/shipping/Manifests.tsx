@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { FileCheck2 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { useWorkspaceHistory } from "@/features/workspace/navigation";
 import { finora, toFinoraError } from "@/api/finora";
 import type { ManifestFilters, ManifestSummary, ShippingMeta } from "@/api/finora/shipping";
 import { DataTable, type Column } from "@/components/DataTable";
@@ -23,18 +24,27 @@ export function ManifestsSection({
   settlementsOnly = false,
   carriers,
   onOpen,
+  initialState = "all",
 }: {
   enabled: boolean;
   settlementsOnly?: boolean;
   carriers: ShippingMeta["carriers"];
   onOpen(id: number): void;
+  initialState?: ManifestFilters["state"];
 }) {
-  const [state, setState] = useState<ManifestFilters["state"]>(settlementsOnly ? "executed" : "all");
+  const [state, setState] = useState<ManifestFilters["state"]>(settlementsOnly ? "executed" : initialState);
   const [kind, setKind] = useState<ManifestFilters["kind"]>(settlementsOnly ? "settlement" : "");
   const [carrierId, setCarrierId] = useState("");
   const [searchText, setSearchText] = useState("");
   const search = useDebouncedValue(searchText, 250);
   const filters: ManifestFilters = { state, kind, search, carrierId: carrierId ? Number(carrierId) : null };
+  useWorkspaceHistory(
+    {
+      window: "shipping",
+      tab: state === "open" ? "open-manifests" : state === "executed" ? "executed-manifests" : "manifests",
+    },
+    enabled && !settlementsOnly,
+  );
   const list = useQuery({
     queryKey: ["shipping", "manifests", filters],
     queryFn: () => finora.shipping.manifests(filters),

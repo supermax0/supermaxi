@@ -92,6 +92,17 @@ def test_search_balance_sales_keeps_context_and_uses_real_orm():
             assert result["success"], (name, result)
             Draft202012Validator(TOOL_OUTPUT_SCHEMA).validate(result)
             assert result["meta"]["read_only"] is True
+        runtime = client.get("/finora-ai/api/desktop/runtime")
+        assert runtime.status_code == 200 and runtime.get_json()["read_only"] is True
+        native = client.post("/finora-ai/api/desktop/chat", json={"message": "مبيعات اليوم"})
+        assert native.status_code == 200, native.get_data(as_text=True)
+        assert "500,000" in native.get_json()["message"]
+        assert client.post("/finora-ai/api/desktop/chat", json={"message": "مبيعات اليوم", "tenant_slug": "other"}).status_code == 400
+        assert client.post("/finora-ai/api/desktop/chat", json={"message": 42}).status_code == 400
+        assert client.post("/finora-ai/api/desktop/chat", json={"message": " "}).status_code == 400
+        with app.app_context():
+            g.tenant = "ai-e2e"
+            assert FinoraAIConversation.query.count() == 2
     engine.dispose()
 
 

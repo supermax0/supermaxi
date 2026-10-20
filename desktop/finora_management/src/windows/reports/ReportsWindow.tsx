@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { CalendarDays, FileSpreadsheet, FileText, Layers, Printer, UserRound, Warehouse } from "lucide-react";
 import { useCallback, useState, type ReactNode } from "react";
+import { useWorkspaceHistory, useWorkspaceRequest } from "@/features/workspace/navigation";
 import { finora, toFinoraError } from "@/api/finora";
 import {
   REPORT_PERIODS,
@@ -36,6 +37,26 @@ export function ReportsWindow() {
   const [filters, setFilters] = useState<ReportFilters>(() => defaultFilters());
   const [view, setView] = useState<ReportSection | "dashboard">("dashboard");
   const [viewOptions, setViewOptions] = useState<SectionOptions>({});
+  useWorkspaceRequest("reports", (target) => {
+    if (target.period)
+      setFilters({
+        ...defaultFilters(),
+        period: target.period,
+        ...(target.dateFrom ? { dateFrom: target.dateFrom } : {}),
+        ...(target.dateTo ? { dateTo: target.dateTo } : {}),
+      });
+    if (target.tab && REPORT_SECTIONS.includes(target.tab as ReportSection)) {
+      setView(target.tab as ReportSection);
+      setViewOptions({});
+    } else if (target.tab === "dashboard") setView("dashboard");
+  });
+  useWorkspaceHistory({
+    window: "reports",
+    tab: view,
+    period: filters.period,
+    dateFrom: filters.dateFrom,
+    dateTo: filters.dateTo,
+  });
   const meta = useQuery({
     queryKey: ["reports", "meta"],
     queryFn: () => finora.reports.meta(),

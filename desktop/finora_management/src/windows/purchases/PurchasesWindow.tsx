@@ -39,6 +39,7 @@ import { useWindowManager } from "@/stores/windowManager";
 import { usePurchaseNavigation, purchaseNavigationScope } from "@/stores/purchaseNavigation";
 import { PurchaseComposer } from "./PurchaseComposer";
 import { PurchaseDetailsPanel } from "./PurchaseDetailsPanel";
+import { useWorkspaceHistory, useWorkspaceRequest } from "@/features/workspace/navigation";
 
 const TAB_LABELS: Record<PurchaseTab, string> = {
   all: "الكل",
@@ -82,6 +83,12 @@ export function PurchasesWindow() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [detailsId, setDetailsId] = useState<number | null>(null);
+  useWorkspaceRequest("purchases", (target) => {
+    if (target.tab && PURCHASE_TABS.includes(target.tab as PurchaseTab)) setTab(target.tab as PurchaseTab);
+    if (target.entityId) setDetailsId(target.entityId);
+    if (target.page) setPage(target.page);
+  });
+  useWorkspaceHistory({ window: "purchases", tab, page, ...(detailsId ? { entityId: detailsId } : {}) });
   const requestedPurchase = usePurchaseNavigation((state) => state.target);
   const [sourceTarget, setSourceTarget] = useState<typeof requestedPurchase>(null);
   const currentScope = purchaseNavigationScope();

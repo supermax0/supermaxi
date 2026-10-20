@@ -23,6 +23,7 @@ import { useSignOut } from "@/hooks/useSignOut";
 import { useConnection } from "@/stores/connection";
 import { usePreferences } from "@/stores/preferences";
 import { useCan, useSession } from "@/stores/session";
+import { useUi } from "@/stores/ui";
 import { desktopBridge } from "@/services/bridge";
 import { cn } from "@/utils/cn";
 import { OrdersSettingsSection } from "./OrdersSettingsSection";
@@ -209,6 +210,13 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose(): vo
     { id: "offline", label: "الأوفلاين والمزامنة", icon: Cloud },
   ];
   const [section, setSection] = useState<SectionId>("account");
+  const settingsTarget = useUi((s) => s.settingsTarget);
+  useEffect(() => {
+    if (open && settingsTarget) {
+      setSection(settingsTarget);
+      useUi.getState().clearSettingsTarget();
+    }
+  }, [open, settingsTarget]);
 
   useEffect(() => {
     if (!open) return;

@@ -5,12 +5,15 @@ import { useSession } from "@/stores/session";
 import { useConnection } from "@/stores/connection";
 import { useNotifications } from "@/stores/notifications";
 import { desktopBridge, hasDesktopBridge } from "@/services/bridge";
+import { sessionScope, useWorkspace } from "@/features/workspace/state";
 
 export function useOperationsNotifications() {
   const session = useSession((s) => s.session),
     online = useConnection((s) => s.status === "online");
   const identity = JSON.stringify(session),
     latest = useRef<number | null>(null);
+  const workspaceScope = useWorkspace((s) => s.scope);
+  const workspaceIdentity = `${workspaceScope}:${sessionScope(session)}`;
   const enabled = hasDesktopBridge() && !!desktopBridge().lifecycle && online && !!session;
   const orders = useQuery({
     queryKey: ["desktop", "alerts", "orders", identity],
@@ -20,8 +23,8 @@ export function useOperationsNotifications() {
     refetchInterval: 30_000,
   });
   const stock = useQuery({
-    queryKey: ["desktop", "alerts", "stock", identity],
-    enabled: enabled && !!session?.permissions.includes("can_manage_inventory"),
+    queryKey: ["workspace", "stock", workspaceIdentity],
+    enabled: enabled && !!workspaceScope && !!session?.permissions.includes("can_manage_inventory"),
     queryFn: () => finora.products.list({ page: 1, pageSize: 1 }),
     refetchInterval: 60_000,
   });

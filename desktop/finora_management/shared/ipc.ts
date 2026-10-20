@@ -23,6 +23,8 @@ export const ALLOWED_PATH_PREFIXES = [
   "/delivery/",
   "/pos/",
   "/reports/api/v2/",
+  // Only the read-only assistant's desktop adapters; provider settings stay inaccessible here.
+  "/finora-ai/api/desktop/",
   // expenses window: JSON API + the page's own delete / add-category actions (not the HTML page)
   "/expenses/api/",
   "/expenses/delete/",

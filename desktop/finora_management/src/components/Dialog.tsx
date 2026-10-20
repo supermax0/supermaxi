@@ -12,7 +12,7 @@ interface DialogShellProps {
   footer: ReactNode;
 }
 
-function DialogShell({ open, title, onClose, children, footer }: DialogShellProps) {
+export function DialogShell({ open, title, onClose, children, footer }: DialogShellProps) {
   const panel = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;

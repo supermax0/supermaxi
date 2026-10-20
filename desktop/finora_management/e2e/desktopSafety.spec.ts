@@ -15,7 +15,7 @@ function removeProfile(directory: string) {
   rmSync(directory, { recursive: true, force: true });
 }
 
-test("original shell without added pages, safe exit and encrypted backup restore", async () => {
+test("native workspace without connected pages, safe exit and encrypted backup restore", async () => {
   test.setTimeout(120_000);
   const stub = await startFinoraStub();
   const directory = mkdtempSync(path.join(os.tmpdir(), "finora-desktop-safety-"));
@@ -34,7 +34,7 @@ test("original shell without added pages, safe exit and encrypted backup restore
     await page.getByLabel("كلمة المرور", { exact: true }).fill(STUB_CREDENTIALS.password);
     await page.getByRole("button", { name: "تسجيل الدخول", exact: true }).click();
     await expect(page.getByRole("navigation", { name: "النوافذ" })).toBeVisible();
-    await expect(page.getByRole("main", { name: "الرئيسية" })).toHaveCount(0);
+    await expect(page.getByRole("main", { name: "الرئيسية" })).toBeVisible();
     for (const [width, height] of [
       [1440, 900],
       [1024, 600],
@@ -61,7 +61,7 @@ test("original shell without added pages, safe exit and encrypted backup restore
         () => "pages" in ((window as Window & { finoraDesktop?: FinoraDesktopBridge }).finoraDesktop ?? {}),
       ),
     ).toBe(false);
-    expect(stub.requests.some((request) => request.includes("/api/v1/desktop/workspace"))).toBe(false);
+    expect(stub.requests.some((request) => request === "GET /api/v1/desktop/workspace")).toBe(false);
     await app.evaluate(({ dialog }) => {
       dialog.showMessageBoxSync = () => 0;
       dialog.showMessageBox = async () => ({ response: 0, checkboxChecked: false });
@@ -111,7 +111,7 @@ test("original shell without added pages, safe exit and encrypted backup restore
     );
     expect(restored).toEqual({ restored: true });
     await expect(page.getByRole("navigation", { name: "النوافذ" })).toBeVisible();
-    await expect(page.getByRole("main", { name: "الرئيسية" })).toHaveCount(0);
+    await expect(page.getByRole("main", { name: "الرئيسية" })).toBeVisible();
     expect(errors).toEqual([]);
     // Keep screenshots as explicit local QA artifacts, independent of the test profile.
     const { copyFileSync, mkdirSync } = await import("node:fs");
@@ -146,7 +146,7 @@ test("recovers a missing Windows key into a new slot while preserving the origin
     await page.getByLabel("كلمة المرور", { exact: true }).fill(STUB_CREDENTIALS.password);
     await page.getByRole("button", { name: "تسجيل الدخول", exact: true }).click();
     await expect(page.getByRole("navigation", { name: "النوافذ" })).toBeVisible();
-    await expect(page.getByRole("main", { name: "الرئيسية" })).toHaveCount(0);
+    await expect(page.getByRole("main", { name: "الرئيسية" })).toBeVisible();
     const file = path.join(directory, "recover.finorabackup");
     await application.evaluate(({ dialog }, file) => {
       dialog.showSaveDialog = async () => ({ canceled: false, filePath: file });

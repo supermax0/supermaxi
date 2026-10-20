@@ -25,6 +25,7 @@ export function useExitProtection() {
         return null;
       if (
         !draftScope(node) ||
+        node.closest("[data-nontransactional]") ||
         node.closest('[aria-label="الإعدادات"], [role="search"]') ||
         (node instanceof HTMLInputElement && ["search", "password", "hidden"].includes(node.type))
       )
@@ -45,7 +46,12 @@ export function useExitProtection() {
             dirty,
             saving:
               client.isMutating({
-                predicate: (mutation) => mutation.options.mutationKey?.[1] !== "signout",
+                predicate: (mutation) =>
+                  mutation.options.mutationKey?.[1] !== "signout" &&
+                  !(
+                    mutation.options.mutationKey?.[0] === "workspace" &&
+                    mutation.options.mutationKey?.[1] === "assistant-read"
+                  ),
               }) > 0,
           })
           .catch(() => console.error("[exit] protection unavailable"));

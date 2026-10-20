@@ -86,7 +86,7 @@ export function WindowTransitionManager() {
   }, [stage, next]);
 
   return (
-    <div ref={setStage} className="relative min-h-0 flex-1" data-testid="window-stage">
+    <div ref={setStage} className="pointer-events-none relative min-h-0 flex-1" data-testid="window-stage">
       {stage &&
         WINDOW_IDS.filter((id) => mounted.has(id)).map((id) => {
           const Body = BODIES[id];

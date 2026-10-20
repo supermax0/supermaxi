@@ -11,6 +11,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { useState } from "react";
+import { useWorkspaceHistory, useWorkspaceRequest } from "@/features/workspace/navigation";
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "@/stores/toasts";
 import { finora, toFinoraError } from "@/api/finora";
@@ -41,6 +42,23 @@ export function ShippingCenterWindow() {
   const [openManifest, setOpenManifest] = useState<number | null>(null);
   const [dialog, setDialog] = useState<"settlement" | "handover" | null>(null);
   const [settlementView, setSettlementView] = useState<"receipts" | "manifests">("receipts");
+  const [manifestState, setManifestState] = useState<"all" | "open" | "executed">("all");
+  const [manifestRevision, setManifestRevision] = useState(0);
+  useWorkspaceRequest("shipping", (target) => {
+    if (
+      target.tab === "open-manifests" ||
+      target.tab === "executed-manifests" ||
+      target.tab === "manifests"
+    ) {
+      setSection("manifests");
+      setManifestState(
+        target.tab === "open-manifests" ? "open" : target.tab === "executed-manifests" ? "executed" : "all",
+      );
+      setManifestRevision((n) => n + 1);
+      setOpenManifest(null);
+    } else if (SECTIONS.some((item) => item.id === target.tab)) setSection(target.tab as Section);
+  });
+  useWorkspaceHistory({ window: "shipping", tab: section }, section !== "manifests");
   const fromPortal = useMutation({
     mutationFn: (agentId: number) =>
       finora.shipping.createSettlement({
@@ -149,7 +167,13 @@ export function ShippingCenterWindow() {
           />
         )}
         {section === "manifests" && (
-          <ManifestsSection enabled={active} carriers={carriers} onOpen={setOpenManifest} />
+          <ManifestsSection
+            key={manifestRevision}
+            initialState={manifestState}
+            enabled={active}
+            carriers={carriers}
+            onOpen={setOpenManifest}
+          />
         )}
         {section === "settlements" && (
           <div className="flex h-full min-h-0 flex-col">

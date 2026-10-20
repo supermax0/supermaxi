@@ -69,8 +69,8 @@ describe("FINORA Management shell", () => {
     expect(bridge.finora.request).toHaveBeenCalledWith(
       expect.objectContaining({ body: { tenant_slug: "acme", username: "sara", password: "secret-pass" } }),
     );
-    // greeting on the idle stage + the sign-in toast
-    expect(screen.getAllByText("أهلاً سارة")).toHaveLength(2);
+    expect(screen.getByRole("main", { name: "الرئيسية" })).toBeInTheDocument();
+    expect(screen.getAllByText("أهلاً سارة")).toHaveLength(1);
   });
 
   it("shows FINORA's error and clears the password on a failed sign-in", async () => {
@@ -189,7 +189,9 @@ describe("FINORA Management shell", () => {
     expect(await screen.findByText("لا يوجد اتصال بـ FINORA")).toBeInTheDocument();
 
     reachable = true;
-    await user.click(screen.getByRole("button", { name: "إعادة المحاولة" }));
+    const banner = screen.getByText("لا يوجد اتصال بـ FINORA").closest('[role="status"]');
+    expect(banner).not.toBeNull();
+    await user.click(within(banner as HTMLElement).getByRole("button", { name: "إعادة المحاولة" }));
     await waitFor(() => expect(screen.queryByText("لا يوجد اتصال بـ FINORA")).not.toBeInTheDocument());
   });
 });

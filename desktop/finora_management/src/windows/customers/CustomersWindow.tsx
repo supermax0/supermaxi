@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { ChevronDown, Clock3, FileText, Pencil, Plus, RefreshCw, UsersRound, Wallet } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { useWorkspaceHistory, useWorkspaceRequest } from "@/features/workspace/navigation";
 import { finora, toFinoraError } from "@/api/finora";
 import type { CustomerRow, CustomerTab } from "@/api/finora/customers";
 import { DataTable, type Column } from "@/components/DataTable";
@@ -391,6 +392,16 @@ export function CustomersWindow() {
   const [size, setSize] = useState(25);
   const [selected, setSelected] = useState<number | null>(null);
   const [editor, setEditor] = useState<"create" | CustomerRow | null>(null);
+  useWorkspaceRequest("customers", (target, action) => {
+    if (action === "customer") setEditor((current) => current ?? "create");
+    if (target.tab && ["all", "debt", "overdue", "settled"].includes(target.tab)) {
+      setTab(target.tab as CustomerTab);
+      setPage(1);
+    }
+    if (target.entityId) setSelected(target.entityId);
+    if (target.page) setPage(target.page);
+  });
+  useWorkspaceHistory({ window: "customers", tab, page, ...(selected ? { entityId: selected } : {}) });
   const online = useConnection((state) => state.status === "online");
   const [compactHeight, setCompactHeight] = useState(() => window.innerHeight <= 800);
   const [summaryOverride, setSummaryOverride] = useState<boolean | null>(null);

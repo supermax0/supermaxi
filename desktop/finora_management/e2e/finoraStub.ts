@@ -104,6 +104,7 @@ async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> 
 
 export async function startFinoraStub(
   options: {
+    workspace?: boolean;
     hr?: boolean;
     orderEditing?: boolean;
     orderCollection?: boolean;
@@ -154,6 +155,7 @@ export async function startFinoraStub(
     ...SESSION,
     permissions: [
       ...SESSION.permissions,
+      ...(options.workspace ? ["view_reports", "inventory.audit.view", "inventory.audit.count"] : []),
       ...(options.orderCollection ? ["pay_orders"] : []),
       ...(options.orderLifecycleServer ? ["pay_orders", "return_orders"] : []),
       ...(options.hr ? HR_PERMISSIONS : []),
@@ -271,6 +273,101 @@ export async function startFinoraStub(
         res.writeHead(302, { Location: "/login" });
         return res.end();
       }
+      if (path === "/api/v1/desktop/workspace/shipping")
+        return send(res, 200, { ok: true, open_manifests: options.workspace ? 1 : 0 });
+      if (path === "/api/v1/desktop/workspace/activity")
+        return send(res, 200, {
+          ok: true,
+          rows: options.workspace
+            ? [
+                {
+                  id: 21,
+                  title: "إضافة طلب",
+                  actor: "سارة",
+                  at: new Date().toISOString(),
+                  target: { window: "orders", entityId: 1042 },
+                  deleted: false,
+                },
+                {
+                  id: 20,
+                  title: "تعديل منتج",
+                  actor: "علي",
+                  at: new Date(Date.now() - 300000).toISOString(),
+                  target: { window: "products", entityId: 1 },
+                  deleted: false,
+                },
+              ]
+            : [],
+          has_more: false,
+        });
+      if (options.workspace && path === "/api/v1/desktop/workspace/sales")
+        return send(res, 200, {
+          ok: true,
+          value: 4850000,
+          previous: 3980000,
+          change: 21.9,
+          date: "2026-10-20",
+          captured_at: new Date().toISOString(),
+        });
+      if (options.workspace && path === "/api/v1/desktop/workspace/receivables")
+        return send(res, 200, {
+          ok: true,
+          value: 2450000,
+          overdue: 100000,
+          debtors: 3,
+          captured_at: new Date().toISOString(),
+        });
+      if (path === "/finora-ai/api/desktop/runtime")
+        return options.workspace
+          ? send(res, 200, {
+              success: true,
+              ready: true,
+              read_only: true,
+              notice: "مساعد FINORA · قراءة البيانات المصرّح بها",
+            })
+          : send(res, 404, {});
+      if (options.workspace && path === "/finora-ai/api/desktop/chat") {
+        const body = await readJson(req);
+        bodies.push({ path, body });
+        return send(res, 200, { success: true, message: "نتيجة المساعد في بيئة الاختبار" });
+      }
+      if (options.workspace && path === "/reports/api/v2/meta")
+        return send(res, 200, {
+          success: true,
+          company: "شركة الاختبار",
+          sections: { sales: true, customers: true },
+          can_export: true,
+          can_pick_branch: false,
+          branches: [{ id: 1, name: "الفرع الرئيسي" }],
+          employees: [],
+        });
+      if (options.workspace && path === "/reports/api/v2/section/sales")
+        return send(res, 200, {
+          success: true,
+          filters: {
+            period: url.searchParams.get("period") ?? "today",
+            date_from: "2026-10-20",
+            date_to: "2026-10-20",
+            branch_id: null,
+            employee_id: null,
+          },
+          metrics: {
+            gross: 4850000,
+            net: 4850000,
+            invoices: 24,
+            items: 24,
+            average: 202083,
+            discounts: 0,
+            returns: 0,
+            returns_count: 0,
+            cogs: null,
+            gross_profit: null,
+            change_pct: 21.9,
+          },
+          breakdown: { by: "day", rows: [] },
+          rows: [],
+          pagination: { page: 1, page_size: 25, total: 0, total_pages: 1 },
+        });
       if (
         options.cashShiftServer &&
         (path.startsWith("/api/finance/") ||

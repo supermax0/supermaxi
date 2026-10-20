@@ -30,6 +30,7 @@ import { toast } from "@/stores/toasts";
 import { useWindowManager } from "@/stores/windowManager";
 import { useCan, useSession } from "@/stores/session";
 import { formatNumber } from "@/utils/format";
+import { useWorkspaceHistory, useWorkspaceRequest } from "@/features/workspace/navigation";
 import { formatIqd } from "@/utils/money";
 import { ProductDetailsPanel } from "./ProductDetailsPanel";
 import { ProductEditor, type EditorTarget } from "./ProductEditor";
@@ -113,6 +114,41 @@ export function ProductsWindow() {
   );
 
   const rows = list.data?.rows;
+  useWorkspaceRequest("products", (target, action) => {
+    if (action === "product") {
+      setWorkspace("catalog");
+      setEditor((current) => current ?? { kind: "create" });
+      return;
+    }
+    if (action === "audit") {
+      if (editor) {
+        toast.info("أكمل نموذج المنتج المفتوح أو أغلقه قبل فتح الجرد");
+        return;
+      }
+      if (auditVisible) setWorkspace("count");
+      return;
+    }
+    if (target.tab === "low" || target.tab === "out" || target.tab === "available") {
+      setWorkspace("catalog");
+      setStock(target.tab);
+      setDraftStock(target.tab);
+      setPage(1);
+    } else if (target.tab === "count" && auditVisible) setWorkspace("count");
+    else if (
+      target.tab &&
+      ["catalog", "operations", "activity", "history"].includes(target.tab) &&
+      catalogAllowed
+    )
+      setWorkspace(target.tab as "catalog" | "operations" | "activity" | "history");
+    if (target.page) setPage(target.page);
+    if (target.entityId) void openActivityProduct(target.entityId);
+  });
+  useWorkspaceHistory({
+    window: "products",
+    tab: workspace === "catalog" ? stock || "catalog" : workspace,
+    page,
+    ...(detailsId ? { entityId: detailsId } : {}),
+  });
   const stats = list.data?.stats;
   const selectedRow =
     rows?.find((row) => row.id === detailsId) ??

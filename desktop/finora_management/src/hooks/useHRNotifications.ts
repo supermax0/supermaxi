@@ -4,23 +4,31 @@ import { finora } from "@/api/finora";
 import { useSession } from "@/stores/session";
 import { useConnection } from "@/stores/connection";
 import { useNotifications } from "@/stores/notifications";
-export function useHRNotifications() {
+export function useHRAlerts(visible = true, poll = true) {
   const session = useSession((s) => s.session);
   const online = useConnection((s) => s.status === "online");
   const enabled = !!session?.permissions.some((p) => p === "hr.view" || p === "hr.self");
   const identity = JSON.stringify([
     session?.tenant.id,
+    session?.tenant.slug,
     session?.user.id,
     session?.branch?.id,
+    session?.branch_scope,
     session?.permissions,
     session?.hr_scope_revision,
   ]);
   const alerts = useQuery({
     queryKey: ["hr", "notifications", identity],
     queryFn: finora.hr.notifications,
-    enabled: enabled && online,
-    refetchInterval: 60000,
+    enabled: visible && enabled && online,
+    refetchInterval: poll ? 60000 : false,
+    placeholderData: undefined,
   });
+  return { ...alerts, identity };
+}
+export function useHRNotifications() {
+  const alerts = useHRAlerts();
+  const identity = alerts.identity;
   useEffect(() => {
     useNotifications.getState().replaceHR([]);
     return () => useNotifications.getState().replaceHR([]);

@@ -198,11 +198,43 @@ def chat_stream():
     return Response(generate(), mimetype="text/event-stream", headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
 
+@finora_ai_bp.get("/api/desktop/runtime")
 @finora_ai_bp.get("/api/runtime")
 def runtime_info():
     response = jsonify({"success": True, **FinoraAIOrchestrator(_context()).runtime_info()})
     response.headers["Cache-Control"] = "no-store"
     return response
+
+
+@finora_ai_bp.post("/api/desktop/chat")
+def desktop_chat():
+    """JSON adapter for the existing read-only assistant, using its existing provider/settings.
+
+    Electron's validated JSON transport does not consume SSE. Keep authentication,
+    feature/permission guards, tool authorization and rate limits identical to chat_stream.
+    A fresh conversation prevents previous-branch context being replayed after a scope switch.
+    """
+    context = _context()
+    payload = request.get_json(silent=True)
+    if not isinstance(payload, dict) or set(payload) != {"message"}:
+        return jsonify(success=False, error={"code": "VALIDATION_ERROR"}), 400
+    message = payload.get("message")
+    if not isinstance(message, str) or not 1 <= len(message.strip()) <= 4000:
+        return jsonify(success=False, error={"code": "VALIDATION_ERROR"}), 400
+    denied = _rate_limit(context)
+    if denied:
+        return denied
+    try:
+        for event, data in FinoraAIOrchestrator(context).run_events(
+            message.strip(), page_context={"page": "desktop-workspace"}
+        ):
+            if event == "done":
+                return jsonify(success=True, message=data["message"])
+        return jsonify(success=False, error={"code": "AI_REQUEST_FAILED"}), 502
+    except Exception as error:
+        db.session.rollback()
+        current_app.logger.warning("Finora desktop assistant failed: %s", type(error).__name__)
+        return jsonify(success=False, error={"code": "AI_REQUEST_FAILED", "message": "تعذر إكمال الطلب. حاول مرة أخرى."}), 502
 
 
 @finora_ai_bp.get("/api/conversations")

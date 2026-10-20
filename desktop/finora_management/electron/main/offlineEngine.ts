@@ -33,7 +33,7 @@ type Sender = (request: FinoraRequest) => Promise<FinoraResponse>;
 const SESSION_PATH = "/api/v1/desktop/auth/session";
 const OFFLINE_LEASE_MS = 24 * 60 * 60_000;
 const READ_PATH =
-  /^\/(api\/finance\/(meta|vouchers|loans|parties|notifications|vouchers\/\d+|loans\/\d+|parties\/(customer|supplier)\/\d+)|hr\/api\/(page|lookups|overview|workspace|calendar|people\/\d+)|orders\/(data|payment-accounts|api\/(counts|lookups)|details\/\d+)|inventory\/api\/(products(?:\/\d+)?|movements\/\d+)|purchases\/api\/(page|\d+|products\/search)|suppliers\/api\/(page|\d+|sale-products)|pos\/(api\/(bootstrap|products)|search-customer|payment-accounts))$/;
+  /^\/(api\/v1\/desktop\/workspace\/(sales|receivables|activity|shipping)|api\/finance\/(meta|vouchers|loans|parties|notifications|vouchers\/\d+|loans\/\d+|parties\/(customer|supplier)\/\d+)|hr\/api\/(page|lookups|overview|workspace|calendar|people\/\d+)|orders\/(data|payment-accounts|api\/(counts|lookups)|details\/\d+)|inventory\/api\/(products(?:\/\d+)?|movements\/\d+)|purchases\/api\/(page|\d+|products\/search)|suppliers\/api\/(page|\d+|sale-products)|pos\/(api\/(bootstrap|products)|search-customer|payment-accounts))$/;
 
 export function cacheKey(request: FinoraRequest): string {
   return JSON.stringify([

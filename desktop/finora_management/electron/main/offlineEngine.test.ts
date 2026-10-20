@@ -69,6 +69,24 @@ function fixture() {
   };
 }
 
+it.each(["sales", "receivables", "activity"])(
+  "caches workspace %s in the existing encrypted, permission-scoped offline store",
+  async (part) => {
+    const { engine, sender, disconnect } = fixture();
+    await engine.request({ method: "GET", path: SESSION });
+    const request: FinoraRequest = { method: "GET", path: `/api/v1/desktop/workspace/${part}` };
+    const first = await engine.request(request);
+    disconnect();
+    const cached = await engine.request(request);
+    expect(cached.ok).toBe(true);
+    expect(cached).toMatchObject({ source: "offline", data: first.ok ? first.data : null });
+    expect(
+      (await fs.readFile(path.join(directory, "local.enc"))).includes(Buffer.from("Private television")),
+    ).toBe(false);
+    expect(sender.mock.calls.filter(([r]) => r.method === "POST")).toHaveLength(0);
+  },
+);
+
 it.each(["session-review", "late-error", "late-invalid"])(
   "keeps a confirmed HR approval done during concurrent synchronization (%s)",
   async (race) => {

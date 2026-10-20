@@ -55,6 +55,7 @@ import { useCan, useSession } from "@/stores/session";
 import { toast } from "@/stores/toasts";
 import { useWindowManager } from "@/stores/windowManager";
 import { useOrderNavigation } from "@/stores/orderNavigation";
+import { useWorkspaceHistory, useWorkspaceRequest } from "@/features/workspace/navigation";
 import { cn } from "@/utils/cn";
 import { formatIqd } from "@/utils/money";
 import { OrderDetailsPanel } from "./OrderDetailsPanel";
@@ -123,6 +124,25 @@ export function OrdersWindow() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [detailsId, setDetailsId] = useState<number | null>(null);
+  useWorkspaceRequest("orders", (target) => {
+    if (target.tab && ORDER_TABS.includes(target.tab as OrderTab)) setTab(target.tab as OrderTab);
+    if (target.entityId) setDetailsId(target.entityId);
+    if (target.page) setPage(target.page);
+    if (target.dateFrom || target.dateTo) {
+      const next = { ...EMPTY_DRAFT, dateFrom: target.dateFrom ?? "", dateTo: target.dateTo ?? "" };
+      setDraft(next);
+      setApplied(next);
+      setPage(1);
+    }
+  });
+  useWorkspaceHistory({
+    window: "orders",
+    tab,
+    page,
+    ...(detailsId ? { entityId: detailsId } : {}),
+    ...(applied.dateFrom ? { dateFrom: applied.dateFrom } : {}),
+    ...(applied.dateTo ? { dateTo: applied.dateTo } : {}),
+  });
   const requestedInvoice = useOrderNavigation((state) => state.invoiceId);
   useEffect(() => {
     if (!active || requestedInvoice === null) return;

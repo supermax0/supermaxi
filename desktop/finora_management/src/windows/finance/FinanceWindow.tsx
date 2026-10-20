@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useWorkspaceHistory, useWorkspaceRequest } from "@/features/workspace/navigation";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -136,6 +137,12 @@ export function FinanceWindow() {
   const [selected, setSelected] = useState<Selected | null>(null);
   const [statement, setStatement] = useState<{ type: "customer" | "supplier"; id: number } | null>(null);
   const [editor, setEditor] = useState<"voucher" | "loan" | "settings" | "reconciliation" | null>(null);
+  const [initialCategory, setInitialCategory] = useState<string | undefined>();
+  useWorkspaceHistory({
+    window: "finance",
+    tab,
+    ...(selected?.type === "voucher" ? { entityId: selected.id } : {}),
+  });
   const requestedCollection = useFinanceNavigation((state) => state.collection);
   const requestedVoucher = useFinanceNavigation((state) => state.voucherId);
   const [collection, setCollection] = useState<CustomerCollection | null>(null);
@@ -148,6 +155,43 @@ export function FinanceWindow() {
     enabled: active,
   });
   const caps = meta.data?.capabilities || {};
+  useWorkspaceRequest(
+    "finance",
+    (target, action) => {
+      if (action === "receipt") {
+        if (!caps["finance.create"]) {
+          toast.error("تحتاج صلاحية إنشاء سند مالي");
+          return;
+        }
+        if (editor) {
+          toast.info("أكمل النموذج المالي المفتوح أو أغلقه أولاً");
+          return;
+        }
+        setEditing(null);
+        setInitialCategory("customer_payment");
+        setEditor("voucher");
+        setTab("vouchers");
+      }
+      const permissions: Record<string, string> = {
+        vouchers: "finance.view",
+        loans: "finance.loans",
+        journal: "finance.ledger",
+        accounts: "finance.view",
+        control: "finance.reconcile",
+        shifts: "finance.view",
+      };
+      if (target.tab && permissions[target.tab] && caps[permissions[target.tab] ?? ""])
+        setTab(target.tab as Tab);
+      if (target.dateFrom) setFrom(target.dateFrom);
+      if (target.dateTo) setTo(target.dateTo);
+      if (target.entityId && caps["finance.view"]) {
+        setTab("vouchers");
+        setSelected({ type: "voucher", id: target.entityId });
+      }
+    },
+    !!meta.data,
+  );
+
   useEffect(() => {
     if (!active || !requestedVoucher || !meta.data || editor) return;
     if (meta.data.capabilities["finance.view"]) {
@@ -1011,16 +1055,19 @@ export function FinanceWindow() {
           {editor && meta.data && (
             <FinanceEditor
               mode={editor}
+              initialCategory={initialCategory}
               initial={editing || undefined}
               collection={collection || undefined}
               meta={meta.data}
               online={online}
               onClose={() => {
+                setInitialCategory(undefined);
                 setEditing(null);
                 setEditor(null);
                 setCollection(null);
               }}
               onSaved={() => {
+                setInitialCategory(undefined);
                 setEditing(null);
                 setEditor(null);
                 setCollection(null);
@@ -1366,6 +1413,7 @@ function Attachments({
 }
 
 function FinanceEditor({
+  initialCategory,
   initial,
   collection,
   mode,
@@ -1374,6 +1422,7 @@ function FinanceEditor({
   onClose,
   onSaved,
 }: {
+  initialCategory?: string;
   initial?: FinanceVoucher;
   collection?: CustomerCollection;
   mode: "voucher" | "loan" | "settings" | "reconciliation";
@@ -1383,7 +1432,7 @@ function FinanceEditor({
   onSaved(): void;
 }) {
   const [form, setForm] = useState<Record<string, string>>({
-    category: "expense",
+    category: initialCategory ?? "expense",
     direction: "borrowed",
     amount: "",
     principal: "",
