@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import time
+import hashlib
 from collections import defaultdict, deque
 from datetime import datetime
 from types import SimpleNamespace
@@ -202,6 +203,46 @@ def chat_stream():
 @finora_ai_bp.get("/api/runtime")
 def runtime_info():
     response = jsonify({"success": True, **FinoraAIOrchestrator(_context()).runtime_info()})
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+def _desktop_local_scope(context):
+    from utils.branch_scope import allowed_branch_ids, viewing_all_branches
+    scope = [context.tenant_slug, context.user_id, context.role, sorted(context.permissions),
+             sorted(allowed_branch_ids()), viewing_all_branches(), session.get("branch_id")]
+    return hashlib.sha256(json.dumps(scope, sort_keys=True, default=str).encode()).hexdigest()
+
+
+@finora_ai_bp.get("/api/desktop/tools")
+def desktop_local_tools():
+    """Read-only tools for a local model; credentials and language inference stay on the PC."""
+    from modules.finora_ai.services import list_tools
+    context = _context()
+    response = jsonify(success=True, scope=_desktop_local_scope(context), read_only=True,
+                       tools=[{"name": tool["name"], "description": tool["description"],
+                               "parameters": tool["inputSchema"]} for tool in list_tools(context)])
+    response.headers["Cache-Control"] = "no-store"
+    return response
+
+
+@finora_ai_bp.post("/api/desktop/tool")
+def desktop_local_tool():
+    from modules.finora_ai.services import execute_tool, list_tools
+    context = _context()
+    payload = request.get_json(silent=True)
+    if (not isinstance(payload, dict) or set(payload) != {"name", "arguments", "scope"}
+            or not isinstance(payload["name"], str) or not isinstance(payload["arguments"], dict)
+            or not isinstance(payload["scope"], str)):
+        return jsonify(success=False, error={"code": "VALIDATION_ERROR"}), 400
+    if payload["scope"] != _desktop_local_scope(context):
+        return jsonify(success=False, error={"code": "SCOPE_CHANGED", "message": "تغير الحساب أو نطاق الفروع. أعد السؤال ضمن النطاق الحالي."}), 409
+    if payload["name"] not in {tool["name"] for tool in list_tools(context)}:
+        return jsonify(success=False, error={"code": "PERMISSION_DENIED"}), 403
+    denied = _rate_limit(context)
+    if denied:
+        return denied
+    response = jsonify(execute_tool(context, payload["name"], payload["arguments"], provider="desktop-local"))
     response.headers["Cache-Control"] = "no-store"
     return response
 

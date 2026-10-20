@@ -7,6 +7,9 @@ import { afterEach, vi } from "vitest";
 if (!Element.prototype.scrollTo) {
   Object.defineProperty(Element.prototype, "scrollTo", { configurable: true, value: vi.fn() });
 }
+if (!Element.prototype.scrollIntoView) {
+  Object.defineProperty(Element.prototype, "scrollIntoView", { configurable: true, value: vi.fn() });
+}
 
 // Whole-app renders run in parallel workers; 1 s is too tight for findBy* under load.
 configure({ asyncUtilTimeout: 3000 });

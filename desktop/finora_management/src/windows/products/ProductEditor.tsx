@@ -1,3 +1,4 @@
+import { useAssistantDraftFields } from "@/features/assistant/draftQueue";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -448,6 +449,14 @@ export function ProductEditor({ target, categories, brands, serverUrl, onClose }
       setForm(state);
     }
   }, [details.data]);
+  useAssistantDraftFields("product", target?.kind === "create", (fields) => {
+    const permitted = { ...fields };
+    if (!canEditPrice) {
+      delete permitted.buyPrice;
+      delete permitted.salePrice;
+    }
+    setForm((current) => ({ ...current, ...permitted }));
+  });
   useEffect(
     () => () => {
       if (image) URL.revokeObjectURL(image.preview);

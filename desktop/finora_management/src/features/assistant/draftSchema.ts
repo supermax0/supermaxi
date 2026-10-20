@@ -1,0 +1,46 @@
+import { z } from "zod";
+const text = z.string().trim().max(150);
+const note = z.string().max(2000);
+const money = z.number().finite().nonnegative().max(1e12);
+const item = z
+  .object({
+    product_id: z.number().int().positive(),
+    quantity: z.number().finite().positive().max(10000),
+    color: z.string().max(100).optional(),
+  })
+  .strict();
+export const draftSchemas = {
+  product: z
+    .object({
+      name: text.optional(),
+      sku: text.optional(),
+      barcode: text.optional(),
+      description: note.optional(),
+      buyPrice: money.optional(),
+      salePrice: money.optional(),
+    })
+    .strict(),
+  customer: z
+    .object({
+      name: text.optional(),
+      phone: z.string().max(20).optional(),
+      city: z.string().max(100).optional(),
+      address: z.string().max(255).optional(),
+      note: note.optional(),
+    })
+    .strict(),
+  expense: z.object({ title: text.optional(), amount: money.optional(), note: note.optional() }).strict(),
+  receipt: z.object({ amount: money.optional(), note: note.optional() }).strict(),
+  sale: z.object({ items: z.array(item).max(12).optional() }).strict(),
+  purchase: z.object({ items: z.array(item).max(12).optional(), note: note.optional() }).strict(),
+};
+export type DraftKind = keyof typeof draftSchemas;
+export function validateDraft(kind: string, fields: unknown): Record<string, unknown> {
+  if (!Object.hasOwn(draftSchemas, kind)) throw Error("نوع المسودة غير مدعوم");
+  const parsed = draftSchemas[kind as DraftKind].safeParse(fields);
+  if (!parsed.success)
+    throw Error(
+      "المسودة تتضمن حقولاً غير مدعومة أو قيماً غير صالحة. اطلب حقولاً أساسية فقط، وحدد الأطراف والحسابات داخل النموذج الأصلي.",
+    );
+  return parsed.data;
+}

@@ -1,6 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { createPortal } from "react-dom";
 import { finora, toFinoraError } from "@/api/finora";
 import { lineKey, useCart, type CartLine } from "@/features/pos/cart";
@@ -11,17 +11,19 @@ export function EditInvoiceDialog({ open, onClose }: { open: boolean; onClose():
   const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  const close = useRef(onClose);
+  close.current = onClose;
   const loadForEdit = useCart((s) => s.loadForEdit);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return;
     setText("");
     setError(null);
     const frame = requestAnimationFrame(() => input.current?.focus());
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        event.stopPropagation();
-        onClose();
+        event.stopImmediatePropagation();
+        close.current();
       }
     };
     window.addEventListener("keydown", onKey, true);
@@ -29,7 +31,7 @@ export function EditInvoiceDialog({ open, onClose }: { open: boolean; onClose():
       cancelAnimationFrame(frame);
       window.removeEventListener("keydown", onKey, true);
     };
-  }, [open, onClose]);
+  }, [open]);
 
   const load = useMutation({
     mutationFn: (id: number) => finora.orders.details(id),

@@ -2,7 +2,7 @@
   "name": "finora-management-desktop",
   "productName": "FINORA Management",
   "private": true,
-  "version": "0.9.1",
+  "version": "0.10.0",
   "description": "FINORA Management Desktop â€” orders, purchases and products client for FINORA",
   "main": "dist-electron/main/index.js",
   "scripts": {

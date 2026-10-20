@@ -1,3 +1,4 @@
+import { useAssistantDraftFields } from "@/features/assistant/draftQueue";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import { finora, toFinoraError } from "@/api/finora";
@@ -45,6 +46,14 @@ export function CustomerEditor({
     address: row?.address ?? "",
     notes: row?.notes ?? "",
   }));
+  useAssistantDraftFields("customer", !row, (fields) => {
+    const { note, ...customer } = fields;
+    setData((current) => ({
+      ...current,
+      ...customer,
+      notes: typeof note === "string" ? note : current.notes,
+    }));
+  });
   const save = useMutation({
     mutationFn: () => finora.customers.save(data, key, row),
     onSuccess: (saved) => {

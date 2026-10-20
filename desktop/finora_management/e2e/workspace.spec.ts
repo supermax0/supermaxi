@@ -201,9 +201,13 @@ test("native Smart Workspace layout, real navigation, preferences and read-only 
     await customization.getByRole("button", { name: "حفظ التخصيص", exact: true }).click();
     await home.getByLabel("اسأل FINORA").fill("اعرض طلبات اليوم");
     await home.getByRole("button", { name: "إرسال إلى مساعد FINORA", exact: true }).click();
-    await expect(home.getByText("نتيجة المساعد في بيئة الاختبار")).toBeVisible();
+    const assistant = page.getByRole("complementary", { name: "مساعد فينورا", exact: true });
+    await expect(assistant).toBeVisible();
+    await expect(assistant.getByLabel("سؤال مساعد فينورا")).toHaveValue("اعرض طلبات اليوم");
+    await assistant.getByRole("button", { name: "إرسال سؤال المساعد", exact: true }).click();
+    await expect(assistant.getByText(/تقدر تبدأ بالتعليم التفاعلي/)).toBeVisible();
     expect(await home.evaluate((node) => node.scrollHeight - node.clientHeight)).toBeLessThanOrEqual(1);
-    expect(stub.bodies.filter((row) => row.path === "/finora-ai/api/desktop/chat")).toHaveLength(1);
+    expect(stub.bodies.filter((row) => row.path === "/finora-ai/api/desktop/chat")).toHaveLength(0);
     expect(stub.bodies.some((row) => /commands|checkout|payment$/.test(row.path))).toBe(false);
     expect(errors).toEqual([]);
     writeFileSync(

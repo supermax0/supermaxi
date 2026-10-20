@@ -1,3 +1,5 @@
+import { AssistantShell } from "@/features/assistant/AssistantPanel";
+import { useAssistant } from "@/features/assistant/state";
 import { useOperationsNotifications } from "@/hooks/useOperationsNotifications";
 import { LogOut, Maximize, Settings, type LucideIcon } from "lucide-react";
 import { useMemo } from "react";
@@ -79,7 +81,21 @@ export function Shell() {
       windows.map((id) => [`ctrl+${WINDOWS[id].shortcut}`, () => useWindowManager.getState().toggle(id)]),
     ),
     escape: () => {
-      if (!overlayOpen()) useWindowManager.getState().close();
+      if (overlayOpen()) return;
+      const assistant = useAssistant.getState();
+      if (assistant.open) assistant.close();
+      else if (assistant.training) useAssistant.setState({ training: null });
+      else {
+        const editorOpen = Array.from(
+          document.querySelectorAll('[role="dialog"]:not([data-window]), [role="complementary"]'),
+        ).some(
+          (node) =>
+            node.getClientRects().length > 0 &&
+            getComputedStyle(node).visibility !== "hidden" &&
+            !node.closest('[aria-hidden="true"]'),
+        );
+        if (!editorOpen) useWindowManager.getState().close();
+      }
     },
   });
 
@@ -91,6 +107,7 @@ export function Shell() {
         <SmartWorkspace />
         <WindowTransitionManager />
       </div>
+      <AssistantShell />
       <CommandPalette open={paletteOpen} commands={commands} onClose={() => setPaletteOpen(false)} />
     </div>
   );

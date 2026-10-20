@@ -1,10 +1,15 @@
 import { useEffect, useRef } from "react";
+import { create } from "zustand";
 import { useSession } from "@/stores/session";
 import { useUi } from "@/stores/ui";
 import { useWindowManager } from "@/stores/windowManager";
 import { toast } from "@/stores/toasts";
 import type { WindowId } from "@/windows/registry";
 import { allowedWindow, useWorkspace, type ActionId, type WorkspaceTarget } from "./state";
+export const useLiveWorkspaceTarget = create<{
+  target: WorkspaceTarget | null;
+  setTarget(target: WorkspaceTarget): void;
+}>()((set) => ({ target: null, setTarget: (target) => set({ target }) }));
 
 export const ACTION_TARGETS: Record<ActionId, WindowId | null> = {
   order: "pos",
@@ -66,6 +71,10 @@ export function useWorkspaceHistory(target: WorkspaceTarget, enabled = true): vo
   const ready = useWorkspace((s) => s.ready);
   const scope = useWorkspace((s) => s.scope);
   const serialized = JSON.stringify(target);
+  useEffect(() => {
+    if (enabled && active)
+      useLiveWorkspaceTarget.getState().setTarget(JSON.parse(serialized) as WorkspaceTarget);
+  }, [active, enabled, serialized]);
   useEffect(() => {
     if (!enabled || !active || !ready) return;
     const timer = window.setTimeout(

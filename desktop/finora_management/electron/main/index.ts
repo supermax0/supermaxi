@@ -42,12 +42,23 @@ import { windowGeometry } from "./windowGeometry";
 import { protectWindow } from "./lifecycle";
 import { backupProfile } from "./backupRuntime";
 import { checkUpdate, downloadUpdate, launchUpdate } from "./updates";
+import { chatLocalAssistant, probeLocalAssistant, transcribeLocal } from "./localAssistant";
+import {
+  assistantPublicSettings,
+  assistantSettings,
+  assistantToken,
+  configureAssistant,
+  loadAssistantHistory,
+  saveAssistantHistory,
+} from "./localAssistantRuntime";
+import { localChatSchema, localProbeSchema } from "../../shared/localAssistant";
 
 let protection: ReturnType<typeof protectWindow> | null = null;
 let inFlight = 0;
 let restoring = false;
 const approvedMedia = new Set<number>();
 const activeWriteRequests = new Set<number>();
+const assistantRequests = new Map<number, AbortController>();
 const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL ?? null;
 const RENDERER_FILE = path.join(__dirname, "../../dist/index.html");
 
@@ -96,6 +107,11 @@ function createMainWindow(): BrowserWindow {
     },
   });
 
+  const assistantSenderId = win.webContents.id;
+  win.webContents.once("destroyed", () => {
+    assistantRequests.get(assistantSenderId)?.abort();
+    assistantRequests.delete(assistantSenderId);
+  });
   protection = protectWindow(win, () => inFlight > 0 || activeWriteRequests.size > 0);
   win.once("ready-to-show", () => win.show());
   const pushState = () => {
@@ -161,6 +177,65 @@ function registerIpc(): void {
   handle(IPC.activity, (event, payload) => {
     assertTrustedSender(event);
     protection?.update(z.object({ dirty: z.boolean(), saving: z.boolean() }).strict().parse(payload));
+  });
+  handle(IPC.assistantSettings, (event) => {
+    assertTrustedSender(event);
+    return assistantPublicSettings();
+  });
+  handle(IPC.assistantConfigure, (event, input) => {
+    assertTrustedSender(event);
+    assistantRequests.get(event.sender.id)?.abort();
+    return configureAssistant(input);
+  });
+  handle(IPC.assistantProbe, async (event, input) => {
+    assertTrustedSender(event);
+    const parsed = localProbeSchema.parse(input);
+    return probeLocalAssistant(parsed, await assistantToken(parsed.settings));
+  });
+  handle(IPC.assistantCancel, (event) => {
+    assertTrustedSender(event);
+    assistantRequests.get(event.sender.id)?.abort();
+  });
+  handle(IPC.assistantHistoryLoad, (event) => {
+    assertTrustedSender(event);
+    return loadAssistantHistory();
+  });
+  handle(IPC.assistantHistorySave, (event, input) => {
+    assertTrustedSender(event);
+    return saveAssistantHistory(input);
+  });
+  handle(IPC.assistantChat, async (event, input) => {
+    assertTrustedSender(event);
+    const parsed = localChatSchema.parse(input);
+    if (assistantRequests.has(event.sender.id)) throw Error("انتظر انتهاء الإجابة الحالية أو أوقفها");
+    const controller = new AbortController();
+    assistantRequests.set(event.sender.id, controller);
+    try {
+      const settings = await assistantSettings();
+      return await chatLocalAssistant(settings, parsed, await assistantToken(settings), controller.signal);
+    } finally {
+      assistantRequests.delete(event.sender.id);
+    }
+  });
+  handle(IPC.assistantTranscribe, async (event, input) => {
+    assertTrustedSender(event);
+    const parsed = z
+      .object({
+        data: z
+          .instanceof(Uint8Array)
+          .refine((bytes) => bytes.length > 44 && bytes.length <= 12 * 1024 * 1024),
+        type: z.enum(["audio/wav", "audio/webm"]),
+      })
+      .strict()
+      .parse(input);
+    if (assistantRequests.has(event.sender.id)) throw Error("انتظر انتهاء الطلب الحالي أو أوقفه");
+    const controller = new AbortController();
+    assistantRequests.set(event.sender.id, controller);
+    try {
+      return await transcribeLocal(await assistantSettings(), parsed, "", controller.signal);
+    } finally {
+      assistantRequests.delete(event.sender.id);
+    }
   });
   handle(IPC.confirmLeave, async (event) => {
     assertTrustedSender(event);

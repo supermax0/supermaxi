@@ -1,5 +1,13 @@
 /** IPC channel names (dependency-free so the sandboxed preload stays tiny). */
 export const IPC = {
+  assistantSettings: "assistant:settings",
+  assistantConfigure: "assistant:configure",
+  assistantProbe: "assistant:probe",
+  assistantChat: "assistant:chat",
+  assistantCancel: "assistant:cancel",
+  assistantHistoryLoad: "assistant:history:load",
+  assistantHistorySave: "assistant:history:save",
+  assistantTranscribe: "assistant:transcribe",
   confirmLeave: "app:confirm-leave",
   activity: "app:activity",
   reload: "app:reload",

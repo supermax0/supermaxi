@@ -7,6 +7,7 @@
 import { z } from "zod";
 import type { OfflineBridge } from "./offline";
 import type { CustomerRecoveryBridge } from "./customerRecovery";
+import type { LocalAssistantBridge } from "./localAssistant";
 
 export { IPC } from "./channels";
 
@@ -407,6 +408,7 @@ export interface WindowState {
 }
 
 export interface FinoraDesktopBridge {
+  assistant?: LocalAssistantBridge;
   lifecycle?: {
     confirmLeave(): Promise<boolean>;
     activity(input: { dirty: boolean; saving: boolean }): Promise<void>;

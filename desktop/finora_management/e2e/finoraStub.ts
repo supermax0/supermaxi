@@ -21,6 +21,7 @@ const SESSION = {
   user: { id: 7, name: "سارة", username: "sara", role: "admin" },
   tenant: { id: 1, slug: "e2e-co", name: "شركة الاختبار", business_type: "general" },
   branch: { id: 1, name: "الفرع الرئيسي" },
+  branch_scope: "branch",
   roles: ["admin"],
   permissions: [
     "can_see_orders",
@@ -317,6 +318,46 @@ export async function startFinoraStub(
           debtors: 3,
           captured_at: new Date().toISOString(),
         });
+      if (options.workspace && path === "/finora-ai/api/desktop/tools")
+        return send(res, 200, {
+          success: true,
+          read_only: true,
+          scope: "e2e-local-scope",
+          tools: [
+            {
+              name: "search_customer",
+              description: "بحث العملاء",
+              parameters: {
+                type: "object",
+                properties: { query: { type: "string" }, limit: { type: "integer" } },
+                required: ["query"],
+                additionalProperties: false,
+              },
+            },
+            {
+              name: "get_customer_balance",
+              description: "رصيد العميل",
+              parameters: {
+                type: "object",
+                properties: { customer_id: { type: "integer" } },
+                required: ["customer_id"],
+                additionalProperties: false,
+              },
+            },
+          ],
+        });
+      if (options.workspace && path === "/finora-ai/api/desktop/tool") {
+        const body = await readJson(req);
+        bodies.push({ path, body });
+        return send(res, 200, {
+          success: true,
+          data:
+            body.name === "search_customer"
+              ? { items: [{ customer_id: 1, name: "عميل اختبار", phone: "07700000000" }] }
+              : { customer_id: 1, name: "عميل اختبار", balance: 300000 },
+          meta: { read_only: true, timestamp: new Date().toISOString(), currency: "IQD", tool: body.name },
+        });
+      }
       if (path === "/finora-ai/api/desktop/runtime")
         return options.workspace
           ? send(res, 200, {

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Keyboard,
+  Bot,
   Cloud,
   Power,
   LogOut,
@@ -31,11 +32,21 @@ import { PosSettingsSection } from "./PosSettingsSection";
 import { OfflineSettingsSection } from "./OfflineSettingsSection";
 import { SectionCard, SettingRow, Switch } from "./primitives";
 import { SoundSettingsSection } from "./SoundSettingsSection";
+import { AssistantSettingsSection } from "./AssistantSettingsSection";
 
 import { RecoverySettingsSection, UpdateSettingsSection } from "./RecoverySettingsSection";
 
 type SectionId =
-  "account" | "orders" | "pos" | "appearance" | "sounds" | "connection" | "offline" | "recovery" | "updates";
+  | "account"
+  | "orders"
+  | "pos"
+  | "appearance"
+  | "sounds"
+  | "connection"
+  | "offline"
+  | "recovery"
+  | "updates"
+  | "assistant";
 
 interface SectionDef {
   id: SectionId;
@@ -204,6 +215,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose(): vo
     ...(canPos ? [{ id: "pos" as const, label: "نقطة البيع", icon: ScanLine }] : []),
     { id: "appearance", label: "المظهر والاختصارات", icon: Palette },
     { id: "sounds", label: "الأصوات", icon: Volume2 },
+    { id: "assistant", label: "المساعد المحلي", icon: Bot },
     { id: "connection", label: "الاتصال", icon: Server },
     { id: "recovery", label: "النسخ والاستعادة", icon: Cloud },
     { id: "updates", label: "تحديث التطبيق", icon: Server },
@@ -255,7 +267,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose(): vo
           >
             <nav
               aria-label="أقسام الإعدادات"
-              className="settings-navigation flex w-[220px] shrink-0 flex-col gap-1 border-e border-line/70 bg-surface-sunken/60 p-4"
+              className="settings-navigation overflow-y-auto flex w-[220px] shrink-0 flex-col gap-1 border-e border-line/70 bg-surface-sunken/60 p-4"
             >
               <h2 className="px-3 pb-3 pt-1 text-lg font-bold text-ink">الإعدادات</h2>
               {sections.map((item) => {
@@ -310,6 +322,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose(): vo
                   )}
                   {section === "connection" && <ConnectionSection />}
                   {section === "sounds" && <SoundSettingsSection />}
+                  {section === "assistant" && <AssistantSettingsSection />}
                   {section === "offline" && <OfflineSettingsSection />}
                   {section === "recovery" && <RecoverySettingsSection />}
                   {section === "updates" && <UpdateSettingsSection />}

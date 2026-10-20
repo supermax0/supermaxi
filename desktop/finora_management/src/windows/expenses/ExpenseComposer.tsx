@@ -1,3 +1,4 @@
+import { useAssistantDraftFields } from "@/features/assistant/draftQueue";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CalendarClock, Check, Loader2, Plus, Receipt, Repeat } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -45,6 +46,7 @@ export function ExpenseComposer({ meta, onClose }: { meta: ExpensesMeta; onClose
     repeat_unit: "months",
     repeat_count: 12,
   });
+  useAssistantDraftFields("expense", true, (fields) => setForm((current) => ({ ...current, ...fields })));
   const [categories, setCategories] = useState(meta.categories);
   const [newCategory, setNewCategory] = useState<string | null>(null);
   const patch = (next: Partial<ExpenseInput>) => setForm((f) => ({ ...f, ...next }));

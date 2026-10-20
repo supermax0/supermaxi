@@ -5,7 +5,8 @@ export type TopPanel = "notifications" | "settings" | "more" | null;
 interface UiState {
   panel: TopPanel;
   paletteOpen: boolean;
-  settingsTarget: "offline" | null;
+  settingsTarget: "offline" | "assistant" | null;
+  openAssistantSettings(): void;
   openOfflineSettings(): void;
   clearSettingsTarget(): void;
   togglePanel(panel: Exclude<TopPanel, null>): void;
@@ -17,6 +18,9 @@ export const useUi = create<UiState>()((set, get) => ({
   panel: null,
   paletteOpen: false,
   settingsTarget: null,
+  openAssistantSettings() {
+    set({ panel: "settings", paletteOpen: false, settingsTarget: "assistant" });
+  },
   openOfflineSettings() {
     set({ panel: "settings", paletteOpen: false, settingsTarget: "offline" });
   },

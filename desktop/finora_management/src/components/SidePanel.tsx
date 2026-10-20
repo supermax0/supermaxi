@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
-import { useEffect, type ReactNode } from "react";
+import { useLayoutEffect, type ReactNode } from "react";
+import { useAssistant } from "@/features/assistant/state";
 import { IconButton } from "./IconButton";
 
 interface SidePanelProps {
@@ -26,15 +27,17 @@ export function SidePanel({
   children,
   layer = 30,
 }: SidePanelProps) {
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
       // Help and other floating controls take Escape before their containing panel.
       if (
         event.key === "Escape" &&
+        !useAssistant.getState().open &&
+        !useAssistant.getState().training &&
         !document.querySelector('[aria-modal="true"], [role="menu"], [data-popover]')
       ) {
-        event.stopPropagation();
+        event.stopImmediatePropagation();
         onClose();
       }
     };

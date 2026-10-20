@@ -1,3 +1,4 @@
+import { useAssistantDraftFields } from "@/features/assistant/draftQueue";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useWorkspaceHistory, useWorkspaceRequest } from "@/features/workspace/navigation";
 import {
@@ -1482,6 +1483,17 @@ function FinanceEditor({
         }
       : {}),
   });
+  useAssistantDraftFields(
+    "receipt",
+    mode === "voucher" && !initial && !collection && initialCategory === "customer_payment",
+    (fields) => {
+      setForm((current) => ({
+        ...current,
+        amount: fields.amount === undefined ? (current.amount ?? "") : String(fields.amount),
+        notes: typeof fields.note === "string" ? fields.note : (current.notes ?? ""),
+      }));
+    },
+  );
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [key, setKey] = useState(() => crypto.randomUUID());
