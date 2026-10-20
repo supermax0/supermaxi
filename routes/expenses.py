@@ -220,7 +220,7 @@ def run_scheduled_expense_posting_for_all_tenants(app):
 
 def _post_scheduled_expenses_for_tenants(app):
     from flask import g
-    from models.tenant import Tenant
+    from models.core.tenant import Tenant
 
     with app.app_context():
         slugs = [tenant.slug for tenant in Tenant.query.all() if tenant.slug]

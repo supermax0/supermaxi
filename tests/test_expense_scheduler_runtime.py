@@ -7,6 +7,32 @@ from types import SimpleNamespace
 import pytest
 
 
+def test_scheduler_reads_the_core_tenant_registry_and_isolates_failures(monkeypatch, tmp_path):
+    from flask import Flask, g
+    from extensions import db
+    from models.core.tenant import Tenant as CoreTenant
+    from routes import expenses
+
+    app = Flask(__name__, root_path=str(tmp_path))
+    app.config.update(SQLALCHEMY_DATABASE_URI="sqlite://", SQLALCHEMY_TRACK_MODIFICATIONS=False)
+    db.init_app(app)
+    with app.app_context():
+        CoreTenant.__table__.create(db.engine)
+        db.session.add_all([CoreTenant(name=slug, slug=slug, db_path=f"{slug}.db") for slug in ("alpha", "beta")])
+        db.session.commit()
+    visited = []
+
+    def post():
+        visited.append(g.tenant)
+        if g.tenant == "alpha":
+            raise ValueError("isolated test failure")
+        return 0, 0
+
+    monkeypatch.setattr(expenses, "post_due_unposted_expenses", post)
+    expenses._post_scheduled_expenses_for_tenants(app)
+    assert visited == ["alpha", "beta"]
+
+
 @pytest.mark.skipif(sys.platform == "win32", reason="Production Gunicorn lock uses Linux flock")
 def test_competing_workers_skip_the_run_then_acquire_the_released_lock(tmp_path, monkeypatch):
     from routes import expenses
