@@ -336,6 +336,7 @@ export function SmartWorkspace() {
           <div style={order("tasks")}>
             <Panel
               title="يحتاج اهتمامك"
+              className="workspace-tasks-preview"
               icon={Bell}
               count={data.attention}
               footer={

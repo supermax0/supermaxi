@@ -87,7 +87,7 @@ export function Shell() {
     <div className="relative flex h-full flex-col">
       <TopNavigation />
       <OfflineBanner />
-      <div className="relative flex min-h-0 flex-1 flex-col">
+      <div className="workspace-viewport relative flex min-h-0 flex-1 flex-col">
         <SmartWorkspace />
         <WindowTransitionManager />
       </div>

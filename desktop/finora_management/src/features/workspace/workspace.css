@@ -11,6 +11,9 @@
   scrollbar-gutter: stable;
   overscroll-behavior: contain;
 }
+.workspace-viewport {
+  container: workspace / size;
+}
 .smart-workspace[hidden] {
   display: none;
 }
@@ -899,5 +902,186 @@
   }
   .workspace-activity {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Fit the actual space below the navigation, including Windows display scaling
+   and the offline banner. Small windows retain the readable stacked layout. */
+@container workspace (min-width: 960px) and (min-height: 560px) {
+  .smart-workspace {
+    --ws-gap: clamp(8px, 1.3cqh, 16px);
+    display: grid;
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+    gap: var(--ws-gap);
+    padding: clamp(10px, 1.5cqh, 20px) clamp(16px, 1.8cqw, 32px);
+  }
+  .workspace-welcome,
+  .workspace-toolbar,
+  .workspace-kpis,
+  .workspace-panels {
+    margin-bottom: 0;
+  }
+  .workspace-welcome {
+    flex-wrap: nowrap;
+  }
+  .workspace-welcome > div:first-child {
+    min-width: 0;
+    width: auto;
+  }
+  .workspace-welcome h1 {
+    font-size: clamp(21px, 2.1cqw, 30px);
+    line-height: 1.35;
+  }
+  .workspace-kpis {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
+  .workspace-kpis > div:only-child {
+    grid-column: auto;
+  }
+  .smart-workspace .workspace-metric-open {
+    padding: clamp(10px, 1.7cqh, 18px) 14px 8px;
+  }
+  .workspace-metric strong {
+    font-size: clamp(22px, 2cqw, 31px);
+    margin-block: 5px;
+  }
+  .workspace-metric-icon {
+    width: clamp(38px, 5.5cqh, 54px);
+    height: clamp(38px, 5.5cqh, 54px);
+  }
+  .workspace-change {
+    padding-bottom: 6px;
+  }
+  .workspace-panels {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    min-height: 0;
+  }
+  .workspace-panels > div,
+  .workspace-bottom > div {
+    min-height: 0;
+  }
+  .smart-workspace .workspace-panel {
+    padding: clamp(9px, 1.4cqh, 16px) clamp(11px, 1.2cqw, 18px);
+    min-height: 0;
+  }
+  .workspace-panel > header,
+  .workspace-panel > footer {
+    flex-shrink: 0;
+  }
+  .workspace-panel > header {
+    margin-bottom: 7px;
+  }
+  .workspace-panel h2 {
+    font-size: clamp(12px, 1.2cqw, 16px);
+  }
+  .workspace-panel-body {
+    min-height: 0;
+    overflow: auto;
+    scrollbar-width: thin;
+    scrollbar-gutter: stable;
+    overscroll-behavior: contain;
+  }
+  .workspace-panels > div:last-child .workspace-list {
+    display: flex;
+    gap: 0;
+  }
+  .smart-workspace .workspace-action {
+    min-height: clamp(36px, 5.7cqh, 54px);
+    padding: 7px 10px;
+  }
+  .workspace-actions {
+    gap: clamp(6px, 1cqh, 10px);
+  }
+  .smart-workspace .workspace-list-row {
+    min-height: clamp(35px, 6.1cqh, 60px);
+    padding: clamp(3px, 0.6cqh, 7px) 2px;
+    gap: 8px;
+  }
+  .workspace-row-icon {
+    width: clamp(29px, 4.6cqh, 39px);
+    height: clamp(29px, 4.6cqh, 39px);
+  }
+  .workspace-count {
+    font-size: 16px;
+    padding: 5px;
+  }
+  .workspace-panel > footer {
+    padding-top: 7px;
+  }
+  .workspace-panel > footer button {
+    min-height: 30px;
+    font-size: 11px;
+  }
+  .workspace-bottom {
+    flex-wrap: nowrap;
+    height: clamp(146px, 20cqh, 172px);
+  }
+  .workspace-activity-wrap {
+    flex-basis: 60%;
+  }
+  .workspace-assistant {
+    flex-basis: 36%;
+  }
+  .workspace-bottom .workspace-panel-body {
+    scrollbar-gutter: auto;
+  }
+  .workspace-bottom .workspace-row-icon {
+    width: 30px;
+    height: 30px;
+  }
+  .workspace-bottom .workspace-panel > header {
+    margin-bottom: 5px;
+  }
+  .workspace-bottom h2 {
+    font-size: 12px;
+  }
+  .workspace-bottom .workspace-empty {
+    min-height: 0;
+    padding: 8px;
+  }
+}
+
+@container workspace (min-width: 960px) and (560px <= height <= 720px) {
+  .workspace-eyebrow,
+  .workspace-welcome p:not(.workspace-eyebrow) {
+    display: none;
+  }
+  .workspace-status {
+    padding-block: 7px;
+  }
+  .workspace-toolbar {
+    font-size: 9px;
+  }
+  .workspace-metric-title {
+    font-size: 12px;
+  }
+  .workspace-row-text strong {
+    font-size: 11px;
+    line-height: 1.4;
+  }
+  .workspace-row-text small {
+    font-size: 9px;
+    line-height: 1.4;
+  }
+  .smart-workspace .workspace-action {
+    min-height: 32px;
+    padding: 5px 8px;
+  }
+  .workspace-action svg {
+    width: 20px;
+    height: 20px;
+  }
+}
+
+@container workspace (min-width: 960px) and (560px <= height <= 820px) {
+  .workspace-tasks-preview .workspace-list-row:nth-child(n + 5) {
+    display: none;
+  }
+}
+
+@container workspace (min-width: 960px) and (560px <= height <= 760px) {
+  .workspace-tasks-preview .workspace-list-row:nth-child(n + 4) {
+    display: none;
   }
 }

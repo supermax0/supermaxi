@@ -584,6 +584,23 @@ export async function startFinoraStub(
           return send(res, response.status, response.data);
         }
       }
+      if (options.workspace && path === "/hr/api/notifications")
+        return send(res, 200, {
+          total: 1,
+          items: [
+            {
+              key: "correction:7",
+              type: "correction",
+              title: "طلب تصحيح دوام ينتظر الموافقة",
+              body: "مراجعة حضور الموظف ضمن الفرع الحالي",
+              date: "2026-10-20",
+              tone: "warning",
+              tab: "corrections",
+              person_id: 7,
+              month: "2026-10",
+            },
+          ],
+        });
       if (hrFixture && path.startsWith("/hr/api/")) {
         const body = req.method === "POST" ? await readJson(req) : {};
         if (req.method === "POST") bodies.push({ path, body });

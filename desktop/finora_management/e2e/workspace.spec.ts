@@ -16,7 +16,7 @@ function removeProfile(directory: string) {
 
 test("native Smart Workspace layout, real navigation, preferences and read-only assistant", async () => {
   test.setTimeout(180_000);
-  const stub = await startFinoraStub({ workspace: true, finance: true, customers: true });
+  const stub = await startFinoraStub({ workspace: true, finance: true, customers: true, hr: true });
   const directory = mkdtempSync(path.join(os.tmpdir(), "finora-workspace-"));
   const artifacts = path.resolve(
     `../../.codex-tmp/${process.env.FINORA_E2E_EXECUTABLE ? "workspace-preview-packaged" : "workspace-preview"}`,
@@ -78,48 +78,131 @@ test("native Smart Workspace layout, real navigation, preferences and read-only 
     await expect(home).toHaveClass(/workspace-compact/);
     await page.reload();
     await expect(home).toHaveClass(/workspace-compact/);
+    await home.getByRole("button", { name: "عرض كل المهام", exact: true }).click();
+    const tasks = page.getByRole("dialog", { name: "مركز المتابعة", exact: true });
+    await expect(tasks.locator(".workspace-list-row")).toHaveCount(5);
+    await expect(tasks.getByRole("button", { name: /طلب تصحيح دوام ينتظر الموافقة/ })).toBeVisible();
+    await tasks.getByRole("button", { name: "إغلاق", exact: true }).click();
     const measurements: unknown[] = [];
-    for (const [width, height] of [
-      [1366, 768],
-      [1440, 900],
-      [1600, 900],
-      [1920, 1080],
-      [2560, 1440],
-      [1024, 768],
-      [760, 600],
-    ]) {
-      await app.evaluate(
-        ({ BrowserWindow }, size) => {
-          BrowserWindow.getAllWindows()[0]?.setSize(size[0] ?? 1366, size[1] ?? 768);
-        },
-        [width, height],
-      );
-      await page.waitForTimeout(200);
-      const size = await home.evaluate((node) => ({
-        client: node.clientWidth,
-        scroll: node.scrollWidth,
-        height: node.clientHeight,
-        scrollHeight: node.scrollHeight,
-        cards: Array.from(node.querySelectorAll(".workspace-kpis > div")).map((card) => ({
-          x: card.getBoundingClientRect().x,
-          y: card.getBoundingClientRect().y,
-          w: card.getBoundingClientRect().width,
-          h: card.getBoundingClientRect().height,
-        })),
-      }));
-      expect(size.scroll).toBeLessThanOrEqual(size.client + 1);
-      expect(
-        Math.max(...size.cards.map((card) => card.h)) - Math.min(...size.cards.map((card) => card.h)),
-      ).toBeLessThan(2);
-      await home.evaluate((node) => {
-        node.scrollTop = 0;
-      });
-      await page.screenshot({ path: path.join(artifacts, `workspace-${width}x${height}.png`) });
-      measurements.push({ windowWidth: width, windowHeight: height, ...size });
+    for (const density of ["مضغوط", "مريح"]) {
+      await home.getByRole("button", { name: "تخصيص مساحة العمل", exact: true }).click();
+      await customization.getByRole("button", { name: density, exact: true }).click();
+      await customization.getByRole("button", { name: "حفظ التخصيص", exact: true }).click();
+      await expect(page.getByText("تم حفظ مساحة العمل", { exact: true })).toBeHidden({ timeout: 7_000 });
+      for (const [width, height, zoom] of [
+        [1366, 768, 1],
+        [1440, 900, 1],
+        [1600, 900, 1],
+        [1920, 1080, 1],
+        [1920, 1080, 1.25],
+        [1920, 1080, 1.5],
+        [1440, 900, 1.25],
+        [2560, 1440, 1.5],
+        [1024, 768, 1],
+        [760, 600, 1],
+      ]) {
+        await app.evaluate(
+          ({ BrowserWindow }, size) => {
+            const window = BrowserWindow.getAllWindows()[0];
+            window?.setSize(size[0] ?? 1366, size[1] ?? 768);
+            window?.webContents.setZoomFactor(size[2] ?? 1);
+          },
+          [width, height, zoom],
+        );
+        await page.waitForTimeout(200);
+        const size = await home.evaluate((node) => {
+          const viewport = node.parentElement;
+          const bottom = node.querySelector(".workspace-bottom");
+          if (!viewport || !bottom) throw Error("Workspace layout is incomplete");
+          return {
+            client: node.clientWidth,
+            scroll: node.scrollWidth,
+            height: node.clientHeight,
+            scrollHeight: node.scrollHeight,
+            viewportWidth: viewport.clientWidth,
+            panels: Array.from(
+              node.querySelectorAll(
+                ".workspace-panels .workspace-panel-body, .workspace-bottom .workspace-panel-body",
+              ),
+            ).map((panel) => ({
+              client: panel.clientHeight,
+              scroll: panel.scrollHeight,
+            })),
+            bottom: bottom.getBoundingClientRect().bottom,
+            visibleBottom: node.getBoundingClientRect().bottom,
+            cards: Array.from(node.querySelectorAll(".workspace-kpis > div")).map((card) => ({
+              x: card.getBoundingClientRect().x,
+              y: card.getBoundingClientRect().y,
+              w: card.getBoundingClientRect().width,
+              h: card.getBoundingClientRect().height,
+            })),
+          };
+        });
+        expect(size.scroll).toBeLessThanOrEqual(size.client + 1);
+        if (size.viewportWidth >= 960 && size.height >= 560) {
+          expect(
+            size.scrollHeight,
+            JSON.stringify({ width, height, zoom, density, size }),
+          ).toBeLessThanOrEqual(size.height + 1);
+          expect(size.bottom).toBeLessThanOrEqual(size.visibleBottom + 1);
+        }
+        if (size.viewportWidth >= 1100 && size.height >= 640) {
+          expect(size.panels).toHaveLength(5);
+          for (const panel of size.panels) {
+            if (!panel) throw Error("Quick actions or assistant panel missing");
+            expect(panel.scroll, JSON.stringify({ width, height, zoom, density, panel })).toBeLessThanOrEqual(
+              panel.client + 1,
+            );
+          }
+        }
+        expect(
+          Math.max(...size.cards.map((card) => card.h)) - Math.min(...size.cards.map((card) => card.h)),
+        ).toBeLessThan(2);
+        await home.evaluate((node) => {
+          node.scrollTop = 0;
+        });
+        const capture = await app.evaluate(async ({ BrowserWindow }) => {
+          const window = BrowserWindow.getAllWindows()[0];
+          if (!window) throw Error("Test window closed before screenshot");
+          return (await window.capturePage()).toPNG().toString("base64");
+        });
+        writeFileSync(
+          path.join(
+            artifacts,
+            `workspace-${width}x${height}-${zoom}-${density === "مريح" ? "comfortable" : "compact"}.png`,
+          ),
+          Buffer.from(capture, "base64"),
+        );
+        measurements.push({ windowWidth: width, windowHeight: height, zoom, density, ...size });
+      }
     }
+    await app.evaluate(({ BrowserWindow }) => {
+      const window = BrowserWindow.getAllWindows()[0];
+      window?.webContents.setZoomFactor(1);
+      window?.setSize(1366, 768);
+    });
+    const hiddenWidgets = ["الطلبات", "المتابعة", "المستحقات", "يحتاج اهتمامك", "أكمل من حيث توقفت"];
+    await home.getByRole("button", { name: "تخصيص مساحة العمل", exact: true }).click();
+    for (const label of hiddenWidgets)
+      await customization.getByRole("checkbox", { name: label, exact: true }).uncheck();
+    await customization.getByRole("button", { name: "حفظ التخصيص", exact: true }).click();
+    for (const selector of [".workspace-kpis", ".workspace-panels"]) {
+      const row = home.locator(selector);
+      await expect(row.locator(":scope > div")).toHaveCount(1);
+      const unused = await row.evaluate((node) => {
+        if (!node.firstElementChild) throw Error("Customized workspace card missing");
+        return node.getBoundingClientRect().width - node.firstElementChild.getBoundingClientRect().width;
+      });
+      expect(unused).toBeLessThanOrEqual(1);
+    }
+    await home.getByRole("button", { name: "تخصيص مساحة العمل", exact: true }).click();
+    for (const label of hiddenWidgets)
+      await customization.getByRole("checkbox", { name: label, exact: true }).check();
+    await customization.getByRole("button", { name: "حفظ التخصيص", exact: true }).click();
     await home.getByLabel("اسأل FINORA").fill("اعرض طلبات اليوم");
     await home.getByRole("button", { name: "إرسال إلى مساعد FINORA", exact: true }).click();
     await expect(home.getByText("نتيجة المساعد في بيئة الاختبار")).toBeVisible();
+    expect(await home.evaluate((node) => node.scrollHeight - node.clientHeight)).toBeLessThanOrEqual(1);
     expect(stub.bodies.filter((row) => row.path === "/finora-ai/api/desktop/chat")).toHaveLength(1);
     expect(stub.bodies.some((row) => /commands|checkout|payment$/.test(row.path))).toBe(false);
     expect(errors).toEqual([]);
