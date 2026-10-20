@@ -196,27 +196,44 @@ def post_all_unposted_expenses():
 
 def run_scheduled_expense_posting_for_all_tenants(app):
     """خصم المصاريف المجدولة بساعة محددة عبر كل المستأجرين (مجدول خلفي)."""
+    import os
+    from pathlib import Path
+
+    if os.name == "nt":
+        return _post_scheduled_expenses_for_tenants(app)
+    import fcntl
+
+    # A per-run lock survives worker overlap and releases automatically on exit.
+    # Keeping a lifetime lock would leave a new worker without a scheduler after
+    # a graceful reload. SQL's cash_posted claim still guards concurrent page loads.
+    directory = Path(app.instance_path)
+    directory.mkdir(mode=0o700, parents=True, exist_ok=True)
+    descriptor = os.open(directory / "expense-posting.lock",
+                         os.O_RDWR | os.O_CREAT | os.O_CLOEXEC | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(descriptor, "a+b") as handle:
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            return
+        return _post_scheduled_expenses_for_tenants(app)
+
+
+def _post_scheduled_expenses_for_tenants(app):
     from flask import g
     from models.tenant import Tenant
 
     with app.app_context():
-        try:
-            tenants = Tenant.query.all()
-        except Exception:
-            tenants = []
-        for tenant in tenants:
-            slug = getattr(tenant, "slug", None)
-            if not slug:
-                continue
+        slugs = [tenant.slug for tenant in Tenant.query.all() if tenant.slug]
+        db.session.remove()
+        for slug in slugs:
             g.tenant = slug
             try:
                 post_due_unposted_expenses()
             except Exception:
-                try:
-                    db.session.rollback()
-                except Exception:
-                    pass
+                db.session.rollback()
+                app.logger.exception("Scheduled expense posting failed for tenant %s", slug)
             finally:
+                db.session.remove()
                 g.tenant = None
 
 

@@ -3021,7 +3021,11 @@ def _start_expense_posting_scheduler():
     import os
     import sys
 
-    if os.environ.get("SERVER_SOFTWARE", "").startswith("gunicorn/") or "gunicorn" in (sys.argv[0] or ""):
+    if os.environ.get("FINORA_LOCAL_WORKSPACE") == "1":
+        return
+    # Diagnostic imports must not start financial jobs. Real Gunicorn workers
+    # run the timer; the job takes a shared lock for each individual run.
+    if os.environ.get("SERVER_SOFTWARE", "").startswith("gunicorn/") and "gunicorn" not in (sys.argv[0] or ""):
         return
     if os.environ.get("WERKZEUG_RUN_MAIN") == "false":
         return
@@ -3041,8 +3045,9 @@ def _start_expense_posting_scheduler():
             coalesce=True,
         )
         scheduler.start()
+        app.logger.info("Scheduled expense timer started in worker %s", os.getpid())
     except Exception:
-        pass
+        app.logger.exception("Could not start scheduled expense posting")
 
 _start_expense_posting_scheduler()
 

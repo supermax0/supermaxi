@@ -8,6 +8,8 @@ The sales line chart supports negative values and closes its shaded area at zero
 
 Scheduled expense comparisons and expense defaults use the Baghdad wall clock instead of the server's UTC clock. Explicit `now` arguments to scheduling functions remain local wall-clock values for compatibility. Existing posting/treasury balance protections remain authoritative.
 
+Gunicorn workers run the existing minute timer, protected by a private per-run process lock on Linux. A graceful reload releases the old run normally and permits subsequent runs in new workers. Tenant sessions are closed between companies, failures are logged, and the existing atomic `cash_posted` claim also prevents double posting alongside page loads. Diagnostic imports and local workspace tests do not start financial jobs.
+
 Report export metadata, report date/time cells, order dates, notifications, stock activity and customer schedule history display a 12-hour clock with an Arabic day period (ص/م). Scheduled times display the same entered local hour. ISO timestamps and HTML time input values remain machine-readable; database timestamps, recorded prices and costs are not rewritten.
 
 Regression coverage includes both sides of Baghdad midnight, partial and full later returns, aggregate/detail agreement, branch and employee exclusions, and midnight/noon/evening formatting. Existing report, expense, financial integrity, treasury and equity regressions are included in release validation.
