@@ -55,12 +55,15 @@ class _ActivityInvoice:
         self.report_settled = settled
         self.report_sale_count = sale_count
         self.customer_name = original["invoice"]["customer_name"]
+        self.discount_amount = int(original["invoice"].get("discount") or 0) if sale_count else 0
+        self.status = original["invoice"]["status"] if sale_count else "راجع"
+        self.payment_status = original["invoice"]["payment_status"] if sale_count else "راجع"
 
     def __getattr__(self, key):
         return getattr(self._invoice, key)
 
 
-def period_activity(date_from, date_to):
+def period_activity(date_from, date_to, *, branch_id=None, employee_id=None):
     """Original sales and signed returns, with matching product allocations."""
     result = {"invoices": [], "cogs": {}, "products": [], "returns": []}
     if not available():
@@ -71,9 +74,14 @@ def period_activity(date_from, date_to):
     in_period = lambda column: utc_period_filter(column, date_from, date_to)
     returned_ids = select(SalesReturn.invoice_id).where(
         SalesReturn.tenant_key == tenant_key(), in_period(SalesReturn.created_at))
+    scope = []
+    if branch_id is not None:
+        scope.append(Invoice.branch_id == branch_id)
+    if employee_id is not None:
+        scope.append(Invoice.employee_id == employee_id)
     originals = db.session.query(Invoice, SalesReturnOrigin).join(
         SalesReturnOrigin, SalesReturnOrigin.invoice_id == Invoice.id).filter(
-            SalesReturnOrigin.tenant_key == tenant_key(), stock_unlocked_filter(Invoice),
+            SalesReturnOrigin.tenant_key == tenant_key(), stock_unlocked_filter(Invoice), *scope,
             or_(in_period(Invoice.created_at), Invoice.id.in_(returned_ids))).all()
     if not originals:
         return result
@@ -96,7 +104,8 @@ def period_activity(date_from, date_to):
                 amount = original_cost(row)
                 cost += amount
                 result["products"].append({"product_id": row["product_id"], "name": row["name"],
-                    "qty": row["quantity"], "revenue": values[row["id"]], "cogs": amount})
+                    "qty": row["quantity"], "revenue": values[row["id"]], "cogs": amount,
+                    "invoice_id": invoice.id, "date": sale_day})
             settled = min(original["invoice"]["total"], int(invoice.paid_amount or 0) + sum(
                 document.excess_collection for document in returns))
             result["invoices"].append(_ActivityInvoice(invoice, original, event_id=invoice.id,
@@ -115,5 +124,6 @@ def period_activity(date_from, date_to):
             for line in document.lines:
                 row = sources[line.order_item_id]
                 result["products"].append({"product_id": row["product_id"], "name": row["name"],
-                    "qty": -line.quantity, "revenue": -line.credit_amount, "cogs": -line.cost_amount})
+                    "qty": -line.quantity, "revenue": -line.credit_amount, "cogs": -line.cost_amount,
+                    "invoice_id": invoice.id, "date": business_date(document.created_at)})
     return result

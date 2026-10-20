@@ -30,10 +30,11 @@ const kinds: Record<string, string> = {
   trade_in: "استبدال",
   purchase_return: "مرتجع شراء",
 };
-const stamp = new Intl.DateTimeFormat("en-GB", {
+const stamp = new Intl.DateTimeFormat("ar-IQ-u-nu-latn", {
   timeZone: "Asia/Baghdad",
   dateStyle: "short",
   timeStyle: "short",
+  hour12: true,
 });
 const button =
   "flex min-h-10 items-center justify-center gap-2 rounded-control border border-line bg-white px-3 text-sm text-ink-soft hover:bg-violet-soft disabled:opacity-40";

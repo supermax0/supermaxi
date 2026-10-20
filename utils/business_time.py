@@ -18,6 +18,24 @@ def business_today():
     return business_datetime(datetime.utcnow()).date()
 
 
+def business_now():
+    """Naive Baghdad wall clock for local calendar dates and scheduled times."""
+    return business_datetime(datetime.utcnow()).replace(tzinfo=None)
+
+
+def display_datetime(value):
+    """Present UTC timestamps in Baghdad, with an explicit Arabic 12-hour clock."""
+    if not value:
+        return ""
+    local = business_datetime(value)
+    return f"{local:%Y-%m-%d} {display_time(local)}"
+
+
+def display_time(value):
+    """Format an already-local wall clock without shifting its scheduled hour."""
+    return f"{value.hour % 12 or 12:02d}:{value.minute:02d} {'ص' if value.hour < 12 else 'م'}"
+
+
 def utc_period_filter(column, date_from=None, date_to=None):
     conditions = []
     if date_from is not None:

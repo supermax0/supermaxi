@@ -26,7 +26,7 @@ from datetime import date, datetime, timedelta
 from typing import Any, Iterator
 
 from flask import g
-from sqlalchemy import and_, case, func, or_
+from sqlalchemy import DateTime, and_, case, func, or_, true
 
 from extensions import db
 from models.expense import Expense
@@ -41,6 +41,7 @@ from utils.accounting_calculations import (
     calculate_supplier_debts,
 )
 from utils.date_periods import get_period_dates
+from utils.business_time import business_date, utc_period_filter
 from utils.expense_queries import posted_expense_filter
 from utils.financial_report_data import (
     _comparison_period,
@@ -238,11 +239,21 @@ def _pct(current: int | None, previous: int | None) -> float | None:
 
 
 def _day(column):
+    if isinstance(column.type, DateTime):
+        return func.date(_business_timestamp(column))
     return func.date(column)
 
 
 def _in_range(column, date_from: date, date_to: date):
+    if isinstance(column.type, DateTime):
+        return utc_period_filter(column, date_from, date_to)
     return and_(_day(column) >= date_from, _day(column) <= date_to)
+
+
+def _business_timestamp(column):
+    if _sqlite():
+        return func.datetime(column, "+3 hours")
+    return func.timezone("Asia/Baghdad", func.timezone("UTC", column))
 
 
 def _sqlite() -> bool:
@@ -254,6 +265,8 @@ _PG_FORMATS = {"%Y": "YYYY", "%Y-%m": "YYYY-MM", "%Y-W%W": 'IYYY-"W"IW'}
 
 def _fmt(column, pattern: str):
     """Date bucket label on SQLite (tenant files) and PostgreSQL alike."""
+    if isinstance(column.type, DateTime):
+        column = _business_timestamp(column)
     if _sqlite():
         return func.strftime(pattern, column)
     return func.to_char(column, _PG_FORMATS[pattern])
@@ -301,6 +314,16 @@ def effective_paid_expr():
     )
 
 
+def _legacy_sales_only():
+    from modules.sales_returns.facts import available, exists_expr
+    return ~exists_expr(Invoice) if available() else true()
+
+
+def _return_activity(filters, date_from, date_to):
+    from modules.sales_returns.reporting import period_activity
+    return period_activity(date_from, date_to, branch_id=filters.branch_id, employee_id=filters.employee_id)
+
+
 def sales_totals(filters: ReportFilters, date_from: date, date_to: date) -> dict[str, int]:
     row = (
         db.session.query(
@@ -309,10 +332,16 @@ def sales_totals(filters: ReportFilters, date_from: date, date_to: date) -> dict
             func.coalesce(func.sum(Invoice.discount_amount), 0),
             func.coalesce(func.sum(effective_paid_expr()), 0),
         )
-        .filter(*booked_sale_conditions(filters, date_from, date_to))
+        .filter(*booked_sale_conditions(filters, date_from, date_to), _legacy_sales_only())
         .one()
     )
     count, net, discounts, collected = (int(v or 0) for v in row)
+    for event in _return_activity(filters, date_from, date_to)["invoices"]:
+        count += event.report_sale_count
+        net += event.total
+        collected += event.report_settled
+        if event.report_sale_count:
+            discounts += int(event.discount_amount or 0)
     return {
         "invoices": count,
         "net": net,
@@ -328,10 +357,11 @@ def returns_total(filters: ReportFilters, date_from: date, date_to: date) -> dic
     returned = or_(Invoice.status.in_(RETURN_STATUSES), Invoice.payment_status.in_(RETURN_STATUSES))
     row = (
         db.session.query(func.count(Invoice.id), func.coalesce(func.sum(Invoice.total), 0))
-        .filter(_in_range(Invoice.created_at, date_from, date_to), returned, *_invoice_scope(filters))
+        .filter(_in_range(Invoice.created_at, date_from, date_to), returned, *_invoice_scope(filters), _legacy_sales_only())
         .one()
     )
-    return {"count": int(row[0] or 0), "amount": int(row[1] or 0)}
+    documents = _return_activity(filters, date_from, date_to)["returns"]
+    return {"count": int(row[0] or 0) + len(documents), "amount": int(row[1] or 0) + sum(r["credit"] for r in documents)}
 
 
 def _sale_items_query(filters: ReportFilters, date_from: date, date_to: date, columns):
@@ -341,7 +371,7 @@ def _sale_items_query(filters: ReportFilters, date_from: date, date_to: date, co
         .select_from(OrderItem)
         .outerjoin(layer, layer.c.order_item_id == OrderItem.id)
         .join(Invoice, Invoice.id == OrderItem.invoice_id)
-        .filter(*booked_sale_conditions(filters, date_from, date_to), exclude_delivery_fee_items(OrderItem))
+        .filter(*booked_sale_conditions(filters, date_from, date_to), _legacy_sales_only(), exclude_delivery_fee_items(OrderItem))
     )
     return query
 
@@ -350,7 +380,7 @@ def cogs_total(filters: ReportFilters, date_from: date, date_to: date) -> int:
     value = _sale_items_query(
         filters, date_from, date_to, lambda layer: (func.coalesce(func.sum(_order_item_cogs_expr(layer)), 0),)
     ).scalar()
-    return int(value or 0)
+    return int(value or 0) + sum(_return_activity(filters, date_from, date_to)["cogs"].values())
 
 
 def _expense_conditions(filters: ReportFilters, date_from: date, date_to: date) -> list:
@@ -744,7 +774,7 @@ def stagnant_products(min_days: int = 30) -> list[dict[str, Any]]:
     return rows
 
 
-def top_products(filters: ReportFilters, date_from: date, date_to: date, limit: int = 10) -> list[dict[str, Any]]:
+def _product_sales(filters: ReportFilters, date_from: date, date_to: date) -> list[dict[str, Any]]:
     rows = (
         _sale_items_query(
             filters,
@@ -760,10 +790,16 @@ def top_products(filters: ReportFilters, date_from: date, date_to: date, limit: 
         )
         .filter(OrderItem.product_id.isnot(None))  # lines without a product (e.g. a device taken in) are not sellers
         .group_by(OrderItem.product_id)
-        .order_by(func.sum(OrderItem.quantity).desc())
-        .limit(limit)
         .all()
     )
+    grouped = {int(pid): [name, int(qty), int(revenue), int(cogs)] for pid, name, qty, revenue, cogs in rows}
+    for item in _return_activity(filters, date_from, date_to)["products"]:
+        if not item["product_id"]:
+            continue
+        values = grouped.setdefault(int(item["product_id"]), [item["name"], 0, 0, 0])
+        for index, key in enumerate(("qty", "revenue", "cogs"), 1):
+            values[index] += int(item[key])
+    rows = [(pid, *values) for pid, values in grouped.items()]
     # The product's own current name — not the alphabetically largest line label («… — استبدال»).
     live = dict(
         Product.query.execution_options(skip_branch_scope=True)
@@ -784,6 +820,10 @@ def top_products(filters: ReportFilters, date_from: date, date_to: date, limit: 
     ]
 
 
+def top_products(filters: ReportFilters, date_from: date, date_to: date, limit: int = 10) -> list[dict[str, Any]]:
+    return sorted(_product_sales(filters, date_from, date_to), key=lambda row: -row["quantity"])[:limit]
+
+
 # ------------------------------------------------------------ chart series ---
 
 
@@ -792,7 +832,7 @@ def _bucket_expr(column, grain: str):
         return _fmt(column, "%Y")
     if grain == "month":
         return _fmt(column, "%Y-%m")
-    return func.date(column)
+    return _day(column)
 
 
 def _bucket_keys(date_from: date, date_to: date, grain: str) -> list[str]:
@@ -821,10 +861,14 @@ def sales_series(filters: ReportFilters, grain: str) -> list[dict[str, Any]]:
     rows = {
         str(key)[:10]: amount
         for key, amount in db.session.query(bucket, func.coalesce(func.sum(Invoice.total), 0))
-        .filter(*booked_sale_conditions(filters, filters.date_from, filters.date_to))
+        .filter(*booked_sale_conditions(filters, filters.date_from, filters.date_to), _legacy_sales_only())
         .group_by(bucket)
         .all()
     }
+    for event in _return_activity(filters, filters.date_from, filters.date_to)["invoices"]:
+        day = business_date(event.created_at).isoformat()
+        key = day[:4] if grain == "year" else day[:7] if grain == "month" else day
+        rows[key] = int(rows.get(key, 0) or 0) + event.total
     return [{"key": key, "amount": int(rows.get(key, 0) or 0)} for key in _bucket_keys(filters.date_from, filters.date_to, grain)]
 
 
@@ -1025,7 +1069,8 @@ def _invoice_row(inv, paid: int, branches: dict[int, str]) -> dict[str, Any]:
     total = int(inv.total or 0)
     discount = int(inv.discount_amount or 0)
     return {
-        "id": int(inv.id),
+        "id": int(getattr(inv, "actual_invoice_id", inv.id)),
+        "event_id": int(inv.id),
         "date": inv.created_at.isoformat(sep=" ", timespec="minutes") if inv.created_at else None,
         "customer_id": inv.customer_id,
         "customer": inv.customer_name or "",
@@ -1044,10 +1089,11 @@ def _invoice_row(inv, paid: int, branches: dict[int, str]) -> dict[str, Any]:
 
 
 def sales_breakdown(filters: ReportFilters, by: str, limit: int = 50) -> list[dict[str, Any]]:
-    conds = booked_sale_conditions(filters, filters.date_from, filters.date_to)
+    conds = [*booked_sale_conditions(filters, filters.date_from, filters.date_to), _legacy_sales_only()]
+    activity = _return_activity(filters, filters.date_from, filters.date_to)
     if by in ("day", "week", "month"):
         key = {
-            "day": func.date(Invoice.created_at),
+            "day": _day(Invoice.created_at),
             "week": _fmt(Invoice.created_at, "%Y-W%W"),
             "month": _fmt(Invoice.created_at, "%Y-%m"),
         }[by]
@@ -1058,7 +1104,14 @@ def sales_breakdown(filters: ReportFilters, by: str, limit: int = 50) -> list[di
             .order_by(key)
             .all()
         )
-        return [{"key": str(k), "label": str(k), "count": int(c or 0), "amount": int(a or 0)} for k, c, a in rows]
+        groups = {str(k): [int(c or 0), int(a or 0)] for k, c, a in rows}
+        for event in activity["invoices"]:
+            day = business_date(event.created_at)
+            key = day.strftime("%Y-W%W") if by == "week" else day.isoformat()[:7] if by == "month" else day.isoformat()
+            values = groups.setdefault(key, [0, 0])
+            values[0] += event.report_sale_count
+            values[1] += event.total
+        return [{"key": k, "label": k, "count": v[0], "amount": v[1]} for k, v in sorted(groups.items())]
     if by in ("employee", "branch", "customer", "payment"):
         col = {
             "employee": Invoice.employee_id,
@@ -1077,9 +1130,16 @@ def sales_breakdown(filters: ReportFilters, by: str, limit: int = 50) -> list[di
             .filter(*conds)
             .group_by(col)
             .order_by(func.sum(Invoice.total).desc())
-            .limit(limit)
             .all()
         )
+        grouped = {k: [lbl, int(c or 0), int(a or 0)] for k, lbl, c, a in rows}
+        for event in activity["invoices"]:
+            k = getattr(event, {"employee": "employee_id", "branch": "branch_id", "customer": "customer_id", "payment": "sale_type"}[by])
+            lbl = getattr(event, {"employee": "employee_name", "branch": "branch_id", "customer": "customer_name", "payment": "sale_type"}[by])
+            values = grouped.setdefault(k, [lbl, 0, 0])
+            values[1] += event.report_sale_count
+            values[2] += event.total
+        rows = sorted(((k, *v) for k, v in grouped.items()), key=lambda row: -row[3])[:limit]
         branches = _branch_names() if by == "branch" else {}
         payment_labels = {"cash": "نقدي", "credit": "آجل", "bank": "بنك", None: "غير محدد", "": "غير محدد"}
 
@@ -1095,21 +1155,8 @@ def sales_breakdown(filters: ReportFilters, by: str, limit: int = 50) -> list[di
             for k, lbl, c, a in rows
         ]
     if by in ("product", "category"):
-        rows = (
-            _sale_items_query(
-                filters,
-                filters.date_from,
-                filters.date_to,
-                lambda layer: (
-                    OrderItem.product_id,
-                    func.max(OrderItem.product_name),
-                    func.coalesce(func.sum(OrderItem.quantity), 0),
-                    func.coalesce(func.sum(OrderItem.total), 0),
-                ),
-            )
-            .group_by(OrderItem.product_id)
-            .all()
-        )
+        rows = [(r["product_id"], r["name"], r["quantity"], r["revenue"])
+                for r in _product_sales(filters, filters.date_from, filters.date_to)]
         if by == "product":
             rows = sorted(rows, key=lambda r: -int(r[3] or 0))[:limit]
             return [
@@ -1139,15 +1186,25 @@ def sales_report(filters: ReportFilters, page: int, page_size: int, by: str) -> 
     items = _sale_items_query(
         filters, filters.date_from, filters.date_to, lambda layer: (func.coalesce(func.sum(OrderItem.quantity), 0),)
     ).scalar()
+    activity = _return_activity(filters, filters.date_from, filters.date_to)
+    items = int(items or 0) + sum(item["qty"] for item in activity["products"])
     show_cost = can_view("profit")
     cogs = cogs_total(filters, filters.date_from, filters.date_to) if show_cost else None
     paid = effective_paid_expr().label("paid")
     query = (
         db.session.query(Invoice, paid)
-        .filter(*booked_sale_conditions(filters, filters.date_from, filters.date_to))
+        .filter(*booked_sale_conditions(filters, filters.date_from, filters.date_to), _legacy_sales_only())
         .order_by(Invoice.created_at.desc(), Invoice.id.desc())
     )
-    rows, pagination = _paginate(query, page, page_size)
+    if activity["invoices"]:
+        combined = list(query.all()) + [(event, event.report_settled) for event in activity["invoices"]]
+        combined.sort(key=lambda row: (row[0].created_at, row[0].id), reverse=True)
+        page, page_size = max(1, page), max(1, min(PAGE_SIZE_MAX, page_size))
+        pagination = {"page": page, "page_size": page_size, "total": len(combined),
+                      "total_pages": max(1, -(-len(combined) // page_size))}
+        rows = combined[(page - 1) * page_size:page * page_size]
+    else:
+        rows, pagination = _paginate(query, page, page_size)
     branches = _branch_names()
     return {
         "filters": filters.as_dict(),
@@ -1175,8 +1232,8 @@ def profit_report(filters: ReportFilters, grain: str = "month") -> dict[str, Any
     prev_from, prev_to = filters.previous()
     prev = profit_and_loss(filters, prev_from, prev_to)
     margins = {
-        "gross_margin_pct": round(pl["gross_profit"] / pl["net_revenue"] * 100, 1) if pl["net_revenue"] else None,
-        "net_margin_pct": round(pl["net_profit"] / pl["net_revenue"] * 100, 1) if pl["net_revenue"] else None,
+        "gross_margin_pct": round(pl["gross_profit"] / pl["net_revenue"] * 100, 1) if pl["net_revenue"] > 0 else None,
+        "net_margin_pct": round(pl["net_profit"] / pl["net_revenue"] * 100, 1) if pl["net_revenue"] > 0 else None,
     }
     if grain not in ("day", "month", "year"):
         grain = "month"
@@ -1699,7 +1756,7 @@ def invoices_report(filters: ReportFilters, page: int, page_size: int, state: st
 
 
 def employees_table(filters: ReportFilters, sort: str = "sales", limit: int | None = None) -> list[dict[str, Any]]:
-    conds = booked_sale_conditions(filters, filters.date_from, filters.date_to)
+    conds = [*booked_sale_conditions(filters, filters.date_from, filters.date_to), _legacy_sales_only()]
     rows = (
         db.session.query(
             Invoice.employee_id,
@@ -1731,10 +1788,24 @@ def employees_table(filters: ReportFilters, sort: str = "sales", limit: int | No
     returns = {
         int(eid or 0): int(a or 0)
         for eid, a in db.session.query(Invoice.employee_id, func.coalesce(func.sum(Invoice.total), 0))
-        .filter(_in_range(Invoice.created_at, filters.date_from, filters.date_to), returned, *_invoice_scope(filters))
+        .filter(_in_range(Invoice.created_at, filters.date_from, filters.date_to), returned, *_invoice_scope(filters), _legacy_sales_only())
         .group_by(Invoice.employee_id)
         .all()
     }
+    grouped = {int(eid or 0): [name, int(count), int(total), int(discounts), int(collected)]
+               for eid, name, count, total, discounts, collected in rows}
+    activity = _return_activity(filters, filters.date_from, filters.date_to)
+    for event in activity["invoices"]:
+        eid = int(event.employee_id or 0)
+        values = grouped.setdefault(eid, [event.employee_name, 0, 0, 0, 0])
+        values[1] += event.report_sale_count
+        values[2] += event.total
+        values[3] += event.discount_amount
+        values[4] += event.report_settled
+        cogs[eid] = cogs.get(eid, 0) + activity["cogs"][event.id]
+        if not event.report_sale_count:
+            returns[eid] = returns.get(eid, 0) - event.total
+    rows = [(eid or None, *values) for eid, values in grouped.items()]
     commissions: dict[int, int] = {}
     try:
         from models.employee_commission_line import EmployeeCommissionLine

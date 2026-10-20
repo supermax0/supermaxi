@@ -32,7 +32,7 @@ import { useCan } from "@/stores/session";
 import { toast } from "@/stores/toasts";
 import { useWindowManager } from "@/stores/windowManager";
 import { cn } from "@/utils/cn";
-import { formatNumber } from "@/utils/format";
+import { formatClockTime, formatNumber } from "@/utils/format";
 import { supplierPrimary, supplierSecondary } from "../suppliers/SupplierDialogs";
 import { ExpenseComposer } from "./ExpenseComposer";
 import { useWorkspaceHistory, useWorkspaceRequest } from "@/features/workspace/navigation";
@@ -198,7 +198,7 @@ export function ExpensesWindow() {
         cell: (r) => (
           <div className="ltr-isolate text-right text-[13px]">
             <p className="text-ink">{r.expense_date ?? "—"}</p>
-            {r.post_time && <p className="text-[11px] text-ink-faint">{r.post_time}</p>}
+            {r.post_time && <p className="text-[11px] text-ink-faint">{formatClockTime(r.post_time)}</p>}
           </div>
         ),
       },

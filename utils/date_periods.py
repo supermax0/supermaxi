@@ -5,6 +5,7 @@
 
 from datetime import date, timedelta, datetime
 from calendar import monthrange
+from utils.business_time import business_today
 
 
 def get_period_dates(period_type, custom_date_from=None, custom_date_to=None):
@@ -19,7 +20,7 @@ def get_period_dates(period_type, custom_date_from=None, custom_date_to=None):
     Returns:
         tuple: (date_from, date_to) - تاريخ البداية وتاريخ النهاية
     """
-    today = date.today()
+    today = business_today()
     
     if period_type == "today":
         # اليوم فقط

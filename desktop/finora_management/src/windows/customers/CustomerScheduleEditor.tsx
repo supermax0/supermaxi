@@ -15,9 +15,10 @@ import { CustomerPlanBuilder } from "./CustomerPlanBuilder";
 
 const field =
   "h-10 w-full rounded-control border border-line bg-white px-3 text-sm outline-none focus:border-violet/50 disabled:bg-surface-sunken disabled:text-ink-faint";
-const historyTime = new Intl.DateTimeFormat("en-GB", {
+const historyTime = new Intl.DateTimeFormat("ar-IQ-u-nu-latn", {
   dateStyle: "short",
   timeStyle: "short",
+  hour12: true,
   timeZone: "Asia/Baghdad",
 });
 

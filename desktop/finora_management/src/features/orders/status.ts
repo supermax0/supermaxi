@@ -75,14 +75,14 @@ export const STATUS_TARGETS = [
 ] as const;
 export const RETURN_TARGET = { value: "__return__", label: "راجع (إرجاع المخزون)" } as const;
 
-/** "2026-10-07 10:25" → "07/10 10:25" */
+/** Stored UTC → Baghdad calendar date and an Arabic 12-hour clock. */
 const orderDateFormatter = new Intl.DateTimeFormat("en-GB", {
   timeZone: "Asia/Baghdad",
   day: "2-digit",
   month: "2-digit",
   hour: "2-digit",
   minute: "2-digit",
-  hourCycle: "h23",
+  hour12: true,
 });
 
 export function formatOrderDate(value: string): string {
@@ -95,5 +95,5 @@ export function formatOrderDate(value: string): string {
   if (Number.isNaN(timestamp.getTime())) return value;
   const parts = orderDateFormatter.formatToParts(timestamp);
   const part = (type: Intl.DateTimeFormatPartTypes) => parts.find((item) => item.type === type)?.value ?? "";
-  return `${part("day")}/${part("month")} ${part("hour")}:${part("minute")}`;
+  return `${part("day")}/${part("month")} ${part("hour")}:${part("minute")} ${part("dayPeriod").toLowerCase() === "am" ? "ص" : "م"}`;
 }

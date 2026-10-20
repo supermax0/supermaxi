@@ -5,6 +5,7 @@ from utils.branch_mode import independent_branches_enabled
 from models.expense import Expense
 from models.account_transaction import AccountTransaction
 from datetime import datetime, time, timedelta
+from utils.business_time import business_now, display_time
 from sqlalchemy import and_, or_
 from utils.plan_guard import feature_required
 from utils.permission_checks import check_permission, _wants_json_response
@@ -74,7 +75,7 @@ def _expense_due_at(expense_date, post_time):
 
 
 def _is_expense_due(expense_date, post_time, now=None):
-    now = now or datetime.now()
+    now = now or business_now()
     due_at = _expense_due_at(expense_date, post_time)
     return bool(due_at and now >= due_at)
 
@@ -152,7 +153,7 @@ def _post_expense_to_treasury(expense, treasury_account_id=None):
 def post_due_unposted_expenses(now=None):
     """خصم المصاريف المستحقة فقط — مع احترام ساعة الصرف إن وُجدت."""
     ensure_treasury_schema()
-    now = now or datetime.now()
+    now = now or business_now()
     today = now.date()
     now_time = now.time().replace(microsecond=0)
     unposted = (
@@ -268,7 +269,7 @@ def create_expense_batch(data) -> dict:
     if repeat_unit not in {"days", "weeks", "months", "years"}:
         repeat_unit = "months"
 
-    now = datetime.now()
+    now = business_now()
     # خصم فوري فقط للتواريخ/الساعات المستحقة — المجدولة لاحقاً تبقى بدون سحب
     due_count = 0
     for i in range(repeat_count):
@@ -328,7 +329,7 @@ def create_expense_batch(data) -> dict:
         pass
 
     scheduled = repeat_count - due_count
-    time_hint = f" الساعة {post_time.strftime('%H:%M')}" if post_time else ""
+    time_hint = f" الساعة {display_time(post_time)}" if post_time else ""
     if repeat_count > 1:
         msg = f"تم تسجيل {repeat_count} مصروف"
         if due_count:
@@ -381,7 +382,7 @@ def expenses():
         return redirect(url_for("expenses.expenses"))
 
     expenses = Expense.query.order_by(Expense.expense_date.desc()).all()
-    today = datetime.now().date()
+    today = business_now().date()
     first_day_of_month = today.replace(day=1)
 
     # إجمالي المصاريف المخصومة من الصندوق
@@ -661,7 +662,7 @@ def expenses_api_meta():
         "success": True,
         "categories": get_expense_categories(),
         "treasury_accounts": _treasury_rows(),
-        "today": datetime.now().date().strftime("%Y-%m-%d"),
+        "today": business_now().date().strftime("%Y-%m-%d"),
     })
 
 
@@ -770,7 +771,7 @@ def expenses_api_page():
         )
         return data
 
-    today = datetime.now().date()
+    today = business_now().date()
     scheduled_q = Expense.query.filter(Expense.cash_posted.is_(False))
     return jsonify({
         "success": True,

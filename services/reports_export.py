@@ -11,6 +11,7 @@ from io import BytesIO
 from typing import Any, Callable
 
 from services import reports_service as rs
+from utils.business_time import display_datetime
 
 MAX_EXPORT_ROWS = 20_000
 
@@ -331,7 +332,7 @@ def filter_lines(filters: rs.ReportFilters, branch_name: str | None, employee_na
         ("الفترة", f"{PERIOD_LABELS.get(filters.period, filters.period)}: {filters.date_from} — {filters.date_to}"),
         ("الفرع", branch_name or "كل الفروع المسموحة"),
         ("الموظف", employee_name or "كل الموظفين"),
-        ("تاريخ التصدير", datetime.now().strftime("%Y-%m-%d %H:%M")),
+        ("تاريخ التصدير", display_datetime(datetime.utcnow())),
     ]
 
 
@@ -373,7 +374,7 @@ def to_xlsx(
         cell.fill = head_fill
         cell.alignment = Alignment(horizontal="center")
     for row in rows:
-        data.append([row.get(key) for key, _h, _m in columns])
+        data.append([_display_date(row.get(key)) for key, _h, _m in columns])
     for index, (_key, header, money) in enumerate(columns, start=1):
         letter = data.cell(row=1, column=index).column_letter
         data.column_dimensions[letter].width = max(12, min(40, len(header) + 8))
@@ -396,6 +397,15 @@ def to_xlsx(
     return out.getvalue()
 
 
+def _display_date(value):
+    if isinstance(value, str) and len(value) >= 16 and value[4:5] == "-" and value[10:11] in (" ", "T"):
+        try:
+            return display_datetime(datetime.fromisoformat(value.replace("Z", "+00:00")))
+        except ValueError:
+            pass
+    return value
+
+
 def _fmt(value: Any, money: bool) -> str:
     if value is None:
         return "—"
@@ -405,7 +415,7 @@ def _fmt(value: Any, money: bool) -> str:
         return f"{value:,.1f}"
     if isinstance(value, int):
         return f"{value:,}"
-    return str(value)
+    return str(_display_date(value))
 
 
 def to_html(

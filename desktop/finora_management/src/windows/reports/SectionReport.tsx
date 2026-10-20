@@ -26,7 +26,7 @@ import { TablePagination } from "@/components/TablePagination";
 import { bucketLabel, PAYMENT_LABELS, SECTION_INFO } from "@/features/reports/labels";
 import { toast } from "@/stores/toasts";
 import { cn } from "@/utils/cn";
-import { formatNumber } from "@/utils/format";
+import { formatDateTime, formatNumber } from "@/utils/format";
 import { BarChart, LineChart } from "./charts";
 import { Change, Money } from "./ReportsDashboard";
 
@@ -284,7 +284,7 @@ function invoiceColumns(withPayment: boolean): Array<Column<InvoiceReportRow>> {
     {
       id: "date",
       header: "التاريخ",
-      cell: (r) => <span className="ltr-isolate text-ink-soft">{r.date ?? "—"}</span>,
+      cell: (r) => <span className="ltr-isolate text-ink-soft">{formatDateTime(r.date)}</span>,
     },
     {
       id: "id",
@@ -406,7 +406,7 @@ function SalesView({ data, options, setOptions }: ViewProps<"sales">) {
           label="فواتير المبيعات"
           columns={invoiceColumns(false)}
           rows={data.rows}
-          rowKey={(r) => String(r.id)}
+          rowKey={(r, i) => `${r.id}-${r.date}-${i}`}
           pagination={data.pagination}
           onPage={(page, pageSize) => setOptions({ page, pageSize })}
         />
@@ -600,7 +600,7 @@ function ExpensesView({ data, options, setOptions }: ViewProps<"expenses">) {
             {
               id: "date",
               header: "التاريخ",
-              cell: (r) => <span className="ltr-isolate text-ink-soft">{r.date ?? "—"}</span>,
+              cell: (r) => <span className="ltr-isolate text-ink-soft">{formatDateTime(r.date)}</span>,
             },
             { id: "id", header: "رقم العملية", cell: (r) => <span className="ltr-isolate">#{r.id}</span> },
             { id: "category", header: "التصنيف", cell: (r) => r.category },
@@ -673,7 +673,7 @@ function CashView({ data, setOptions }: ViewProps<"cash">) {
             {
               id: "date",
               header: "التاريخ",
-              cell: (r) => <span className="ltr-isolate text-ink-soft">{r.date}</span>,
+              cell: (r) => <span className="ltr-isolate text-ink-soft">{formatDateTime(r.date)}</span>,
             },
             { id: "account", header: "الحساب", cell: (r) => r.account },
             { id: "type", header: "نوع الحركة", cell: (r) => (r.is_transfer ? "تحويل" : r.type) },
@@ -724,7 +724,7 @@ function CashView({ data, setOptions }: ViewProps<"cash">) {
             {
               id: "date",
               header: "التاريخ",
-              cell: (r) => <span className="ltr-isolate text-ink-soft">{r.date ?? "—"}</span>,
+              cell: (r) => <span className="ltr-isolate text-ink-soft">{formatDateTime(r.date)}</span>,
             },
             { id: "from", header: "من", cell: (r) => r.from },
             { id: "to", header: "إلى", cell: (r) => r.to },
@@ -963,7 +963,7 @@ function PurchasesView({ data, options, setOptions }: ViewProps<"purchases">) {
               {
                 id: "date",
                 header: "التاريخ",
-                cell: (r) => <span className="ltr-isolate text-ink-soft">{r.date ?? "—"}</span>,
+                cell: (r) => <span className="ltr-isolate text-ink-soft">{formatDateTime(r.date)}</span>,
               },
               {
                 id: "no",

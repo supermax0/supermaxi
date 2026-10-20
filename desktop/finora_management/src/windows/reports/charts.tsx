@@ -39,19 +39,22 @@ export function LineChart({
   const gradient = useId();
   const [hover, setHover] = useState<number | null>(null);
   const max = niceMax(Math.max(0, ...points.map((p) => p.value)));
+  const min = Math.min(0, ...points.map((p) => p.value));
+  const floor = min < 0 ? -niceMax(-min) : 0;
+  const range = max - floor;
   const innerW = W - PAD.left - PAD.right;
   const innerH = height - PAD.top - PAD.bottom;
   // RTL: time runs right → left, as in the reference design.
   const x = (i: number) =>
     PAD.left + (points.length <= 1 ? innerW / 2 : innerW - (i / (points.length - 1)) * innerW);
-  const y = (v: number) => PAD.top + innerH - (v / max) * innerH;
+  const y = (v: number) => PAD.top + innerH - ((v - floor) / range) * innerH;
   const path = points
     .map((p, i) => `${i === 0 ? "M" : "L"}${x(i).toFixed(1)},${y(p.value).toFixed(1)}`)
     .join(" ");
   const area = points.length
-    ? `${path} L${x(points.length - 1).toFixed(1)},${PAD.top + innerH} L${x(0).toFixed(1)},${PAD.top + innerH} Z`
+    ? `${path} L${x(points.length - 1).toFixed(1)},${y(0).toFixed(1)} L${x(0).toFixed(1)},${y(0).toFixed(1)} Z`
     : "";
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map((t) => t * max);
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((t) => floor + t * range);
   const labelEvery = Math.max(1, Math.ceil(points.length / 7));
   const active = hover !== null ? points[hover] : undefined;
 
