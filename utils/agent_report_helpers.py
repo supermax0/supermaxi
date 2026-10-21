@@ -39,9 +39,10 @@ def _parse_orders_data(report) -> list:
         return []
     try:
         data = json.loads(report.orders_data)
-        return data if isinstance(data, list) else []
-    except Exception:
+    except (TypeError, ValueError):
         return []
+    from utils.agent_manifest_sync import visible_agent_rows
+    return visible_agent_rows(report, data) if isinstance(data, list) else []
 
 
 def _parse_selections(report) -> dict:
@@ -444,6 +445,8 @@ def get_report_order_ids(report) -> list[int]:
 def get_report_progress(report) -> dict[str, Any]:
     total = int(report.orders_count or 0) if report else 0
     order_ids = get_report_order_ids(report) if report else []
+    if report and not report.is_executed:
+        total = len(order_ids)
     if not total:
         total = len(order_ids)
     selections = _parse_selections(report) if report else {}

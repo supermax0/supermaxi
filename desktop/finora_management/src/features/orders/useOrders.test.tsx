@@ -2,12 +2,51 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook } from "@testing-library/react";
 import { useConnection } from "@/stores/connection";
 import { installMockBridge, removeMockBridge } from "@/test/mockBridge";
-import { usePayOrder, useReturnOrders } from "./useOrders";
+import { useAssignOrders, usePayOrder, useQuickEditOrder, useReturnOrders } from "./useOrders";
 import { useToasts } from "@/stores/toasts";
 
 afterEach(() => {
   removeMockBridge();
   useConnection.getState().setStatus("online");
+});
+
+it.each([null, 25])("refreshes the open shipping manifest after assigning agent %s", async (targetId) => {
+  useConnection.getState().setStatus("online");
+  installMockBridge(() => ({ ok: true, status: 200, data: { success: true } }));
+  const client = new QueryClient();
+  client.setQueryData(["shipping", "manifest", 80], { amount: 100 });
+  const { result, unmount } = renderHook(() => useAssignOrders(), {
+    wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+  });
+  await act(async () => {
+    await result.current.mutateAsync({ kind: "agent", ids: [201], targetId });
+  });
+  expect(client.getQueryState(["shipping", "manifest", 80])?.isInvalidated).toBe(true);
+  unmount();
+  client.clear();
+});
+
+it("refreshes settlement amounts after a quick price edit", async () => {
+  useConnection.getState().setStatus("online");
+  installMockBridge(() => ({ ok: true, status: 200, data: { success: true } }));
+  const client = new QueryClient();
+  client.setQueryData(["shipping", "manifest", 80], { amount: 100 });
+  const { result, unmount } = renderHook(() => useQuickEditOrder(), {
+    wrapper: ({ children }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
+  });
+  await act(async () => {
+    await result.current.mutateAsync({
+      id: 201,
+      input: {
+        note: null,
+        discount_amount: 0,
+        items: [{ product_id: 1, qty: 1, price: 150, color: "", sale_mode: "credit" }],
+      },
+    });
+  });
+  expect(client.getQueryState(["shipping", "manifest", 80])?.isInvalidated).toBe(true);
+  unmount();
+  client.clear();
 });
 
 it("reports partial returns and skipped replays honestly while refreshing every affected section", async () => {

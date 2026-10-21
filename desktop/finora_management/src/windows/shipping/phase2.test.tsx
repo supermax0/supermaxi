@@ -1,6 +1,6 @@
 import { vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { finoraRequestSchema, type FinoraRequest } from "@shared/ipc";
 import { useConnection } from "@/stores/connection";
@@ -73,13 +73,87 @@ afterEach(() => {
   useConnection.setState({ status: "online" });
 });
 
-function wrap(ui: React.ReactNode) {
-  return render(
-    <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-      {ui}
-    </QueryClientProvider>,
-  );
+function wrap(
+  ui: React.ReactNode,
+  client = new QueryClient({ defaultOptions: { queries: { retry: false } } }),
+) {
+  return render(<QueryClientProvider client={client}>{ui}</QueryClientProvider>);
 }
+
+it("refreshes externally edited prices and agent details while keeping the received amount", async () => {
+  let server = structuredClone(MANIFEST);
+  installMockBridge(() => ok({ manifest: structuredClone(server) }));
+  const user = userEvent.setup();
+  wrap(<ManifestWorkspace manifestId={80} canApprove canManage treasuryAccounts={[]} onBack={vi.fn()} />);
+  await screen.findByText("عميل 201");
+  await user.type(screen.getByLabelText("المبلغ المستلم فعلياً"), "562000");
+  fireEvent.keyDown(screen.getByText("عميل 201"), { key: "F5" });
+  const details = await screen.findByRole("dialog", { name: "الطلب #201" });
+  server = {
+    ...server,
+    rows: server.rows
+      .filter((row) => row.id !== 202)
+      .map((row) =>
+        row.id === 201 ? { ...row, total: 400000, remaining: 400000, delivery_agent: "مندوب جديد" } : row,
+      ),
+  };
+  await waitFor(() => expect(within(details).getByText("مندوب جديد")).toBeInTheDocument(), { timeout: 5000 });
+  expect(within(details).getAllByText("400,000 د.ع")).toHaveLength(2);
+  expect(screen.queryByText("عميل 202")).not.toBeInTheDocument();
+  expect(screen.getByLabelText("المبلغ المستلم فعلياً")).toHaveValue("562,000");
+}, 10000);
+
+it("does not replace a newer local classification with an earlier autosave acknowledgement", async () => {
+  let server = structuredClone(MANIFEST);
+  let finish: (() => void) | undefined;
+  let writes = 0;
+  installMockBridge((request) => {
+    if (request.path.endsWith("/selections")) {
+      const incoming = (request.body as { selections: Record<string, string> }).selections;
+      server = { ...server, selections: { ...server.selections, ...incoming } };
+      const saved = structuredClone(server);
+      if (++writes === 1)
+        return new Promise<ReturnType<typeof ok>>((resolve) => {
+          finish = () => resolve(ok({ manifest: saved }));
+        });
+    }
+    return ok({ manifest: structuredClone(server) });
+  });
+  const user = userEvent.setup();
+  wrap(<ManifestWorkspace manifestId={80} canApprove canManage treasuryAccounts={[]} onBack={vi.fn()} />);
+  const first = await screen.findByRole("radiogroup", { name: "تصنيف 201" });
+  await user.click(within(first).getByRole("radio", { name: "راجع" }));
+  await waitFor(() => expect(finish).toBeDefined());
+  const second = screen.getByRole("radiogroup", { name: "تصنيف 202" });
+  await user.click(within(second).getByRole("radio", { name: "مؤجل" }));
+  await act(async () => finish?.());
+  expect(within(second).getByRole("radio", { name: "مؤجل" })).toHaveAttribute("aria-checked", "true");
+  await waitFor(() => expect(server.selections["202"]).toBe("مؤجل"), { timeout: 3000 });
+  expect(server.selections["201"]).toBe("راجع");
+});
+
+it("retains a rejected draft without repeatedly resubmitting it until the user changes it", async () => {
+  let writes = 0;
+  installMockBridge((request) => {
+    if (request.path.endsWith("/selections")) {
+      writes += 1;
+      return { ok: false, failure: "http", status: 409, data: { error: "تغيّر الكشف" } };
+    }
+    return ok({ manifest: MANIFEST });
+  });
+  const user = userEvent.setup();
+  wrap(<ManifestWorkspace manifestId={80} canApprove canManage treasuryAccounts={[]} onBack={vi.fn()} />);
+  const first = await screen.findByRole("radiogroup", { name: "تصنيف 201" });
+  await user.click(within(first).getByRole("radio", { name: "راجع" }));
+  await waitFor(() => expect(writes).toBe(1));
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 2100));
+  });
+  expect(writes).toBe(1);
+  expect(within(first).getByRole("radio", { name: "راجع" })).toHaveAttribute("aria-checked", "true");
+  await user.click(within(first).getByRole("radio", { name: "مؤجل" }));
+  await waitFor(() => expect(writes).toBe(2));
+}, 10000);
 
 it("distributes a partial payment oldest-first, deducting each fee once and the return fee", async () => {
   const bridge = installMockBridge((request: FinoraRequest) => {

@@ -272,3 +272,7 @@ class Invoice(db.Model):
     # =====================
     def __repr__(self):
         return f"<Invoice #{self.id} | {self.customer_name} | {self.total}>"
+
+
+from utils.agent_manifest_sync import install_agent_manifest_sync
+install_agent_manifest_sync()

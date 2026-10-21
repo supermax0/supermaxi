@@ -65,12 +65,23 @@ export function ManifestWorkspace({
   const client = useQueryClient();
   const online = useConnection((s) => s.status === "online");
   const key = useMemo(() => ["shipping", "manifest", manifestId] as const, [manifestId]);
-  const query = useQuery({ queryKey: key, queryFn: () => finora.shipping.manifest(manifestId) });
+  const pendingWrites = useRef(0);
+  const query = useQuery({
+    queryKey: key,
+    queryFn: () => finora.shipping.manifest(manifestId),
+    enabled: online,
+    refetchInterval: (query) =>
+      !query.state.data?.manifest.executed && pendingWrites.current === 0 ? 3000 : false,
+    refetchOnWindowFocus: "always",
+  });
   const manifest = query.data?.manifest;
   const editable = !!manifest && manifest.kind === "settlement" && !manifest.executed && canManage;
 
   const [draft, setDraft] = useState<Draft>({});
   const [dirty, setDirty] = useState(false);
+  const draftRef = useRef(draft);
+  const failedDraft = useRef<Draft | null>(null);
+  draftRef.current = draft;
   const [filter, setFilter] = useState<Filter>("all");
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [focused, setFocused] = useState(0);
@@ -85,7 +96,7 @@ export function ManifestWorkspace({
   const [alloc, setAlloc] = useState<Record<string, number>>({});
   const [method, setMethod] = useState<"cash" | "bank">("cash");
   const [missingOpen, setMissingOpen] = useState(false);
-  const [detail, setDetail] = useState<ManifestRow | null>(null);
+  const [detailId, setDetailId] = useState<number | null>(null);
   const [lastAdd, setLastAdd] = useState<{ missing: string[]; duplicates: string[] } | null>(null);
   const input = useRef<HTMLInputElement>(null);
   const file = useRef<HTMLInputElement>(null);
@@ -101,15 +112,31 @@ export function ManifestWorkspace({
     [client, key],
   );
 
+  const startWrite = async () => {
+    pendingWrites.current += 1;
+    await client.cancelQueries({ queryKey: key });
+  };
+  const endWrite = () => {
+    pendingWrites.current = Math.max(0, pendingWrites.current - 1);
+    void client.invalidateQueries({ queryKey: key });
+  };
   const save = useMutation({
+    onMutate: startWrite,
+    onSettled: endWrite,
     mutationFn: (d: Draft) => finora.shipping.saveSelections(manifestId, d),
-    onSuccess: (res) => {
+    onSuccess: (res, submitted) => {
+      failedDraft.current = null;
       setManifest(res.manifest);
-      setDirty(false);
+      if (draftRef.current === submitted) setDirty(false);
     },
-    onError: (e: unknown) => toast.error(toFinoraError(e).message),
+    onError: (e: unknown, submitted) => {
+      failedDraft.current = submitted;
+      toast.error(toFinoraError(e).message);
+    },
   });
   const add = useMutation({
+    onMutate: startWrite,
+    onSettled: endWrite,
     mutationFn: (codes: string[]) => finora.shipping.addRows(manifestId, codes),
     onSuccess: (res) => {
       setManifest(res.manifest);
@@ -123,11 +150,15 @@ export function ManifestWorkspace({
     onError: (e: unknown) => toast.error(toFinoraError(e).message),
   });
   const remove = useMutation({
+    onMutate: startWrite,
+    onSettled: endWrite,
     mutationFn: (orderId: number) => finora.shipping.removeRow(manifestId, orderId),
     onSuccess: (res) => setManifest(res.manifest),
     onError: (e: unknown) => toast.error(toFinoraError(e).message),
   });
   const approve = useMutation({
+    onMutate: startWrite,
+    onSettled: endWrite,
     mutationFn: () =>
       finora.shipping.approve(manifestId, {
         received_amount: received,
@@ -155,13 +186,22 @@ export function ManifestWorkspace({
 
   // Autosave the classification draft (Ctrl+S saves immediately).
   useEffect(() => {
-    if (!dirty || !editable) return;
+    if (!dirty || !editable || save.isPending || failedDraft.current === draft) return;
     const timer = window.setTimeout(() => save.mutate(draft), 900);
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [draft, dirty, editable]);
+  }, [draft, dirty, editable, save.isPending]);
 
   const rows = useMemo(() => manifest?.rows ?? [], [manifest]);
+  const detail = rows.find((row) => row.id === detailId) ?? null;
+  useEffect(() => {
+    const ids = new Set(rows.map((row) => row.id));
+    setSelected((previous) =>
+      [...previous].every((id) => ids.has(id))
+        ? previous
+        : new Set([...previous].filter((id) => ids.has(id))),
+    );
+  }, [rows]);
   const issuesByOrder = useMemo(() => {
     const map = new Map<number, { severity: "error" | "warning"; messages: string[] }>();
     for (const issue of manifest?.issues ?? []) {
@@ -207,14 +247,18 @@ export function ManifestWorkspace({
     for (const r of rows) {
       const s = statusOf(r);
       if (s === "واصل") {
-        const amount = partial ? Math.min(alloc[String(r.id)] ?? r.remaining, r.remaining) : r.remaining;
+        const amount = manifest?.executed
+          ? (r.allocated ?? 0)
+          : partial
+            ? Math.min(alloc[String(r.id)] ?? r.remaining, r.remaining)
+            : r.remaining;
         collected += amount;
-        owed += r.remaining - amount;
+        owed += Math.max(r.remaining - amount, 0);
         if (amount > 0) fees += r.fee_due;
       } else if (s === "راجع") returns += returnFeeEach;
     }
     return { collected, fees, returns, owed, net: collected - fees - returns };
-  }, [rows, statusOf, partial, alloc, returnFeeEach]);
+  }, [rows, statusOf, partial, alloc, returnFeeEach, manifest?.executed]);
   const difference = received - live.net;
 
   const setStatus = useCallback(
@@ -255,7 +299,7 @@ export function ManifestWorkspace({
     const inEntry = target === input.current;
     if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
       event.preventDefault();
-      if (editable) save.mutate(draft);
+      if (editable && !save.isPending) save.mutate(draft);
       return;
     }
     if (visible.length === 0) return;
@@ -268,7 +312,7 @@ export function ManifestWorkspace({
       setFocused((i) => Math.min(i + 1, visible.length - 1));
     } else if (event.key === "F5") {
       event.preventDefault();
-      setDetail(row);
+      setDetailId(row.id);
     } else if (!inEntry && event.key === "ArrowDown") {
       event.preventDefault();
       setFocused((i) => Math.min(i + 1, visible.length - 1));
@@ -974,19 +1018,27 @@ export function ManifestWorkspace({
               <Info label="المدينة" value={detail.customer_city || "—"} />
               <Info label="العنوان" value={detail.customer_address || "—"} />
               <Info label="الإجمالي" value={money(detail.total)} />
-              <Info label="المدفوع" value={money(detail.paid_amount)} />
-              <Info label="الباقي للتحصيل" value={money(detail.remaining)} />
+              <Info
+                label={manifest.executed ? "المدفوع قبل التسوية" : "المدفوع"}
+                value={money(detail.paid_amount)}
+              />
+              <Info
+                label={manifest.executed ? "المستحق وقت التسوية" : "الباقي للتحصيل"}
+                value={money(detail.remaining)}
+              />
+              {manifest.executed && <Info label="المحصّل بهذا الكشف" value={money(detail.allocated ?? 0)} />}
               <Info label="أجرة النقل" value={money(detail.fee)} />
               <Info label="حالة الطلب" value={detail.status} />
               <Info label="حالة الدفع" value={detail.payment_status || "—"} />
               <Info label="البوليصة" value={detail.waybills.join("، ") || "—"} />
               <Info label="شركة النقل" value={detail.shipping_company || "—"} />
+              <Info label="المندوب" value={detail.delivery_agent || "—"} />
             </dl>
           )
         }
         confirmLabel="إغلاق"
-        onClose={() => setDetail(null)}
-        onConfirm={() => setDetail(null)}
+        onClose={() => setDetailId(null)}
+        onConfirm={() => setDetailId(null)}
       />
     </div>
   );

@@ -100,6 +100,7 @@ export function useChangeOrderStatus() {
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ordersKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["shipping"] });
       // Status changes move stock in FINORA.
       void queryClient.invalidateQueries({ queryKey: ["products"] });
     },
@@ -130,6 +131,7 @@ export function useReturnOrders() {
     },
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ordersKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["shipping"] });
       void queryClient.invalidateQueries({ queryKey: ["products"] });
       for (const key of ["customers", "finance", "reports", "pos"])
         void queryClient.invalidateQueries({ queryKey: [key] });
@@ -172,7 +174,10 @@ export function useAssignOrders() {
       if (failed.length > 0)
         toast.error(`تعذّر تحديث ${what} للطلبات: ${failed.map((id) => `#${id}`).join("، ")}`);
     },
-    onSettled: () => void queryClient.invalidateQueries({ queryKey: ordersKeys.all }),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ordersKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["shipping"] });
+    },
   });
 }
 
@@ -195,6 +200,7 @@ export function usePayOrder() {
     onSettled: () => {
       void Promise.all([
         queryClient.invalidateQueries({ queryKey: ordersKeys.all }),
+        queryClient.invalidateQueries({ queryKey: ["shipping"] }),
         queryClient.invalidateQueries({ queryKey: ["customers"] }),
         queryClient.invalidateQueries({ queryKey: ["finance"] }),
         queryClient.invalidateQueries({ queryKey: ["reports"] }),
@@ -215,7 +221,10 @@ export function useCancelOrder() {
     },
     onError: (error) => toast.error(failureMessage(error)),
     onSuccess: (_result, id) => toast.success(`تم إلغاء الطلب #${id}.`),
-    onSettled: () => void queryClient.invalidateQueries({ queryKey: ordersKeys.all }),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ordersKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["shipping"] });
+    },
   });
 }
 
@@ -242,6 +251,7 @@ export function useQuickEditOrder() {
       else toast.success(`تم حفظ تعديلات الطلب #${id}.`);
       await Promise.all([
         client.invalidateQueries({ queryKey: ordersKeys.all }),
+        client.invalidateQueries({ queryKey: ["shipping"] }),
         client.invalidateQueries({ queryKey: ["products"] }),
         client.invalidateQueries({ queryKey: ["pos"] }),
         client.invalidateQueries({ queryKey: ["reports"] }),
@@ -266,6 +276,7 @@ export function useSaveShippingBarcodes() {
       ),
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: ordersKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["shipping"] });
       void queryClient.invalidateQueries({ queryKey: ["products"] });
       void queryClient.invalidateQueries({ queryKey: ["pos"] });
       void queryClient.invalidateQueries({ queryKey: ["reports"] });

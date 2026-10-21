@@ -179,9 +179,8 @@ def _pending_return(order_id: int) -> bool:
 
 def _agent_key(agent) -> str:
     """Same person = same name and phone (FINORA may hold one copy per branch); carriers merge by name likewise."""
-    name = " ".join(str(agent.name or "").split()).casefold()
-    phone = "".join(ch for ch in str(agent.phone or "") if ch.isdigit())[-10:]
-    return f"{name}|{phone}"
+    from utils.agent_manifest_sync import agent_key
+    return agent_key(agent)
 
 
 def _agent_groups() -> list[tuple[Any, list[int]]]:
@@ -269,7 +268,7 @@ def _report_kind(report) -> str:
 
 
 def _report_summary(report) -> dict[str, Any]:
-    from utils.agent_report_helpers import compute_report_status_breakdown, get_agent_name_for_report
+    from utils.agent_report_helpers import compute_report_status_breakdown, get_agent_name_for_report, compute_report_orders_amount
 
     try:
         breakdown = compute_report_status_breakdown(report)
@@ -284,11 +283,11 @@ def _report_summary(report) -> dict[str, Any]:
         "carrier_id": None if agent_id else report.shipping_company_id,
         "carrier": "" if agent_id else (report.shipping_company_name or ""),
         "agent_id": agent_id,
-        "agent": (get_agent_name_for_report(report) if _report_kind(report) == "agent"
+        "agent": ((report.shipping_company_name or "") if report.is_executed and _report_kind(report) == "agent" else get_agent_name_for_report(report) if _report_kind(report) == "agent"
                   else str(meta.get("agent_name") or "") if agent_id else ""),
         "settlement_state": _settlement_state(report, meta),
-        "orders_count": int(report.orders_count or 0),
-        "total_amount": int(report.total_amount or 0),
+        "orders_count": int(report.orders_count or 0) if report.is_executed else len(_rows(report)),
+        "total_amount": int(report.total_amount or 0) if report.is_executed else compute_report_orders_amount(report),
         "executed": bool(report.is_executed),
         "created_at": report.created_at.strftime("%Y-%m-%d %H:%M") if report.created_at else "",
         "created_by": report.created_by or "",
@@ -332,11 +331,8 @@ def _selections(report) -> dict[str, str]:
 
 
 def _rows(report) -> list[dict]:
-    try:
-        rows = json.loads(report.orders_data or "[]")
-        return rows if isinstance(rows, list) else []
-    except (TypeError, ValueError):
-        return []
+    from utils.agent_report_helpers import _parse_orders_data
+    return _parse_orders_data(report)
 
 
 # ───────────────────────────── reads ─────────────────────────────
@@ -732,17 +728,45 @@ def _settlement_number() -> str:
 
 
 def _manifest_payload(report):
-    analysis = _analyze(report)
     meta = _report_meta(report)
     if report.is_executed:
-        # Approved history is immutable: the live checks (already paid, closed…) describe the approval itself.
+        # Read the approved snapshot, never the current invoice or assignment.
         ledger = meta.get("ledger") if isinstance(meta.get("ledger"), dict) else {}
-        analysis.update(issues=[], blocking=[], ready=False,
-                        expected_net=int(ledger.get("expected_net", meta.get("received_amount", 0)) or 0))
         allocations = ledger.get("allocations") if isinstance(ledger.get("allocations"), dict) else {}
-        for row in analysis["rows"]:
+        rows = []
+        totals = {"delivered": {"count": 0, "amount": 0, "fee": 0}, "returned": {"count": 0, "amount": 0, "fee": 0},
+                  "postponed": {"count": 0, "amount": 0}, "problem": {"count": 0, "amount": 0}, "unclassified": {"count": 0, "amount": 0}}
+        for stored in _rows(report):
+            try:
+                order_id = int(stored.get("id") or stored.get("order_id"))
+            except (TypeError, ValueError):
+                continue
+            row = {"customer_name": "", "customer_phone": "", "customer_city": "", "customer_address": "",
+                   "total": 0, "paid_amount": 0, "status": "", "shipping_status": "", "payment_status": "",
+                   "shipping_company_id": None, "shipping_company": report.shipping_company_name or "",
+                   "delivery_agent_id": None, "delivery_agent": "", "waybills": [], "fee": 0, "fee_due": 0,
+                   "created_at": "", **stored}
+            row["id"] = order_id
+            row["remaining"] = int(row.get("remaining", max(int(row["total"] or 0) - int(row["paid_amount"] or 0), 0)) or 0)
+            row["selection"] = _selections(report).get(str(row["id"]), "")
             row["allocated"] = int(allocations.get(str(row["id"]), 0) or 0)
-    return {**_report_summary(report), "meta": meta, "selections": _selections(report), **analysis}
+            bucket = {STATUS_DELIVERED: "delivered", STATUS_RETURNED: "returned", STATUS_POSTPONED: "postponed", STATUS_PROBLEM: "problem"}.get(row["selection"], "unclassified")
+            totals[bucket]["count"] += 1
+            totals[bucket]["amount"] += row["remaining"]
+            rows.append(row)
+        totals["delivered"]["fee"] = int(ledger.get("fees", 0) or 0)
+        totals["returned"]["fee"] = int(ledger.get("return_fees", 0) or 0)
+        snapshot = meta.get("approved_analysis") if isinstance(meta.get("approved_analysis"), dict) else {}
+        analysis = {"rows": rows, "issues": [], "blocking": [], "ready": False, "totals": totals,
+                    "expected_net": int(ledger.get("expected_net", meta.get("received_amount", 0)) or 0),
+                    "return_fee_each": int(snapshot.get("return_fee_each", totals["returned"]["fee"] // max(totals["returned"]["count"], 1)) or 0)}
+    else:
+        analysis = _analyze(report)
+    ids = {str(row["id"]) for row in analysis["rows"]}
+    selections = _selections(report)
+    if not report.is_executed:
+        selections = {key: value for key, value in selections.items() if key in ids}
+    return {**_report_summary(report), "meta": meta, "selections": selections, **analysis}
 
 
 def _editable_settlement(manifest_id: int):
@@ -994,7 +1018,7 @@ def shipping_center_manifest_approve(manifest_id: int):
     agent_id = _meta_agent_id(meta)
     party_type, party_id = ("agent", agent_id) if agent_id else ("carrier", report.shipping_company_id)
     party_name = str(meta.get("agent_name") or "") if agent_id else (report.shipping_company_name or "")
-    original_rows, original_selections = report.orders_data, report.order_status_selections
+    original_selections = report.order_status_selections
     now = datetime.utcnow()
 
     executable, exec_rows = {}, []
@@ -1051,8 +1075,17 @@ def shipping_center_manifest_approve(manifest_id: int):
             report.is_executed = True
             result = {"success": True, "message": "اعتُمد الكشف دون تحصيل"}
         # The manifest keeps its own rows and the accountant's classification as the approved record.
-        report.orders_data = original_rows
-        report.order_status_selections = original_selections
+        frozen_rows = [dict(row) for row in analysis["rows"]]
+        for row in frozen_rows:
+            order = db.session.get(Invoice, row["id"])
+            if order:
+                row.update(status=order.status or "", shipping_status=order.shipping_status or "", payment_status=order.payment_status or "")
+        meta["approved_analysis"] = {"return_fee_each": analysis["return_fee_each"]}
+        report.notes = json.dumps(meta, ensure_ascii=False)
+        report.orders_data = json.dumps(frozen_rows, ensure_ascii=False)
+        report.orders_count = len(frozen_rows)
+        report.total_amount = sum(row["remaining"] for row in frozen_rows)
+        report.order_status_selections = json.dumps({key: value for key, value in json.loads(original_selections or "{}").items() if key in {str(row["id"]) for row in frozen_rows}}, ensure_ascii=False)
         db.session.commit()
     except ValueError as exc:
         db.session.rollback()
