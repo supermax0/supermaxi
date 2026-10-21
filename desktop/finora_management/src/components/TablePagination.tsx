@@ -5,6 +5,7 @@ import { formatNumber } from "@/utils/format";
 export const PAGE_SIZES = [10, 25, 50, 100] as const;
 
 interface TablePaginationProps {
+  className?: string;
   page: number;
   totalPages: number;
   total: number;
@@ -31,6 +32,7 @@ export function pageWindow(page: number, totalPages: number): Array<number | "ga
 }
 
 export function TablePagination({
+  className,
   page,
   totalPages,
   total,
@@ -44,7 +46,7 @@ export function TablePagination({
   const button = "grid h-9 min-w-9 place-items-center rounded-[10px] px-2 text-sm transition-colors";
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 pt-3">
+    <div className={cn("flex flex-wrap items-center justify-between gap-4 pt-3", className)}>
       <div className="flex items-center gap-3 text-sm text-ink-soft">
         <label className="flex items-center gap-2">
           <span className="sr-only">عدد الصفوف</span>

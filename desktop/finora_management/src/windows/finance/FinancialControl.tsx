@@ -132,7 +132,10 @@ export function FinancialControl({
   };
   const result = comparison.data;
   return (
-    <section className="relative flex min-h-0 flex-1 flex-col gap-3" aria-label="الرقابة المالية والمطابقة">
+    <section
+      className="relative flex min-h-0 flex-1 flex-col gap-3 [@media(max-height:700px)]:h-auto [@media(max-height:700px)]:flex-none"
+      aria-label="الرقابة المالية والمطابقة"
+    >
       <div className="flex flex-wrap gap-2">
         <button className={button} aria-pressed={tab === "current"} onClick={() => setTab("current")}>
           المصادر الحالية
@@ -226,7 +229,7 @@ export function FinancialControl({
             الأرقام المسجلة حالية. المعاينة المعدودة تتطلب إدخال النقد وكشف كل حساب؛ لا يُفترض أن الرصيد
             المسجل هو المبلغ الفعلي.
           </p>
-          <div className="min-h-0 flex-1">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden [@media(max-height:700px)]:h-60 [@media(max-height:700px)]:flex-none">
             <DataTable<SourceRow>
               label="مصادر المركز المالي"
               rows={current.data?.rows.map((row, index) => ({ ...row, id: index + 1 }))}
@@ -324,7 +327,7 @@ export function FinancialControl({
               )}
             </details>
           )}
-          <div className="min-h-0 flex-1">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden [@media(max-height:700px)]:h-60 [@media(max-height:700px)]:flex-none">
             <DataTable<ControlSnapshot>
               label="سجل معاينات المركز المالي"
               rows={snapshots.data?.items}
@@ -353,6 +356,7 @@ export function FinancialControl({
             />
           </div>
           <TablePagination
+            className="ps-28"
             page={page}
             pageSize={pageSize}
             total={snapshots.data?.total || 0}

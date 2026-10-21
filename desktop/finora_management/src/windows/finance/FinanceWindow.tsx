@@ -378,7 +378,11 @@ export function FinanceWindow() {
     { id: "status", header: "الحالة", cell: (r) => <Badge status={r.overdue ? "overdue" : r.status} /> },
   ];
   return (
-    <div className="relative flex h-full min-h-0 flex-col gap-4" dir="rtl" data-testid="finance-window">
+    <div
+      className="relative flex h-full min-h-0 flex-col gap-4 [@media(max-height:700px)]:overflow-y-auto"
+      dir="rtl"
+      data-testid="finance-window"
+    >
       <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="أقسام الحسابات">
         {(
           [
@@ -630,7 +634,7 @@ export function FinanceWindow() {
               </button>
             )}
           </div>
-          <div className="min-h-0 flex-1">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden [@media(max-height:700px)]:h-80 [@media(max-height:700px)]:flex-none">
             {tab === "vouchers" ? (
               <DataTable
                 label="السندات المالية"
@@ -714,6 +718,7 @@ export function FinanceWindow() {
           </div>
           {tab !== "accounts" && (
             <TablePagination
+              className="ps-28"
               page={page}
               totalPages={Math.max(
                 1,
@@ -1267,7 +1272,7 @@ function LedgerReview({
           {money(trial.data?.equity || 0)} · الربح المتراكم {money(trial.data?.profit || 0)}
         </p>
       )}
-      <div className="min-h-0 flex-1">
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         {report === "journal" ? (
           journal
         ) : operational ? (
