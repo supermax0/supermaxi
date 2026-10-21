@@ -470,6 +470,20 @@ export async function chatLocalAssistant(
   };
 }
 
+/**
+ * Initial prompt for whisper: biases recognition toward Iraqi dialect and FINORA's vocabulary.
+ * whisper.cpp's server reads it as the "prompt" field; servers that do not support it ignore it.
+ */
+export const SPEECH_PROMPT =
+  "سؤال باللهجة العراقية لمساعد فينورا: شكد، شنو، منو، شلون، هسه، اليوم، البارحة، مورد، عميل، زبون، قاصة، صندوق، مبيعات، مشتريات، مصاريف، مخزون، منتج، دينار، ألف، مليون، قسط، كشف، مندوب، فاتورة.";
+/** Arabic-Indic digits to ASCII so amounts and phone numbers match FINORA search. */
+export function normalizeTranscript(text: string): string {
+  return text
+    .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
+    .replace(/\s+/g, " ")
+    .trim();
+}
 export async function transcribeLocal(
   settings: LocalAssistantSettings,
   input: { data: Uint8Array; type: "audio/wav" | "audio/webm" },
@@ -485,7 +499,7 @@ export async function transcribeLocal(
     ),
     Buffer.from(input.data),
     Buffer.from(
-      `\r\n--${boundary}\r\nContent-Disposition: form-data; name="response_format"\r\n\r\njson\r\n--${boundary}\r\nContent-Disposition: form-data; name="language"\r\n\r\nar\r\n--${boundary}--\r\n`,
+      `\r\n--${boundary}\r\nContent-Disposition: form-data; name="response_format"\r\n\r\njson\r\n--${boundary}\r\nContent-Disposition: form-data; name="language"\r\n\r\nar\r\n--${boundary}\r\nContent-Disposition: form-data; name="prompt"\r\n\r\n${SPEECH_PROMPT}\r\n--${boundary}--\r\n`,
     ),
   ]);
   const result = z
@@ -500,5 +514,5 @@ export async function transcribeLocal(
         signal,
       ),
     );
-  return result.text.trim();
+  return normalizeTranscript(result.text);
 }

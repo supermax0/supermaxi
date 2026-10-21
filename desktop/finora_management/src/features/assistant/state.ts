@@ -26,6 +26,8 @@ export interface AssistantMessage {
   proposals?: AssistantProposal[];
   guides?: string[];
   restored?: boolean;
+  /** Answered by FINORA's server assistant instead of the local model. */
+  via?: "server";
 }
 interface AssistantState {
   open: boolean;

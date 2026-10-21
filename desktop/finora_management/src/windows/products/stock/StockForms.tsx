@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus, Trash2, RefreshCw } from "lucide-react";
 import { finora, toFinoraError } from "@/api/finora";
 import type {
@@ -65,6 +65,7 @@ export function StockForms({
   serverUrl,
   onClose,
   onSaved,
+  assistantDraft,
 }: {
   mode: StockForm;
   meta: StockMeta;
@@ -74,6 +75,8 @@ export function StockForms({
   serverUrl: string | null;
   onClose(): void;
   onSaved(result: { id: number; type: string; ledger_kind: "branch" | "warehouse"; status: string }): void;
+  /** Reviewed transfer draft from the assistant, applied once when the form opens. */
+  assistantDraft?: Record<string, unknown> | null;
 }) {
   const client = useQueryClient();
   const [key] = useState(() => crypto.randomUUID());
@@ -88,6 +91,40 @@ export function StockForms({
     [to, setTo] = useState(meta.locations.find((row) => row.key !== location)?.key ?? "");
   const [search, setSearch] = useState(""),
     [lines, setLines] = useState<{ row: StockRow; quantity: number }[]>([]);
+  // Assistant transfer draft: each product is re-read from the source location before it becomes a line.
+  const draftApplied = useRef(false);
+  useEffect(() => {
+    if (draftApplied.current || !assistantDraft || mode.kind !== "transfer") return;
+    draftApplied.current = true;
+    const draft = assistantDraft;
+    const items = Array.isArray(draft.items)
+      ? (draft.items as { product_id: number; name: string; quantity: number; color?: string }[])
+      : [];
+    if (typeof draft.note === "string") setReason(draft.note);
+    void Promise.all(
+      items.map(async (item) => {
+        const page = await finora.stockOperations.stocks(meta.kind, from, item.name);
+        const row = page.items.find(
+          (r) => r.product_id === item.product_id && (!item.color || r.variant_name === item.color),
+        );
+        return row ? { row, quantity: Math.min(item.quantity, row.available) } : null;
+      }),
+    ).then(
+      (found) => {
+        const ready = found.filter(
+          (entry): entry is { row: StockRow; quantity: number } => !!entry && entry.quantity > 0,
+        );
+        setLines(ready);
+        setDirty(true);
+        // Compared before filtering so each result still lines up with its requested item.
+        const short = found.some((entry, i) => !entry || entry.quantity < (items[i]?.quantity ?? 0));
+        if (short) toast.info("بعض المنتجات غير متوفرة في موقع المصدر أو رصيدها أقل؛ راجع السطور قبل الحفظ.");
+      },
+      (error: unknown) => toast.error(toFinoraError(error).message),
+    );
+    // Applied once on open; later edits belong to the user.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assistantDraft]);
   const [current, setCurrent] = useState(
     "row" in mode && (mode.kind === "writeoff" || mode.kind === "rule") ? mode.row : null,
   );

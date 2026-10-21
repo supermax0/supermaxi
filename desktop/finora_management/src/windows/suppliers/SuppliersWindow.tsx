@@ -44,6 +44,7 @@ import { SupplierDetailsPanel } from "./SupplierDetailsPanel";
 import { SupplierEditor, SupplierPaymentDialog, supplierPrimary, supplierSecondary } from "./SupplierDialogs";
 import { SupplierSaleDialog } from "./SupplierSaleDialog";
 import { useAssistantPageContext } from "@/features/assistant/pageContext";
+import { useAssistantDraft, useAssistantDraftFields } from "@/features/assistant/draftQueue";
 
 const LABELS: Record<SupplierTab, string> = {
   all: "الكل",
@@ -119,6 +120,25 @@ export function SuppliersWindow() {
     queryFn: () => finora.suppliers.list(query),
     enabled: active && allowed,
   });
+  // An assistant draft opens the original form; the form itself consumes and shows the fields.
+  const assistantDraft = useAssistantDraft((s) => s.pending);
+  useEffect(() => {
+    if (!active || !allowed || !assistantDraft) return;
+    if (assistantDraft.kind === "supplier") setEditor((current) => current ?? "create");
+    if (assistantDraft.kind === "supplier_payment") {
+      setDetailsId(Number(assistantDraft.fields.supplier_id));
+      setPaymentOpen(true);
+    }
+  }, [active, allowed, assistantDraft]);
+  const [supplierDraft, setSupplierDraft] = useState<Record<string, unknown> | null>(null);
+  const [paymentDraft, setPaymentDraft] = useState<Record<string, unknown> | null>(null);
+  useAssistantDraftFields("supplier", editor === "create", setSupplierDraft);
+  useAssistantDraftFields("supplier_payment", paymentOpen, setPaymentDraft);
+  // Each draft fills one form; closing it discards the draft.
+  useEffect(() => {
+    if (editor === null) setSupplierDraft(null);
+    if (!paymentOpen) setPaymentDraft(null);
+  }, [editor, paymentOpen]);
   const details = useQuery({
     queryKey: ["suppliers", "details", detailsId],
     queryFn: () => {
@@ -551,6 +571,7 @@ export function SuppliersWindow() {
         <SupplierEditor
           key={editor === "create" ? "create" : editor.id}
           supplier={editor === "create" ? undefined : editor}
+          draft={editor === "create" ? supplierDraft : null}
           onClose={() => setEditor(null)}
           onSaved={(id) => {
             setEditor(null);
@@ -562,6 +583,7 @@ export function SuppliersWindow() {
         <SupplierPaymentDialog
           key={details.data.supplier.id}
           details={details.data}
+          draft={paymentDraft}
           onClose={() => setPaymentOpen(false)}
         />
       )}

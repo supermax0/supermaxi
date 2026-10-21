@@ -221,3 +221,70 @@ def product_movements(args: dict, scope: dict) -> dict:
             for row in result.get("movements", [])
         ]
     return result
+
+
+def expense_anomalies(args: dict, _scope: dict) -> dict:
+    """Categories that cost clearly more than their average over the three previous equal periods."""
+    from datetime import timedelta
+
+    filters = _filters(args)
+    span = (filters.date_to - filters.date_from).days + 1
+    baseline_filters = rs.ReportFilters(
+        period="custom",
+        date_from=filters.date_from - timedelta(days=span * 3),
+        date_to=filters.date_from - timedelta(days=1),
+        branch_id=filters.branch_id,
+    )
+    minimum = int(args.get("min_increase") or 50000)
+    with _section("expenses", filters):
+        current = rs.expense_breakdown(filters, "category")
+        baseline = {row["key"]: row["amount"] for row in rs.expense_breakdown(baseline_filters, "category")}
+    items = []
+    for row in current:
+        average = baseline.get(row["key"], 0) // 3
+        increase = row["amount"] - average
+        if increase >= minimum and row["amount"] >= average * 1.5:
+            items.append({
+                "category": row["label"],
+                "amount": row["amount"],
+                "previous_average": average,
+                "increase": increase,
+                "ratio": round(row["amount"] / average, 1) if average else None,
+                "new_category": average == 0,
+            })
+    items.sort(key=lambda item: -item["increase"])
+    return {
+        **_range(filters),
+        "baseline": {"from": baseline_filters.date_from.isoformat(), "to": baseline_filters.date_to.isoformat()},
+        "count": len(items),
+        "items": items[: int(args.get("limit") or 10)],
+        "note": "مقارنة المصاريف المرحّلة لكل فئة بمتوسط ثلاث فترات سابقة بنفس الطول. مؤشر للمراجعة وليس حكماً بخطأ.",
+        "currency": "IQD",
+    }
+
+
+def duplicate_customers(args: dict, _scope: dict) -> dict:
+    """Customers sharing a phone number (last 10 digits), within the user's visible customers."""
+    import re
+
+    from models.customer import Customer
+
+    groups: dict[str, dict[int, Customer]] = {}
+    for customer in Customer.query.all():
+        for phone in (customer.phone, customer.phone2):
+            digits = re.sub(r"\D", "", phone or "")[-10:]
+            if len(digits) >= 9:
+                groups.setdefault(digits, {})[customer.id] = customer
+    duplicates = sorted((g for g in groups.values() if len(g) > 1), key=lambda g: -len(g))
+    return {
+        "groups_count": len(duplicates),
+        "groups": [
+            {
+                "phone": next(iter(group.values())).phone or "",
+                "count": len(group),
+                "customers": [{"customer_id": c.id, "name": c.name} for c in group.values()],
+            }
+            for group in duplicates[: int(args.get("limit") or 10)]
+        ],
+        "note": "عملاء بنفس رقم الهاتف. راجعهم قبل الدمج أو التعديل؛ قد يكونون أفراد عائلة واحدة.",
+    }

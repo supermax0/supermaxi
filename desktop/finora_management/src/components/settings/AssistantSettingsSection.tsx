@@ -243,6 +243,16 @@ export function AssistantSettingsSection() {
           <Switch label="دعم صور المساعد" checked={draft.vision} onChange={(vision) => patch({ vision })} />
         </SettingRow>
         <SettingRow
+          title="مساعد الخادم عند تعذر النموذج المحلي"
+          hint="إذا كان النموذج المحلي متوقفاً أو غير متصل يُرسل السؤال النصي لمساعد فينورا على الخادم، بنفس صلاحياتك، ويعمل فقط إذا فعّله مدير الشركة. قد يستخدم الخادم مزوّد ذكاء خارجياً حسب إعدادات الشركة. الصور لا تُرسل."
+        >
+          <Switch
+            label="استخدام مساعد الخادم احتياطياً"
+            checked={draft.serverFallback}
+            onChange={(serverFallback) => patch({ serverFallback })}
+          />
+        </SettingRow>
+        <SettingRow
           title="حفظ المحادثة على هذا الجهاز"
           hint="تُحفظ مشفّرة، ومعزولة حسب الحساب والشركة والفرع والصلاحيات. الوصول للمحفوظ يحتاج جلسة موثقة. عند إيقافه تبقى المحادثة الحالية بذاكرة التطبيق."
         >

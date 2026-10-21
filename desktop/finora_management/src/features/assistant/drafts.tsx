@@ -9,6 +9,7 @@ import { allowedWindow, type ActionId } from "@/features/workspace/state";
 import { useAssistant, type AssistantProposal } from "./state";
 import { currentAssistantScope, rowsFromData, sourceWindow } from "./engine";
 import { queueAssistantDraft } from "./draftQueue";
+import { toast } from "@/stores/toasts";
 import { draftSchemas, validateDraft, type DraftKind } from "./draftSchema";
 
 const LABELS: Record<string, string> = {
@@ -25,6 +26,11 @@ const LABELS: Record<string, string> = {
   title: "العنوان",
   amount: "المبلغ",
   items: "المنتجات والكميات",
+  phone2: "هاتف إضافي",
+  supplier_id: "رقم المورد",
+  order_id: "رقم الطلب",
+  documentNumber: "رقم المستند",
+  supplierInvoiceNo: "رقم فاتورة المورد",
 };
 function dialogOpen() {
   return (
@@ -62,28 +68,44 @@ export async function openPreparedDraft(proposal: AssistantProposal) {
     if (dialogOpen()) throw Error("أكمل النموذج المفتوح أو أغلقه أولاً حتى تبقى تعديلاتك محفوظة.");
   };
   check();
-  if (kind === "sale" || kind === "purchase") {
+  const verifiedProducts = (items: { product_id: number; quantity: number; color?: string }[]) => {
+    const ids = new Set<number>();
+    const rows = useAssistant
+      .getState()
+      .messages.flatMap((m) =>
+        (m.sources ?? [])
+          .filter((s) => sourceWindow(s.name) === "products")
+          .flatMap((s) => rowsFromData(s.data)),
+      );
+    return items.map((item) => {
+      if (ids.has(item.product_id)) throw Error("كرر المنتج مرة واحدة فقط واجمع كميته.");
+      ids.add(item.product_id);
+      const verified = rows.find((r) => Number(r.id ?? r.product_id) === item.product_id);
+      if (!verified || typeof verified.name !== "string")
+        throw Error("ابحث عن المنتج من المساعد أولاً حتى نتحقق من هويته، أو اختره يدوياً داخل النموذج.");
+      return { ...item, name: verified.name };
+    });
+  };
+  if (kind === "supplier" || kind === "supplier_payment") {
+    if (!allowedWindow("suppliers", useSession.getState().session)) throw Error("لا تملك صلاحية هذا القسم");
+    queueAssistantDraft(kind, fields, kind === "supplier" ? 10000 : 20000);
+    openWorkspaceTarget({ window: "suppliers" });
+  } else if (kind === "return") {
+    if (!allowedWindow("orders", useSession.getState().session)) throw Error("لا تملك صلاحية هذا القسم");
+    openWorkspaceTarget({ window: "orders", entityId: Number(fields.order_id) });
+    toast.info("راجع تفاصيل الطلب، ثم اضغط «إرجاع الطلب» واختر فرع الاستلام بنفسك.");
+  } else if (kind === "transfer") {
+    if (!allowedWindow("products", useSession.getState().session)) throw Error("لا تملك صلاحية هذا القسم");
+    const { items, note } = draftSchemas.transfer.parse(fields);
+    queueAssistantDraft(kind, { items: verifiedProducts(items), note: note ?? "" }, 25000);
+    openWorkspaceTarget({ window: "products", tab: "operations" });
+  } else if (kind === "sale" || kind === "purchase") {
     const window = kind === "sale" ? "pos" : "purchases";
     if (!allowedWindow(window, useSession.getState().session)) throw Error("لا تملك صلاحية هذا القسم");
     const empty = kind === "sale" ? cartEmpty : purchaseEmpty;
     if (!empty()) throw Error("توجد مسودة حالية. أكملها أو أفرغها بنفسك قبل فتح مقترح جديد.");
     const items = draftSchemas[kind].parse(fields).items ?? [];
-    const ids = new Set<number>();
-    const lookups = items.map((item) => {
-      if (ids.has(item.product_id)) throw Error("كرر المنتج مرة واحدة فقط واجمع كميته.");
-      ids.add(item.product_id);
-      const rows = useAssistant
-        .getState()
-        .messages.flatMap((m) =>
-          (m.sources ?? [])
-            .filter((s) => sourceWindow(s.name) === "products")
-            .flatMap((s) => rowsFromData(s.data)),
-        );
-      const verified = rows.find((r) => Number(r.id ?? r.product_id) === item.product_id);
-      if (!verified || typeof verified.name !== "string")
-        throw Error("ابحث عن المنتج من المساعد أولاً حتى نتحقق من هويته، أو اختره يدوياً داخل النموذج.");
-      return { item, name: verified.name };
-    });
+    const lookups = verifiedProducts(items).map((item) => ({ item, name: item.name }));
     // Resolve every row from the original, permission-scoped API before touching a draft.
     if (kind === "sale") {
       const bootstrap = await finora.pos.bootstrap();
@@ -121,11 +143,19 @@ export async function openPreparedDraft(proposal: AssistantProposal) {
       if (!purchaseEmpty()) throw Error("تغيّرت مسودة المشتريات؛ لم يتم استبدالها.");
       for (const { product, item } of products) {
         const line = useComposer.getState().addProduct(product);
+        const cost = "unitCost" in item && typeof item.unitCost === "number" ? item.unitCost : null;
         useComposer
           .getState()
           .updateLine(line.key, { qty: item.quantity, ...(item.color ? { color: item.color } : {}) });
+        // Applied after the colour: choosing a colour resets the line to that colour's cost.
+        if (cost !== null) useComposer.getState().updateLine(line.key, { unitCost: cost });
       }
-      useComposer.getState().patch({ notes: typeof fields.note === "string" ? fields.note : "" });
+      useComposer.getState().patch({
+        notes: typeof fields.note === "string" ? fields.note : "",
+        ...(typeof fields.supplierInvoiceNo === "string"
+          ? { supplierInvoiceNo: fields.supplierInvoiceNo }
+          : {}),
+      });
       openWorkspaceTarget({ window: "purchases" });
       useComposer.getState().setOpen(true);
     }

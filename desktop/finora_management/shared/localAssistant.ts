@@ -39,6 +39,8 @@ export const localAssistantSettingsSchema = z
     instructions: z.string().trim().max(6000).default(""),
     speech: z.boolean().default(false),
     speechPort: z.number().int().min(1024).max(65535).default(8080),
+    /** Ask FINORA's server assistant when the local model is off or unreachable. */
+    serverFallback: z.boolean().default(false),
   })
   .strict();
 export type LocalAssistantSettings = z.infer<typeof localAssistantSettingsSchema>;

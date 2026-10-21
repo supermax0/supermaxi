@@ -33,6 +33,7 @@ import { toast } from "@/stores/toasts";
 import { formatNumber, formatDateTime } from "@/utils/format";
 import { StockForms, stockButton, stockPrimary, stockMoney, type StockForm } from "./StockForms";
 import { StorageLocations } from "./StorageLocations";
+import { useAssistantDraft, useAssistantDraftFields } from "@/features/assistant/draftQueue";
 
 type View = "stocks" | "transfers" | "writeoffs" | "reorder" | "locations" | "movements";
 export type StockTarget = { kind: StockLedger; document: StockDocument; id: number };
@@ -95,6 +96,19 @@ export function StockOperations({
     ? place
     : (meta.data?.locations[0]?.key ?? "");
   const coreLocations = view === "locations" && kind === "branch" && meta.data?.storage_available;
+  const assistantDraft = useAssistantDraft((s) => s.pending);
+  useEffect(() => {
+    if (!active || assistantDraft?.kind !== "transfer" || !meta.data?.can_create_transfer || !location)
+      return;
+    setView("transfers");
+    setForm((current) => current ?? { kind: "transfer" });
+  }, [active, assistantDraft, meta.data?.can_create_transfer, location]);
+  const [transferDraft, setTransferDraft] = useState<Record<string, unknown> | null>(null);
+  useAssistantDraftFields("transfer", form?.kind === "transfer", setTransferDraft);
+  // A draft fills one transfer form only; the next form starts empty.
+  useEffect(() => {
+    if (!form) setTransferDraft(null);
+  }, [form]);
   useEffect(() => {
     onBusyChange(form !== null || storageBusy);
     return () => onBusyChange(false);
@@ -804,6 +818,7 @@ export function StockOperations({
           serverUrl={serverUrl}
           onClose={() => setForm(null)}
           onSaved={saved}
+          assistantDraft={form.kind === "transfer" ? transferDraft : null}
         />
       )}
       <ConfirmDialog

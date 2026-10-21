@@ -54,6 +54,8 @@ _TOOL_LABELS = {
     "get_overdue_installments": "جاري قراءة الأقساط المتأخرة...",
     "get_stagnant_products": "جاري فحص المنتجات الراكدة...",
     "get_product_movements": "جاري قراءة حركة المنتج...",
+    "get_expense_anomalies": "جاري فحص المصاريف غير الطبيعية...",
+    "get_duplicate_customers": "جاري البحث عن عملاء مكررين...",
 }
 
 

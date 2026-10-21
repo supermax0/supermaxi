@@ -131,10 +131,13 @@ export function SupplierEditor({
   supplier,
   onClose,
   onSaved,
+  draft,
 }: {
   supplier?: SupplierRow;
   onClose(): void;
   onSaved(id: number): void;
+  /** Assistant draft for a new supplier; shown in the form for review, never saved by itself. */
+  draft?: Record<string, unknown> | null;
 }) {
   const [fields, setFields] = useState<SupplierFields>({
     name: supplier?.name ?? "",
@@ -159,6 +162,17 @@ export function SupplierEditor({
   });
   const patch = (key: keyof SupplierFields, value: string | number) =>
     setFields((f) => ({ ...f, [key]: value }));
+  useEffect(() => {
+    if (!draft || supplier) return;
+    setFields((f) => ({
+      ...f,
+      ...Object.fromEntries(
+        (["name", "phone", "phone2", "address"] as const)
+          .filter((key) => typeof draft[key] === "string")
+          .map((key) => [key, draft[key] as string]),
+      ),
+    }));
+  }, [draft, supplier]);
   return (
     <SupplierModal title={supplier ? "تعديل المورد" : "إضافة مورد"} busy={save.isPending} onClose={onClose}>
       <form
@@ -245,7 +259,16 @@ export function SupplierEditor({
   );
 }
 
-export function SupplierPaymentDialog({ details, onClose }: { details: SupplierDetails; onClose(): void }) {
+export function SupplierPaymentDialog({
+  details,
+  onClose,
+  draft,
+}: {
+  details: SupplierDetails;
+  onClose(): void;
+  /** Assistant payment draft; applied only when it names this supplier. */
+  draft?: Record<string, unknown> | null;
+}) {
   const { supplier, treasury_accounts: accounts } = details;
   const [amount, setAmount] = useState(0);
   const [account, setAccount] = useState(
@@ -256,6 +279,12 @@ export function SupplierPaymentDialog({ details, onClose }: { details: SupplierD
   const [note, setNote] = useState("");
   const online = useConnection((s) => s.status === "online");
   const refresh = useRefreshSuppliers();
+  useEffect(() => {
+    if (!draft || draft.supplier_id !== supplier.id) return;
+    if (typeof draft.amount === "number") setAmount(draft.amount);
+    if (typeof draft.documentNumber === "string") setDocumentNumber(draft.documentNumber);
+    if (typeof draft.note === "string") setNote(draft.note);
+  }, [draft, supplier.id]);
   const pay = useMutation({
     mutationFn: () => {
       if (!canMutate()) throw new Error("لا يمكن تسجيل دفعة بدون اتصال بـ FINORA.");

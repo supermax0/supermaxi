@@ -425,6 +425,7 @@ def test_assistant_report_tools_match_the_reports_engine(ctx):
             CustomerInstallment(plan_id=plan.id, sequence=1, due_date=date(2020, 1, 1), amount=50000, paid_amount=10000),
             CustomerInstallment(plan_id=plan.id, sequence=2, due_date=date(2099, 1, 1), amount=50000, paid_amount=0),
         ])
+        db.session.add(Customer(branch_id=customer.branch_id, name="أحمد سالم (مكرر)", phone="+964 770 123 4567"))
         ai_viewer = Employee(name="AI Viewer", username="rp_ai_viewer", password=generate_password_hash("x-pass-123"),
                              role="sales", is_active=True, branch_id=ctx["ids"]["branch_id"])
         db.session.add(ai_viewer)
@@ -467,6 +468,14 @@ def test_assistant_report_tools_match_the_reports_engine(ctx):
     overdue = _ai_tool(admin, "get_overdue_installments")
     assert overdue["count"] == 1 and overdue["amount"] == 40000
     assert overdue["items"][0]["customer"] == "أحمد سالم" and overdue["items"][0]["status"] == "partial"
+
+    anomalies = _ai_tool(admin, "get_expense_anomalies", **oct_args)
+    assert [(i["category"], i["amount"], i["new_category"]) for i in anomalies["items"]] == [("إيجار", 50000, True)]
+    assert anomalies["baseline"]["to"] == "2026-09-30"
+    assert _ai_tool(admin, "get_expense_anomalies", min_increase=60000, **oct_args)["count"] == 0
+    duplicates = _ai_tool(admin, "get_duplicate_customers")
+    assert duplicates["groups_count"] == 1
+    assert {c["name"] for c in duplicates["groups"][0]["customers"]} == {"أحمد سالم", "أحمد سالم (مكرر)"}
 
     stagnant = _ai_tool(admin, "get_stagnant_products", min_days=30)
     assert "AC-OLD" in {p["sku"] for p in stagnant["items"]} and "value" in stagnant["items"][0]

@@ -18,7 +18,7 @@ const BY_WINDOW: Partial<Record<WindowId, AssistantSuggestion[]>> = {
     ask("منو أكثر مورد إلنا مستحقات عنده؟"),
     ask("ملخص مشتريات هذا الشهر حسب المورد"),
     ask("شنو فواتير الشراء غير المسددة؟"),
-    { text: "علّمني أسجل شراء", learn: true },
+    { text: "علّمني أسجل دفعة لمورد", learn: true },
   ],
   customers: [
     ask("اعرض أعمار ديون العملاء"),

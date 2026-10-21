@@ -127,6 +127,14 @@ const TOOL_HINTS: Record<string, { domain: Domain; words: string[] }> = {
     words: ["مشتريات", "فواتير الشراء", "غير المسدده", "غير مسدده", "ملخص مشتريات"],
   },
   get_expenses: { domain: "expense", words: ["مصاريف", "مصروف", "صرفيات", "نفقات", "حسب الفئه"] },
+  get_expense_anomalies: {
+    domain: "expense",
+    words: ["غير طبيعي", "غير طبيعيه", "غير الطبيعيه", "مصاريف عاليه", "زياده بالمصاريف", "شاذه", "غريبه"],
+  },
+  get_duplicate_customers: {
+    domain: "customer",
+    words: ["مكرر", "مكررين", "نفس الرقم", "نفس الهاتف", "تكرار"],
+  },
   get_shipping_dues: { domain: "agent", words: ["شركات النقل", "ذمم النقل", "ذمم شركات"] },
   search_delivery_agents: { domain: "agent", words: ["مندوب", "سائق"] },
   get_delivery_agent_reports: { domain: "agent", words: ["كشوف المندوب", "كشف المندوب", "باقي على المندوب"] },

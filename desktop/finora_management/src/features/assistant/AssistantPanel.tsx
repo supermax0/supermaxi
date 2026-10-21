@@ -38,6 +38,7 @@ import {
   rowTarget,
   sendAssistant,
   sourceLabel,
+  INVOICE_PHOTO_PROMPT,
 } from "./engine";
 import { GUIDES, availableGuides, searchGuides } from "./catalog";
 import { startTraining, trainingProgress, TrainingOverlay } from "./Training";
@@ -46,6 +47,11 @@ import { useAssistantDraft } from "./draftQueue";
 import { useAssistantPage } from "./pageContext";
 import { assistantSuggestions } from "./suggestions";
 import { PreparedDraftCard } from "./drafts";
+import { SourceView } from "./SourceView";
+import { buildSourceModel } from "./sourceModel";
+import { loadAssistantAlerts } from "./alerts";
+import { diagnosisPrompt, recentErrors, startErrorLog } from "./errorLog";
+import { hasDesktopBridge } from "@/services/bridge";
 import "./assistant.css";
 
 const lastWarm = { at: 0, model: "" };
@@ -54,49 +60,85 @@ function AssistantSources({ sources, expanded = false }: { sources: AssistantSou
   return (
     <div className="assistant-sources">
       {sources.map((source, i) => (
-        <details key={`${source.name}-${i}`} open={expanded || undefined}>
-          <summary>
-            <FileText size={14} />
-            {source.title}
-            <small>{formatTime(source.at)}</small>
-          </summary>
-          <p className="assistant-muted">
-            مصدر: أدوات فينورا الأصلية · النطاق الحالي · {new Date(source.at).toLocaleDateString("ar-IQ")}
-          </p>
-          {Object.keys(source.arguments).length > 0 && (
-            <p className="assistant-muted" dir="auto">
-              الفلاتر: {JSON.stringify(source.arguments)}
+        <div key={`${source.name}-${i}`}>
+          <SourceView source={source} />
+          <details open={expanded || undefined}>
+            <summary>
+              <FileText size={14} />
+              {source.title}
+              <small>{formatTime(source.at)}</small>
+            </summary>
+            <p className="assistant-muted">
+              مصدر: أدوات فينورا الأصلية · النطاق الحالي · {new Date(source.at).toLocaleDateString("ar-IQ")}
             </p>
-          )}
-          {rowsFromData(source.data)
-            .slice(0, 10)
-            .map((row, index) => {
-              const target = rowTarget(source, row);
-              return (
-                <div className="assistant-record" key={index}>
-                  <span>
-                    {String(
-                      row.name ??
-                        row.customer_name ??
-                        row.title ??
-                        row.invoice_number ??
-                        row.number ??
-                        `سجل ${row.id ?? index + 1}`,
+            {Object.keys(source.arguments).length > 0 && (
+              <p className="assistant-muted" dir="auto">
+                الفلاتر: {JSON.stringify(source.arguments)}
+              </p>
+            )}
+            {/* The card above already lists record rows with their open buttons. */}
+            {(buildSourceModel(source.data).table ? [] : rowsFromData(source.data))
+              .slice(0, 10)
+              .map((row, index) => {
+                const target = rowTarget(source, row);
+                return (
+                  <div className="assistant-record" key={index}>
+                    <span>
+                      {String(
+                        row.name ??
+                          row.customer_name ??
+                          row.title ??
+                          row.invoice_number ??
+                          row.number ??
+                          `سجل ${row.id ?? index + 1}`,
+                      )}
+                    </span>
+                    {target && (
+                      <button className="workspace-button" onClick={() => openWorkspaceTarget(target)}>
+                        <ExternalLink size={13} />
+                        فتح
+                      </button>
                     )}
-                  </span>
-                  {target && (
-                    <button className="workspace-button" onClick={() => openWorkspaceTarget(target)}>
-                      <ExternalLink size={13} />
-                      فتح
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          <pre dir="auto">{JSON.stringify(source.data, null, 2).slice(0, 14000)}</pre>
-        </details>
+                  </div>
+                );
+              })}
+            <pre dir="auto">{JSON.stringify(source.data, null, 2).slice(0, 14000)}</pre>
+          </details>
+        </div>
       ))}
     </div>
+  );
+}
+function AssistantAlerts() {
+  const scope = useAssistant((s) => s.scope);
+  const tools = useAssistant((s) => s.settings.tools);
+  const signedIn = useSession((s) => !!s.session);
+  const alerts = useQuery({
+    queryKey: ["assistant", "alerts", scope],
+    queryFn: () => loadAssistantAlerts(),
+    enabled: tools && signedIn && hasDesktopBridge(),
+    staleTime: 10 * 60_000,
+    retry: false,
+  });
+  if (!alerts.data?.length) return null;
+  return (
+    <section className="assistant-alerts" aria-label="تنبيهات اليوم">
+      <strong>تنبيهات اليوم</strong>
+      {alerts.data.map((alert) => (
+        <div key={alert.id} className={`assistant-alert is-${alert.level}`}>
+          <button onClick={() => useAssistant.getState().show(alert.question)}>{alert.text}</button>
+          {alert.window && (
+            <button
+              className="workspace-button"
+              aria-label={`فتح ${alert.text}`}
+              onClick={() => alert.window && openWorkspaceTarget({ window: alert.window })}
+            >
+              <ExternalLink size={12} />
+            </button>
+          )}
+        </div>
+      ))}
+    </section>
   );
 }
 function Proposal({ proposal }: { proposal: AssistantProposal }) {
@@ -354,6 +396,13 @@ function Composer() {
             <X size={16} />
           </button>
           <small>تُرسل للخدمة المحلية عند إرسال السؤال.</small>
+          <button
+            type="button"
+            className="workspace-button"
+            onClick={() => useAssistant.setState({ prompt: INVOICE_PHOTO_PROMPT })}
+          >
+            مسودة مشتريات من الفاتورة
+          </button>
         </div>
       )}
       <textarea
@@ -515,6 +564,7 @@ export function AssistantShell() {
     lastWarm.model = warmModel;
     void desktopBridge().assistant?.warm?.();
   }, [state.open, warmModel]);
+  useEffect(() => startErrorLog(), []);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const assistant = useAssistant.getState();
@@ -546,19 +596,12 @@ export function AssistantShell() {
   const diagnose = () => {
     const active = useWindowManager.getState().active;
     const root = active ? document.querySelector(`[data-window="${active}"]`) : null;
-    const alert = Array.from(root?.querySelectorAll('[role="alert"]') ?? [])
+    const visible = Array.from(root?.querySelectorAll('[role="alert"]') ?? [])
       .filter((e) => !!e.getClientRects().length)
-      .map((e) => e.textContent?.slice(0, 600))
+      .map((e) => e.textContent?.slice(0, 600) ?? "")
       .filter(Boolean)
-      .slice(0, 2)
-      .join("\n");
-    useAssistant
-      .getState()
-      .show(
-        alert
-          ? `اشرح هذا الخطأ في ${currentPageContext().page} واقترح خطوات تحقق. اذكر فقط السبب المؤكد ولا تفترض سبباً بلا دليل:\n${alert}`
-          : `اشرح خطوات ${currentPageContext().page} والأخطاء الشائعة فيه من الدليل؛ لا يوجد خطأ ظاهر محدد الآن.`,
-      );
+      .slice(0, 2);
+    useAssistant.getState().show(diagnosisPrompt(currentPageContext().page, visible, recentErrors(active)));
   };
   return (
     <>
@@ -624,6 +667,7 @@ export function AssistantShell() {
                     <div className="assistant-welcome">
                       <Bot size={34} />
                       <h3>شلون أساعدك بشغلك؟</h3>
+                      <AssistantAlerts />
                       <p>أشرح الخطوات، أبحث ضمن صلاحياتك، وأجهّز مقترحات للمراجعة.</p>
                       <div>
                         {assistantSuggestions(activeWindow, pageDetails).map((suggestion) => (
@@ -654,6 +698,7 @@ export function AssistantShell() {
                     >
                       <small>
                         {message.role === "user" ? "أنت" : "فينورا"} · {formatTime(message.at)}
+                        {message.via === "server" ? " · أجاب مساعد الخادم" : ""}
                         {message.restored ? " · محفوظة، حدّث الأرقام قبل الاعتماد عليها" : ""}
                       </small>
                       <div className="assistant-message-text" dir="auto">

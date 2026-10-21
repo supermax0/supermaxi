@@ -13,8 +13,8 @@ interface Pending {
   expires: number;
 }
 export const useAssistantDraft = create<{ pending: Pending | null }>()(() => ({ pending: null }));
-export function queueAssistantDraft(kind: DraftKind, fields: Record<string, unknown>) {
-  const pending = { kind, fields, scope: scope(), expires: Date.now() + 10000 };
+export function queueAssistantDraft(kind: DraftKind, fields: Record<string, unknown>, ttl = 10000) {
+  const pending = { kind, fields, scope: scope(), expires: Date.now() + ttl };
   useAssistantDraft.setState({ pending });
   window.setTimeout(() => {
     if (useAssistantDraft.getState().pending !== pending) return;
@@ -22,7 +22,7 @@ export function queueAssistantDraft(kind: DraftKind, fields: Record<string, unkn
     toast.info(
       "لم تكتمل تعبئة المقترح خلال المهلة. راجع النموذج الأصلي أو اطلب تجهيز المقترح مرة ثانية؛ لم يتم حفظ أي عملية.",
     );
-  }, 10000);
+  }, ttl);
 }
 /** Only a newly opened original editor consumes this single-use RAM handoff. */
 export function useAssistantDraftFields(

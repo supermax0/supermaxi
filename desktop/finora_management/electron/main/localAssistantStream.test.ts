@@ -1,6 +1,6 @@
 import http from "node:http";
 import type { AddressInfo } from "node:net";
-import { chatLocalAssistant, warmLocalAssistant } from "./localAssistant";
+import { chatLocalAssistant, normalizeTranscript, SPEECH_PROMPT, warmLocalAssistant } from "./localAssistant";
 import { DEFAULT_LOCAL_ASSISTANT } from "../../shared/localAssistant";
 
 async function serve(handler: http.RequestListener) {
@@ -188,4 +188,10 @@ it("warms Ollama by loading the model without generating", async () => {
   } finally {
     await fixture.close();
   }
+});
+
+it("biases dictation toward Iraqi vocabulary and returns ASCII digits", () => {
+  expect(SPEECH_PROMPT).toContain("شكد");
+  expect(normalizeTranscript("  شكد رصيد ٠٧٧٠١٢٣  بالقاصة؟ ")).toBe("شكد رصيد 0770123 بالقاصة؟");
+  expect(normalizeTranscript("۵۰۰ ألف")).toBe("500 ألف");
 });

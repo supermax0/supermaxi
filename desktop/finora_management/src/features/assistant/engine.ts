@@ -6,11 +6,12 @@ import { useWindowManager } from "@/stores/windowManager";
 import { useWorkspace, allowedWindow, targetSchema, sessionScope } from "@/features/workspace/state";
 import { WINDOWS, type WindowId } from "@/windows/registry";
 import { useLiveWorkspaceTarget } from "@/features/workspace/navigation";
-import { validateDraft } from "./draftSchema";
+import { draftSchemas, validateDraft, type DraftKind } from "./draftSchema";
 import { availableGuides, searchGuides } from "./catalog";
 import { useAssistant, type AssistantMessage, type AssistantSource, type AssistantProposal } from "./state";
 import { useAssistantPage } from "./pageContext";
 import { routeTools, wantsDraft } from "./toolRouter";
+import { workspaceApi } from "@/api/finora/workspace";
 
 const toolSchema = z.object({ name: z.string(), description: z.string(), parameters: z.record(z.unknown()) });
 const catalogSchema = z.object({
@@ -54,6 +55,8 @@ const LABELS: Record<string, string> = {
   get_overdue_installments: "الأقساط المتأخرة",
   get_stagnant_products: "المنتجات الراكدة",
   get_product_movements: "حركة المنتج",
+  get_expense_anomalies: "مصاريف غير طبيعية",
+  get_duplicate_customers: "عملاء مكررون",
 };
 export const sourceLabel = (name: string) => LABELS[name] ?? name;
 export function currentAssistantScope() {
@@ -234,14 +237,14 @@ const localTools = (): LocalTool[] => [
   {
     name: "finora_prepare",
     description:
-      "جهّز مقترح مسودة للمراجعة داخل النموذج الأصلي. لا حفظ ولا ترحيل. الأنواع product/customer/expense/receipt/sale/purchase. حقول غير مؤكدة تبقى فارغة؛ المنتجات والكميات في items[{product_id,quantity}] فقط.",
+      "جهّز مقترح مسودة للمراجعة داخل النموذج الأصلي. لا حفظ ولا ترحيل ولا دفع. حقول غير مؤكدة تبقى فارغة؛ المنتجات والكميات في items[{product_id,quantity}] من نتائج البحث فقط.",
     parameters: object(
       {
-        kind: { type: "string", enum: ["product", "customer", "expense", "receipt", "sale", "purchase"] },
+        kind: { type: "string", enum: Object.keys(draftSchemas) },
         fields: {
           type: "object",
           description:
-            "حقول كل نوع: product {name,sku,barcode,description,buyPrice,salePrice}؛ customer {name,phone,city,address,note}؛ expense {title,amount,note}؛ receipt {amount,note}؛ sale {items}؛ purchase {items,note}. items=[{product_id,quantity,color?}]. الأطراف والحسابات يحددها المستخدم في النموذج.",
+            "حقول كل نوع: product {name,sku,barcode,description,buyPrice,salePrice}؛ customer {name,phone,city,address,note}؛ expense {title,amount,note}؛ receipt {amount,note}؛ sale {items}؛ purchase {items:[{product_id,quantity,unitCost?}],supplierInvoiceNo?,note}؛ supplier {name,phone,phone2,address}؛ supplier_payment {supplier_id,amount,documentNumber?,note?}؛ return {order_id}؛ transfer {items,note}. items=[{product_id,quantity,color?}]. الحسابات والفروع والمواقع يحددها المستخدم في النموذج.",
         },
         title: { type: "string" },
       },
@@ -284,6 +287,20 @@ export async function persistAssistant() {
     .map((r) => ({ role: r.role, text: r.text.slice(0, 16000), at: r.at }));
   await desktopBridge().assistant?.historySave({ expectedScope: state.vaultScope, rows });
 }
+/** Prompt that turns an attached supplier-invoice photo into a reviewed purchase draft. */
+export const INVOICE_PHOTO_PROMPT =
+  "هذه صورة فاتورة مورد. اقرأ اسم المورد ورقم الفاتورة وكل مادة بكميتها وسعر الوحدة. ابحث عن كل مادة بأداة البحث عن المنتجات، ثم جهّز مسودة purchase بالمنتجات التي وجدتها فقط مع unitCost وsupplierInvoiceNo، واكتب اسم المورد في note. اذكر بوضوح المواد التي لم أجدها أو لم تكن مقروءة.";
+const LOCAL_UNAVAILABLE =
+  /تعذر الاتصال بالخدمة المحلية|انتهت مهلة النموذج المحلي|النموذج غير مثبت|انقطع اتصال خدمة الذكاء/;
+async function askServerAssistant(question: string): Promise<string> {
+  try {
+    return (await workspaceApi.ask(question.slice(0, 4000))).message;
+  } catch {
+    throw Error(
+      "النموذج المحلي غير متاح، وتعذر الوصول لمساعد خادم فينورا. تحقق من الاتصال أو من تفعيل المساعد في الشركة.",
+    );
+  }
+}
 export async function sendAssistant(text: string, image?: string) {
   const state = useAssistant.getState(),
     scope = currentAssistantScope();
@@ -313,6 +330,23 @@ export async function sendAssistant(text: string, image?: string) {
     }) ?? (() => undefined);
   try {
     const bridge = desktopBridge().assistant;
+    if (
+      (!bridge || !state.settings.enabled || !state.settings.model) &&
+      state.settings.serverFallback &&
+      !image
+    ) {
+      useAssistant.setState({ status: "أسأل مساعد خادم فينورا…" });
+      const answer = await askServerAssistant(question);
+      alive();
+      add({
+        id: crypto.randomUUID(),
+        role: "assistant",
+        text: answer.slice(0, 16000),
+        at: Date.now(),
+        via: "server",
+      });
+      return;
+    }
     if (!bridge || !state.settings.enabled || !state.settings.model) {
       const guides = searchGuides(question, useWindowManager.getState().active);
       add({
@@ -336,10 +370,19 @@ export async function sendAssistant(text: string, image?: string) {
       }
     }
     alive();
+    const photoDraft = !!image && wantsDraft(question);
     const selected = state.settings.tools
       ? [
           ...localTools().filter((t) => t.name !== "finora_prepare" || wantsDraft(question)),
           ...chooseTools(catalog?.tools ?? [], question),
+          // Reading an invoice photo needs the searches that turn printed names into FINORA IDs.
+          ...(photoDraft
+            ? (catalog?.tools ?? []).filter(
+                (t) =>
+                  ["search_products", "search_supplier"].includes(t.name) &&
+                  !chooseTools(catalog?.tools ?? [], question).some((c) => c.name === t.name),
+              )
+            : []),
         ]
       : [];
     const page = currentPageContext();
@@ -432,13 +475,28 @@ export async function sendAssistant(text: string, image?: string) {
             result = { prepared: true, needs_user_click: true };
           } else if (name === "finora_prepare") {
             const action = z
-              .enum(["product", "customer", "expense", "receipt", "sale", "purchase"])
+              .string()
+              .refine((v): v is DraftKind => Object.hasOwn(draftSchemas, v))
               .parse(args.kind);
+            const fields = validateDraft(action, args.fields);
+            // A payment or a return must target a record the user can see, not a guessed ID.
+            const owner =
+              action === "supplier_payment"
+                ? (["suppliers", fields.supplier_id] as const)
+                : action === "return"
+                  ? (["orders", fields.order_id] as const)
+                  : null;
+            if (
+              owner &&
+              !verified.has(`${owner[0]}:${String(owner[1])}`) &&
+              useAssistantPage.getState().details[owner[0]]?.record?.id !== owner[1]
+            )
+              throw Error("حدد السجل من نتائج البحث أو افتحه في نافذته أولاً");
             proposals.push({
               kind: "prepare",
               title: z.string().max(150).parse(args.title),
               action,
-              fields: validateDraft(action, args.fields),
+              fields,
             });
             result = { proposal_only: true, not_saved: true, needs_review: true };
           } else {
@@ -492,8 +550,34 @@ export async function sendAssistant(text: string, image?: string) {
       });
     }
   } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (
+      state.settings.serverFallback &&
+      !image &&
+      LOCAL_UNAVAILABLE.test(message) &&
+      id === runId &&
+      scope === currentAssistantScope()
+    ) {
+      try {
+        useAssistant.setState({ status: "النموذج المحلي غير متاح؛ أسأل مساعد الخادم…", streaming: "" });
+        const answer = await askServerAssistant(question);
+        alive();
+        add({
+          id: crypto.randomUUID(),
+          role: "assistant",
+          text: answer.slice(0, 16000),
+          at: Date.now(),
+          via: "server",
+        });
+        return;
+      } catch (fallback) {
+        if (id === runId && scope === currentAssistantScope())
+          useAssistant.setState({ error: fallback instanceof Error ? fallback.message : message });
+        return;
+      }
+    }
     if (id === runId && scope === currentAssistantScope())
-      useAssistant.setState({ error: error instanceof Error ? error.message : "تعذر إكمال الإجابة المحلية" });
+      useAssistant.setState({ error: message || "تعذر إكمال الإجابة المحلية" });
   } finally {
     unsubscribe();
     window.clearTimeout(flush);
