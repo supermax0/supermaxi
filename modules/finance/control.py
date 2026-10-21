@@ -24,7 +24,9 @@ from .models import FinanceAllocation, FinanceControlSnapshot, FinanceLoan, Fina
 
 def authorize(*, measure=False):
     require("finance.ledger")
-    if not is_general_admin(actor()) or (getattr(g, "branch", None) and not getattr(g, "view_all_branches", False)):
+    # Shared mode retains a physical branch for writes while reads cover the company.
+    selected_branch = independent_branches_enabled() and getattr(g, "branch", None) and not getattr(g, "view_all_branches", False)
+    if not is_general_admin(actor()) or selected_branch:
         raise FinanceError("الرقابة المالية تشمل الشركة كلها؛ اختر كل الفروع بحساب مدير الشركة", "forbidden", 403)
     if measure:
         require("finance.reconcile")

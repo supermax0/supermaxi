@@ -107,6 +107,7 @@ def test_company_control_denies_selected_branch_and_cached_replay(finance):
     with f["app"].test_request_context("/api/finance/control/current"):
         session.update(user_id=f["admin"].id, employee_id=f["admin"].id, role="admin")
         g.branch = f["branch"]; g.view_all_branches = False
+        g.independent_branches_enabled = True
         with pytest.raises(FinanceError) as failure:
             control.current()
         assert failure.value.status == 403
@@ -114,6 +115,55 @@ def test_company_control_denies_selected_branch_and_cached_replay(finance):
         with pytest.raises(FinanceError) as failure:
             action("control.measure", {**payload, "idempotency_key": key})
         assert failure.value.status == 403
+
+
+def test_shared_company_control_reads_and_measures_with_internal_write_branch(finance):
+    from flask import g, session
+    from models.journal_entry import JournalEntry
+    from modules.finance import routes
+    f = finance
+    data = current(f)
+    payload = {"operation": "control.measure", "idempotency_key": uuid4().hex,
+        "name": "معاينة الفروع المشتركة", "reason": "عد مستقل للشركة",
+        "treasury_counts": [{"id": row["treasury_account_id"], "actual": row["target"],
+            "evidence": "عد فعلي"} for row in data["rows"] if "treasury_account_id" in row]}
+    before = balance(f), JournalEntry.query.count()
+    with f["app"].test_request_context("/api/finance/commands", method="POST", json=payload):
+        session.update(user_id=f["admin"].id, employee_id=f["admin"].id, role="admin", tenant_slug=f["tenant"])
+        # The real shared branch context keeps a physical write owner, not an all-branches flag.
+        g.branch = f["branch"]; g.branches = [f["branch"]]
+        g.view_all_branches = False; g.independent_branches_enabled = False; g.branch_scope_ready = True
+        routes.setup()
+        assert routes.financial_control_current().get_json()["data"]["independent_branches"] is False
+        saved = routes.commands().get_json()["data"]
+        assert routes.action("control.measure", {key: value for key, value in payload.items() if key != "operation"}) == saved
+        assert routes.financial_control_snapshots().get_json()["data"]["total"] == 1
+        assert routes.financial_control_snapshot(saved["id"]).get_json()["data"]["id"] == saved["id"]
+        assert (balance(f), JournalEntry.query.count()) == before
+
+
+@pytest.mark.parametrize("role,independent,all_branches,allowed", [
+    ("admin", False, False, True), ("admin", True, True, True), ("admin", True, False, False),
+    ("manager", False, False, False), ("manager", True, True, False), ("manager", True, False, False),
+])
+@pytest.mark.parametrize("measure", [False, True])
+def test_control_company_scope_authorization(role, independent, all_branches, allowed, measure, monkeypatch):
+    from flask import Flask, g
+    from types import SimpleNamespace
+    from modules.finance import control
+    from modules.finance.common import FinanceError
+    monkeypatch.setattr(control, "actor", lambda: SimpleNamespace(role=role))
+    # Even a user with both finance permissions must pass the company-admin boundary.
+    monkeypatch.setattr(control, "require", lambda permission: None)
+    with Flask(__name__).test_request_context():
+        g.branch = SimpleNamespace(id=1)
+        g.independent_branches_enabled = independent; g.view_all_branches = all_branches
+        if allowed:
+            control.authorize(measure=measure)
+        else:
+            with pytest.raises(FinanceError) as failure:
+                control.authorize(measure=measure)
+            assert failure.value.status == 403
 
 
 def test_accrued_expense_and_later_payment_keep_net_assets_equal_to_profit(finance):
