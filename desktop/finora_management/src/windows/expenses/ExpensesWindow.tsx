@@ -37,6 +37,7 @@ import { formatClockTime, formatNumber } from "@/utils/format";
 import { supplierPrimary, supplierSecondary } from "../suppliers/SupplierDialogs";
 import { ExpenseComposer } from "./ExpenseComposer";
 import { useWorkspaceHistory, useWorkspaceRequest } from "@/features/workspace/navigation";
+import { useAssistantPageContext } from "@/features/assistant/pageContext";
 
 const TAB_LABELS: Record<ExpenseTab, string> = { all: "الكل", posted: "مخصومة", scheduled: "مجدولة" };
 const BAR_COLORS = ["bg-violet", "bg-maroon", "bg-azure", "bg-cyan", "bg-warning", "bg-success"];
@@ -252,6 +253,13 @@ export function ExpensesWindow() {
     ],
     [],
   );
+
+  useAssistantPageContext("expenses", {
+    tab,
+    search: searchText,
+    filters: { category, dateFrom, dateTo },
+    total: list.data?.total,
+  });
 
   if (!allowed) {
     return (

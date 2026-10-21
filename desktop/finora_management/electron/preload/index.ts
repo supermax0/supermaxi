@@ -9,6 +9,14 @@ const bridge: FinoraDesktopBridge = {
     configure: (input) => ipcRenderer.invoke(IPC.assistantConfigure, input),
     probe: (input) => ipcRenderer.invoke(IPC.assistantProbe, input),
     chat: (input) => ipcRenderer.invoke(IPC.assistantChat, input),
+    onDelta(listener) {
+      const handler = (_event: IpcRendererEvent, text: string) => listener(text);
+      ipcRenderer.on(IPC.assistantDelta, handler);
+      return () => {
+        ipcRenderer.removeListener(IPC.assistantDelta, handler);
+      };
+    },
+    warm: () => ipcRenderer.invoke(IPC.assistantWarm),
     cancel: () => ipcRenderer.invoke(IPC.assistantCancel),
     historyLoad: () => ipcRenderer.invoke(IPC.assistantHistoryLoad),
     historySave: (input) => ipcRenderer.invoke(IPC.assistantHistorySave, input),

@@ -126,6 +126,9 @@ export interface LocalAssistantBridge {
   ): Promise<{ settings: LocalAssistantSettings; hasToken: boolean }>;
   probe(input: z.infer<typeof localProbeSchema>): Promise<LocalProbe>;
   chat(input: z.infer<typeof localChatSchema>): Promise<LocalReply>;
+  /** Text of the in-flight chat call as it streams; returns an unsubscribe function. */
+  onDelta?(listener: (text: string) => void): () => void;
+  warm?(): Promise<void>;
   cancel(): Promise<void>;
   historyLoad(): Promise<{ scope: string; rows: HistoryRow[] }>;
   historySave(input: z.infer<typeof localHistorySchema>): Promise<void>;

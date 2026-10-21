@@ -35,6 +35,8 @@ interface AssistantState {
   hasToken: boolean;
   busy: boolean;
   status: string;
+  /** The answer as it streams in; cleared when the round ends. */
+  streaming: string;
   error: string;
   scope: string;
   vaultScope: string;
@@ -52,6 +54,7 @@ export const useAssistant = create<AssistantState>()((set) => ({
   hasToken: false,
   busy: false,
   status: "",
+  streaming: "",
   error: "",
   scope: "",
   vaultScope: "",
@@ -72,6 +75,7 @@ export const useAssistant = create<AssistantState>()((set) => ({
       busy: false,
       error: "",
       status: "",
+      streaming: "",
       training: null,
     });
   },

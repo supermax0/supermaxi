@@ -511,3 +511,23 @@
     animation: none !important;
   }
 }
+.assistant-streaming .assistant-message-text::after {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 1em;
+  margin-inline-start: 3px;
+  vertical-align: text-bottom;
+  background: #7046c9;
+  animation: assistant-caret 0.9s steps(2, start) infinite;
+}
+@keyframes assistant-caret {
+  to {
+    visibility: hidden;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .assistant-streaming .assistant-message-text::after {
+    animation: none;
+  }
+}

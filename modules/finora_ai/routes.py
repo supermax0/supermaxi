@@ -46,6 +46,14 @@ _TOOL_LABELS = {
     "get_delivery_agent_reports": "جاري قراءة كشوف المندوب ومبالغها...",
     "get_agent_report": "جاري قراءة الكشف المحدد...",
     "get_pending_agent_reports": "جاري قراءة طابور كشوف المندوب...",
+    "get_period_comparison": "جاري مقارنة الفترتين...",
+    "get_sales_breakdown": "جاري تقسيم المبيعات...",
+    "get_purchases_summary": "جاري قراءة المشتريات...",
+    "get_receivables_aging": "جاري قراءة أعمار الذمم...",
+    "get_sales_returns": "جاري قراءة المرتجعات...",
+    "get_overdue_installments": "جاري قراءة الأقساط المتأخرة...",
+    "get_stagnant_products": "جاري فحص المنتجات الراكدة...",
+    "get_product_movements": "جاري قراءة حركة المنتج...",
 }
 
 

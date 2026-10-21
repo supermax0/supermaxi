@@ -41,6 +41,7 @@ import { usePurchaseNavigation, purchaseNavigationScope } from "@/stores/purchas
 import { PurchaseComposer } from "./PurchaseComposer";
 import { PurchaseDetailsPanel } from "./PurchaseDetailsPanel";
 import { useWorkspaceHistory, useWorkspaceRequest } from "@/features/workspace/navigation";
+import { useAssistantPageContext } from "@/features/assistant/pageContext";
 
 const TAB_LABELS: Record<PurchaseTab, string> = {
   all: "الكل",
@@ -272,6 +273,20 @@ export function PurchasesWindow() {
       ? (sourceDetails.data ?? null)
       : null);
 
+  useAssistantPageContext("purchases", {
+    tab,
+    search: searchText,
+    filters: { ...applied },
+    total: list.data?.total,
+    ...(detailsId !== null
+      ? {
+          record: {
+            id: detailsId,
+            name: `${selected?.invoice_no ?? `#${detailsId}`} ${selected?.supplier ?? ""}`.trim(),
+          },
+        }
+      : {}),
+  });
   return (
     <div className="relative flex h-full flex-col gap-3">
       <div className="grid grid-cols-4 gap-3">

@@ -25,6 +25,7 @@ import { CustomerPlanBuilder } from "./CustomerPlanBuilder";
 import { toast } from "@/stores/toasts";
 import { formatNumber, formatDateTime } from "@/utils/format";
 import { cn } from "@/utils/cn";
+import { useAssistantPageContext } from "@/features/assistant/pageContext";
 
 const money = (value: number) => `${formatNumber(value)} د.ع`;
 const button =
@@ -454,6 +455,19 @@ export function CustomersWindow() {
       cell: (row) => <span className="block max-w-[240px] truncate">{row.address || "—"}</span>,
     },
   ];
+  useAssistantPageContext("customers", {
+    tab,
+    search: searchText,
+    total: list.data?.total,
+    ...(selected
+      ? {
+          record: {
+            id: selected,
+            name: list.data?.items.find((r) => r.id === selected)?.name ?? `#${selected}`,
+          },
+        }
+      : {}),
+  });
   return (
     <div className="relative flex h-full min-h-0 flex-col gap-3">
       <div className="flex shrink-0 items-center justify-between gap-3">

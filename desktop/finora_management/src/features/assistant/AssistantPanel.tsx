@@ -43,9 +43,12 @@ import { GUIDES, availableGuides, searchGuides } from "./catalog";
 import { startTraining, trainingProgress, TrainingOverlay } from "./Training";
 import { prepareAssistantImage, recordingToWav } from "./media";
 import { useAssistantDraft } from "./draftQueue";
+import { useAssistantPage } from "./pageContext";
+import { assistantSuggestions } from "./suggestions";
 import { PreparedDraftCard } from "./drafts";
 import "./assistant.css";
 
+const lastWarm = { at: 0, model: "" };
 function AssistantSources({ sources, expanded = false }: { sources: AssistantSource[]; expanded?: boolean }) {
   useTimeFormat();
   return (
@@ -500,7 +503,18 @@ export function AssistantShell() {
   }, [scope, session?.user.id, identity, settings.data?.settings.remember]);
   useEffect(() => {
     if (state.open) bottom.current?.scrollIntoView({ block: "end", behavior: "auto" });
-  }, [state.messages.length, state.open, state.busy]);
+  }, [state.messages.length, state.open, state.busy, state.streaming]);
+  const activeWindow = useWindowManager((s) => s.active);
+  const pageDetails = useAssistantPage((s) => (activeWindow ? s.details[activeWindow] : undefined));
+  const warmModel = state.settings.enabled ? state.settings.model : "";
+  useEffect(() => {
+    if (!state.open || !warmModel) return;
+    const now = Date.now();
+    if (now - lastWarm.at < 5 * 60_000 && lastWarm.model === warmModel) return;
+    lastWarm.at = now;
+    lastWarm.model = warmModel;
+    void desktopBridge().assistant?.warm?.();
+  }, [state.open, warmModel]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const assistant = useAssistant.getState();
@@ -612,20 +626,15 @@ export function AssistantShell() {
                       <h3>شلون أساعدك بشغلك؟</h3>
                       <p>أشرح الخطوات، أبحث ضمن صلاحياتك، وأجهّز مقترحات للمراجعة.</p>
                       <div>
-                        {[
-                          "علّمني أضيف منتج",
-                          "اعرض ملخص بداية الدوام",
-                          "ابحث عن عميل",
-                          "ليش المنتج ما ظاهر بالمتجر؟",
-                        ].map((text) => (
+                        {assistantSuggestions(activeWindow, pageDetails).map((suggestion) => (
                           <button
-                            key={text}
+                            key={suggestion.text}
                             onClick={() => {
-                              if (text.startsWith("علّمني")) useAssistant.setState({ tab: "learn" });
-                              else useAssistant.getState().show(text);
+                              if (suggestion.learn) useAssistant.setState({ tab: "learn" });
+                              else useAssistant.getState().show(suggestion.text);
                             }}
                           >
-                            {text}
+                            {suggestion.text}
                           </button>
                         ))}
                       </div>
@@ -669,6 +678,14 @@ export function AssistantShell() {
                       ))}
                     </article>
                   ))}
+                  {state.busy && state.streaming && (
+                    <article className="assistant-message assistant-message-assistant assistant-streaming">
+                      <small>فينورا · يكتب الآن</small>
+                      <div className="assistant-message-text" dir="auto" aria-live="off">
+                        {state.streaming}
+                      </div>
+                    </article>
+                  )}
                   {state.busy && (
                     <p role="status" className="assistant-status">
                       <RefreshCw size={15} className="animate-spin" />

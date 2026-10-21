@@ -37,6 +37,7 @@ import { ProductEditor, type EditorTarget } from "./ProductEditor";
 import { AuditWorkspace } from "./audit/AuditWorkspace";
 import { StockActivity } from "./StockActivity";
 import { StockOperations, type StockTarget } from "./stock/StockOperations";
+import { useAssistantPageContext } from "@/features/assistant/pageContext";
 
 export function ProductsWindow() {
   const active = useWindowManager((s) => s.active === "products");
@@ -321,6 +322,15 @@ export function ProductsWindow() {
     setPage(1);
   };
 
+  useAssistantPageContext("products", {
+    tab: workspace === "catalog" ? "" : workspace,
+    search: searchText,
+    filters: { category, stock },
+    total: list.data?.total,
+    ...(detailsId !== null
+      ? { record: { id: detailsId, name: rows?.find((r) => r.id === detailsId)?.name ?? `#${detailsId}` } }
+      : {}),
+  });
   return (
     <div className="relative flex h-full flex-col gap-3">
       {(catalogAllowed || auditVisible) && (

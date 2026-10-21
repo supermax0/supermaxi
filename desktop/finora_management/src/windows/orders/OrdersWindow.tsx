@@ -64,6 +64,7 @@ import { PaymentDialog } from "./PaymentDialog";
 import { ShippingBarcodeDialog, type OrderScan } from "./ShippingBarcodeDialog";
 import { QuickOrderEditor } from "./QuickOrderEditor";
 import { DispatchDialog, type DispatchMode } from "../shipping/Dispatch";
+import { useAssistantPageContext } from "@/features/assistant/pageContext";
 
 interface FilterDraft {
   city: string;
@@ -513,6 +514,24 @@ export function OrdersWindow() {
       : []),
   ];
 
+  useAssistantPageContext("orders", {
+    tab,
+    search: searchText,
+    filters: { ...applied },
+    total: list.data?.total,
+    ...(detailsId !== null
+      ? {
+          record: {
+            id: detailsId,
+            name: `#${detailsId} ${rows?.find((r) => r.id === detailsId)?.customer_name ?? ""}`.trim(),
+          },
+        }
+      : {}),
+    checked: {
+      count: selection.selected.size,
+      names: (rows ?? []).filter((r) => selection.selected.has(r.id)).map((r) => `#${r.id}`),
+    },
+  });
   return (
     <div className="relative flex h-full flex-col gap-3">
       <div className="flex items-center gap-3">

@@ -43,6 +43,7 @@ import { formatNumber } from "@/utils/format";
 import { SupplierDetailsPanel } from "./SupplierDetailsPanel";
 import { SupplierEditor, SupplierPaymentDialog, supplierPrimary, supplierSecondary } from "./SupplierDialogs";
 import { SupplierSaleDialog } from "./SupplierSaleDialog";
+import { useAssistantPageContext } from "@/features/assistant/pageContext";
 
 const LABELS: Record<SupplierTab, string> = {
   all: "الكل",
@@ -310,6 +311,21 @@ export function SuppliersWindow() {
     selection.clear();
   };
 
+  useAssistantPageContext("suppliers", {
+    tab,
+    search: searchText,
+    filters: { sort: sort ?? "", minBalance },
+    total: list.data?.total,
+    ...(detailsId !== null
+      ? {
+          record: { id: detailsId, name: shownRows.find((s) => s.id === detailsId)?.name ?? `#${detailsId}` },
+        }
+      : {}),
+    checked: {
+      count: selection.selected.size,
+      names: shownRows.filter((s) => selection.selected.has(s.id)).map((s) => s.name),
+    },
+  });
   return (
     <div className="supplier-layout relative flex h-full min-h-0 gap-4">
       {detailsId !== null && (

@@ -48,6 +48,8 @@ def test_phase_one_exposes_only_the_required_read_tools():
         "get_daily_sales", "get_sales_summary", "get_cash_balance",
         "get_receivables_summary", "get_payables_summary", "get_latest_order", "get_expenses", "get_top_products", "get_shipping_dues",
         "search_delivery_agents", "get_delivery_agent_reports", "get_agent_report", "get_pending_agent_reports",
+        "get_period_comparison", "get_sales_breakdown", "get_purchases_summary", "get_receivables_aging",
+        "get_sales_returns", "get_overdue_installments", "get_stagnant_products", "get_product_movements",
     }
     assert all(tool.parameters.get("additionalProperties") is False for tool in TOOLS.values())
 
@@ -56,7 +58,8 @@ def test_tool_listing_is_permission_filtered():
     context = _context("manage_customers")
     with patch.object(FinoraAuthContext, "allows", side_effect=lambda *names: "manage_customers" in names), patch("modules.finora_ai.services._tool_enabled", return_value=True):
         names = {item["name"] for item in list_tools(context)}
-    assert names == {"search_customer", "get_customer", "get_customer_balance", "get_customer_statement"}
+    assert names == {"search_customer", "get_customer", "get_customer_balance", "get_customer_statement",
+                     "get_overdue_installments"}
 
 
 def test_mcp_rejects_unauthenticated_requests():

@@ -25,6 +25,7 @@ from models.supplier_payment import SupplierPayment
 from modules.finora_ai.context import FinoraAuthContext, reject_identity_override
 from modules.finora_ai.models import FinoraAIToolCall
 from modules.finora_ai.language import normalize
+from modules.finora_ai import report_tools
 from utils.ai_assistant_tools import (
     tool_get_customers_receivables,
     tool_get_low_stock,
@@ -445,6 +446,14 @@ TOOLS = {
         ToolSpec("get_delivery_agent_reports", "Read a chosen agent's AGT reports / كشوف المندوب and delivered, returned, postponed and pending amounts using the existing report page. Default to unexecuted reports. These are NOT a consolidated debt balance or proof of cash receipt; explain this scope when asked شكد باقي على المندوب.", _object({"agent_id": {"type": "integer", "minimum": 1}, "pending_only": {"type": "boolean"}, "limit": SEARCH["limit"]}, ["agent_id"]), ("view_agents",), delivery_agent_reports),
         ToolSpec("get_agent_report", "Read a specific AGT delivery-agent report, its execution status and financial status breakdown. AGT numbers are report identifiers, NOT order numbers.", _object({"report_number": {"type": "string", "pattern": "^AGT-[0-9]+-[A-Za-z0-9-]+$", "maxLength": 50}}, ["report_number"]), ("view_agents",), agent_report),
         ToolSpec("get_pending_agent_reports", "Read the pending-execution agent report queue / كشوف المندوب بانتظار التنفيذ. Use for general queue questions, not an unnamed individual agent's balance.", _object({"limit": SEARCH["limit"]}), ("view_agents",), pending_agent_reports),
+        ToolSpec("get_period_comparison", "Compare a period with the previous period or the same period last year: sales, collections, returns, and profit when permitted. period=today|yesterday|this_week|this_month|last_month|this_year|custom (custom needs date_from/date_to).", _object({**report_tools.PERIOD_ARGS, "compare_to": {"type": "string", "enum": ["previous", "last_year"]}}), ("view_reports",), report_tools.period_comparison),
+        ToolSpec("get_sales_breakdown", "Break down net sales for a period by branch, employee, payment type, customer, product, category, day or month. Use by=branch to compare branches.", _object({**report_tools.PERIOD_ARGS, "by": {"type": "string", "enum": ["branch", "employee", "payment", "customer", "product", "category", "day", "month"]}, "limit": report_tools.LIMIT}), ("view_reports",), report_tools.sales_breakdown),
+        ToolSpec("get_purchases_summary", "Read confirmed purchases for a period: totals, paid, remaining, top suppliers and recent purchase invoices. unpaid_only lists invoices with a remaining amount.", _object({**report_tools.PERIOD_ARGS, "unpaid_only": {"type": "boolean"}, "limit": report_tools.LIMIT}), ("view_reports",), report_tools.purchases_summary),
+        ToolSpec("get_receivables_aging", "Read customer debt aging (today, 1-30, 31-60, 61-90, 90+ days) and the oldest open invoices.", _object({"branch_id": report_tools.BRANCH, "limit": report_tools.LIMIT}), ("view_reports",), report_tools.receivables_aging),
+        ToolSpec("get_sales_returns", "Read sales returns for a period: count, amount, return rate and recent return documents.", _object({**report_tools.PERIOD_ARGS, "limit": report_tools.LIMIT}), ("view_reports",), report_tools.sales_returns),
+        ToolSpec("get_overdue_installments", "List overdue customer installments (الأقساط المتأخرة) with days late and remaining amount; optionally for one customer_id.", _object({**CUSTOMER_ID, "limit": report_tools.LIMIT}), ("manage_customers", "view_accounts", "view_financial"), report_tools.overdue_installments),
+        ToolSpec("get_stagnant_products", "List in-stock products not sold for at least min_days days (المنتجات الراكدة).", _object({"min_days": {"type": "integer", "minimum": 7, "maximum": 365}, "limit": report_tools.LIMIT}), ("manage_inventory", "view_reports"), report_tools.stagnant_products),
+        ToolSpec("get_product_movements", "Read one product's stock movement history (purchases, sales, returns, adjustments). Choose product_id from search_products first.", _object({**PRODUCT_ID, "branch_id": report_tools.BRANCH, "limit": {"type": "integer", "minimum": 1, "maximum": 30}}, ["product_id"]), ("manage_inventory",), report_tools.product_movements),
     )
 }
 
@@ -493,7 +502,8 @@ def _tool_enabled(name: str) -> bool:
     if not flags.get("mcp_enabled", True):
         return False
     accounting_tools = {"get_delivery_agent_reports", "get_agent_report", "get_pending_agent_reports", "get_expenses", "get_top_products", "get_shipping_dues", "get_customer_balance", "get_customer_statement", "get_supplier_balance", "get_supplier_statement",
-                        "get_cash_balance", "get_receivables_summary", "get_payables_summary"}
+                        "get_cash_balance", "get_receivables_summary", "get_payables_summary",
+                        "get_period_comparison", "get_purchases_summary", "get_receivables_aging", "get_overdue_installments"}
     return name not in accounting_tools or flags.get("ai_accounting_tools_enabled", True)
 
 

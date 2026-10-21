@@ -4,6 +4,8 @@ export const IPC = {
   assistantConfigure: "assistant:configure",
   assistantProbe: "assistant:probe",
   assistantChat: "assistant:chat",
+  assistantDelta: "assistant:delta",
+  assistantWarm: "assistant:warm",
   assistantCancel: "assistant:cancel",
   assistantHistoryLoad: "assistant:history:load",
   assistantHistorySave: "assistant:history:save",

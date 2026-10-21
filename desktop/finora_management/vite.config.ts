@@ -2,6 +2,7 @@ import { fileURLToPath, URL } from "node:url";
 import react from "@vitejs/plugin-react";
 import type { Plugin } from "vite";
 import { defineConfig } from "vitest/config";
+import pkg from "./package.json";
 
 /** Strict CSP for the packaged renderer; dev additionally needs Vite's HMR socket and React Refresh preamble. */
 function contentSecurityPolicy(): Plugin {
@@ -29,6 +30,7 @@ function contentSecurityPolicy(): Plugin {
 
 export default defineConfig({
   base: "./",
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   plugins: [react(), contentSecurityPolicy()],
   resolve: {
     alias: {

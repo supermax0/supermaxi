@@ -389,3 +389,95 @@ def test_exports_follow_the_same_numbers(ctx):
     assert rows[-1][0] == "الإجمالي" and rows[-1][7] == 590000  # الصافي column total
     html = _get(client, "/reports/api/v2/print/profit").get_data(as_text=True)
     assert "الأرباح والخسائر" in html and "= صافي الربح" in html
+
+
+def _ai_tool(client, name, **arguments):
+    scope = _ok(client.get("/finora-ai/api/desktop/tools"))["scope"]
+    body = _ok(client.post("/finora-ai/api/desktop/tool", json={"name": name, "arguments": arguments, "scope": scope}))
+    assert body["success"], body
+    return body["data"]
+
+
+def test_assistant_report_tools_match_the_reports_engine(ctx):
+    """The desktop assistant's report tools reuse the reports engine: same numbers, same guards."""
+    from flask import g
+    from werkzeug.security import generate_password_hash
+
+    from extensions import db
+    from models.customer import Customer
+    from models.customer_credit import CustomerCreditPlan, CustomerInstallment
+    from models.employee import Employee
+    from models.product import Product
+    from modules.finora_ai.models import FinoraAISettings
+    from modules.finora_ai.schema import ensure_finora_ai_schema
+
+    with ctx["app"].app_context():
+        g.tenant = TENANT
+        ensure_finora_ai_schema()
+        if not FinoraAISettings.query.first():
+            db.session.add(FinoraAISettings(provider="builtin", enabled=True))
+        customer = Customer.query.filter_by(phone="07701234567").first()
+        plan = CustomerCreditPlan(customer_id=customer.id, entry_type="manual", total_amount=100000,
+                                  paid_amount=10000, installments_count=2)
+        db.session.add(plan)
+        db.session.flush()
+        db.session.add_all([
+            CustomerInstallment(plan_id=plan.id, sequence=1, due_date=date(2020, 1, 1), amount=50000, paid_amount=10000),
+            CustomerInstallment(plan_id=plan.id, sequence=2, due_date=date(2099, 1, 1), amount=50000, paid_amount=0),
+        ])
+        ai_viewer = Employee(name="AI Viewer", username="rp_ai_viewer", password=generate_password_hash("x-pass-123"),
+                             role="sales", is_active=True, branch_id=ctx["ids"]["branch_id"])
+        db.session.add(ai_viewer)
+        db.session.flush()
+        _grant(ai_viewer, "view_reports", "use_ai_assistant")
+        product_id = Product.query.filter_by(sku="TV-LG").first().id
+        viewer_id = ai_viewer.id
+        db.session.commit()
+        db.session.remove()
+
+    admin = _client(ctx)
+    oct_args = {"period": "custom", "date_from": "2026-10-01", "date_to": "2026-10-31"}
+    statement = _ok(_get(admin, "/reports/api/v2/section/profit"))["statement"]
+    comparison = _ai_tool(admin, "get_period_comparison", **oct_args)
+    current = comparison["current"]
+    assert current["net_sales"] == 590000 and current["invoices"] == 3 and current["returns"] == 150000
+    assert current["cogs"] == statement["cogs"] and current["net_profit"] == statement["net_profit"]
+    assert comparison["previous"]["to"] == "2026-09-30" and comparison["previous"]["net_sales"] == 0
+    assert comparison["change_percent"]["net_sales"] is None
+
+    by_employee = _ai_tool(admin, "get_sales_breakdown", by="employee", **oct_args)["rows"]
+    assert sum(r["amount"] for r in by_employee) == 590000
+    assert {r["label"]: r["amount"] for r in by_employee}["سارة"] == 440000
+
+    purchases = _ai_tool(admin, "get_purchases_summary", **oct_args)
+    assert purchases["totals"]["count"] == 2 and purchases["totals"]["amount"] == 300000
+    assert purchases["totals"]["remaining"] == 100000
+    unpaid = _ai_tool(admin, "get_purchases_summary", unpaid_only=True, **oct_args)["purchases"]
+    assert [p["remaining"] for p in unpaid] == [100000]
+
+    debts = _ok(admin.get("/reports/api/v2/section/customers", query_string={**OCT, "tab": "debts"}, headers=JSON))
+    aging = _ai_tool(admin, "get_receivables_aging")
+    assert aging["receivables"] == debts["metrics"]["receivables"] and aging["aging"] == debts["aging"]
+    assert aging["oldest_open_invoices"][0]["invoice_id"] == debts["rows"][0]["invoice_id"]
+
+    returns = _ai_tool(admin, "get_sales_returns", **oct_args)
+    assert returns["returns_amount"] == 150000 and returns["returns_count"] == 1
+    assert returns["return_rate_percent"] == round(150000 / 740000 * 100, 1)
+
+    overdue = _ai_tool(admin, "get_overdue_installments")
+    assert overdue["count"] == 1 and overdue["amount"] == 40000
+    assert overdue["items"][0]["customer"] == "أحمد سالم" and overdue["items"][0]["status"] == "partial"
+
+    stagnant = _ai_tool(admin, "get_stagnant_products", min_days=30)
+    assert "AC-OLD" in {p["sku"] for p in stagnant["items"]} and "value" in stagnant["items"][0]
+    movements = _ai_tool(admin, "get_product_movements", product_id=product_id)
+    assert movements["product"]["id"] == product_id and movements["movements_count"] > 0
+
+    # view_reports only: sales figures without profit/cost, and no account or inventory tools.
+    viewer = _client(ctx, ids={"viewer": viewer_id}, key="viewer", role="sales")
+    names = {t["name"] for t in _ok(viewer.get("/finora-ai/api/desktop/tools"))["tools"]}
+    assert {"get_period_comparison", "get_receivables_aging", "get_stagnant_products"} <= names
+    assert not {"get_overdue_installments", "get_product_movements"} & names
+    limited = _ai_tool(viewer, "get_period_comparison", **oct_args)["current"]
+    assert limited["net_sales"] == 590000 and "net_profit" not in limited and "cogs" not in limited
+    assert all("value" not in p for p in _ai_tool(viewer, "get_stagnant_products")["items"])

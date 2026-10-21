@@ -42,7 +42,12 @@ import { windowGeometry } from "./windowGeometry";
 import { protectWindow } from "./lifecycle";
 import { backupProfile } from "./backupRuntime";
 import { checkUpdate, downloadUpdate, launchUpdate } from "./updates";
-import { chatLocalAssistant, probeLocalAssistant, transcribeLocal } from "./localAssistant";
+import {
+  chatLocalAssistant,
+  probeLocalAssistant,
+  transcribeLocal,
+  warmLocalAssistant,
+} from "./localAssistant";
 import {
   assistantPublicSettings,
   assistantSettings,
@@ -212,9 +217,28 @@ function registerIpc(): void {
     assistantRequests.set(event.sender.id, controller);
     try {
       const settings = await assistantSettings();
-      return await chatLocalAssistant(settings, parsed, await assistantToken(settings), controller.signal);
+      const sender = event.sender;
+      return await chatLocalAssistant(
+        settings,
+        parsed,
+        await assistantToken(settings),
+        controller.signal,
+        (text) => {
+          if (!sender.isDestroyed()) sender.send(IPC.assistantDelta, text);
+        },
+      );
     } finally {
       assistantRequests.delete(event.sender.id);
+    }
+  });
+  handle(IPC.assistantWarm, async (event) => {
+    assertTrustedSender(event);
+    // Best effort and independent of the chat slot: a failed warm-up never blocks a question.
+    const settings = await assistantSettings();
+    try {
+      await warmLocalAssistant(settings, await assistantToken(settings), AbortSignal.timeout(60_000));
+    } catch {
+      /* the first question reports connection problems with full context */
     }
   });
   handle(IPC.assistantTranscribe, async (event, input) => {
